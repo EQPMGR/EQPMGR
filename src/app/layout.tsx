@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'TrailPulse',
+  title: 'EQPMGR',
   description: 'AI-powered lifelong companion for your gear.',
 };
 
