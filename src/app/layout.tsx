@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster"
 export const metadata: Metadata = {
   title: 'EQPMGR',
   description: 'AI-powered lifelong companion for your gear.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({

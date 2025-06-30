@@ -1,0 +1,16 @@
+{
+  "name": "EQPMGR",
+  "short_name": "EQPMGR",
+  "description": "AI-powered lifelong companion for your gear.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2a5d59",
+  "theme_color": "#D98945",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
