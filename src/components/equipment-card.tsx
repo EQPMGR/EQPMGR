@@ -49,7 +49,7 @@ export function EquipmentCard({ equipment }: EquipmentCardProps) {
         </div>
       </CardContent>
       <CardFooter className='p-2'>
-        <Button asChild variant="secondary" className="w-full">
+        <Button asChild className="w-full">
           <Link href={`/equipment/${equipment.id}`}>
             View Details <ArrowUpRight className="ml-2 h-4 w-4" />
           </Link>
