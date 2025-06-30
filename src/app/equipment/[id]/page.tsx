@@ -62,9 +62,9 @@ export default function EquipmentDetailPage({
               <nav className="grid gap-6 text-lg font-medium">
                 <Link
                   href="#"
-                  className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+                  className="group flex shrink-0 items-center justify-center gap-2 text-lg font-semibold text-primary-foreground md:text-base"
                 >
-                  <Logo className="h-5 w-5 transition-all group-hover:scale-110" />
+                  <Logo className="h-7 w-7 transition-all group-hover:scale-110" />
                   <span className="sr-only">TrailPulse</span>
                 </Link>
                 <Link
