@@ -19,8 +19,8 @@ export default function Dashboard() {
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4">
           <Sheet>
             <SheetTrigger asChild>
-              <Button size="icon" variant="ghost" className="text-destructive-foreground">
-                <Menu className="h-10 w-10" />
+              <Button size="icon" variant="ghost" className="text-destructive-foreground [&_svg]:size-10">
+                <Menu />
                 <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
