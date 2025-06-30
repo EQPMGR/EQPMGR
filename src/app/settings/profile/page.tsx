@@ -15,7 +15,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -23,7 +22,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { Separator } from "@/components/ui/separator"
 
 const profileFormSchema = z.object({
   name: z
@@ -66,116 +64,90 @@ export default function ProfilePage() {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>
-            Update your personal details here. This helps in providing more accurate wear simulations.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+    <Card>
+      <CardHeader>
+        <CardTitle>Personal Information</CardTitle>
+        <CardDescription>
+          Update your personal details here. This helps in providing more accurate wear simulations.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="name"
+                name="height"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Height (cm)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your name" {...field} />
+                      <Input type="number" placeholder="180" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="height"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Height (cm)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="180" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="weight"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weight (kg)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="75" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="shoeSize"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Shoe Size (US)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="10.5" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="age"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Age</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="32" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="weight"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Weight (kg)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="75" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="shoeSize"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shoe Size (US)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="10.5" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="age"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Age</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="32" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-              <Button type="submit">Update Profile</Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      <Card>
-          <CardHeader>
-            <CardTitle>Connected Apps</CardTitle>
-            <CardDescription>
-              Connect your fitness apps to automatically import workout data.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                      <h4 className="font-semibold">Strava</h4>
-                      <p className="text-sm text-muted-foreground">Not connected</p>
-                  </div>
-                  <Button>Connect</Button>
-              </div>
-               <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                      <h4 className="font-semibold">MapMyRide</h4>
-                      <p className="text-sm text-muted-foreground">Not connected</p>
-                  </div>
-                  <Button>Connect</Button>
-              </div>
-          </CardContent>
-      </Card>
-    </>
+            <Button type="submit">Update Profile</Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   )
 }
