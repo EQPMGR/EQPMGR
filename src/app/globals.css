@@ -41,17 +41,17 @@ h1, h2, h3, h4, h5, h6 {
 
   .dark {
     --background: 174 46% 61%;
-    --foreground: 175 38% 10%;
+    --foreground: 0 0% 98%;
     --card: 174 46% 56%;
-    --card-foreground: 175 38% 10%;
+    --card-foreground: 0 0% 98%;
     --popover: 174 46% 61%;
-    --popover-foreground: 175 38% 10%;
+    --popover-foreground: 0 0% 98%;
     --primary: 29 68% 56%;
     --primary-foreground: 29 68% 95%;
     --secondary: 174 40% 70%;
-    --secondary-foreground: 175 38% 10%;
+    --secondary-foreground: 0 0% 98%;
     --muted: 174 40% 70%;
-    --muted-foreground: 175 10% 40%;
+    --muted-foreground: 0 0% 65%;
     --accent: 175 38% 15%;
     --accent-foreground: 175 10% 85%;
     --destructive: 0 72% 51%;
