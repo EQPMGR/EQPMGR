@@ -51,7 +51,7 @@ export function MaintenanceLog({ log }: MaintenanceLogProps) {
               log.map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell>
-                    {new Date(entry.date).toLocaleDateString()}
+                    {new Date(entry.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </TableCell>
                   <TableCell>{entry.description}</TableCell>
                   <TableCell className="text-right">

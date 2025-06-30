@@ -131,7 +131,7 @@ export default function EquipmentDetailPage({
                 <CardHeader className="pb-2">
                   <CardDescription>Purchased</CardDescription>
                   <CardTitle className="text-3xl font-headline">
-                    {new Date(equipment.purchaseDate).toLocaleDateString()}
+                    {new Date(equipment.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </CardTitle>
                 </CardHeader>
               </Card>
