@@ -2,14 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Inter', sans-serif;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Montserrat', sans-serif;
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -41,19 +33,19 @@ h1, h2, h3, h4, h5, h6 {
 
   .dark {
     --background: 174 46% 61%;
-    --foreground: 0 0% 98%;
-    --card: 174 46% 56%;
-    --card-foreground: 0 0% 98%;
-    --popover: 174 46% 61%;
-    --popover-foreground: 0 0% 98%;
+    --foreground: 175 38% 10%;
+    --card: 174 46% 68%;
+    --card-foreground: 175 38% 10%;
+    --popover: 174 46% 68%;
+    --popover-foreground: 175 38% 10%;
     --primary: 29 68% 56%;
-    --primary-foreground: 29 68% 95%;
-    --secondary: 174 40% 70%;
-    --secondary-foreground: 0 0% 98%;
+    --primary-foreground: 29 68% 15%;
+    --secondary: 174 40% 80%;
+    --secondary-foreground: 175 38% 15%;
     --muted: 174 40% 70%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 175 38% 15%;
-    --accent-foreground: 175 10% 85%;
+    --muted-foreground: 175 38% 30%;
+    --accent: 29 68% 56%;
+    --accent-foreground: 29 68% 15%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 174 46% 50%;
