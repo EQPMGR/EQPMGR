@@ -10,7 +10,7 @@ export const equipmentData: Equipment[] = [
     purchaseDate: '2023-01-15',
     totalDistance: 2540,
     totalHours: 85,
-    imageUrl: 'https://placehold.co/600x400.png',
+    imageUrl: 'https://images.unsplash.com/photo-1559348331-57d46931c890?q=80&w=600&h=400&auto=format&fit=crop',
     components: [
       {
         id: 'c1',
@@ -65,7 +65,7 @@ export const equipmentData: Equipment[] = [
     purchaseDate: '2022-11-20',
     totalDistance: 1250,
     totalHours: 110,
-    imageUrl: 'https://placehold.co/600x400.png',
+    imageUrl: 'https://images.unsplash.com/photo-1572115244513-4841c73a4b9a?q=80&w=600&h=400&auto=format&fit=crop',
     components: [
       {
         id: 't1',
