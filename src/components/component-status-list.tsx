@@ -6,7 +6,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { Component } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface ComponentStatusListProps {
   components: Component[];
@@ -14,8 +13,8 @@ interface ComponentStatusListProps {
 
 const getProgressColor = (wear: number) => {
   if (wear > 90) return 'bg-destructive';
-  if (wear > 70) return 'bg-primary'; // Orange from our theme
-  return 'bg-green-500';
+  if (wear > 70) return 'bg-accent';
+  return 'bg-primary';
 };
 
 export function ComponentStatusList({ components }: ComponentStatusListProps) {

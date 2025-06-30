@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'EQPMGR',
-  description: 'Manage your sports equipment with AI-powered insights.',
+  title: 'TrailPulse',
+  description: 'AI-powered lifelong companion for your gear.',
 };
 
 export default function RootLayout({

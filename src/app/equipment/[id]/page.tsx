@@ -26,6 +26,13 @@ import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
 
+const getAIHint = (type: string) => {
+    if (type.includes('Road Bike')) return 'road bike';
+    if (type.includes('Mountain Bike')) return 'mountain bike';
+    if (type.includes('Running Shoes')) return 'running shoes';
+    return 'sports equipment';
+}
+
 export default function EquipmentDetailPage({
   params,
 }: {
@@ -66,7 +73,7 @@ export default function EquipmentDetailPage({
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
                 >
                   <Logo className="h-5 w-5 transition-all group-hover:scale-110" />
-                  <span className="sr-only">EQPMGR</span>
+                  <span className="sr-only">TrailPulse</span>
                 </Link>
                 <Link
                   href="/"
@@ -158,7 +165,7 @@ export default function EquipmentDetailPage({
                   height="300"
                   src={equipment.imageUrl}
                   width="600"
-                  data-ai-hint={equipment.type === 'Road Bike' ? 'road bike' : 'running shoes'}
+                  data-ai-hint={getAIHint(equipment.type)}
                 />
                  <div className="p-6">
                     <CardTitle className="text-2xl font-headline">{equipment.name}</CardTitle>
