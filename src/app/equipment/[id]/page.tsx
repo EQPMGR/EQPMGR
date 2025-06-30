@@ -7,7 +7,7 @@ import {
   PanelLeft,
   Settings,
 } from 'lucide-react';
-
+import Image from 'next/image';
 import { equipmentData } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,7 +65,7 @@ export default function EquipmentDetailPage({
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
                 >
                   <Logo className="h-5 w-5 transition-all group-hover:scale-110" />
-                  <span className="sr-only">EQPMGR</span>
+                  <span className="sr-only">TrailPulse</span>
                 </Link>
                 <Link
                   href="/"
