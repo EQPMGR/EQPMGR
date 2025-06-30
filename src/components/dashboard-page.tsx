@@ -20,7 +20,7 @@ export function DashboardPage() {
             An overview of your gear's health and maintenance status.
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col gap-2 md:flex-row">
            <Button variant="secondary">
             <Activity className="mr-2 h-4 w-4" />
             Sync Activity
