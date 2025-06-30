@@ -1,11 +1,9 @@
+
 import Link from 'next/link';
 import {
   Bike,
   ChevronLeft,
   Footprints,
-  Home,
-  Menu,
-  Settings,
 } from 'lucide-react';
 import { equipmentData } from '@/lib/data';
 import { Button } from '@/components/ui/button';
@@ -16,9 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { UserNav } from '@/components/user-nav';
-import { Logo } from '@/components/logo';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
@@ -47,64 +42,16 @@ export default function EquipmentDetailPage({
   const Icon = equipment.type.includes('Bike') ? Bike : Footprints;
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
-      <div className="flex flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button size="icon" variant="ghost" className="text-destructive-foreground [&_svg]:size-10">
-                <Menu />
-                <span className="sr-only">Toggle Menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="sm:max-w-xs">
-              <nav className="grid gap-6 text-lg font-medium">
-                <Link
-                  href="#"
-                  className="group flex shrink-0 items-center justify-center gap-2 text-lg font-semibold text-primary-foreground md:text-base"
-                >
-                  <Logo className="h-[60px] w-[60px] transition-all group-hover:scale-110" />
-                  <span className="sr-only">TrailPulse</span>
-                </Link>
-                <Link
-                  href="/"
-                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <Home className="h-5 w-5" />
-                  Dashboard
-                </Link>
-                <Link
-                  href="#"
-                  className="flex items-center gap-4 px-2.5 text-foreground"
-                >
-                  <Bike className="h-5 w-5" />
-                  Equipment
-                </Link>
-                <Link
-                  href="/settings/profile"
-                  className="mt-auto flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <Settings className="h-5 w-5" />
-                  Settings
-                </Link>
-              </nav>
-            </SheetContent>
-          </Sheet>
-          <div className="flex items-center gap-2">
+    <>
+        <div className="flex items-center gap-2 mb-4">
             <Button variant="outline" size="sm" asChild>
                 <Link href="/">
                     <ChevronLeft className="h-4 w-4" />
                     Back
                 </Link>
             </Button>
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            <UserNav />
-          </div>
-        </header>
-
-        <main className="grid flex-1 items-start gap-4 p-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
+        </div>
+        <div className="grid flex-1 items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
               <Card>
@@ -158,8 +105,7 @@ export default function EquipmentDetailPage({
               </CardContent>
             </Card>
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+    </>
   );
 }

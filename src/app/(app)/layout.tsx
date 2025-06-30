@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import {
   Bike,
@@ -9,13 +10,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { UserNav } from '@/components/user-nav';
-import { DashboardPage } from '@/components/dashboard-page';
 import { Logo } from '@/components/logo';
 
-export default function Dashboard() {
+export default function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
-      <div className="flex flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4">
           <Sheet>
             <SheetTrigger asChild>
@@ -34,7 +37,7 @@ export default function Dashboard() {
                   <span className="sr-only">TrailPulse</span>
                 </Link>
                 <Link
-                  href="#"
+                  href="/"
                   className="flex items-center gap-4 px-2.5 text-foreground"
                 >
                   <Home className="h-5 w-5" />
@@ -62,10 +65,9 @@ export default function Dashboard() {
             <UserNav />
           </div>
         </header>
-        <main className="flex-1 p-4">
-          <DashboardPage />
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
+            {children}
         </main>
-      </div>
     </div>
   );
 }
