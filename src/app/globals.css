@@ -40,24 +40,24 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .dark {
-    --background: 175 38% 15%;
-    --foreground: 175 10% 85%;
-    --card: 175 38% 22%;
-    --card-foreground: 175 10% 85%;
-    --popover: 175 38% 15%;
-    --popover-foreground: 175 10% 85%;
+    --background: 174 46% 61%;
+    --foreground: 175 38% 10%;
+    --card: 174 46% 56%;
+    --card-foreground: 175 38% 10%;
+    --popover: 174 46% 61%;
+    --popover-foreground: 175 38% 10%;
     --primary: 29 68% 56%;
-    --primary-foreground: 29 68% 15%;
-    --secondary: 175 20% 30%;
-    --secondary-foreground: 175 10% 85%;
-    --muted: 175 20% 30%;
-    --muted-foreground: 175 10% 60%;
-    --accent: 174 46% 61%;
-    --accent-foreground: 175 38% 10%;
+    --primary-foreground: 29 68% 95%;
+    --secondary: 174 40% 70%;
+    --secondary-foreground: 175 38% 10%;
+    --muted: 174 40% 70%;
+    --muted-foreground: 175 10% 40%;
+    --accent: 175 38% 15%;
+    --accent-foreground: 175 10% 85%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 175 38% 30%;
-    --input: 175 38% 30%;
+    --border: 174 46% 50%;
+    --input: 174 46% 50%;
     --ring: 29 68% 56%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
