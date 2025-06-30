@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowUpRight, Bike, Footprints } from 'lucide-react';
 import {
@@ -6,10 +5,8 @@ import {
   CardContent,
   CardDescription,
   CardFooter,
-  CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import type { Equipment } from '@/lib/types';
 import { ComponentStatusList } from './component-status-list';
 import { Button } from './ui/button';
@@ -18,50 +15,12 @@ interface EquipmentCardProps {
   equipment: Equipment;
 }
 
-const getOverallWear = (equipment: Equipment) => {
-  if (!equipment.components || equipment.components.length === 0) return 0;
-  const totalWear = equipment.components.reduce(
-    (acc, c) => acc + c.wearPercentage,
-    0
-  );
-  return totalWear / equipment.components.length;
-};
-
-const getAIHint = (type: string) => {
-    if (type.includes('Road Bike')) return 'road bike';
-    if (type.includes('Mountain Bike')) return 'mountain bike';
-    if (type.includes('Running Shoes')) return 'running shoes';
-    return 'sports equipment';
-}
-
 export function EquipmentCard({ equipment }: EquipmentCardProps) {
-  const overallWear = getOverallWear(equipment);
   const Icon = equipment.type.includes('Bike') ? Bike : Footprints;
-
-  let wearBadgeVariant: 'default' | 'secondary' | 'destructive' = 'default';
-  if (overallWear > 90) {
-    wearBadgeVariant = 'destructive';
-  } else if (overallWear > 70) {
-    wearBadgeVariant = 'secondary';
-  }
 
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
-      <CardHeader className="p-0">
-        <div className="relative h-48 w-full">
-          <Image
-            src={equipment.imageUrl}
-            alt={equipment.name}
-            fill
-            className="object-cover"
-            data-ai-hint={getAIHint(equipment.type)}
-          />
-        </div>
-      </CardHeader>
       <CardContent className="flex-grow p-4">
-        <Badge variant={wearBadgeVariant} className="mb-2">
-            {`Wear: ${overallWear.toFixed(0)}%`}
-        </Badge>
         <CardTitle className="font-headline text-xl leading-snug">
             {equipment.name}
         </CardTitle>

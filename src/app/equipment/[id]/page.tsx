@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Bike,
   ChevronLeft,
@@ -25,13 +24,6 @@ import { ComponentStatusList } from '@/components/component-status-list';
 import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
-
-const getAIHint = (type: string) => {
-    if (type.includes('Road Bike')) return 'road bike';
-    if (type.includes('Mountain Bike')) return 'mountain bike';
-    if (type.includes('Running Shoes')) return 'running shoes';
-    return 'sports equipment';
-}
 
 export default function EquipmentDetailPage({
   params,
@@ -158,19 +150,9 @@ export default function EquipmentDetailPage({
           </div>
           <div>
             <Card>
-              <CardHeader className="p-0">
-                <Image
-                  alt={equipment.name}
-                  className="aspect-video w-full rounded-t-lg object-cover"
-                  height="300"
-                  src={equipment.imageUrl}
-                  width="600"
-                  data-ai-hint={getAIHint(equipment.type)}
-                />
-                 <div className="p-6">
-                    <CardTitle className="text-2xl font-headline">{equipment.name}</CardTitle>
-                    <CardDescription>{equipment.brand} {equipment.model}</CardDescription>
-                </div>
+              <CardHeader>
+                <CardTitle className="text-2xl font-headline">{equipment.name}</CardTitle>
+                <CardDescription>{equipment.brand} {equipment.model}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ComponentStatusList components={equipment.components} />
