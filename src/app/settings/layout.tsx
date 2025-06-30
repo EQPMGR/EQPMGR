@@ -29,7 +29,7 @@ export default function SettingsLayout({
         <Sheet>
           <SheetTrigger asChild>
             <Button size="icon" variant="ghost" className="text-destructive-foreground">
-              <Menu className="h-5 w-5" />
+              <Menu className="h-10 w-10" />
               <span className="sr-only">Toggle Menu</span>
             </Button>
           </SheetTrigger>
