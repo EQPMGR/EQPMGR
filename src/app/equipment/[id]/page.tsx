@@ -7,7 +7,6 @@ import {
   PanelLeft,
   Settings,
 } from 'lucide-react';
-import Image from 'next/image';
 import { equipmentData } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import {
@@ -82,7 +81,7 @@ export default function EquipmentDetailPage({
                   Equipment
                 </Link>
                 <Link
-                  href="#"
+                  href="/settings/profile"
                   className="mt-auto flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <Settings className="h-5 w-5" />
