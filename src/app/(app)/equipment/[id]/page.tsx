@@ -24,6 +24,19 @@ import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
 import type { Equipment, MaintenanceLog as MaintenanceLogType, Component } from '@/lib/types';
+import { AccessoriesIcon } from '@/components/icons/accessories-icon';
+
+function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
+    const name = componentName.toLowerCase();
+    
+    if (name.includes('accessories')) {
+        return <AccessoriesIcon className={className} />;
+    }
+
+    // Default icon
+    return <Puzzle className={className} />;
+}
+
 
 export default function EquipmentDetailPage({
   params,
@@ -87,6 +100,19 @@ export default function EquipmentDetailPage({
               <CardContent>
                 <ComponentStatusList components={equipment.components} />
               </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Component Details</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {equipment.components.map(component => (
+                        <Button key={component.id} variant="outline" className="h-auto flex flex-col items-center justify-center gap-2 p-4 aspect-square">
+                            <ComponentIcon componentName={component.name} className="h-8 w-8 text-muted-foreground" />
+                            <span className="text-center text-sm">{component.name}</span>
+                        </Button>
+                    ))}
+                </CardContent>
             </Card>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
               <Card>
