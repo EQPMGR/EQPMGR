@@ -21,6 +21,9 @@ export interface Equipment {
   type: 'Road Bike' | 'Mountain Bike' | 'Running Shoes' | 'Other';
   brand: string;
   model: string;
+  modelYear: number;
+  serialNumber?: string;
+  purchaseCondition: 'new' | 'used';
   purchaseDate: string;
   totalDistance: number;
   totalHours: number;

@@ -44,12 +44,16 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/lib/types';
 import { CameraCapture } from './camera-capture';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 const equipmentFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   type: z.enum(['Road Bike', 'Mountain Bike', 'Running Shoes', 'Other']),
   brand: z.string().min(2, { message: 'Brand is required.' }),
   model: z.string().min(2, { message: 'Model is required.' }),
+  modelYear: z.coerce.number().min(1900, "Please enter a valid year.").max(new Date().getFullYear() + 1, "Year cannot be in the future."),
+  serialNumber: z.string().optional(),
+  purchaseCondition: z.enum(['new', 'used']),
   purchaseDate: z.date({
     required_error: 'A purchase date is required.',
   }),
@@ -72,6 +76,9 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
       type: 'Road Bike',
       brand: '',
       model: '',
+      modelYear: new Date().getFullYear(),
+      serialNumber: '',
+      purchaseCondition: 'new',
     },
   });
 
@@ -171,6 +178,64 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                 )}
               />
             </div>
+             <div className="grid grid-cols-2 gap-4">
+               <FormField
+                  control={form.control}
+                  name="modelYear"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model Year</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 2023" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+               <FormField
+                  control={form.control}
+                  name="serialNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Serial Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., WSBC12345" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
+            <FormField
+              control={form.control}
+              name="purchaseCondition"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Condition</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex items-center gap-4"
+                    >
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="new" />
+                        </FormControl>
+                        <FormLabel className="font-normal">New</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="used" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Used</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="grid grid-cols-2 gap-4">
                <FormField
                 control={form.control}
