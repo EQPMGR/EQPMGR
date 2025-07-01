@@ -12,6 +12,7 @@ export interface MaintenanceLog {
   date: string;
   description: string;
   cost: number;
+  serviceProvider?: string;
   notes?: string;
 }
 

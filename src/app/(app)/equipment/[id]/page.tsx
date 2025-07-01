@@ -1,4 +1,5 @@
-
+'use client'
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Bike,
@@ -19,13 +20,15 @@ import { ComponentStatusList } from '@/components/component-status-list';
 import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
+import type { Equipment, MaintenanceLog as MaintenanceLogType } from '@/lib/types';
 
 export default function EquipmentDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const equipment = equipmentData.find((e) => e.id === params.id);
+  const initialEquipment = equipmentData.find((e) => e.id === params.id);
+  const [equipment, setEquipment] = useState<Equipment | undefined>(initialEquipment);
 
   if (!equipment) {
     return (
@@ -39,6 +42,21 @@ export default function EquipmentDetailPage({
       </div>
     );
   }
+  
+  const handleAddLog = (newLog: Omit<MaintenanceLogType, 'id'>) => {
+    setEquipment(prev => {
+        if (!prev) return;
+        const newLogEntry: MaintenanceLogType = {
+            ...newLog,
+            id: `ml-${Date.now()}`,
+        };
+        return {
+            ...prev,
+            maintenanceLog: [newLogEntry, ...prev.maintenanceLog],
+        };
+    });
+  }
+
 
   const Icon = equipment.type.includes('Bike') ? Bike : Footprints;
 
@@ -90,7 +108,7 @@ export default function EquipmentDetailPage({
                   <CardDescription>Purchased</CardDescription>
                   <CardTitle className="text-3xl font-headline">
                     {new Date(equipment.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
-                  </CardTitle>
+                  </Ttle>
                 </CardHeader>
               </Card>
                <Card>
@@ -102,7 +120,7 @@ export default function EquipmentDetailPage({
                 </CardHeader>
               </Card>
             </div>
-            <MaintenanceLog log={equipment.maintenanceLog} />
+            <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
             <WearSimulation equipment={equipment} />
             <MaintenanceSchedule equipment={equipment} />
 

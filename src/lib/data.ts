@@ -51,12 +51,14 @@ export const equipmentData: Equipment[] = [
         date: '2023-09-01',
         description: 'Full tune-up and chain cleaning.',
         cost: 75,
+        serviceProvider: 'Local Bike Shop'
       },
       {
         id: 'm2',
         date: '2023-11-10',
         description: 'Replaced brake pads.',
         cost: 40,
+        serviceProvider: 'DIY'
       },
     ],
   },
@@ -110,12 +112,14 @@ export const equipmentData: Equipment[] = [
         date: '2023-10-05',
         description: 'Suspension service (fork and shock).',
         cost: 150,
+        serviceProvider: 'Suspension Experts Inc.'
       },
        {
         id: 'tm2',
         date: '2023-08-15',
         description: 'New tires (Maxxis Minion DHF/DHR)',
         cost: 180,
+        serviceProvider: 'Local Bike Shop'
       },
     ],
   },
