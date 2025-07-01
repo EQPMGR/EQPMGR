@@ -6,6 +6,7 @@ import {
   Bike,
   ChevronLeft,
   Footprints,
+  Hexagon,
   Puzzle,
   Shield,
   Wrench,
@@ -61,7 +62,7 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
     }
 
     if (name.includes('suspension')) {
-        return <SuspensionIcon className={className} />;
+      return <SuspensionIcon className={className} />;
     }
 
     if (name.includes('drivetrain')) {
@@ -111,6 +112,15 @@ export default function EquipmentDetailPage({
   }
   */
 
+  const systems = [
+    { name: 'Drivetrain', keywords: ['drivetrain'] },
+    { name: 'Brakes', keywords: ['brake'] },
+    { name: 'Wheelset', keywords: ['tire', 'wheel'] },
+    { name: 'Suspension', keywords: ['suspension', 'shock', 'dropper'] },
+    { name: 'Frameset', keywords: ['frame'] },
+    { name: 'Accessories', keywords: ['accessories'] }
+  ];
+
   const topComponents = [...equipment.components]
     .sort((a, b) => b.wearPercentage - a.wearPercentage)
     .slice(0, 3);
@@ -143,14 +153,29 @@ export default function EquipmentDetailPage({
             </Card>
              <Card>
                 <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-                    {equipment.components.map(component => (
-                        <div key={component.id} role="button" tabIndex={0} className="p-4 border rounded-lg flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-accent group">
-                            <div className="h-[35px] w-[35px] flex items-center justify-center">
-                                <ComponentIcon componentName={component.name} className="h-full w-full text-muted-foreground group-hover:text-accent-foreground" />
-                            </div>
-                            <span className="text-xs text-center font-headline uppercase font-black text-muted-foreground group-hover:text-accent-foreground">{component.name}</span>
-                        </div>
-                    ))}
+                    {systems.map(system => {
+                      const highWearComponents = equipment.components.filter(c => 
+                          system.keywords.some(kw => c.name.toLowerCase().includes(kw)) && c.wearPercentage > 70
+                      );
+                      const notificationCount = highWearComponents.length;
+
+                      return (
+                          <div key={system.name} role="button" tabIndex={0} className="relative p-4 border rounded-lg flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-accent group">
+                              {notificationCount > 0 && (
+                                  <div className="absolute top-1 right-1 flex items-center justify-center">
+                                      <Hexagon className="h-6 w-6 text-primary fill-primary" />
+                                      <span className="absolute text-primary-foreground text-xs font-bold">
+                                          {notificationCount}
+                                      </span>
+                                  </div>
+                              )}
+                              <div className="h-[35px] w-[35px] flex items-center justify-center">
+                                  <ComponentIcon componentName={system.name} className="h-full w-full text-muted-foreground group-hover:text-accent-foreground" />
+                              </div>
+                              <span className="text-xs text-center font-headline uppercase font-black text-muted-foreground group-hover:text-accent-foreground">{system.name}</span>
+                          </div>
+                      );
+                    })}
                 </CardContent>
             </Card>
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
