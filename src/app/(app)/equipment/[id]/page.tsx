@@ -46,15 +46,16 @@ export default function EquipmentDetailPage({
   
   const handleAddLog = (newLog: Omit<MaintenanceLogType, 'id'>) => {
     setEquipment(prev => {
-        if (!prev) return;
+        if (!prev) return undefined;
         const newLogEntry: MaintenanceLogType = {
             ...newLog,
             id: `ml-${Date.now()}`,
         };
-        return {
+        const updatedEquipment = {
             ...prev,
             maintenanceLog: [newLogEntry, ...prev.maintenanceLog],
         };
+        return updatedEquipment;
     });
   }
 

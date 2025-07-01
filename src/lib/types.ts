@@ -10,9 +10,15 @@ export interface Component {
 export interface MaintenanceLog {
   id: string;
   date: string;
+  logType: 'service' | 'repair' | 'modification';
   description: string;
   cost: number;
+  serviceType: 'diy' | 'shop';
   serviceProvider?: string;
+  technician?: string;
+  componentReplaced: boolean;
+  isOEM?: boolean;
+  replacementPart?: string;
   notes?: string;
 }
 

@@ -18,6 +18,7 @@ import { Button } from './ui/button';
 import { PlusCircle } from 'lucide-react';
 import type { MaintenanceLog as MaintenanceLogType } from '@/lib/types';
 import { AddMaintenanceLogDialog } from './add-maintenance-log-dialog';
+import { Badge } from './ui/badge';
 
 interface MaintenanceLogProps {
   log: MaintenanceLogType[];
@@ -47,6 +48,7 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Description</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Provider</TableHead>
               <TableHead className="text-right">Cost</TableHead>
             </TableRow>
@@ -59,7 +61,10 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
                     {new Date(entry.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </TableCell>
                   <TableCell>{entry.description}</TableCell>
-                  <TableCell>{entry.serviceProvider || 'N/A'}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize">{entry.logType || 'Service'}</Badge>
+                  </TableCell>
+                  <TableCell>{entry.serviceProvider || (entry.serviceType === 'diy' ? 'DIY' : 'N/A')}</TableCell>
                   <TableCell className="text-right">
                     ${entry.cost.toFixed(2)}
                   </TableCell>
@@ -67,7 +72,7 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
+                <TableCell colSpan={5} className="text-center">
                   No maintenance logged yet.
                 </TableCell>
               </TableRow>
