@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowUpRight, Bike, Footprints } from 'lucide-react';
+import { ArrowUpRight, Bike, Camera, Footprints } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -11,12 +11,14 @@ import {
 import type { Equipment } from '@/lib/types';
 import { ComponentStatusList } from './component-status-list';
 import { Button } from './ui/button';
+import { CameraCapture } from './camera-capture';
 
 interface EquipmentCardProps {
   equipment: Equipment;
+  onUpdateEquipmentImage: (id: string, imageUrl: string) => void;
 }
 
-export function EquipmentCard({ equipment }: EquipmentCardProps) {
+export function EquipmentCard({ equipment, onUpdateEquipmentImage }: EquipmentCardProps) {
   const Icon = equipment.type.includes('Bike') ? Bike : Footprints;
   const imageHint = equipment.type.toLowerCase().replace(' ', '');
 
@@ -27,15 +29,20 @@ export function EquipmentCard({ equipment }: EquipmentCardProps) {
 
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
-      <div className="relative h-40 w-full">
-        <Image
-          src={equipment.imageUrl}
-          alt={equipment.name}
-          fill
-          className="object-cover"
-          data-ai-hint={imageHint}
-        />
-      </div>
+      <CameraCapture onCapture={(imageUrl) => onUpdateEquipmentImage(equipment.id, imageUrl)}>
+         <div className="relative h-40 w-full cursor-pointer group">
+            <Image
+              src={equipment.imageUrl}
+              alt={equipment.name}
+              fill
+              className="object-cover"
+              data-ai-hint={imageHint}
+            />
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="h-8 w-8 text-white" />
+            </div>
+        </div>
+      </CameraCapture>
       <CardContent className="flex flex-grow flex-col p-4">
         <CardTitle className="font-headline text-xl leading-snug">
             {equipment.name}

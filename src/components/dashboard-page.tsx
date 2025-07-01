@@ -27,6 +27,14 @@ export function DashboardPage() {
     setData((prevData) => [newEquipment, ...prevData]);
   }
 
+  function handleUpdateEquipmentImage(equipmentId: string, imageUrl: string) {
+    setData(prevData =>
+        prevData.map(item =>
+            item.id === equipmentId ? { ...item, imageUrl } : item
+        )
+    );
+  }
+
   return (
     <>
       <div className="flex items-center justify-between space-y-2 mb-6">
@@ -46,7 +54,11 @@ export function DashboardPage() {
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {data.map((item) => (
-          <EquipmentCard key={item.id} equipment={item} />
+          <EquipmentCard 
+            key={item.id} 
+            equipment={item} 
+            onUpdateEquipmentImage={handleUpdateEquipmentImage} 
+          />
         ))}
       </div>
     </>
