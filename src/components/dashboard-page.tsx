@@ -1,15 +1,32 @@
 'use client';
 
 import { useState } from 'react';
-import { PlusCircle, Activity } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { equipmentData } from '@/lib/data';
 import type { Equipment } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
+import { AddEquipmentDialog } from './add-equipment-dialog';
 
 export function DashboardPage() {
   const [data, setData] = useState<Equipment[]>(equipmentData);
+
+  function handleAddEquipment(
+    newEquipmentData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours' | 'imageUrl'> & { purchaseDate: string }
+  ) {
+    const newEquipment: Equipment = {
+      ...newEquipmentData,
+      id: `new-${Date.now()}`,
+      totalDistance: 0,
+      totalHours: 0,
+      imageUrl: 'https://placehold.co/600x400.png',
+      components: [],
+      maintenanceLog: [],
+    };
+    
+    setData((prevData) => [newEquipment, ...prevData]);
+  }
 
   return (
     <>
@@ -25,10 +42,7 @@ export function DashboardPage() {
             <Activity className="mr-2 h-4 w-4" />
             Sync Activity
           </Button>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Equipment
-          </Button>
+          <AddEquipmentDialog onAddEquipment={handleAddEquipment} />
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

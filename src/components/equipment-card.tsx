@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowUpRight, Bike, Footprints } from 'lucide-react';
 import {
   Card,
@@ -17,10 +18,20 @@ interface EquipmentCardProps {
 
 export function EquipmentCard({ equipment }: EquipmentCardProps) {
   const Icon = equipment.type.includes('Bike') ? Bike : Footprints;
+  const imageHint = equipment.type.toLowerCase().replace(' ', '');
 
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
-      <CardContent className="flex-grow p-4">
+      <div className="relative h-40 w-full">
+        <Image
+          src={equipment.imageUrl}
+          alt={equipment.name}
+          fill
+          className="object-cover"
+          data-ai-hint={imageHint}
+        />
+      </div>
+      <CardContent className="flex flex-grow flex-col p-4">
         <CardTitle className="font-headline text-xl leading-snug">
             {equipment.name}
         </CardTitle>
@@ -43,12 +54,12 @@ export function EquipmentCard({ equipment }: EquipmentCardProps) {
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 flex-grow">
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Component Health</h4>
           <ComponentStatusList components={equipment.components} />
         </div>
       </CardContent>
-      <CardFooter className='p-2'>
+      <CardFooter className='p-2 mt-auto'>
         <Button asChild className="w-full">
           <Link href={`/equipment/${equipment.id}`}>
             View Details <ArrowUpRight className="ml-2 h-4 w-4" />
