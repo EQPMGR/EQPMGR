@@ -26,6 +26,16 @@ interface MaintenanceLogProps {
 }
 
 export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
+  const getBadgeVariant = (logType: MaintenanceLogType['logType']): 'secondary' | 'default' | 'outline' => {
+    switch (logType) {
+        case 'repair': return 'secondary';
+        case 'modification': return 'default';
+        case 'service':
+        default:
+            return 'outline';
+    }
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -62,7 +72,7 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
                   </TableCell>
                   <TableCell>{entry.description}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="capitalize">{entry.logType || 'Service'}</Badge>
+                    <Badge variant={getBadgeVariant(entry.logType)} className="capitalize">{entry.logType}</Badge>
                   </TableCell>
                   <TableCell>{entry.serviceProvider || (entry.serviceType === 'diy' ? 'DIY' : 'N/A')}</TableCell>
                   <TableCell className="text-right">
