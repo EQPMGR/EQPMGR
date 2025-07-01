@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 
 export function FramesetIcon(props: React.SVGProps<SVGSVGElement>) {

@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 
 export function WheelsetIcon(props: React.SVGProps<SVGSVGElement>) {

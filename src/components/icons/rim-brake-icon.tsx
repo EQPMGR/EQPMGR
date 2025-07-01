@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 
 export function RimBrakeIcon(props: React.SVGProps<SVGSVGElement>) {

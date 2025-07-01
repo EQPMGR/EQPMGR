@@ -23,14 +23,6 @@ import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
 import type { Equipment, MaintenanceLog as MaintenanceLogType } from '@/lib/types';
-import { FramesetIcon } from '@/components/icons/frameset-icon';
-import { DrivetrainIcon } from '@/components/icons/drivetrain-icon';
-import { SuspensionIcon } from '@/components/icons/suspension-icon';
-import { WheelsetIcon } from '@/components/icons/wheelset-icon';
-import { DiscBrakeIcon } from '@/components/icons/disc-brake-icon';
-import { RimBrakeIcon } from '@/components/icons/rim-brake-icon';
-import { AccessoriesIcon } from '@/components/icons/accessories-icon';
-import { FitInfoIcon } from '@/components/icons/fit-info-icon';
 
 export default function EquipmentDetailPage({
   params,
@@ -134,53 +126,6 @@ export default function EquipmentDetailPage({
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
             <WearSimulation equipment={equipment} />
             <MaintenanceSchedule equipment={equipment} />
-            <Card>
-              <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                      <Wrench />
-                      Component Details
-                  </CardTitle>
-                  <CardDescription>
-                      Dive into the specifics of each component group.
-                  </CardDescription>
-              </CardHeader>
-              <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                      <Button variant="outline" className="flex flex-col h-24 items-center justify-center gap-2 p-2">
-                          <FramesetIcon className="h-8 w-8" />
-                          <span className="text-xs">Frameset</span>
-                      </Button>
-                      <Button variant="outline" className="flex flex-col h-24 items-center justify-center gap-2 p-2">
-                          <DrivetrainIcon className="h-8 w-8" />
-                          <span className="text-xs">Drivetrain</span>
-                      </Button>
-                      <Button variant="outline" className="flex flex-col h-24 items-center justify-center gap-2 p-2">
-                          <SuspensionIcon className="h-8 w-8" />
-                          <span className="text-xs">Suspension</span>
-                      </Button>
-                      <Button variant="outline" className="flex flex-col h-24 items-center justify-center gap-2 p-2">
-                          <WheelsetIcon className="h-8 w-8" />
-                          <span className="text-xs">Wheelset</span>
-                      </Button>
-                      <Button variant="outline" className="flex flex-col h-24 items-center justify-center gap-2 p-2">
-                          <DiscBrakeIcon className="h-8 w-8" />
-                          <span className="text-xs">Disc Brakes</span>
-                      </Button>
-                       <Button variant="outline" className="flex flex-col h-24 items-center justify-center gap-2 p-2">
-                          <RimBrakeIcon className="h-8 w-8" />
-                          <span className="text-xs">Rim Brakes</span>
-                      </Button>
-                      <Button variant="outline" className="flex flex-col h-24 items-center justify-center gap-2 p-2">
-                          <AccessoriesIcon className="h-8 w-8" />
-                          <span className="text-xs">Accessories</span>
-                      </Button>
-                      <Button variant="outline" className="flex flex-col h-24 items-center justify-center gap-2 p-2">
-                          <FitInfoIcon className="h-8 w-8" />
-                          <span className="text-xs">Fit Info</span>
-                      </Button>
-                  </div>
-              </CardContent>
-            </Card>
           </div>
           <div className="grid auto-rows-max items-start gap-4 md:gap-8">
              <Card>
