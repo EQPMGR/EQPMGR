@@ -34,6 +34,7 @@ import { Logo } from "@/components/logo";
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { GoogleSignInButton } from '@/components/google-sign-in-button';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -47,14 +48,6 @@ const signupSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 type SignUpFormValues = z.infer<typeof signupSchema>
-
-function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.62-3.87 1.62-4.42 0-7.92-3.6-7.92-8s3.5-8 7.92-8c2.3 0 3.87.87 4.75 1.72l2.28-2.28C18.43 1.95 15.82 0 12.48 0 5.88 0 .04 5.88.04 12.5s5.84 12.5 12.44 12.5c3.23 0 5.43-1.08 7.18-2.82 1.9-1.88 2.54-4.52 2.54-6.82 0-.66-.05-1.32-.15-1.98z"/>
-    </svg>
-  )
-}
 
 export default function LoginPage() {
   const { user, signInWithGoogle, signInWithEmailPassword, signUpWithEmailPassword, loading } = useAuth();
@@ -127,7 +120,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="w-full max-w-md mx-auto p-4">
         <div className="flex justify-center mb-6">
-           <Logo className="h-[320px] w-[160px]" />
+           <Logo className="h-[240px] w-[120px]" />
         </div>
         <Tabs defaultValue="sign-in" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -187,10 +180,9 @@ export default function LoginPage() {
                     </span>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
-                  <GoogleIcon className="mr-2 h-4 w-4 fill-current" />
-                  Continue with Google
-                </Button>
+                <div className="flex justify-center">
+                  <GoogleSignInButton onClick={signInWithGoogle} />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -246,10 +238,9 @@ export default function LoginPage() {
                         </span>
                     </div>
                     </div>
-                    <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
-                        <GoogleIcon className="mr-2 h-4 w-4 fill-current" />
-                        Continue with Google
-                    </Button>
+                    <div className="flex justify-center">
+                      <GoogleSignInButton onClick={signInWithGoogle} />
+                    </div>
                   <div className="mt-4 text-center text-sm">
                     By clicking continue, you agree to our{' '}
                     <span className="underline">Terms of Service</span> and{' '}
