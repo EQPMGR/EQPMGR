@@ -32,7 +32,7 @@ export const equipmentData: Equipment[] = [
       },
       {
         id: 'c3',
-        name: 'Brake Pads',
+        name: 'Brakes',
         wearPercentage: 92,
         purchaseDate: '2023-01-15',
         lastServiceDate: '2023-11-10',

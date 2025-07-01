@@ -31,6 +31,7 @@ import { SuspensionIcon } from '@/components/icons/suspension-icon';
 import { FramesetIcon } from '@/components/icons/frameset-icon';
 import { FitInfoIcon } from '@/components/icons/fit-info-icon';
 import { DrivetrainIcon } from '@/components/icons/drivetrain-icon';
+import { DiscBrakeIcon } from '@/components/icons/disc-brake-icon';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -44,7 +45,9 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
     }
 
     if (name.includes('brake')) {
-        return <RimBrakeIcon className={className} />;
+        // This is a simplified check. A real app might need a more specific
+        // property on the component data to distinguish brake types.
+        return <DiscBrakeIcon className={className} />;
     }
     
     if (name.includes('tire') || name.includes('wheel')) {
@@ -134,10 +137,10 @@ export default function EquipmentDetailPage({
                 <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {equipment.components.map(component => (
                         <div key={component.id} role="button" tabIndex={0} className="p-4 border rounded-lg flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-accent group">
-                            <div className="h-[35px] w-[35px]">
+                            <div className="h-[35px] w-[35px] flex items-center justify-center">
                                 <ComponentIcon componentName={component.name} className="h-full w-full text-muted-foreground group-hover:text-accent-foreground" />
                             </div>
-                            <span className="text-sm text-center font-headline uppercase font-black text-muted-foreground group-hover:text-accent-foreground">{component.name}</span>
+                            <span className="text-xs text-center font-headline uppercase font-black text-muted-foreground group-hover:text-accent-foreground">{component.name}</span>
                         </div>
                     ))}
                 </CardContent>
