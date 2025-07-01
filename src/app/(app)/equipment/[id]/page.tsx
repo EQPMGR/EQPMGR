@@ -24,15 +24,6 @@ import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
 import type { Equipment, MaintenanceLog as MaintenanceLogType, Component } from '@/lib/types';
-import { DiscBrakeIcon } from '@/components/icons/disc-brake-icon';
-
-const ComponentIcon = ({ componentName }: { componentName: string }) => {
-  if (componentName.toLowerCase().includes('brake')) {
-    return <DiscBrakeIcon className="h-10 w-10 text-accent" />;
-  }
-  return <Puzzle className="h-10 w-10 text-accent" />;
-};
-
 
 export default function EquipmentDetailPage({
   params,
@@ -134,26 +125,6 @@ export default function EquipmentDetailPage({
               </Card>
             </div>
             
-            <Card>
-                <CardHeader>
-                    <CardTitle>Component Details</CardTitle>
-                    <CardDescription>
-                        Visual overview of key components.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {equipment.components.map((component) => (
-                        <Button variant="outline" key={component.id} className="h-auto flex flex-col items-center gap-2 text-center p-4">
-                            <ComponentIcon componentName={component.name} />
-                            <div className="mt-2">
-                                <p className="font-medium">{component.name}</p>
-                                <p className="text-sm text-muted-foreground">{component.wearPercentage}% Worn</p>
-                            </div>
-                        </Button>
-                    ))}
-                </CardContent>
-            </Card>
-
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
             <WearSimulation equipment={equipment} />
             <MaintenanceSchedule equipment={equipment} />
