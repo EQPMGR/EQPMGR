@@ -19,7 +19,7 @@ const montserrat = Montserrat({
 
 
 export const metadata: Metadata = {
-  title: 'TrailPulse',
+  title: 'EQPMGR',
   description: 'AI-powered lifelong companion for your gear.',
   manifest: '/manifest.json',
 };

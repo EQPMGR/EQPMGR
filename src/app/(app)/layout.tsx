@@ -76,7 +76,7 @@ export default function AppLayout({
                   className="group flex shrink-0 items-center justify-center gap-2 text-lg font-semibold text-primary-foreground md:text-base"
                 >
                   <Logo className="h-[60px] w-[60px] transition-all group-hover:scale-110" />
-                  <span className="sr-only">TrailPulse</span>
+                  <span className="sr-only">EQPMGR</span>
                 </Link>
                 <Link
                   href="/"

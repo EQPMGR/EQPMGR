@@ -41,7 +41,7 @@ export default function LoginPage() {
         </div>
         <Card>
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl font-bold">Welcome to TrailPulse</CardTitle>
+            <CardTitle className="text-2xl font-bold">Welcome to EQPMGR</CardTitle>
             <CardDescription>
               Sign in with your Google account to continue
             </CardDescription>
