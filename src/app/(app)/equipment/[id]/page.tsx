@@ -4,6 +4,7 @@ import {
   Bike,
   ChevronLeft,
   Footprints,
+  Shield,
 } from 'lucide-react';
 import { equipmentData } from '@/lib/data';
 import { Button } from '@/components/ui/button';
@@ -94,7 +95,7 @@ export default function EquipmentDetailPage({
             <MaintenanceSchedule equipment={equipment} />
 
           </div>
-          <div>
+          <div className="grid auto-rows-max items-start gap-4 md:gap-8">
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl font-headline">{equipment.name}</CardTitle>
@@ -103,6 +104,29 @@ export default function EquipmentDetailPage({
               <CardContent>
                 <ComponentStatusList components={equipment.components} />
               </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Shield />
+                        Protect Your Gear
+                    </CardTitle>
+                    <CardDescription>
+                        Register your equipment against theft and get it insured.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                    <Button asChild>
+                        <Link href="https://project529.com/garage" target="_blank" rel="noopener noreferrer">
+                            Register with Project 529
+                        </Link>
+                    </Button>
+                    <Button asChild variant="secondary">
+                        <Link href="#" target="_blank" rel="noopener noreferrer">
+                            Get Insurance Quote
+                        </Link>
+                    </Button>
+                </CardContent>
             </Card>
           </div>
         </div>

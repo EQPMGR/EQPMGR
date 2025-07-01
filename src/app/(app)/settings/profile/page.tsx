@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 const profileFormSchema = z.object({
   name: z
@@ -263,6 +264,19 @@ export default function ProfilePage() {
               <Button type="submit">Update Preferences</Button>
             </form>
           </Form>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Insurance</CardTitle>
+          <CardDescription>
+            Protect your equipment against theft and damage with one of our partners.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link href="#">Explore Insurance Partners</Link>
+          </Button>
         </CardContent>
       </Card>
     </>
