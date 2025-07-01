@@ -36,11 +36,7 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
     }
 
     if (name.includes('brake')) {
-        if (name.includes('rim')) {
-            return <RimBrakeIcon className={className} />
-        }
-        // Default to puzzle icon for other brakes until DiscBrakeIcon is fixed
-        return <Puzzle className={className} />;
+        return <RimBrakeIcon className={className} />;
     }
     
     if (name.includes('tire') || name.includes('wheel')) {
