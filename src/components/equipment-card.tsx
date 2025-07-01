@@ -20,6 +20,11 @@ export function EquipmentCard({ equipment }: EquipmentCardProps) {
   const Icon = equipment.type.includes('Bike') ? Bike : Footprints;
   const imageHint = equipment.type.toLowerCase().replace(' ', '');
 
+  // Sort components by wear percentage and take the top 4
+  const topComponents = [...equipment.components]
+    .sort((a, b) => b.wearPercentage - a.wearPercentage)
+    .slice(0, 4);
+
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
       <div className="relative h-40 w-full">
@@ -35,11 +40,15 @@ export function EquipmentCard({ equipment }: EquipmentCardProps) {
         <CardTitle className="font-headline text-xl leading-snug">
             {equipment.name}
         </CardTitle>
-        <CardDescription className="flex items-center gap-2 text-sm mt-1">
+        <CardDescription className="flex items-center gap-2 text-sm mt-1 mb-4">
             <Icon className="h-4 w-4" /> {equipment.brand} {equipment.model}
         </CardDescription>
+        
+        <div className="flex-grow mb-4">
+          <ComponentStatusList components={topComponents} />
+        </div>
 
-        <div className="mt-4 grid grid-cols-2 text-center text-sm text-muted-foreground border-t pt-3">
+        <div className="grid grid-cols-2 text-center text-sm text-muted-foreground border-t pt-3">
           <div>
             <p className="font-semibold text-lg text-foreground">
               {equipment.totalDistance}
@@ -52,11 +61,6 @@ export function EquipmentCard({ equipment }: EquipmentCardProps) {
             </p>
             <p>hours</p>
           </div>
-        </div>
-
-        <div className="mt-4 flex-grow">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Component Health</h4>
-          <ComponentStatusList components={equipment.components} />
         </div>
       </CardContent>
       <CardFooter className='p-2 mt-auto'>
