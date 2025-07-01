@@ -1,4 +1,7 @@
 
+'use client'
+
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Bike,
@@ -17,10 +20,16 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const handleLinkClick = () => {
+    setIsSheetOpen(false);
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4">
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button size="icon" variant="ghost" className="text-destructive-foreground [&_svg]:size-10">
                 <Menu />
@@ -30,7 +39,8 @@ export default function AppLayout({
             <SheetContent side="left" className="sm:max-w-xs">
               <nav className="grid gap-6 text-lg font-medium">
                 <Link
-                  href="#"
+                  href="/"
+                  onClick={handleLinkClick}
                   className="group flex shrink-0 items-center justify-center gap-2 text-lg font-semibold text-primary-foreground md:text-base"
                 >
                   <Logo className="h-[60px] w-[60px] transition-all group-hover:scale-110" />
@@ -38,13 +48,15 @@ export default function AppLayout({
                 </Link>
                 <Link
                   href="/"
+                  onClick={handleLinkClick}
                   className="flex items-center gap-4 px-2.5 text-foreground"
                 >
                   <Home className="h-5 w-5" />
                   Dashboard
                 </Link>
                 <Link
-                  href="#"
+                  href="/"
+                  onClick={handleLinkClick}
                   className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <Bike className="h-5 w-5" />
@@ -52,6 +64,7 @@ export default function AppLayout({
                 </Link>
                 <Link
                   href="/settings/profile"
+                  onClick={handleLinkClick}
                   className="mt-auto flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <Settings className="h-5 w-5" />
