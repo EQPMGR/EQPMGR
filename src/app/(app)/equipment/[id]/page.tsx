@@ -20,7 +20,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ComponentStatusList } from '@/components/component-status-list';
-import { MaintenanceLog } from '@/components/maintenance-log';
+// import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
 import type { Equipment, MaintenanceLog as MaintenanceLogType, Component } from '@/lib/types';
@@ -44,9 +44,15 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
         return <FramesetIcon className={className} />;
     }
 
+    if (name.includes('disc brake')) {
+        return <DiscBrakeIcon className={className} />;
+    }
+
+    if (name.includes('rim brake')) {
+        return <RimBrakeIcon className={className} />;
+    }
+
     if (name.includes('brake')) {
-        // This is a simplified check. A real app might need a more specific
-        // property on the component data to distinguish brake types.
         return <DiscBrakeIcon className={className} />;
     }
     
@@ -88,6 +94,7 @@ export default function EquipmentDetailPage({
     );
   }
   
+  /*
   const handleAddLog = (newLog: Omit<MaintenanceLogType, 'id'>) => {
     setEquipment(prev => {
         if (!prev) return undefined;
@@ -102,6 +109,7 @@ export default function EquipmentDetailPage({
         return updatedEquipment;
     });
   }
+  */
 
   const topComponents = [...equipment.components]
     .sort((a, b) => b.wearPercentage - a.wearPercentage)
@@ -119,7 +127,7 @@ export default function EquipmentDetailPage({
                 </Link>
             </Button>
         </div>
-        <div className="grid items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid items-start gap-4 md:gap-8 lg:grid-cols-3">
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
             <Card>
               <CardHeader>
@@ -182,11 +190,11 @@ export default function EquipmentDetailPage({
                 </Card>
             </div>
             
-            <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
+            {/* <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} /> */}
             <WearSimulation equipment={equipment} />
             <MaintenanceSchedule equipment={equipment} />
           </div>
-          <div className="grid auto-rows-max items-start gap-4 md:gap-8">
+          <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
             <Card>
               <CardHeader>
                   <CardTitle className="flex items-center gap-2">
