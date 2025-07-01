@@ -30,6 +30,7 @@ import { RimBrakeIcon } from '@/components/icons/rim-brake-icon';
 import { SuspensionIcon } from '@/components/icons/suspension-icon';
 import { FramesetIcon } from '@/components/icons/frameset-icon';
 import { FitInfoIcon } from '@/components/icons/fit-info-icon';
+import { DrivetrainIcon } from '@/components/icons/drivetrain-icon';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -52,6 +53,10 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
 
     if (name.includes('suspension')) {
         return <SuspensionIcon className={className} />;
+    }
+
+    if (name.includes('drivetrain')) {
+      return <DrivetrainIcon className={className} />;
     }
 
     // Default icon
@@ -129,7 +134,7 @@ export default function EquipmentDetailPage({
                 <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {equipment.components.map(component => (
                         <div key={component.id} role="button" tabIndex={0} className="p-4 border rounded-lg flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-accent group">
-                            <div className="h-[25px] w-[25px]">
+                            <div className="h-[35px] w-[35px]">
                                 <ComponentIcon componentName={component.name} className="h-full w-full text-muted-foreground group-hover:text-accent-foreground" />
                             </div>
                             <span className="text-sm text-center font-headline uppercase font-black text-muted-foreground group-hover:text-accent-foreground">{component.name}</span>

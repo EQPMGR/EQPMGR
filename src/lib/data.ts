@@ -18,7 +18,7 @@ export const equipmentData: Equipment[] = [
     components: [
       {
         id: 'c1',
-        name: 'Chain',
+        name: 'Drivetrain',
         wearPercentage: 75,
         purchaseDate: '2023-01-15',
         lastServiceDate: '2023-09-01',
