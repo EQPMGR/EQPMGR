@@ -107,7 +107,7 @@ export default function EquipmentDetailPage({
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {equipment.components.map(component => (
-                        <Button key={component.id} variant="outline" className="h-auto flex flex-col items-center justify-center gap-4 p-4 aspect-square">
+                        <Button key={component.id} variant="outline" className="h-auto flex flex-col items-center justify-center gap-4 p-4">
                             <ComponentIcon componentName={component.name} className="h-40 w-40 text-muted-foreground" />
                             <span className="text-lg text-center font-headline uppercase font-black text-muted-foreground tracking-wider">{component.name}</span>
                         </Button>
