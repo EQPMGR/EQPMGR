@@ -1,3 +1,4 @@
+
 import type { Equipment } from './types';
 
 export const equipmentData: Equipment[] = [
@@ -39,8 +40,8 @@ export const equipmentData: Equipment[] = [
       },
       {
         id: 'c4',
-        name: 'Cassette',
-        wearPercentage: 60,
+        name: 'Suspension',
+        wearPercentage: 15,
         purchaseDate: '2023-01-15',
         lastServiceDate: null,
       },
