@@ -25,6 +25,7 @@ export interface Equipment {
   serialNumber?: string;
   purchaseCondition: 'new' | 'used';
   purchaseDate: string;
+  purchasePrice: number;
   totalDistance: number;
   totalHours: number;
   imageUrl: string;

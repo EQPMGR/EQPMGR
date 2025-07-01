@@ -56,8 +56,11 @@ export default function EquipmentDetailPage({
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl font-headline">{equipment.name}</CardTitle>
-                <CardDescription>{equipment.brand} {equipment.model}</CardDescription>
+                <CardTitle className="text-2xl font-headline flex items-center gap-2">
+                    <Icon className="h-7 w-7" />
+                    {equipment.name}
+                </CardTitle>
+                <CardDescription>{equipment.brand} {equipment.model} &bull; {equipment.type}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ComponentStatusList components={equipment.components} />
@@ -92,9 +95,9 @@ export default function EquipmentDetailPage({
               </Card>
                <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Type</CardDescription>
-                  <CardTitle className="text-3xl font-headline flex items-center gap-2">
-                    <Icon className="h-6 w-6" /> {equipment.type}
+                  <CardDescription>Purchase Price</CardDescription>
+                  <CardTitle className="text-3xl font-headline">
+                    ${equipment.purchasePrice?.toLocaleString()}
                   </CardTitle>
                 </CardHeader>
               </Card>

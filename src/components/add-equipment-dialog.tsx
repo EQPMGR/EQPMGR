@@ -57,6 +57,7 @@ const equipmentFormSchema = z.object({
   purchaseDate: z.date({
     required_error: 'A purchase date is required.',
   }),
+  purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
 });
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
@@ -79,6 +80,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
       modelYear: new Date().getFullYear(),
       serialNumber: '',
       purchaseCondition: 'new',
+      purchasePrice: 0,
     },
   });
 
@@ -208,6 +210,29 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
             </div>
             <FormField
               control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select equipment type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Road Bike">Road Bike</SelectItem>
+                      <SelectItem value="Mountain Bike">Mountain Bike</SelectItem>
+                      <SelectItem value="Running Shoes">Running Shoes</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="purchaseCondition"
               render={({ field }) => (
                 <FormItem>
@@ -237,29 +262,6 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
               )}
             />
             <div className="grid grid-cols-2 gap-4">
-               <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select equipment type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Road Bike">Road Bike</SelectItem>
-                        <SelectItem value="Mountain Bike">Mountain Bike</SelectItem>
-                        <SelectItem value="Running Shoes">Running Shoes</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
                <FormField
                 control={form.control}
                 name="purchaseDate"
@@ -297,6 +299,19 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                           />
                         </PopoverContent>
                       </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="purchasePrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purchase Price ($)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="e.g., 5000" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
