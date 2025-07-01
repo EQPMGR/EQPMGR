@@ -28,12 +28,17 @@ import { AccessoriesIcon } from '@/components/icons/accessories-icon';
 import { WheelsetIcon } from '@/components/icons/wheelset-icon';
 import { RimBrakeIcon } from '@/components/icons/rim-brake-icon';
 import { SuspensionIcon } from '@/components/icons/suspension-icon';
+import { FramesetIcon } from '@/components/icons/frameset-icon';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
     
     if (name.includes('accessories')) {
         return <AccessoriesIcon className={className} />;
+    }
+
+    if (name.includes('frame')) {
+        return <FramesetIcon className={className} />;
     }
 
     if (name.includes('brake')) {

@@ -51,6 +51,13 @@ export const equipmentData: Equipment[] = [
         purchaseDate: '2023-01-15',
         lastServiceDate: null,
       },
+      {
+        id: 'c6',
+        name: 'Frameset',
+        wearPercentage: 5,
+        purchaseDate: '2023-01-15',
+        lastServiceDate: null,
+      },
     ],
     maintenanceLog: [
       {
