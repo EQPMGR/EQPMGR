@@ -1,3 +1,4 @@
+
 'use client'
 import { useState } from 'react';
 import Link from 'next/link';
@@ -108,7 +109,7 @@ export default function EquipmentDetailPage({
                   <CardDescription>Purchased</CardDescription>
                   <CardTitle className="text-3xl font-headline">
                     {new Date(equipment.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
-                  </Ttle>
+                  </CardTitle>
                 </CardHeader>
               </Card>
                <Card>
