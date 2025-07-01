@@ -11,9 +11,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Tabs,
@@ -119,8 +116,8 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="w-full max-w-md mx-auto p-4">
-        <div className="flex justify-center mb-6">
-           <Logo className="h-[240px] w-[120px]" />
+        <div className="flex justify-center mb-4">
+           <Logo className="h-[180px] w-[180px]" />
         </div>
         <Tabs defaultValue="sign-in" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -129,13 +126,7 @@ export default function LoginPage() {
           </TabsList>
           <TabsContent value="sign-in">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-                <CardDescription>
-                  Enter your credentials to access your account.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                  <Form {...loginForm}>
                     <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                       <FormField
@@ -188,13 +179,7 @@ export default function LoginPage() {
           </TabsContent>
           <TabsContent value="create-account">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
-                <CardDescription>
-                  Enter your email below to create your account
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                  <Form {...signupForm}>
                     <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
                       <FormField
