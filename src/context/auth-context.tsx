@@ -6,7 +6,6 @@ import type { User } from 'firebase/auth';
 import { 
   onAuthStateChanged, 
   GoogleAuthProvider, 
-  OAuthProvider,
   signInWithPopup, 
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
@@ -20,7 +19,6 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
-  signInWithApple: () => Promise<void>;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -56,17 +54,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       throw error;
     }
   };
-
-  const signInWithApple = async () => {
-    const provider = new OAuthProvider('apple.com');
-    try {
-      await signInWithPopup(auth, provider);
-      handleAuthSuccess();
-    } catch (error) {
-      console.error("Error signing in with Apple: ", error);
-      throw error;
-    }
-  }
   
   const signInWithEmailPassword = async (email: string, password: string) => {
       try {
@@ -110,7 +97,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       user, 
       loading, 
       signInWithGoogle, 
-      signInWithApple,
       signInWithEmailPassword,
       signUpWithEmailPassword,
       signOut 

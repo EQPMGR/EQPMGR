@@ -48,28 +48,16 @@ const signupSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>
 type SignUpFormValues = z.infer<typeof signupSchema>
 
-function AppleIcon(props: React.SVGProps<SVGSVGElement>) {
+function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24"
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/>
-      <path d="M10 2c1 .5 2 2 2 5"/>
+    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.62-3.87 1.62-4.42 0-7.92-3.6-7.92-8s3.5-8 7.92-8c2.3 0 3.87.87 4.75 1.72l2.28-2.28C18.43 1.95 15.82 0 12.48 0 5.88 0 .04 5.88.04 12.5s5.84 12.5 12.44 12.5c3.23 0 5.43-1.08 7.18-2.82 1.9-1.88 2.54-4.52 2.54-6.82 0-.66-.05-1.32-.15-1.98z"/>
     </svg>
-  );
+  )
 }
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, signInWithApple, signInWithEmailPassword, signUpWithEmailPassword, loading } = useAuth();
+  const { user, signInWithGoogle, signInWithEmailPassword, signUpWithEmailPassword, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast()
 
@@ -130,7 +118,7 @@ export default function LoginPage() {
   if (loading || user) {
     return (
         <div className="flex items-center justify-center min-h-screen">
-            <Skeleton className="h-[160px] w-[160px] rounded-lg" />
+            <Skeleton className="h-[320px] w-[160px] rounded-lg" />
         </div>
     );
   }
@@ -139,7 +127,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="w-full max-w-md mx-auto p-4">
         <div className="flex justify-center mb-6">
-           <Logo className="h-[160px] w-[160px]" />
+           <Logo className="h-[320px] w-[160px]" />
         </div>
         <Tabs defaultValue="sign-in" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -199,14 +187,10 @@ export default function LoginPage() {
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Button variant="outline" onClick={signInWithGoogle}>
-                    Google
-                  </Button>
-                  <Button variant="outline" onClick={signInWithApple}>
-                     <AppleIcon className="mr-2 h-4 w-4"/> Apple
-                  </Button>
-                </div>
+                <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
+                  <GoogleIcon className="mr-2 h-4 w-4 fill-current" />
+                  Continue with Google
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -252,6 +236,20 @@ export default function LoginPage() {
                       </Button>
                     </form>
                   </Form>
+                   <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                        Or sign up with
+                        </span>
+                    </div>
+                    </div>
+                    <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
+                        <GoogleIcon className="mr-2 h-4 w-4 fill-current" />
+                        Continue with Google
+                    </Button>
                   <div className="mt-4 text-center text-sm">
                     By clicking continue, you agree to our{' '}
                     <span className="underline">Terms of Service</span> and{' '}
