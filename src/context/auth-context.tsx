@@ -1,8 +1,17 @@
+
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
 import type { User } from 'firebase/auth';
-import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  GoogleAuthProvider, 
+  OAuthProvider,
+  signInWithPopup, 
+  signOut as firebaseSignOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,6 +20,9 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
+  signInWithEmailPassword: (email: string, password: string) => Promise<void>;
+  signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -30,15 +42,51 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  const handleAuthSuccess = () => {
+    router.push('/');
+  }
+
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      router.push('/');
+      handleAuthSuccess();
     } catch (error) {
       console.error("Error signing in with Google: ", error);
+      throw error;
     }
   };
+
+  const signInWithApple = async () => {
+    const provider = new OAuthProvider('apple.com');
+    try {
+      await signInWithPopup(auth, provider);
+      handleAuthSuccess();
+    } catch (error) {
+      console.error("Error signing in with Apple: ", error);
+      throw error;
+    }
+  }
+  
+  const signInWithEmailPassword = async (email: string, password: string) => {
+      try {
+          await signInWithEmailAndPassword(auth, email, password);
+          handleAuthSuccess();
+      } catch (error) {
+          console.error("Error signing in with email/password: ", error);
+          throw error;
+      }
+  }
+  
+  const signUpWithEmailPassword = async (email: string, password: string) => {
+      try {
+          await createUserWithEmailAndPassword(auth, email, password);
+          handleAuthSuccess();
+      } catch (error) {
+          console.error("Error signing up with email/password: ", error);
+          throw error;
+      }
+  }
 
   const signOut = async () => {
     try {
@@ -52,13 +100,21 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   if (loading) {
     return (
         <div className="flex items-center justify-center min-h-screen">
-            <Skeleton className="h-24 w-24 rounded-full" />
+            <Skeleton className="h-[160px] w-[160px] rounded-lg" />
         </div>
     );
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      signInWithGoogle, 
+      signInWithApple,
+      signInWithEmailPassword,
+      signUpWithEmailPassword,
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );
