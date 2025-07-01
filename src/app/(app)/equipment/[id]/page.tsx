@@ -29,6 +29,7 @@ import { WheelsetIcon } from '@/components/icons/wheelset-icon';
 import { RimBrakeIcon } from '@/components/icons/rim-brake-icon';
 import { SuspensionIcon } from '@/components/icons/suspension-icon';
 import { FramesetIcon } from '@/components/icons/frameset-icon';
+import { FitInfoIcon } from '@/components/icons/fit-info-icon';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -200,6 +201,24 @@ export default function EquipmentDetailPage({
                         </Link>
                     </Button>
                 </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                      <FitInfoIcon className="h-5 w-5" />
+                      Fit Information
+                  </CardTitle>
+                  <CardDescription>
+                      Dial in your bike fit for optimal comfort and performance.
+                  </CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <Button asChild variant="secondary" className="w-full">
+                      <Link href="#">
+                          View Fit Details
+                      </Link>
+                  </Button>
+              </CardContent>
             </Card>
           </div>
         </div>
