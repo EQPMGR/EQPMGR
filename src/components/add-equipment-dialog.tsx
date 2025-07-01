@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { CalendarIcon, PlusCircle } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Camera as CameraIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -42,6 +43,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/lib/types';
+import { CameraCapture } from './camera-capture';
 
 const equipmentFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -56,11 +58,12 @@ const equipmentFormSchema = z.object({
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
 
 interface AddEquipmentDialogProps {
-  onAddEquipment: (equipment: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours' | 'imageUrl'> & { purchaseDate: string }) => void;
+  onAddEquipment: (equipment: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours'> & { purchaseDate: string }) => void;
 }
 
 export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) {
   const [open, setOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
@@ -72,22 +75,30 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     },
   });
 
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      form.reset();
+      setImageUrl(null);
+    }
+  };
+
   function onSubmit(data: EquipmentFormValues) {
     const newEquipmentData = {
       ...data,
       purchaseDate: data.purchaseDate.toISOString(),
+      imageUrl: imageUrl || 'https://placehold.co/600x400.png',
     };
     onAddEquipment(newEquipmentData);
     toast({
       title: 'Equipment Added!',
       description: `${data.name} has been added to your inventory.`,
     });
-    setOpen(false);
-    form.reset();
+    handleOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -103,6 +114,22 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+             <FormItem>
+                <FormLabel>Equipment Photo</FormLabel>
+                <div className="w-full aspect-video rounded-md bg-muted flex items-center justify-center relative overflow-hidden">
+                    {imageUrl ? (
+                        <Image src={imageUrl} alt="Equipment preview" layout="fill" objectFit="cover" />
+                    ) : (
+                        <CameraIcon className="h-12 w-12 text-muted-foreground" />
+                    )}
+                </div>
+                <CameraCapture onCapture={setImageUrl}>
+                    <Button type="button" variant="outline" className="w-full mt-2">
+                        <CameraIcon className="mr-2" />
+                        Take Photo
+                    </Button>
+                </CameraCapture>
+            </FormItem>
             <FormField
               control={form.control}
               name="name"

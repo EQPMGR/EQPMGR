@@ -13,14 +13,13 @@ export function DashboardPage() {
   const [data, setData] = useState<Equipment[]>(equipmentData);
 
   function handleAddEquipment(
-    newEquipmentData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours' | 'imageUrl'> & { purchaseDate: string }
+    newEquipmentData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours'> & { purchaseDate: string }
   ) {
     const newEquipment: Equipment = {
       ...newEquipmentData,
       id: `new-${Date.now()}`,
       totalDistance: 0,
       totalHours: 0,
-      imageUrl: 'https://placehold.co/600x400.png',
       components: [],
       maintenanceLog: [],
     };
