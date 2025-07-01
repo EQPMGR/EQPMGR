@@ -9,7 +9,8 @@ import {
   signInWithPopup, 
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  getAdditionalUserInfo
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
@@ -47,8 +48,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      handleAuthSuccess();
+      const result = await signInWithPopup(auth, provider);
+      const additionalUserInfo = getAdditionalUserInfo(result);
+      if (additionalUserInfo?.isNewUser) {
+        router.push('/settings/profile');
+      } else {
+        handleAuthSuccess();
+      }
     } catch (error) {
       console.error("Error signing in with Google: ", error);
       throw error;
@@ -68,7 +74,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signUpWithEmailPassword = async (email: string, password: string) => {
       try {
           await createUserWithEmailAndPassword(auth, email, password);
-          handleAuthSuccess();
+          router.push('/settings/profile');
       } catch (error) {
           console.error("Error signing up with email/password: ", error);
           throw error;
