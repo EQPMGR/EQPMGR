@@ -103,6 +103,9 @@ export default function EquipmentDetailPage({
     });
   }
 
+  const topComponents = [...equipment.components]
+    .sort((a, b) => b.wearPercentage - a.wearPercentage)
+    .slice(0, 3);
 
   const Icon = equipment.type.includes('Bike') ? Bike : Footprints;
 
@@ -116,7 +119,7 @@ export default function EquipmentDetailPage({
                 </Link>
             </Button>
         </div>
-        <div className="grid flex-1 items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
             <Card>
               <CardHeader>
@@ -127,14 +130,14 @@ export default function EquipmentDetailPage({
                 <CardDescription>{equipment.brand} {equipment.model} &bull; {equipment.type}</CardDescription>
               </CardHeader>
               <CardContent>
-                <ComponentStatusList components={equipment.components} />
+                <ComponentStatusList components={topComponents} />
               </CardContent>
             </Card>
              <Card>
                 <CardHeader>
                     <CardTitle>Component Details</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {equipment.components.map(component => (
                         <div key={component.id} role="button" tabIndex={0} className="p-4 border rounded-lg flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-accent group">
                             <div className="h-[35px] w-[35px] flex items-center justify-center">
@@ -145,41 +148,41 @@ export default function EquipmentDetailPage({
                     ))}
                 </CardContent>
             </Card>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Total Distance</CardDescription>
-                  <CardTitle className="text-4xl font-headline">
-                    {equipment.totalDistance}
-                    <span className="text-xl font-normal text-muted-foreground"> km</span>
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Total Time</CardDescription>
-                  <CardTitle className="text-4xl font-headline">
-                    {equipment.totalHours}
-                    <span className="text-xl font-normal text-muted-foreground"> hrs</span>
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Purchased</CardDescription>
-                  <CardTitle className="text-3xl font-headline">
-                    {new Date(equipment.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-               <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Purchase Price</CardDescription>
-                  <CardTitle className="text-3xl font-headline">
-                    ${equipment.purchasePrice?.toLocaleString()}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <Card>
+                    <CardContent className="grid grid-cols-2 text-center pt-6">
+                        <div>
+                            <p className="text-4xl font-headline">
+                                {equipment.totalDistance}
+                                <span className="text-xl font-normal text-muted-foreground"> km</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">Total Distance</p>
+                        </div>
+                        <div>
+                            <p className="text-4xl font-headline">
+                                {equipment.totalHours}
+                                <span className="text-xl font-normal text-muted-foreground"> hrs</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">Total Time</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="grid grid-cols-2 text-center pt-6">
+                        <div>
+                            <p className="text-2xl font-headline pt-2">
+                                {new Date(equipment.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Purchased</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-headline pt-2">
+                                ${equipment.purchasePrice?.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Price</p>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
             
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
@@ -187,7 +190,25 @@ export default function EquipmentDetailPage({
             <MaintenanceSchedule equipment={equipment} />
           </div>
           <div className="grid auto-rows-max items-start gap-4 md:gap-8">
-             <Card>
+            <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                      <FitInfoIcon className="h-5 w-5" />
+                      Fit Information
+                  </CardTitle>
+                  <CardDescription>
+                      Dial in your bike fit for optimal comfort and performance.
+                  </CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <Button asChild variant="secondary" className="w-full">
+                      <Link href="#">
+                          View Fit Details
+                      </Link>
+                  </Button>
+              </CardContent>
+            </Card>
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Shield />
@@ -209,24 +230,6 @@ export default function EquipmentDetailPage({
                         </Link>
                     </Button>
                 </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                      <FitInfoIcon className="h-5 w-5" />
-                      Fit Information
-                  </CardTitle>
-                  <CardDescription>
-                      Dial in your bike fit for optimal comfort and performance.
-                  </CardDescription>
-              </CardHeader>
-              <CardContent>
-                  <Button asChild variant="secondary" className="w-full">
-                      <Link href="#">
-                          View Fit Details
-                      </Link>
-                  </Button>
-              </CardContent>
             </Card>
           </div>
         </div>
