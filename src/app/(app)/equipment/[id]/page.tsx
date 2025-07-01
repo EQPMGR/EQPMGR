@@ -134,10 +134,7 @@ export default function EquipmentDetailPage({
               </CardContent>
             </Card>
              <Card>
-                <CardHeader>
-                    <CardTitle>Component Details</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-6">
                     {equipment.components.map(component => (
                         <div key={component.id} role="button" tabIndex={0} className="p-4 border rounded-lg flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-accent group">
                             <div className="h-[35px] w-[35px] flex items-center justify-center">
@@ -152,16 +149,16 @@ export default function EquipmentDetailPage({
                 <Card>
                     <CardContent className="grid grid-cols-2 text-center pt-6">
                         <div>
-                            <p className="text-4xl font-headline">
+                            <p className="text-3xl md:text-4xl font-headline">
                                 {equipment.totalDistance}
-                                <span className="text-xl font-normal text-muted-foreground"> km</span>
+                                <span className="text-lg md:text-xl font-normal text-muted-foreground"> km</span>
                             </p>
                             <p className="text-xs text-muted-foreground">Total Distance</p>
                         </div>
                         <div>
-                            <p className="text-4xl font-headline">
+                            <p className="text-3xl md:text-4xl font-headline">
                                 {equipment.totalHours}
-                                <span className="text-xl font-normal text-muted-foreground"> hrs</span>
+                                <span className="text-lg md:text-xl font-normal text-muted-foreground"> hrs</span>
                             </p>
                             <p className="text-xs text-muted-foreground">Total Time</p>
                         </div>
@@ -170,13 +167,13 @@ export default function EquipmentDetailPage({
                 <Card>
                     <CardContent className="grid grid-cols-2 text-center pt-6">
                         <div>
-                            <p className="text-2xl font-headline pt-2">
+                            <p className="text-xl md:text-2xl font-headline pt-2">
                                 {new Date(equipment.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                             </p>
                             <p className="text-xs text-muted-foreground">Purchased</p>
                         </div>
                         <div>
-                            <p className="text-2xl font-headline pt-2">
+                            <p className="text-xl md:text-2xl font-headline pt-2">
                                 ${equipment.purchasePrice?.toLocaleString()}
                             </p>
                             <p className="text-xs text-muted-foreground">Price</p>
