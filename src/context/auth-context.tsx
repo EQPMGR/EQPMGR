@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
@@ -100,13 +101,15 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       // Update the profile on Firebase's servers
       await updateProfile(currentUser, profileUpdates);
-
-      // This is the optimistic update. We create a new user object locally
-      // with the updated details. This is a more reliable way to trigger
-      // the UI refresh in React than using reload().
-      const updatedUser = { ...currentUser, ...profileUpdates } as User;
       
-      setUser(updatedUser);
+      // Force a reload of the user's data from the server
+      await currentUser.reload();
+      
+      // Get the now-fresh user object
+      const freshUser = auth.currentUser;
+
+      // Update the state with a shallow clone of the fresh user object to trigger a re-render
+      setUser(freshUser ? { ...freshUser } : null);
 
       toast({
         title: "Profile updated!",

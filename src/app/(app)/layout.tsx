@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { UserNav } from '@/components/user-nav';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/hooks/use-auth';
@@ -68,12 +68,15 @@ export default function AppLayout({
                 <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="sm:max-w-xs">
-              <nav className="grid gap-6 text-lg font-medium">
+            <SheetContent side="left" className="sm:max-w-xs p-0">
+              <SheetHeader>
+                <SheetTitle className="sr-only">Menu</SheetTitle>
+              </SheetHeader>
+              <nav className="grid gap-6 text-lg font-medium p-6">
                 <Link
                   href="/"
                   onClick={handleLinkClick}
-                  className="group flex shrink-0 items-center justify-center gap-2 text-lg font-semibold text-primary-foreground md:text-base"
+                  className="group flex shrink-0 items-center justify-center gap-2 text-lg font-semibold text-primary-foreground md:text-base -mt-4"
                 >
                   <Logo className="h-[60px] w-[60px] transition-all group-hover:scale-110" />
                   <span className="sr-only">EQPMGR</span>
