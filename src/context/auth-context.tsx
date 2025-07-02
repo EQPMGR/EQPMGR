@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
@@ -89,7 +88,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (data.photoDataUrl) {
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
         await uploadString(storageRef, data.photoDataUrl, 'data_url');
-        photoURL = await getDownloadURL(storageRef);
+        const downloadUrl = await getDownloadURL(storageRef);
+        // Add a cache-busting query parameter
+        photoURL = `${downloadUrl}&v=${Date.now()}`;
       }
 
       await updateProfile(currentUser, { 
@@ -97,12 +98,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         photoURL: photoURL
       });
       
-      await currentUser.reload();
-      
-      const refreshedUser = auth.currentUser;
-      if (refreshedUser) {
-        // Create a brand new object to ensure React detects the state change
-        setUser({ ...refreshedUser });
+      // By creating a new object from the updated `currentUser`, we force React's
+      // context to re-render all consumers.
+      if (auth.currentUser) {
+        const refreshedUser = auth.currentUser;
+        setUser(Object.assign(Object.create(Object.getPrototypeOf(refreshedUser)), refreshedUser));
       }
 
       toast({
