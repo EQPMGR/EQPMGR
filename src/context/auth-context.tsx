@@ -28,6 +28,15 @@ export interface UserProfile {
   age?: number;
 }
 
+interface UserDocument {
+    height?: number;
+    weight?: number;
+    shoeSize?: number;
+    age?: number;
+    photoURL?: string;
+    displayName?: string;
+}
+
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
@@ -51,23 +60,24 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const userDocRef = doc(db, 'users', authUser.uid);
         const userDocSnap = await getDoc(userDocRef);
 
+        const baseProfile: UserProfile = {
+          uid: authUser.uid,
+          email: authUser.email,
+          displayName: authUser.displayName,
+          photoURL: authUser.photoURL,
+        };
+
         if (userDocSnap.exists()) {
-          setUser({
-            uid: authUser.uid,
-            email: authUser.email,
-            displayName: authUser.displayName,
-            photoURL: authUser.photoURL,
-            ...userDocSnap.data()
-          });
+          const userDocData = userDocSnap.data() as UserDocument;
+          setUser({ ...baseProfile, ...userDocData });
         } else {
-          const newUserProfile: UserProfile = {
-            uid: authUser.uid,
-            email: authUser.email,
+          // New user signed up, create their document in Firestore.
+          const initialDoc: UserDocument = { 
             displayName: authUser.displayName,
             photoURL: authUser.photoURL,
           };
-          await setDoc(userDocRef, newUserProfile, { merge: true });
-          setUser(newUserProfile);
+          await setDoc(userDocRef, initialDoc);
+          setUser(baseProfile);
         }
       } else {
         setUser(null);
@@ -95,6 +105,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signUpWithEmailPassword = async (email: string, password: string) => {
       try {
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          // The onAuthStateChanged listener will handle creating the user doc and setting state.
+          // We just need to navigate them to the right place.
           if (userCredential.user.metadata.creationTime === userCredential.user.metadata.lastSignInTime) {
             router.push('/settings/profile');
           } else {
@@ -121,30 +133,36 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     try {
       const { photoDataUrl, ...profileData } = data;
-      const updates: Partial<UserProfile> = { ...profileData };
-
-      const authProfileUpdates: { displayName?: string; photoURL?: string; } = {};
-
-      if (profileData.displayName && profileData.displayName !== user.displayName) {
-        authProfileUpdates.displayName = profileData.displayName;
-      }
+      
+      const authUpdates: { displayName?: string; photoURL?: string; } = {};
+      const firestoreUpdates: Partial<UserDocument> = { ...profileData };
 
       if (photoDataUrl) {
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
         await uploadString(storageRef, photoDataUrl, 'data_url', { contentType: 'image/jpeg' });
         const downloadUrl = await getDownloadURL(storageRef);
-        updates.photoURL = downloadUrl;
-        authProfileUpdates.photoURL = downloadUrl;
+        
+        // Use the raw URL for storage, we can add cache-busting in the UI if needed
+        authUpdates.photoURL = downloadUrl;
+        firestoreUpdates.photoURL = downloadUrl;
       }
 
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      await setDoc(userDocRef, updates, { merge: true });
+      if (profileData.displayName && profileData.displayName !== user.displayName) {
+        authUpdates.displayName = profileData.displayName;
+        // firestoreUpdates.displayName is already set from profileData
+      }
       
-      if (Object.keys(authProfileUpdates).length > 0) {
-        await updateProfile(currentUser, authProfileUpdates);
-      }
+      // Perform updates
+      await updateProfile(currentUser, authUpdates);
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userDocRef, firestoreUpdates, { merge: true });
 
-      setUser({ ...user, ...updates });
+      // Optimistic UI update: create a new object to trigger React's re-render
+      setUser(prevUser => ({
+        ...prevUser!,
+        ...firestoreUpdates,
+        ...authUpdates,
+      }));
 
       toast({
         title: "Profile updated!",
@@ -160,10 +178,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       });
     }
   };
-
+  
   if (loading) {
     return (
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen bg-background">
             <Skeleton className="h-[160px] w-[160px] rounded-lg" />
         </div>
     );
