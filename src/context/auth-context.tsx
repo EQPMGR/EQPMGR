@@ -56,33 +56,39 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-      if (authUser) {
-        const userDocRef = doc(db, 'users', authUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
+      try {
+        if (authUser) {
+          const userDocRef = doc(db, 'users', authUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-        const baseProfile: UserProfile = {
-          uid: authUser.uid,
-          email: authUser.email,
-          displayName: authUser.displayName,
-          photoURL: authUser.photoURL,
-        };
-
-        if (userDocSnap.exists()) {
-          const userDocData = userDocSnap.data() as UserDocument;
-          setUser({ ...baseProfile, ...userDocData });
-        } else {
-          // New user signed up, create their document in Firestore.
-          const initialDoc: UserDocument = { 
+          const baseProfile: UserProfile = {
+            uid: authUser.uid,
+            email: authUser.email,
             displayName: authUser.displayName,
             photoURL: authUser.photoURL,
           };
-          await setDoc(userDocRef, initialDoc);
-          setUser(baseProfile);
+
+          if (userDocSnap.exists()) {
+            const userDocData = userDocSnap.data() as UserDocument;
+            setUser({ ...baseProfile, ...userDocData });
+          } else {
+            // New user signed up, create their document in Firestore.
+            const initialDoc: UserDocument = { 
+              displayName: authUser.displayName,
+              photoURL: authUser.photoURL,
+            };
+            await setDoc(userDocRef, initialDoc);
+            setUser(baseProfile);
+          }
+        } else {
+          setUser(null);
         }
-      } else {
-        setUser(null);
+      } catch (error) {
+          console.error("Error during authentication state change:", error);
+          setUser(null); // Set to null on error to avoid broken states
+      } finally {
+          setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -96,8 +102,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       try {
           await signInWithEmailAndPassword(auth, email, password);
           handleAuthSuccess();
-      } catch (error) {
+      } catch (error: any) {
           console.error("Error signing in with email/password: ", error);
+          toast({
+            variant: 'destructive',
+            title: 'Sign In Failed',
+            description: error.message || 'An unexpected error occurred.',
+          })
           throw error;
       }
   }
@@ -105,15 +116,18 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signUpWithEmailPassword = async (email: string, password: string) => {
       try {
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          // The onAuthStateChanged listener will handle creating the user doc and setting state.
-          // We just need to navigate them to the right place.
           if (userCredential.user.metadata.creationTime === userCredential.user.metadata.lastSignInTime) {
             router.push('/settings/profile');
           } else {
             router.push('/');
           }
-      } catch (error) {
+      } catch (error: any) {
           console.error("Error signing up with email/password: ", error);
+          toast({
+            variant: 'destructive',
+            title: 'Sign Up Failed',
+            description: error.message || 'An unexpected error occurred.',
+          })
           throw error;
       }
   }
@@ -142,14 +156,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         await uploadString(storageRef, photoDataUrl, 'data_url', { contentType: 'image/jpeg' });
         const downloadUrl = await getDownloadURL(storageRef);
         
-        // Use the raw URL for storage, we can add cache-busting in the UI if needed
         authUpdates.photoURL = downloadUrl;
         firestoreUpdates.photoURL = downloadUrl;
       }
 
       if (profileData.displayName && profileData.displayName !== user.displayName) {
         authUpdates.displayName = profileData.displayName;
-        // firestoreUpdates.displayName is already set from profileData
       }
       
       // Perform updates
