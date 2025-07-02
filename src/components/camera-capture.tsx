@@ -79,7 +79,7 @@ export function CameraCapture({ onCapture, children }: CameraCaptureProps) {
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        // Use JPEG for better compression for photos, without resizing.
+        // Use JPEG for better compression for photos.
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setCapturedImage(dataUrl);
         stopCameraStream();
