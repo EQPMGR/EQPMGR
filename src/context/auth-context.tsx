@@ -84,34 +84,34 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     if (!currentUser) return;
 
     try {
-      let newDisplayName = data.displayName !== undefined ? data.displayName : currentUser.displayName;
-      let newPhotoURL = currentUser.photoURL;
-      
+      const profileUpdates: { displayName?: string; photoURL?: string } = {};
+
+      if (data.displayName) {
+        profileUpdates.displayName = data.displayName;
+      }
+
       if (data.photoDataUrl) {
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
         await uploadString(storageRef, data.photoDataUrl, 'data_url', {
             contentType: 'image/jpeg'
         });
         const downloadUrl = await getDownloadURL(storageRef);
-        // Add a cache-busting query parameter to defeat browser caching
-        newPhotoURL = `${downloadUrl}?v=${Date.now()}`;
+        profileUpdates.photoURL = downloadUrl;
       }
 
-      // Update Firebase in the background
-      updateProfile(currentUser, { 
-        displayName: newDisplayName,
-        photoURL: newPhotoURL
-      });
+      // Update Firebase Auth profile
+      await updateProfile(currentUser, profileUpdates);
+
+      // Force a reload of the user's data from the server
+      await currentUser.reload();
       
-      // Optimistically update the local state immediately
-      const updatedUser = {
-          ...currentUser,
-          displayName: newDisplayName,
-          photoURL: newPhotoURL,
-      };
-      
-      // Cast to User to satisfy TypeScript
-      setUser(updatedUser as User);
+      // Get the freshly reloaded user object
+      const reloadedUser = auth.currentUser;
+
+      if (reloadedUser) {
+        // Create a new plain object from the reloaded user data to ensure React detects the change.
+        setUser({ ...reloadedUser } as User);
+      }
 
       toast({
         title: "Profile updated!",
