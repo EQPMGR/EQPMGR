@@ -109,7 +109,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [toast]);
 
   const handleAuthSuccess = () => {
     router.push('/');
@@ -204,13 +204,14 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // 4. Update local state
       setUser(prevUser => {
         if (!prevUser) return null;
-        // Create a new object to ensure React re-renders
-        return {
+        const updatedUser = {
             ...prevUser,
             ...firestoreUpdates,
-            ...(newPhotoURL && { photoURL: newPhotoURL }),
-            ...(authUpdates.displayName && { displayName: authUpdates.displayName }),
+            ...(newPhotoURL !== undefined && { photoURL: newPhotoURL }),
+            ...(authUpdates.displayName !== undefined && { displayName: authUpdates.displayName }),
         };
+        // This creates a new object reference to guarantee a re-render
+        return {...updatedUser};
       });
 
       toast({
