@@ -130,11 +130,11 @@ export default function ProfilePage() {
   const handlePhotoUpdate = async (photoDataUrl: string) => {
     setIsUploadingPhoto(true);
     try {
-        await updateProfilePhoto(photoDataUrl);
-    } catch (error) {
-        // Error is handled by the auth context's toast
+      // The updateProfilePhoto function now handles its own errors and toasts.
+      await updateProfilePhoto(photoDataUrl);
     } finally {
-        setIsUploadingPhoto(false);
+      // This block guarantees the loading spinner is always turned off.
+      setIsUploadingPhoto(false);
     }
   };
   
@@ -300,7 +300,7 @@ export default function ProfilePage() {
                 )}
               />
               <FormField
-                control={form.control}
+                control={preferencesForm.control}
                 name="distanceUnit"
                 render={({ field }) => (
                   <FormItem>

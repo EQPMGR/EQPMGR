@@ -47,7 +47,7 @@ interface AuthContextType {
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'photoURL'>) => Promise<void>;
-  updateProfilePhoto: (photoDataUrl: string) => Promise<void>;
+  updateProfilePhoto: (photoDataUrl: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -156,52 +156,60 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       toast({ title: "Profile updated!" });
   };
 
-  const updateProfilePhoto = async (photoDataUrl: string) => {
+  const updateProfilePhoto = async (photoDataUrl: string): Promise<boolean> => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
         toast({ variant: 'destructive', title: 'Not Authenticated' });
-        return;
+        return false;
     }
 
     const storageRef = ref(storage, `avatars/${currentUser.uid}`);
-    console.log(`[DEBUG] Photo Upload: Starting for user ${currentUser.uid} to path ${storageRef.fullPath}`);
-
+    
     try {
         const uploadTask = uploadString(storageRef, photoDataUrl, 'data_url');
-        
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error('Upload timed out after 15 seconds. Please check Storage rules and network connectivity.'));
-            }, 15000);
-        });
 
-        console.log('[DEBUG] Photo Upload: Awaiting upload or timeout...');
+        // A 15-second timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Upload timed out after 15 seconds.')), 15000)
+        );
+
+        // Race the upload against the timeout
         await Promise.race([uploadTask, timeoutPromise]);
-        console.log('[DEBUG] Photo Upload: Upload task completed.');
-
-        console.log('[DEBUG] Photo Upload: Getting download URL...');
-        const newPhotoURL = await getDownloadURL(storageRef);
-        console.log('[DEBUG] Photo Upload: Got download URL:', newPhotoURL);
-
-        console.log('[DEBUG] Photo Upload: Updating Firebase Auth profile...');
-        await updateProfile(currentUser, { photoURL: newPhotoURL });
         
-        console.log('[DEBUG] Photo Upload: Updating Firestore document...');
+        const newPhotoURL = await getDownloadURL(storageRef);
+        
+        await updateProfile(currentUser, { photoURL: newPhotoURL });
         await setDoc(doc(db, 'users', currentUser.uid), { photoURL: newPhotoURL }, { merge: true });
 
-        console.log('[DEBUG] Photo Upload: Updating local state...');
         setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
-        
         toast({ title: 'Photo updated successfully!' });
-        console.log('[DEBUG] Photo Upload: Success toast shown.');
+        return true;
 
     } catch (error: any) {
         console.error("Photo upload failed:", error);
+        
+        let description = 'An unknown error occurred. Please check the console for details.';
+        if (error.code) {
+            switch (error.code) {
+                case 'storage/unauthorized':
+                    description = "Permission denied. Please check your Storage security rules.";
+                    break;
+                case 'storage/canceled':
+                    description = "Upload was canceled.";
+                    break;
+                default:
+                    description = error.message;
+            }
+        } else if (error.message.includes('timed out')) {
+            description = "The request timed out. Please check your network connection and Storage rules."
+        }
+        
         toast({
             variant: 'destructive',
             title: 'Photo Upload Failed',
-            description: error.message || 'An unknown error occurred. Please check the console for details.',
+            description: description,
         });
+        return false;
     }
   };
   
@@ -237,7 +245,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       signUpWithEmailPassword: authWrapper(signUpWithEmailPassword),
       signOut: authWrapper(signOut),
       updateProfileInfo: authWrapper(updateProfileInfo),
-      updateProfilePhoto: authWrapper(updateProfilePhoto)
+      updateProfilePhoto // Not wrapping this one so it can return a boolean
     }}>
       {children}
     </AuthContext.Provider>
