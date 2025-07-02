@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
@@ -9,10 +8,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-  reload
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, getFirestore } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { auth, storage, db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -61,44 +59,43 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       if (authUser) {
-        const baseProfile: UserProfile = {
-          uid: authUser.uid,
-          email: authUser.email,
-          displayName: authUser.displayName,
-          photoURL: authUser.photoURL,
-        };
-
         try {
-          const userDocRef = doc(db, 'users', authUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
+            const userDocRef = doc(db, 'users', authUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
 
-          if (userDocSnap.exists()) {
-            const userDocData = userDocSnap.data() as UserDocument;
-            setUser({ ...baseProfile, ...userDocData });
-             // Update last login time
-            await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-          } else {
-            // New user, create their document in Firestore.
-            const initialDoc: UserDocument = { 
+            const baseProfile: UserProfile = {
+              uid: authUser.uid,
+              email: authUser.email,
               displayName: authUser.displayName,
               photoURL: authUser.photoURL,
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp()
             };
-            await setDoc(userDocRef, initialDoc);
-            setUser(baseProfile);
-          }
+
+            if (userDocSnap.exists()) {
+              const userDocData = userDocSnap.data() as UserDocument;
+              setUser({ ...baseProfile, ...userDocData });
+              await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+            } else {
+              // New user, create their document in Firestore.
+              const initialDoc: UserDocument = { 
+                displayName: authUser.displayName,
+                photoURL: authUser.photoURL,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp()
+              };
+              await setDoc(userDocRef, initialDoc);
+              setUser(baseProfile);
+            }
         } catch (error) {
-          console.error("Firestore error fetching user document:", error);
-          toast({
-            variant: "destructive",
-            title: "Could not load full profile",
-            description: "There was an issue connecting to the database. Some profile information may be missing.",
-          });
-          // Fallback to authUser data if Firestore fails
-          setUser(baseProfile);
+            console.error("Firestore error during auth state change:", error);
+            // Fallback to authUser data if Firestore fails
+            setUser({
+              uid: authUser.uid,
+              email: authUser.email,
+              displayName: authUser.displayName,
+              photoURL: authUser.photoURL,
+            });
         } finally {
-          setLoading(false);
+            setLoading(false);
         }
       } else {
         setUser(null);
@@ -131,6 +128,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signUpWithEmailPassword = async (email: string, password: string) => {
       try {
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          // This logic sends new users to the profile page first
           if (userCredential.user.metadata.creationTime === userCredential.user.metadata.lastSignInTime) {
             router.push('/settings/profile');
           } else {
@@ -158,48 +156,57 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const updateUserProfile = async (data: Partial<UserProfile> & { photoDataUrl?: string }) => {
     const currentUser = auth.currentUser;
-    if (!currentUser || !user) return;
+    if (!currentUser) {
+        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update your profile.' });
+        return;
+    }
 
-    setLoading(true);
     try {
       const { photoDataUrl, ...profileData } = data;
       
-      const authUpdates: { displayName?: string; photoURL?: string; } = {};
-      const firestoreUpdates: Partial<UserDocument> = { ...profileData };
+      const authUpdates: { displayName?: string; photoURL?: string } = {};
+      // Filter out undefined values from profileData before creating firestoreUpdates
+      const firestoreUpdates = Object.entries(profileData).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key as keyof UserDocument] = value;
+        }
+        return acc;
+      }, {} as Partial<UserDocument>);
+      
+      let newPhotoURL: string | undefined = undefined;
 
+      // 1. Handle Photo Upload
       if (photoDataUrl) {
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
         await uploadString(storageRef, photoDataUrl, 'data_url', { contentType: 'image/jpeg' });
-        const downloadUrl = await getDownloadURL(storageRef);
-        
-        authUpdates.photoURL = downloadUrl;
-        firestoreUpdates.photoURL = downloadUrl;
+        newPhotoURL = await getDownloadURL(storageRef);
+        authUpdates.photoURL = newPhotoURL;
+        firestoreUpdates.photoURL = newPhotoURL;
       }
 
-      if (profileData.displayName && profileData.displayName !== user.displayName) {
+      // 2. Handle Display Name
+      if (profileData.displayName) {
         authUpdates.displayName = profileData.displayName;
       }
       
-      // Perform updates
-      await updateProfile(currentUser, authUpdates);
+      // 3. Perform updates to Auth and Firestore
       const userDocRef = doc(db, 'users', currentUser.uid);
-      await setDoc(userDocRef, firestoreUpdates, { merge: true });
+      await Promise.all([
+          Object.keys(authUpdates).length > 0 ? updateProfile(currentUser, authUpdates) : Promise.resolve(),
+          Object.keys(firestoreUpdates).length > 0 ? setDoc(userDocRef, firestoreUpdates, { merge: true }) : Promise.resolve(),
+      ]);
       
-      // Force a reload of the user's data from Firebase servers
-      await reload(currentUser);
-      const refreshedUser = auth.currentUser;
-
-      // Manually merge the new data to ensure UI updates
-      const userDocSnap = await getDoc(userDocRef);
-      const updatedProfile: UserProfile = {
-        uid: refreshedUser!.uid,
-        email: refreshedUser!.email,
-        displayName: refreshedUser!.displayName,
-        photoURL: refreshedUser!.photoURL,
-        ...(userDocSnap.exists() ? (userDocSnap.data() as UserDocument) : {})
-      };
-      
-      setUser(updatedProfile);
+      // 4. Optimistically update local state
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        // Create a new object to ensure React re-renders
+        return {
+            ...prevUser,
+            ...firestoreUpdates,
+            ...(newPhotoURL && { photoURL: newPhotoURL }),
+            ...(authUpdates.displayName && { displayName: authUpdates.displayName }),
+        };
+      });
 
       toast({
         title: "Profile updated!",
@@ -213,12 +220,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         title: 'Update failed',
         description: error.message || 'Could not update your profile.',
       });
-    } finally {
-      setLoading(false);
+      // re-throw to be caught by component
+      throw error;
     }
   };
   
-  if (loading && !user) {
+  if (loading) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
             <Skeleton className="h-[160px] w-[160px] rounded-lg" />

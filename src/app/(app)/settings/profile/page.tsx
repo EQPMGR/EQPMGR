@@ -1,10 +1,9 @@
-
 'use client'
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { Camera } from "lucide-react"
+import { Camera, Loader2 } from "lucide-react"
 import React from "react"
 
 import { Button } from "@/components/ui/button"
@@ -71,6 +70,7 @@ const defaultPreferencesValues: PreferencesFormValues = {
 export default function ProfilePage() {
   const { toast } = useToast()
   const { user, updateUserProfile } = useAuth();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -99,13 +99,21 @@ export default function ProfilePage() {
   })
 
   async function onProfileSubmit(data: ProfileFormValues) {
-    await updateUserProfile({
-        displayName: data.name,
-        height: data.height,
-        weight: data.weight,
-        shoeSize: data.shoeSize,
-        age: data.age,
-    });
+    setIsSubmitting(true);
+    try {
+      await updateUserProfile({
+          displayName: data.name,
+          height: data.height,
+          weight: data.weight,
+          shoeSize: data.shoeSize,
+          age: data.age,
+      });
+    } catch (error) {
+        // Error is already handled by the auth context's toast
+    }
+    finally {
+      setIsSubmitting(false);
+    }
   }
 
   function onPreferencesSubmit(data: PreferencesFormValues) {
@@ -115,8 +123,15 @@ export default function ProfilePage() {
     })
   }
 
-  const handlePhotoUpdate = (photoDataUrl: string) => {
-    updateUserProfile({ photoDataUrl });
+  const handlePhotoUpdate = async (photoDataUrl: string) => {
+    setIsSubmitting(true);
+    try {
+        await updateUserProfile({ photoDataUrl });
+    } catch (error) {
+        // Error is already handled by the auth context's toast
+    } finally {
+        setIsSubmitting(false);
+    }
   };
   
   const userInitial = user?.displayName ? user.displayName.charAt(0).toUpperCase() : (user?.email ? user.email.charAt(0).toUpperCase() : 'U');
@@ -137,7 +152,7 @@ export default function ProfilePage() {
               <AvatarFallback>{userInitial}</AvatarFallback>
             </Avatar>
             <CameraCapture onCapture={handlePhotoUpdate}>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={isSubmitting}>
                 <Camera className="mr-2" />
                 Change Photo
               </Button>
@@ -215,7 +230,10 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <Button type="submit">Update Profile</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? "Updating..." : "Update Profile"}
+              </Button>
             </form>
           </Form>
         </CardContent>
