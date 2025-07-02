@@ -15,7 +15,7 @@ export const equipmentData: Equipment[] = [
     purchasePrice: 14000,
     totalDistance: 2540,
     totalHours: 85,
-    imageUrl: 'https://images.unsplash.com/photo-1559348331-57d46931c890?q=80&w=600&h=400&auto=format&fit=crop',
+    imageUrl: 'https://placehold.co/600x400.png',
     components: [
       {
         id: 'c1',
@@ -90,7 +90,7 @@ export const equipmentData: Equipment[] = [
     purchasePrice: 3500,
     totalDistance: 1250,
     totalHours: 110,
-    imageUrl: 'https://images.unsplash.com/photo-1572115244513-4841c73a4b9a?q=80&w=600&h=400&auto=format&fit=crop',
+    imageUrl: 'https://placehold.co/600x400.png',
     components: [
       {
         id: 't1',
