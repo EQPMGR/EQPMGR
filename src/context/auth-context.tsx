@@ -221,10 +221,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     } catch (error: any) {
       console.error("Error updating profile: ", error);
+      console.error("Firebase error code:", error.code);
       toast({
         variant: 'destructive',
         title: 'Update failed',
-        description: error.message || 'Could not update your profile.',
+        description: error.code ? `Error: ${error.code}` : 'Could not update your profile.',
       });
       throw error;
     }
