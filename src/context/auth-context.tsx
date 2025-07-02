@@ -89,8 +89,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
         await uploadString(storageRef, data.photoDataUrl, 'data_url');
         const downloadUrl = await getDownloadURL(storageRef);
-        // Add a cache-busting query parameter
-        photoURL = `${downloadUrl}&v=${Date.now()}`;
+        // Add a cache-busting query parameter to defeat browser caching
+        photoURL = `${downloadUrl}?v=${Date.now()}`;
       }
 
       await updateProfile(currentUser, { 
@@ -98,11 +98,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         photoURL: photoURL
       });
       
-      // By creating a new object from the updated `currentUser`, we force React's
-      // context to re-render all consumers.
+      // The user object on the client is not automatically updated. We need to force a reload.
+      await currentUser.reload();
+
+      // Now that the currentUser is reloaded, we create a new object to trigger React's state update.
       if (auth.currentUser) {
-        const refreshedUser = auth.currentUser;
-        setUser(Object.assign(Object.create(Object.getPrototypeOf(refreshedUser)), refreshedUser));
+        setUser({ ...auth.currentUser });
       }
 
       toast({
