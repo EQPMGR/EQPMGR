@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Camera } from "lucide-react"
+import React from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +36,6 @@ import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CameraCapture } from "@/components/camera-capture"
-import React from "react"
 
 const profileFormSchema = z.object({
   name: z
@@ -76,10 +76,6 @@ export default function ProfilePage() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: '',
-      height: 180,
-      weight: 75,
-      shoeSize: 10.5,
-      age: 32,
     },
     mode: "onChange",
   })
@@ -88,11 +84,10 @@ export default function ProfilePage() {
     if (user) {
       profileForm.reset({
         name: user.displayName || '',
-        // In a real app, these might come from a user profile in Firestore
-        height: 180,
-        weight: 75,
-        shoeSize: 10.5,
-        age: 32,
+        height: user.height || undefined,
+        weight: user.weight || undefined,
+        shoeSize: user.shoeSize || undefined,
+        age: user.age || undefined,
       });
     }
   }, [user, profileForm]);
@@ -104,7 +99,13 @@ export default function ProfilePage() {
   })
 
   async function onProfileSubmit(data: ProfileFormValues) {
-    await updateUserProfile({ displayName: data.name });
+    await updateUserProfile({
+        displayName: data.name,
+        height: data.height,
+        weight: data.weight,
+        shoeSize: data.shoeSize,
+        age: data.age,
+    });
   }
 
   function onPreferencesSubmit(data: PreferencesFormValues) {

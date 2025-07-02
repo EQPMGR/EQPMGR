@@ -11,31 +11,67 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { auth, storage } from '@/lib/firebase';
+import { auth, storage, db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  height?: number;
+  weight?: number;
+  shoeSize?: number;
+  age?: number;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   loading: boolean;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateUserProfile: (data: { displayName?: string; photoDataUrl?: string }) => Promise<void>;
+  updateUserProfile: (data: Partial<UserProfile> & { photoDataUrl?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+      if (authUser) {
+        const userDocRef = doc(db, 'users', authUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          setUser({
+            uid: authUser.uid,
+            email: authUser.email,
+            displayName: authUser.displayName,
+            photoURL: authUser.photoURL,
+            ...userDocSnap.data()
+          });
+        } else {
+          const newUserProfile: UserProfile = {
+            uid: authUser.uid,
+            email: authUser.email,
+            displayName: authUser.displayName,
+            photoURL: authUser.photoURL,
+          };
+          await setDoc(userDocRef, newUserProfile, { merge: true });
+          setUser(newUserProfile);
+        }
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -79,37 +115,36 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  const updateUserProfile = async (data: { displayName?: string; photoDataUrl?: string }) => {
+  const updateUserProfile = async (data: Partial<UserProfile> & { photoDataUrl?: string }) => {
     const currentUser = auth.currentUser;
-    if (!currentUser) return;
+    if (!currentUser || !user) return;
 
     try {
-      const profileUpdates: { displayName?: string; photoURL?: string } = {};
+      const { photoDataUrl, ...profileData } = data;
+      const updates: Partial<UserProfile> = { ...profileData };
 
-      if (data.displayName) {
-        profileUpdates.displayName = data.displayName;
+      const authProfileUpdates: { displayName?: string; photoURL?: string; } = {};
+
+      if (profileData.displayName && profileData.displayName !== user.displayName) {
+        authProfileUpdates.displayName = profileData.displayName;
       }
 
-      if (data.photoDataUrl) {
+      if (photoDataUrl) {
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
-        await uploadString(storageRef, data.photoDataUrl, 'data_url', {
-            contentType: 'image/jpeg'
-        });
+        await uploadString(storageRef, photoDataUrl, 'data_url', { contentType: 'image/jpeg' });
         const downloadUrl = await getDownloadURL(storageRef);
-        profileUpdates.photoURL = downloadUrl;
+        updates.photoURL = downloadUrl;
+        authProfileUpdates.photoURL = downloadUrl;
       }
 
-      // Update the profile on Firebase's servers
-      await updateProfile(currentUser, profileUpdates);
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userDocRef, updates, { merge: true });
       
-      // Force a reload of the user's data from the server
-      await currentUser.reload();
-      
-      // Get the now-fresh user object
-      const freshUser = auth.currentUser;
+      if (Object.keys(authProfileUpdates).length > 0) {
+        await updateProfile(currentUser, authProfileUpdates);
+      }
 
-      // Update the state with a shallow clone of the fresh user object to trigger a re-render
-      setUser(freshUser ? { ...freshUser } : null);
+      setUser({ ...user, ...updates });
 
       toast({
         title: "Profile updated!",
