@@ -7,7 +7,8 @@ const firebaseConfig = {
   projectId: "eqpmgr-f82e7",
   storageBucket: "eqpmgr-f82e7.appspot.com",
   messagingSenderId: "111719283783",
-  appId: "1:111719283783:web:5e83cc7e9ba8c8f6e84562"
+  appId: "1:111719283783:web:5e83cc7e9ba8c8f6e84562",
+  measurementId: "G-BS4C41B3TE"
 };
 
 // Initialize Firebase
