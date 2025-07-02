@@ -1,5 +1,7 @@
 'use client';
 import Link from 'next/link';
+import { LogOut, Settings, User } from 'lucide-react';
+
 import {
   Avatar,
   AvatarFallback,
@@ -48,18 +50,21 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/settings/profile">Profile</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            Billing
+            <Link href="/settings/profile">
+              <User />
+              Profile
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/settings/profile">Settings</Link>
+            <Link href="/settings/profile">
+              <Settings />
+              Settings
+            </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem>New Team</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut}>
+          <LogOut />
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
