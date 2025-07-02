@@ -69,8 +69,8 @@ const defaultPreferencesValues: PreferencesFormValues = {
 
 export default function ProfilePage() {
   const { toast } = useToast()
-  const { user, updateUserProfile } = useAuth();
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { user, updateProfileInfo, updateProfilePhoto } = useAuth();
+  const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = React.useState(false);
 
   const profileForm = useForm<ProfileFormValues>({
@@ -104,21 +104,19 @@ export default function ProfilePage() {
   })
 
   async function onProfileSubmit(data: ProfileFormValues) {
-    setIsSubmitting(true);
+    setIsSubmittingProfile(true);
     try {
-      const cleanData = {
+      await updateProfileInfo({
           displayName: data.name,
           height: data.height || undefined,
           weight: data.weight || undefined,
           shoeSize: data.shoeSize || undefined,
           age: data.age || undefined,
-      };
-      await updateUserProfile(cleanData);
+      });
     } catch (error) {
-        // Error is already handled by the auth context's toast
-    }
-    finally {
-      setIsSubmitting(false);
+      // Error is handled by the auth context's toast
+    } finally {
+      setIsSubmittingProfile(false);
     }
   }
 
@@ -132,7 +130,7 @@ export default function ProfilePage() {
   const handlePhotoUpdate = async (photoDataUrl: string) => {
     setIsUploadingPhoto(true);
     try {
-        await updateUserProfile({ photoDataUrl });
+        await updateProfilePhoto(photoDataUrl);
     } catch (error) {
         // Error is handled by the auth context's toast
     } finally {
@@ -158,7 +156,7 @@ export default function ProfilePage() {
               <AvatarFallback>{userInitial}</AvatarFallback>
             </Avatar>
             <CameraCapture onCapture={handlePhotoUpdate}>
-              <Button type="button" variant="outline" disabled={isSubmitting || isUploadingPhoto}>
+              <Button type="button" variant="outline" disabled={isUploadingPhoto || isSubmittingProfile}>
                 {isUploadingPhoto ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -240,9 +238,9 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? "Updating..." : "Update Profile"}
+              <Button type="submit" disabled={isSubmittingProfile || isUploadingPhoto}>
+                {isSubmittingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmittingProfile ? "Updating..." : "Update Profile"}
               </Button>
             </form>
           </Form>
