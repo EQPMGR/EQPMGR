@@ -173,6 +173,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         return;
     }
 
+    console.log('[DEBUG] Attempting profile update for user:', currentUser.uid);
+
     try {
       const { photoDataUrl, ...profileData } = data;
       
@@ -182,12 +184,24 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       let newPhotoURL: string | undefined = undefined;
 
       if (photoDataUrl) {
-        // Simplified filename to just be the user's UID. Easier to debug with security rules.
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
-        await uploadString(storageRef, photoDataUrl, 'data_url');
-        newPhotoURL = await getDownloadURL(storageRef);
-        authUpdates.photoURL = newPhotoURL;
-        firestoreUpdates.photoURL = newPhotoURL;
+        console.log('[DEBUG] Uploading to storage path:', storageRef.fullPath);
+
+        try {
+            await uploadString(storageRef, photoDataUrl, 'data_url');
+            console.log('[DEBUG] Upload successful.');
+            newPhotoURL = await getDownloadURL(storageRef);
+            authUpdates.photoURL = newPhotoURL;
+            firestoreUpdates.photoURL = newPhotoURL;
+        } catch (uploadError: any) {
+            console.error('[DEBUG] Firebase Storage upload failed:', uploadError);
+            toast({
+                variant: 'destructive',
+                title: 'Photo Upload Failed',
+                description: `Error: ${uploadError.code}. Check console & security rules.`,
+            });
+            throw uploadError; // Stop execution if upload fails
+        }
       }
 
       if (profileData.displayName !== undefined) {
@@ -195,7 +209,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       }
 
       const finalFirestoreUpdates: Partial<UserDocument> = { ...firestoreUpdates };
-      // Only add fields to Firestore update if they are not undefined
       Object.keys(profileData).forEach(key => {
         const K = key as keyof typeof profileData;
         if (profileData[K] !== undefined) {
@@ -221,12 +234,16 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       });
 
     } catch (error: any) {
-      console.error("Error updating profile: ", error);
-      toast({
-        variant: 'destructive',
-        title: 'Update failed',
-        description: `Could not update your profile. Firebase error: ${error.code}`,
-      });
+      console.error("Error during the profile update process: ", error);
+      // The specific toast is handled in the inner try-catch for uploads.
+      // This catch block will handle other potential errors and prevent app crashes.
+      if (!error.code?.startsWith('storage/')) {
+         toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: 'An unexpected error occurred during profile update.',
+        });
+      }
       throw error;
     }
   };
