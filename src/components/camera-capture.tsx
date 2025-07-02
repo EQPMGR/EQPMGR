@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -33,13 +34,11 @@ export function CameraCapture({ onCapture, children }: CameraCaptureProps) {
   }, []);
 
   const getCameraPermission = async () => {
-    if (hasCameraPermission === true) return;
-
     // Reset state for new attempt
     setHasCameraPermission(null); 
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       setHasCameraPermission(true);
       streamRef.current = stream;
       if (videoRef.current) {
