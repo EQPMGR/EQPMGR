@@ -80,34 +80,42 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const updateUserProfile = async (data: { displayName?: string; photoDataUrl?: string }) => {
-    if (!auth.currentUser) return;
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
     try {
-      let photoURL = auth.currentUser.photoURL;
+      let photoURL = currentUser.photoURL;
+      
       if (data.photoDataUrl) {
-        const storageRef = ref(storage, `avatars/${auth.currentUser.uid}`);
+        const storageRef = ref(storage, `avatars/${currentUser.uid}`);
         await uploadString(storageRef, data.photoDataUrl, 'data_url');
         photoURL = await getDownloadURL(storageRef);
       }
 
-      await updateProfile(auth.currentUser, { 
-        displayName: data.displayName !== undefined ? data.displayName : auth.currentUser.displayName,
+      await updateProfile(currentUser, { 
+        displayName: data.displayName !== undefined ? data.displayName : currentUser.displayName,
         photoURL: photoURL
       });
       
-      await auth.currentUser.reload();
-      setUser(Object.assign({}, auth.currentUser));
+      await currentUser.reload();
+      
+      const refreshedUser = auth.currentUser;
+      if (refreshedUser) {
+        // Create a brand new object to ensure React detects the state change
+        setUser({ ...refreshedUser });
+      }
 
       toast({
         title: "Profile updated!",
         description: "Your changes have been saved successfully.",
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating profile: ", error);
       toast({
         variant: 'destructive',
         title: 'Update failed',
-        description: 'Could not update your profile.',
+        description: error.message || 'Could not update your profile.',
       });
     }
   };
