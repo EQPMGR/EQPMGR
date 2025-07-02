@@ -184,7 +184,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (photoDataUrl) {
         // Simplified filename to just be the user's UID. Easier to debug with security rules.
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
-        await uploadString(storageRef, photoDataUrl, 'data_url', { contentType: 'image/jpeg' });
+        await uploadString(storageRef, photoDataUrl, 'data_url');
         newPhotoURL = await getDownloadURL(storageRef);
         authUpdates.photoURL = newPhotoURL;
         firestoreUpdates.photoURL = newPhotoURL;
