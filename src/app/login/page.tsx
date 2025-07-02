@@ -55,7 +55,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push('/');
+      if (router.pathname !== '/settings/profile') {
+         router.push('/');
+      }
     }
   }, [user, router]);
 
@@ -73,7 +75,6 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await signInWithEmailPassword(data.email, data.password)
-      // router push is handled by useEffect
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -93,7 +94,6 @@ export default function LoginPage() {
         title: 'Account Created!',
         description: "You have successfully signed up.",
       })
-      // router push is handled by useEffect
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -104,6 +104,22 @@ export default function LoginPage() {
         setIsSubmitting(false);
     }
   }
+  
+  async function handleGoogleSignIn() {
+    setIsSubmitting(true);
+    try {
+        await signInWithGoogle();
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Google Sign In Failed',
+            description: error.message || 'An unexpected error occurred. Please check your Firebase project configuration.',
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
 
   if (loading || user) {
     return (
@@ -172,7 +188,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="flex justify-center">
-                  <GoogleSignInButton onClick={signInWithGoogle} />
+                  <GoogleSignInButton onClick={handleGoogleSignIn} disabled={isSubmitting} />
                 </div>
               </CardContent>
             </Card>
@@ -224,7 +240,7 @@ export default function LoginPage() {
                     </div>
                     </div>
                     <div className="flex justify-center">
-                      <GoogleSignInButton onClick={signInWithGoogle} />
+                      <GoogleSignInButton onClick={handleGoogleSignIn} disabled={isSubmitting} />
                     </div>
                   <div className="mt-4 text-center text-sm">
                     By clicking continue, you agree to our{' '}
