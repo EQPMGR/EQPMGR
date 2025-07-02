@@ -1,4 +1,3 @@
-
 'use client'
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -72,6 +71,7 @@ export default function ProfilePage() {
   const { toast } = useToast()
   const { user, updateUserProfile } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = React.useState(false);
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -130,13 +130,13 @@ export default function ProfilePage() {
   }
 
   const handlePhotoUpdate = async (photoDataUrl: string) => {
-    setIsSubmitting(true);
+    setIsUploadingPhoto(true);
     try {
         await updateUserProfile({ photoDataUrl });
     } catch (error) {
         // Error is handled by the auth context's toast
     } finally {
-        setIsSubmitting(false);
+        setIsUploadingPhoto(false);
     }
   };
   
@@ -158,9 +158,13 @@ export default function ProfilePage() {
               <AvatarFallback>{userInitial}</AvatarFallback>
             </Avatar>
             <CameraCapture onCapture={handlePhotoUpdate}>
-              <Button type="button" variant="outline" disabled={isSubmitting}>
-                <Camera className="mr-2" />
-                Change Photo
+              <Button type="button" variant="outline" disabled={isSubmitting || isUploadingPhoto}>
+                {isUploadingPhoto ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="mr-2" />
+                )}
+                {isUploadingPhoto ? "Uploading..." : "Change Photo"}
               </Button>
             </CameraCapture>
           </div>
@@ -236,7 +240,7 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || isUploadingPhoto}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? "Updating..." : "Update Profile"}
               </Button>
