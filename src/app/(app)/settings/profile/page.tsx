@@ -157,12 +157,6 @@ export default function ProfilePage() {
               <AvatarImage src={user?.photoURL || ''} alt="User avatar" key={user?.photoURL} />
               <AvatarFallback>{userInitial}</AvatarFallback>
             </Avatar>
-            {/*
-              Photo upload is unavailable until Firebase Storage is activated.
-              To enable, upgrade your Firebase plan if necessary, activate Storage in the console,
-              set the security rules, and then uncomment the CameraCapture component below.
-            */}
-            {/*
             <CameraCapture onCapture={handlePhotoUpdate}>
               <Button type="button" variant="outline" disabled={isSubmitting || isUploadingPhoto}>
                 {isUploadingPhoto ? (
@@ -173,7 +167,6 @@ export default function ProfilePage() {
                 {isUploadingPhoto ? "Uploading..." : "Change Photo"}
               </Button>
             </CameraCapture>
-            */}
           </div>
           <Form {...profileForm}>
             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-8">
