@@ -300,7 +300,7 @@ export default function ProfilePage() {
                 )}
               />
               <FormField
-                control={preferencesForm.control}
+                control={form.control}
                 name="distanceUnit"
                 render={({ field }) => (
                   <FormItem>

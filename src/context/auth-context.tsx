@@ -157,33 +157,52 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const updateProfilePhoto = async (photoDataUrl: string) => {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-          toast({ variant: 'destructive', title: 'Not Authenticated' });
-          return;
-      }
-      
-      const storageRef = ref(storage, `avatars/${currentUser.uid}`);
-      console.log(`[DEBUG] Starting upload for user ${currentUser.uid} to path ${storageRef.fullPath}`);
-      
-      const uploadTask = uploadString(storageRef, photoDataUrl, 'data_url');
-    
-      const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-              reject(new Error('Upload timed out after 15 seconds. Check Storage Rules and network.'));
-          }, 15000); 
-      });
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        toast({ variant: 'destructive', title: 'Not Authenticated' });
+        return;
+    }
 
-      await Promise.race([uploadTask, timeoutPromise]);
-    
-      const newPhotoURL = await getDownloadURL(storageRef);
-      console.log('[DEBUG] Got download URL:', newPhotoURL);
-    
-      await updateProfile(currentUser, { photoURL: newPhotoURL });
-      await setDoc(doc(db, 'users', currentUser.uid), { photoURL: newPhotoURL }, { merge: true });
-    
-      setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
-      toast({ title: 'Photo updated successfully!' });
+    const storageRef = ref(storage, `avatars/${currentUser.uid}`);
+    console.log(`[DEBUG] Photo Upload: Starting for user ${currentUser.uid} to path ${storageRef.fullPath}`);
+
+    try {
+        const uploadTask = uploadString(storageRef, photoDataUrl, 'data_url');
+        
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error('Upload timed out after 15 seconds. Please check Storage rules and network connectivity.'));
+            }, 15000);
+        });
+
+        console.log('[DEBUG] Photo Upload: Awaiting upload or timeout...');
+        await Promise.race([uploadTask, timeoutPromise]);
+        console.log('[DEBUG] Photo Upload: Upload task completed.');
+
+        console.log('[DEBUG] Photo Upload: Getting download URL...');
+        const newPhotoURL = await getDownloadURL(storageRef);
+        console.log('[DEBUG] Photo Upload: Got download URL:', newPhotoURL);
+
+        console.log('[DEBUG] Photo Upload: Updating Firebase Auth profile...');
+        await updateProfile(currentUser, { photoURL: newPhotoURL });
+        
+        console.log('[DEBUG] Photo Upload: Updating Firestore document...');
+        await setDoc(doc(db, 'users', currentUser.uid), { photoURL: newPhotoURL }, { merge: true });
+
+        console.log('[DEBUG] Photo Upload: Updating local state...');
+        setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
+        
+        toast({ title: 'Photo updated successfully!' });
+        console.log('[DEBUG] Photo Upload: Success toast shown.');
+
+    } catch (error: any) {
+        console.error("Photo upload failed:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Photo Upload Failed',
+            description: error.message || 'An unknown error occurred. Please check the console for details.',
+        });
+    }
   };
   
   // This is a wrapper around the core auth functions to provide consistent error handling.
