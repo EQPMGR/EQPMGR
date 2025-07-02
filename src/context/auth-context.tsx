@@ -28,7 +28,6 @@ export interface UserProfile {
   age?: number | '';
 }
 
-// This will be the shape of our document in Firestore
 interface UserDocument {
     height?: number;
     weight?: number;
@@ -40,10 +39,11 @@ interface UserDocument {
     lastLogin?: any;
 }
 
+
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  signInWithEmailPassword: (email: string, password: string) => Promise<void>;
+  signInWithEmailPassword: (email: string, password:string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile> & { photoDataUrl?: string }) => Promise<void>;
@@ -58,107 +58,91 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
-        // Set basic user profile immediately. App is now usable.
-        const baseProfile: UserProfile = {
-          uid: authUser.uid,
-          email: authUser.email,
-          displayName: authUser.displayName,
-          photoURL: authUser.photoURL,
-          height: '',
-          weight: '',
-          shoeSize: '',
-          age: ''
-        };
-        setUser(baseProfile);
-        setLoading(false); // Make the app interactive immediately
+        const userDocRef = doc(db, 'users', authUser.uid);
+        try {
+          const userDocSnap = await getDoc(userDocRef);
+          const baseProfile: UserProfile = {
+            uid: authUser.uid,
+            email: authUser.email,
+            displayName: authUser.displayName,
+            photoURL: authUser.photoURL,
+          };
 
-        // Asynchronously try to get the full profile from Firestore.
-        // This will not block the UI.
-        const fetchFullProfile = async () => {
-          try {
-            const userDocRef = doc(db, 'users', authUser.uid);
-            const userDocSnap = await getDoc(userDocRef);
-
-            if (userDocSnap.exists()) {
-              const userDocData = userDocSnap.data() as UserDocument;
-              // Merge the full profile into the existing state
-              setUser(prevUser => ({ ...prevUser!, ...userDocData }));
-              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-            } else {
-              // If doc doesn't exist, create it with basic info.
-              const initialDoc: UserDocument = { 
-                displayName: authUser.displayName,
-                photoURL: authUser.photoURL,
-                createdAt: serverTimestamp(),
-                lastLogin: serverTimestamp()
-              };
-              await setDoc(userDocRef, initialDoc, { merge: true });
-            }
-          } catch (error) {
-            console.error("Firestore error during profile fetch:", error);
-            toast({
+          if (userDocSnap.exists()) {
+            const userDocData = userDocSnap.data() as UserDocument;
+            setUser({ ...baseProfile, ...userDocData });
+            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+          } else {
+            // Create the doc if it doesn't exist
+            const initialDoc: UserDocument = { 
+              displayName: authUser.displayName,
+              photoURL: authUser.photoURL,
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp()
+            };
+            await setDoc(userDocRef, initialDoc);
+            setUser(baseProfile);
+          }
+        } catch (error) {
+           console.error("Firestore error during profile fetch:", error);
+           toast({
               variant: 'destructive',
               title: 'Could not sync profile',
-              description: 'You appear to be offline. Some data may not be up to date.',
+              description: 'There was an issue fetching your profile data.',
             });
-          }
-        };
-        
-        fetchFullProfile();
-
+            // Set user with basic info anyway
+            setUser({
+              uid: authUser.uid,
+              email: authUser.email,
+              displayName: authUser.displayName,
+              photoURL: authUser.photoURL,
+            });
+        }
       } else {
         setUser(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [toast]);
 
-  const handleAuthSuccess = () => {
-    router.push('/');
-  }
-  
   const signInWithEmailPassword = async (email: string, password: string) => {
-      try {
-          await signInWithEmailAndPassword(auth, email, password);
-          handleAuthSuccess();
-      } catch (error: any) {
-          console.error("Error signing in with email/password: ", error);
-          toast({
-            variant: 'destructive',
-            title: 'Sign In Failed',
-            description: error.message || 'An unexpected error occurred.',
-          })
-          throw error;
-      }
-  }
-  
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/');
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Sign In Failed',
+        description: error.message || 'An unexpected error occurred.',
+      });
+      throw error;
+    }
+  };
+
   const signUpWithEmailPassword = async (email: string, password: string) => {
-      try {
-          await createUserWithEmailAndPassword(auth, email, password);
-          // After sign up, redirect to profile page to fill details
-          router.push('/settings/profile');
-      } catch (error: any) {
-          console.error("Error signing up with email/password: ", error);
-          toast({
-            variant: 'destructive',
-            title: 'Sign Up Failed',
-            description: error.message || 'An unexpected error occurred.',
-          })
-          throw error;
-      }
-  }
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      router.push('/settings/profile');
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Sign Up Failed',
+        description: error.message || 'An unexpected error occurred.',
+      });
+      throw error;
+    }
+  };
 
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
       router.push('/login');
     } catch (error) {
-      console.error("Error signing out: ", error);
-       toast({
+      toast({
         variant: 'destructive',
         title: 'Sign Out Failed',
         description: 'An unexpected error occurred while signing out.',
@@ -169,82 +153,77 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const updateUserProfile = async (data: Partial<UserProfile> & { photoDataUrl?: string }) => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
-        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update your profile.' });
-        return;
+      toast({ variant: 'destructive', title: 'Not Authenticated' });
+      return;
     }
 
-    try {
-      const { photoDataUrl, ...profileData } = data;
+    const { photoDataUrl, ...profileData } = data;
+    
+    // Only handle photo upload to isolate the issue
+    if (photoDataUrl) {
+      const storageRef = ref(storage, `avatars/${currentUser.uid}`);
+      console.log(`[DEBUG] Starting upload for user ${currentUser.uid} to path ${storageRef.fullPath}`);
       
-      const authUpdates: { displayName?: string; photoURL?: string } = {};
-      const firestoreUpdates: Partial<UserDocument> = {};
-      
-      let newPhotoURL: string | undefined = undefined;
+      try {
+        const uploadTask = uploadString(storageRef, photoDataUrl, 'data_url');
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            console.error("[DEBUG] Upload promise timed out after 15 seconds.");
+            reject(new Error('Upload timed out. Check Storage Rules and network.'));
+          }, 15000);
+        });
 
-      if (photoDataUrl) {
-        const storageRef = ref(storage, `avatars/${currentUser.uid}`);
-        console.log('[DEBUG] Attempting profile update for user:', currentUser.uid);
-        console.log('[DEBUG] Uploading to storage path:', storageRef.fullPath);
+        await Promise.race([uploadTask, timeoutPromise]);
+        console.log('[DEBUG] Upload successful.');
+        
+        const newPhotoURL = await getDownloadURL(storageRef);
+        console.log('[DEBUG] Got download URL:', newPhotoURL);
+        
+        await updateProfile(currentUser, { photoURL: newPhotoURL });
+        await setDoc(doc(db, 'users', currentUser.uid), { photoURL: newPhotoURL }, { merge: true });
+        
+        setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
+        toast({ title: 'Photo updated!' });
 
+      } catch (error: any) {
+        console.error('[DEBUG] Caught an error during upload process:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Photo Upload Failed',
+          description: error.message || 'An unknown error occurred.',
+        });
+      }
+    } else if (Object.keys(profileData).length > 0) {
+        // Handle other profile data updates
         try {
-            const uploadPromise = uploadString(storageRef, photoDataUrl, 'data_url');
-            
-            // Create a timeout promise
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Upload timed out. Check Storage Rules and network.')), 15000); // 15 second timeout
-            });
+            const authUpdates: { displayName?: string } = {};
+            if (profileData.displayName !== undefined) {
+                authUpdates.displayName = profileData.displayName;
+            }
 
-            // Race the upload against the timeout
-            await Promise.race([uploadPromise, timeoutPromise]);
+            const firestoreUpdates: Partial<UserDocument> = { ...profileData };
             
-            console.log('[DEBUG] Upload successful.');
-            newPhotoURL = await getDownloadURL(storageRef);
-            authUpdates.photoURL = newPhotoURL;
-            firestoreUpdates.photoURL = newPhotoURL;
-        } catch (uploadError: any) {
-            console.error('[DEBUG] Firebase Storage upload failed:', uploadError);
+            // Remove displayName from firestore updates if it exists to avoid redundancy
+            if ('displayName' in firestoreUpdates) {
+                delete firestoreUpdates.displayName;
+            }
+
+            await Promise.all([
+                Object.keys(authUpdates).length > 0 ? updateProfile(currentUser, authUpdates) : Promise.resolve(),
+                Object.keys(firestoreUpdates).length > 0 ? setDoc(doc(db, 'users', currentUser.uid), firestoreUpdates, { merge: true }) : Promise.resolve(),
+            ]);
+
+            setUser(prev => prev ? { ...prev, ...profileData } : null);
+            toast({ title: "Profile updated!" });
+        } catch(error: any) {
+            console.error('[DEBUG] Caught an error during profile data update:', error);
             toast({
-                variant: 'destructive',
-                title: 'Photo Upload Failed',
-                description: `Error: ${uploadError.message}. Please check Storage security rules.`,
+              variant: 'destructive',
+              title: 'Profile Update Failed',
+              description: error.message || 'An unknown error occurred.',
             });
-            throw uploadError; // Stop execution if upload fails
         }
-      }
-
-      if (profileData.displayName !== undefined) {
-        authUpdates.displayName = profileData.displayName;
-      }
-
-      const finalFirestoreUpdates: Partial<UserDocument> = { ...firestoreUpdates };
-      Object.keys(profileData).forEach(key => {
-        const K = key as keyof typeof profileData;
-        if (profileData[K] !== undefined) {
-          finalFirestoreUpdates[K as keyof UserDocument] = profileData[K] as any;
-        }
-      });
-      
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      await Promise.all([
-          Object.keys(authUpdates).length > 0 ? updateProfile(currentUser, authUpdates) : Promise.resolve(),
-          Object.keys(finalFirestoreUpdates).length > 0 ? setDoc(userDocRef, finalFirestoreUpdates, { merge: true }) : Promise.resolve(),
-      ]);
-      
-      setUser(prevUser => {
-        if (!prevUser) return null;
-        const updatedUser = { ...prevUser, ...finalFirestoreUpdates, ...authUpdates };
-        return { ...updatedUser };
-      });
-
-      toast({
-        title: "Profile updated!",
-        description: "Your changes have been saved successfully.",
-      });
-
-    } catch (error: any) {
-      // Errors are now handled within the try/catch block for the upload.
-      // This outer catch is a safety net.
-      console.error("An unexpected error occurred during profile update: ", error);
     }
   };
   
