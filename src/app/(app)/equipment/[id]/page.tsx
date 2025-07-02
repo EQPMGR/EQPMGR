@@ -1,7 +1,8 @@
 
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import {
   Bike,
   ChevronLeft,
@@ -74,13 +75,15 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
 }
 
 
-export default function EquipmentDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const initialEquipment = equipmentData.find((e) => e.id === params.id);
-  const [equipment, setEquipment] = useState<Equipment | undefined>(initialEquipment);
+export default function EquipmentDetailPage() {
+  const params = useParams<{ id: string }>();
+  const [equipment, setEquipment] = useState<Equipment | undefined>();
+
+  useEffect(() => {
+    const foundEquipment = equipmentData.find((e) => e.id === params.id);
+    setEquipment(foundEquipment);
+  }, [params.id]);
+
 
   if (!equipment) {
     return (
@@ -247,7 +250,7 @@ export default function EquipmentDetailPage({
                     <CardDescription>
                         Register your equipment against theft and get it insured.
                     </CardDescription>
-                </CardHeader>
+                </Header>
                 <CardContent className="grid gap-2">
                     <Button asChild>
                         <Link href="https://project529.com/garage" target="_blank" rel="noopener noreferrer">
