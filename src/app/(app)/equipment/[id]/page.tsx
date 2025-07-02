@@ -250,7 +250,7 @@ export default function EquipmentDetailPage() {
                     <CardDescription>
                         Register your equipment against theft and get it insured.
                     </CardDescription>
-                </Header>
+                </CardHeader>
                 <CardContent className="grid gap-2">
                     <Button asChild>
                         <Link href="https://project529.com/garage" target="_blank" rel="noopener noreferrer">
