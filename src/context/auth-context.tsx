@@ -7,11 +7,14 @@ import {
   onAuthStateChanged, 
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  updateProfile
 } from 'firebase/auth';
+import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase';
+import { auth, storage } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +22,7 @@ interface AuthContextType {
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateUserProfile: (data: { displayName?: string; photoDataUrl?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +31,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -53,8 +58,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   
   const signUpWithEmailPassword = async (email: string, password: string) => {
       try {
-          await createUserWithEmailAndPassword(auth, email, password);
-          router.push('/settings/profile');
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          if (userCredential.user.metadata.creationTime === userCredential.user.metadata.lastSignInTime) {
+            router.push('/settings/profile');
+          } else {
+            router.push('/');
+          }
       } catch (error) {
           console.error("Error signing up with email/password: ", error);
           throw error;
@@ -67,6 +76,38 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
+    }
+  };
+
+  const updateUserProfile = async (data: { displayName?: string; photoDataUrl?: string }) => {
+    if (!auth.currentUser) return;
+    try {
+      let photoURL = auth.currentUser.photoURL;
+      if (data.photoDataUrl) {
+        const storageRef = ref(storage, `avatars/${auth.currentUser.uid}`);
+        await uploadString(storageRef, data.photoDataUrl, 'data_url');
+        photoURL = await getDownloadURL(storageRef);
+      }
+
+      await updateProfile(auth.currentUser, { 
+        displayName: data.displayName !== undefined ? data.displayName : auth.currentUser.displayName,
+        photoURL: photoURL
+      });
+      
+      setUser(Object.assign({}, auth.currentUser));
+
+      toast({
+        title: "Profile updated!",
+        description: "Your changes have been saved successfully.",
+      });
+
+    } catch (error) {
+      console.error("Error updating profile: ", error);
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: 'Could not update your profile.',
+      });
     }
   };
 
@@ -84,7 +125,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       loading, 
       signInWithEmailPassword,
       signUpWithEmailPassword,
-      signOut 
+      signOut,
+      updateUserProfile
     }}>
       {children}
     </AuthContext.Provider>

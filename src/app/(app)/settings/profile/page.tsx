@@ -4,6 +4,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { Camera } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -31,6 +32,10 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+import { useAuth } from "@/hooks/use-auth"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { CameraCapture } from "@/components/camera-capture"
+import React from "react"
 
 const profileFormSchema = z.object({
   name: z
@@ -49,14 +54,6 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
 
-const defaultProfileValues: Partial<ProfileFormValues> = {
-  name: "Alex Doe",
-  height: 180,
-  weight: 75,
-  shoeSize: 10.5,
-  age: 32,
-}
-
 const preferencesFormSchema = z.object({
   measurementSystem: z.enum(['metric', 'imperial']),
   shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
@@ -73,12 +70,32 @@ const defaultPreferencesValues: PreferencesFormValues = {
 
 export default function ProfilePage() {
   const { toast } = useToast()
+  const { user, updateUserProfile } = useAuth();
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues: defaultProfileValues,
+    defaultValues: {
+      name: '',
+      height: 180,
+      weight: 75,
+      shoeSize: 10.5,
+      age: 32,
+    },
     mode: "onChange",
   })
+
+  React.useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        name: user.displayName || '',
+        // In a real app, these might come from a user profile in Firestore
+        height: 180,
+        weight: 75,
+        shoeSize: 10.5,
+        age: 32,
+      });
+    }
+  }, [user, profileForm]);
 
   const preferencesForm = useForm<PreferencesFormValues>({
     resolver: zodResolver(preferencesFormSchema),
@@ -86,11 +103,8 @@ export default function ProfilePage() {
     mode: "onChange",
   })
 
-  function onProfileSubmit(data: ProfileFormValues) {
-    toast({
-      title: "Profile updated!",
-      description: "Your profile information has been saved.",
-    })
+  async function onProfileSubmit(data: ProfileFormValues) {
+    await updateUserProfile({ displayName: data.name });
   }
 
   function onPreferencesSubmit(data: PreferencesFormValues) {
@@ -99,6 +113,12 @@ export default function ProfilePage() {
       description: "Your preferences have been saved.",
     })
   }
+
+  const handlePhotoUpdate = (photoDataUrl: string) => {
+    updateUserProfile({ photoDataUrl });
+  };
+  
+  const userInitial = user?.displayName ? user.displayName.charAt(0).toUpperCase() : (user?.email ? user.email.charAt(0).toUpperCase() : 'U');
 
   return (
     <>
@@ -110,6 +130,18 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-col items-center space-y-4 mb-8">
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={user?.photoURL || ''} alt="User avatar" />
+              <AvatarFallback>{userInitial}</AvatarFallback>
+            </Avatar>
+            <CameraCapture onCapture={handlePhotoUpdate}>
+              <Button type="button" variant="outline">
+                <Camera className="mr-2" />
+                Change Photo
+              </Button>
+            </CameraCapture>
+          </div>
           <Form {...profileForm}>
             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-8">
               <FormField
