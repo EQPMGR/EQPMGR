@@ -15,6 +15,41 @@ interface CameraCaptureProps {
   children: React.ReactNode;
 }
 
+const resizeImage = (dataUrl: string, maxWidth: number, maxHeight: number): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return reject(new Error('Could not get canvas context'));
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      // Use JPEG for better compression for photos
+      resolve(canvas.toDataURL('image/jpeg', 0.9)); 
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+};
+
+
 export function CameraCapture({ onCapture, children }: CameraCaptureProps) {
   const [open, setOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -27,9 +62,7 @@ export function CameraCapture({ onCapture, children }: CameraCaptureProps) {
   useEffect(() => {
     // Cleanup function to stop the camera stream when the component unmounts
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+      stopCameraStream();
     };
   }, []);
 
@@ -72,7 +105,7 @@ export function CameraCapture({ onCapture, children }: CameraCaptureProps) {
     }
   };
 
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -82,8 +115,18 @@ export function CameraCapture({ onCapture, children }: CameraCaptureProps) {
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/png');
-        setCapturedImage(dataUrl);
-        stopCameraStream();
+        try {
+            const resizedDataUrl = await resizeImage(dataUrl, 400, 400);
+            setCapturedImage(resizedDataUrl);
+            stopCameraStream();
+        } catch (error) {
+            console.error("Failed to resize image", error);
+            toast({
+                variant: 'destructive',
+                title: 'Image Processing Failed',
+                description: 'Could not process the captured image. Please try again.',
+            });
+        }
       }
     }
   };

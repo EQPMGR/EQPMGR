@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
@@ -83,28 +84,34 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     if (!currentUser) return;
 
     try {
-      let photoURL = currentUser.photoURL;
+      let newDisplayName = data.displayName !== undefined ? data.displayName : currentUser.displayName;
+      let newPhotoURL = currentUser.photoURL;
       
       if (data.photoDataUrl) {
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
-        await uploadString(storageRef, data.photoDataUrl, 'data_url');
+        await uploadString(storageRef, data.photoDataUrl, 'data_url', {
+            contentType: 'image/jpeg'
+        });
         const downloadUrl = await getDownloadURL(storageRef);
         // Add a cache-busting query parameter to defeat browser caching
-        photoURL = `${downloadUrl}?v=${Date.now()}`;
+        newPhotoURL = `${downloadUrl}?v=${Date.now()}`;
       }
 
-      await updateProfile(currentUser, { 
-        displayName: data.displayName !== undefined ? data.displayName : currentUser.displayName,
-        photoURL: photoURL
+      // Update Firebase in the background
+      updateProfile(currentUser, { 
+        displayName: newDisplayName,
+        photoURL: newPhotoURL
       });
       
-      // The user object on the client is not automatically updated. We need to force a reload.
-      await currentUser.reload();
-
-      // Now that the currentUser is reloaded, we create a new object to trigger React's state update.
-      if (auth.currentUser) {
-        setUser({ ...auth.currentUser });
-      }
+      // Optimistically update the local state immediately
+      const updatedUser = {
+          ...currentUser,
+          displayName: newDisplayName,
+          photoURL: newPhotoURL,
+      };
+      
+      // Cast to User to satisfy TypeScript
+      setUser(updatedUser as User);
 
       toast({
         title: "Profile updated!",
