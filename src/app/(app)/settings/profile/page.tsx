@@ -166,7 +166,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Height (cm)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="180" {...field} />
+                        <Input type="number" placeholder="180" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Weight (kg)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="75" {...field} />
+                        <Input type="number" placeholder="75" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -194,7 +194,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Shoe Size (US)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="10.5" {...field} />
+                        <Input type="number" placeholder="10.5" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -207,7 +207,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Age</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="32" {...field} />
+                        <Input type="number" placeholder="32" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
