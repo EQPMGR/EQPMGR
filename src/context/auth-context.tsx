@@ -94,6 +94,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         photoURL: photoURL
       });
       
+      // The user object is not updated automatically. We need to reload it.
+      await auth.currentUser.reload();
+      // Then create a new object to trigger a React state update.
       setUser(Object.assign({}, auth.currentUser));
 
       toast({
