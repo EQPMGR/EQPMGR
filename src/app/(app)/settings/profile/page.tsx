@@ -1,3 +1,4 @@
+
 'use client'
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -45,10 +46,10 @@ const profileFormSchema = z.object({
     .max(30, {
       message: "Name must not be longer than 30 characters.",
     }),
-  height: z.coerce.number().positive().optional(),
-  weight: z.coerce.number().positive().optional(),
-  shoeSize: z.coerce.number().positive().optional(),
-  age: z.coerce.number().positive().int().optional(),
+  height: z.coerce.number().positive().optional().or(z.literal('')),
+  weight: z.coerce.number().positive().optional().or(z.literal('')),
+  shoeSize: z.coerce.number().positive().optional().or(z.literal('')),
+  age: z.coerce.number().positive().int().optional().or(z.literal('')),
 })
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
@@ -76,6 +77,10 @@ export default function ProfilePage() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: '',
+      height: '',
+      weight: '',
+      shoeSize: '',
+      age: '',
     },
     mode: "onChange",
   })
@@ -84,10 +89,10 @@ export default function ProfilePage() {
     if (user) {
       profileForm.reset({
         name: user.displayName || '',
-        height: user.height || undefined,
-        weight: user.weight || undefined,
-        shoeSize: user.shoeSize || undefined,
-        age: user.age || undefined,
+        height: user.height || '',
+        weight: user.weight || '',
+        shoeSize: user.shoeSize || '',
+        age: user.age || '',
       });
     }
   }, [user, profileForm]);
@@ -101,13 +106,15 @@ export default function ProfilePage() {
   async function onProfileSubmit(data: ProfileFormValues) {
     setIsSubmitting(true);
     try {
-      await updateUserProfile({
+      // Convert empty strings to undefined so they are not saved as 0
+      const cleanData = {
           displayName: data.name,
-          height: data.height,
-          weight: data.weight,
-          shoeSize: data.shoeSize,
-          age: data.age,
-      });
+          height: data.height ? Number(data.height) : undefined,
+          weight: data.weight ? Number(data.weight) : undefined,
+          shoeSize: data.shoeSize ? Number(data.shoeSize) : undefined,
+          age: data.age ? Number(data.age) : undefined,
+      };
+      await updateUserProfile(cleanData);
     } catch (error) {
         // Error is already handled by the auth context's toast
     }
@@ -148,7 +155,7 @@ export default function ProfilePage() {
         <CardContent>
           <div className="flex flex-col items-center space-y-4 mb-8">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={user?.photoURL || ''} alt="User avatar" />
+              <AvatarImage src={user?.photoURL || ''} alt="User avatar" key={user?.photoURL} />
               <AvatarFallback>{userInitial}</AvatarFallback>
             </Avatar>
             <CameraCapture onCapture={handlePhotoUpdate}>

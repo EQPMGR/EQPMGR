@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
@@ -10,7 +11,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { auth, storage, db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,6 +28,7 @@ export interface UserProfile {
   age?: number;
 }
 
+// This will be the shape of our document in Firestore
 interface UserDocument {
     height?: number;
     weight?: number;
@@ -73,7 +75,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             if (userDocSnap.exists()) {
               const userDocData = userDocSnap.data() as UserDocument;
               setUser({ ...baseProfile, ...userDocData });
-              await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
             } else {
               // New user, create their document in Firestore.
               const initialDoc: UserDocument = { 
@@ -87,20 +89,23 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             }
         } catch (error) {
             console.error("Firestore error during auth state change:", error);
-            // Fallback to authUser data if Firestore fails
+            // Fallback to authUser data if Firestore fails, this prevents login issues.
             setUser({
               uid: authUser.uid,
               email: authUser.email,
               displayName: authUser.displayName,
               photoURL: authUser.photoURL,
             });
-        } finally {
-            setLoading(false);
+             toast({
+              variant: 'destructive',
+              title: 'Could not load profile',
+              description: 'There was an issue fetching your profile data. Some information may be missing.',
+            });
         }
       } else {
         setUser(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -127,13 +132,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   
   const signUpWithEmailPassword = async (email: string, password: string) => {
       try {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          // This logic sends new users to the profile page first
-          if (userCredential.user.metadata.creationTime === userCredential.user.metadata.lastSignInTime) {
-            router.push('/settings/profile');
-          } else {
-            router.push('/');
-          }
+          await createUserWithEmailAndPassword(auth, email, password);
+          // After sign up, redirect to profile page to fill details
+          router.push('/settings/profile');
       } catch (error: any) {
           console.error("Error signing up with email/password: ", error);
           toast({
@@ -151,6 +152,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
+       toast({
+        variant: 'destructive',
+        title: 'Sign Out Failed',
+        description: 'An unexpected error occurred while signing out.',
+      });
     }
   };
 
@@ -165,29 +171,28 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const { photoDataUrl, ...profileData } = data;
       
       const authUpdates: { displayName?: string; photoURL?: string } = {};
-      // Filter out undefined values from profileData before creating firestoreUpdates
-      const firestoreUpdates = Object.entries(profileData).reduce((acc, [key, value]) => {
-        if (value !== undefined) {
-          acc[key as keyof UserDocument] = value;
-        }
-        return acc;
-      }, {} as Partial<UserDocument>);
+      const firestoreUpdates: Partial<UserDocument> = {};
       
       let newPhotoURL: string | undefined = undefined;
 
       // 1. Handle Photo Upload
       if (photoDataUrl) {
-        const storageRef = ref(storage, `avatars/${currentUser.uid}`);
+        const storageRef = ref(storage, `avatars/${currentUser.uid}-${Date.now()}`);
         await uploadString(storageRef, photoDataUrl, 'data_url', { contentType: 'image/jpeg' });
         newPhotoURL = await getDownloadURL(storageRef);
         authUpdates.photoURL = newPhotoURL;
         firestoreUpdates.photoURL = newPhotoURL;
       }
 
-      // 2. Handle Display Name
-      if (profileData.displayName) {
+      // 2. Handle other fields, carefully checking for undefined
+      if (profileData.displayName !== undefined) {
         authUpdates.displayName = profileData.displayName;
+        firestoreUpdates.displayName = profileData.displayName;
       }
+      if (profileData.height !== undefined) firestoreUpdates.height = profileData.height;
+      if (profileData.weight !== undefined) firestoreUpdates.weight = profileData.weight;
+      if (profileData.shoeSize !== undefined) firestoreUpdates.shoeSize = profileData.shoeSize;
+      if (profileData.age !== undefined) firestoreUpdates.age = profileData.age;
       
       // 3. Perform updates to Auth and Firestore
       const userDocRef = doc(db, 'users', currentUser.uid);
@@ -196,7 +201,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           Object.keys(firestoreUpdates).length > 0 ? setDoc(userDocRef, firestoreUpdates, { merge: true }) : Promise.resolve(),
       ]);
       
-      // 4. Optimistically update local state
+      // 4. Update local state
       setUser(prevUser => {
         if (!prevUser) return null;
         // Create a new object to ensure React re-renders
@@ -220,7 +225,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         title: 'Update failed',
         description: error.message || 'Could not update your profile.',
       });
-      // re-throw to be caught by component
       throw error;
     }
   };
