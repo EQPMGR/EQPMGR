@@ -173,8 +173,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         return;
     }
 
-    console.log('[DEBUG] Attempting profile update for user:', currentUser.uid);
-
     try {
       const { photoDataUrl, ...profileData } = data;
       
@@ -185,10 +183,20 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       if (photoDataUrl) {
         const storageRef = ref(storage, `avatars/${currentUser.uid}`);
+        console.log('[DEBUG] Attempting profile update for user:', currentUser.uid);
         console.log('[DEBUG] Uploading to storage path:', storageRef.fullPath);
 
         try {
-            await uploadString(storageRef, photoDataUrl, 'data_url');
+            const uploadPromise = uploadString(storageRef, photoDataUrl, 'data_url');
+            
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Upload timed out. Check Storage Rules and network.')), 15000); // 15 second timeout
+            });
+
+            // Race the upload against the timeout
+            await Promise.race([uploadPromise, timeoutPromise]);
+            
             console.log('[DEBUG] Upload successful.');
             newPhotoURL = await getDownloadURL(storageRef);
             authUpdates.photoURL = newPhotoURL;
@@ -198,7 +206,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             toast({
                 variant: 'destructive',
                 title: 'Photo Upload Failed',
-                description: `Error: ${uploadError.code}. Check console & security rules.`,
+                description: `Error: ${uploadError.message}. Please check Storage security rules.`,
             });
             throw uploadError; // Stop execution if upload fails
         }
@@ -234,17 +242,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       });
 
     } catch (error: any) {
-      console.error("Error during the profile update process: ", error);
-      // The specific toast is handled in the inner try-catch for uploads.
-      // This catch block will handle other potential errors and prevent app crashes.
-      if (!error.code?.startsWith('storage/')) {
-         toast({
-            variant: 'destructive',
-            title: 'Update Failed',
-            description: 'An unexpected error occurred during profile update.',
-        });
-      }
-      throw error;
+      // Errors are now handled within the try/catch block for the upload.
+      // This outer catch is a safety net.
+      console.error("An unexpected error occurred during profile update: ", error);
     }
   };
   
