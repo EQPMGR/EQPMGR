@@ -58,49 +58,60 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      setLoading(true);
       if (authUser) {
-        // Start with basic user info from Firebase Auth
+        // Set basic user profile immediately. App is now usable.
         const baseProfile: UserProfile = {
           uid: authUser.uid,
           email: authUser.email,
           displayName: authUser.displayName,
           photoURL: authUser.photoURL,
+          height: '',
+          weight: '',
+          shoeSize: '',
+          age: ''
         };
+        setUser(baseProfile);
 
-        try {
-          // Try to get the extended profile from Firestore
-          const userDocRef = doc(db, 'users', authUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
+        // Asynchronously try to get the full profile and update.
+        // This won't block the user from being logged in.
+        const fetchFullProfile = async () => {
+          try {
+            const userDocRef = doc(db, 'users', authUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
 
-          if (userDocSnap.exists()) {
-            const userDocData = userDocSnap.data() as UserDocument;
-            setUser({ ...baseProfile, ...userDocData });
-            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-          } else {
-            const initialDoc: UserDocument = { 
-              displayName: authUser.displayName,
-              photoURL: authUser.photoURL,
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp()
-            };
-            await setDoc(userDocRef, initialDoc);
-            setUser(baseProfile);
+            if (userDocSnap.exists()) {
+              const userDocData = userDocSnap.data() as UserDocument;
+              // Merge the full profile into the existing state
+              setUser(prevUser => ({ ...prevUser!, ...userDocData }));
+              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+            } else {
+              // If doc doesn't exist, create it. The user state is already good.
+              const initialDoc: UserDocument = { 
+                displayName: authUser.displayName,
+                photoURL: authUser.photoURL,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp()
+              };
+              await setDoc(userDocRef, initialDoc, { merge: true });
+            }
+          } catch (error) {
+            console.error("Firestore error during profile fetch:", error);
+            toast({
+              variant: 'destructive',
+              title: 'Could not sync profile',
+              description: 'You appear to be offline. Some data may not be up to date.',
+            });
+          } finally {
+            setLoading(false);
           }
-        } catch (error) {
-          // If Firestore fails (e.g., offline), log in with basic info and show a toast.
-          console.error("Firestore error during auth state change:", error);
-          setUser(baseProfile); // Fallback to basic authUser data
-          toast({
-            variant: 'destructive',
-            title: 'Could not sync profile',
-            description: 'You appear to be offline. Some profile data may not be up to date.',
-          });
-        }
+        };
+        fetchFullProfile();
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
