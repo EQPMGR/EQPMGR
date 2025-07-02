@@ -260,7 +260,7 @@ export default function ProfilePage() {
                 name="measurementSystem"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Height & Weight</FormLabel>
+                    <FormLabel>Height &amp; Weight</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -286,7 +286,7 @@ export default function ProfilePage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a shoe size system" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="us">US</SelectItem>
@@ -308,7 +308,7 @@ export default function ProfilePage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a distance unit" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="km">Kilometers (km)</SelectItem>
