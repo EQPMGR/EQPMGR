@@ -59,7 +59,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      setLoading(true);
       if (authUser) {
         // Set basic user profile immediately. App is now usable.
         const baseProfile: UserProfile = {
@@ -73,9 +72,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           age: ''
         };
         setUser(baseProfile);
+        setLoading(false); // Make the app interactive immediately
 
-        // Asynchronously try to get the full profile and update.
-        // This won't block the user from being logged in.
+        // Asynchronously try to get the full profile from Firestore.
+        // This will not block the UI.
         const fetchFullProfile = async () => {
           try {
             const userDocRef = doc(db, 'users', authUser.uid);
@@ -87,7 +87,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
               setUser(prevUser => ({ ...prevUser!, ...userDocData }));
               await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
             } else {
-              // If doc doesn't exist, create it. The user state is already good.
+              // If doc doesn't exist, create it with basic info.
               const initialDoc: UserDocument = { 
                 displayName: authUser.displayName,
                 photoURL: authUser.photoURL,
@@ -103,11 +103,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
               title: 'Could not sync profile',
               description: 'You appear to be offline. Some data may not be up to date.',
             });
-          } finally {
-            setLoading(false);
           }
         };
+        
         fetchFullProfile();
+
       } else {
         setUser(null);
         setLoading(false);
