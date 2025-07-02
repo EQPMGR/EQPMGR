@@ -106,13 +106,12 @@ export default function ProfilePage() {
   async function onProfileSubmit(data: ProfileFormValues) {
     setIsSubmitting(true);
     try {
-      // Convert empty strings to undefined so they are not saved as 0
       const cleanData = {
           displayName: data.name,
-          height: data.height ? Number(data.height) : undefined,
-          weight: data.weight ? Number(data.weight) : undefined,
-          shoeSize: data.shoeSize ? Number(data.shoeSize) : undefined,
-          age: data.age ? Number(data.age) : undefined,
+          height: data.height || undefined,
+          weight: data.weight || undefined,
+          shoeSize: data.shoeSize || undefined,
+          age: data.age || undefined,
       };
       await updateUserProfile(cleanData);
     } catch (error) {
@@ -135,7 +134,7 @@ export default function ProfilePage() {
     try {
         await updateUserProfile({ photoDataUrl });
     } catch (error) {
-        // Error is already handled by the auth context's toast
+        // Error is handled by the auth context's toast
     } finally {
         setIsSubmitting(false);
     }
@@ -188,7 +187,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Height (cm)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="180" {...field} value={field.value ?? ''} />
+                        <Input type="number" placeholder="180" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -201,7 +200,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Weight (kg)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="75" {...field} value={field.value ?? ''} />
+                        <Input type="number" placeholder="75" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -216,7 +215,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Shoe Size (US)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="10.5" {...field} value={field.value ?? ''} />
+                        <Input type="number" placeholder="10.5" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -229,7 +228,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Age</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="32" {...field} value={field.value ?? ''} />
+                        <Input type="number" placeholder="32" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

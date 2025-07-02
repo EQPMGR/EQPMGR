@@ -22,10 +22,10 @@ export interface UserProfile {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  height?: number;
-  weight?: number;
-  shoeSize?: number;
-  age?: number;
+  height?: number | '';
+  weight?: number | '';
+  shoeSize?: number | '';
+  age?: number | '';
 }
 
 // This will be the shape of our document in Firestore
@@ -59,48 +59,43 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-      setLoading(true);
       if (authUser) {
+        // Start with basic user info from Firebase Auth
+        const baseProfile: UserProfile = {
+          uid: authUser.uid,
+          email: authUser.email,
+          displayName: authUser.displayName,
+          photoURL: authUser.photoURL,
+        };
+
         try {
-            const userDocRef = doc(db, 'users', authUser.uid);
-            const userDocSnap = await getDoc(userDocRef);
+          // Try to get the extended profile from Firestore
+          const userDocRef = doc(db, 'users', authUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-            const baseProfile: UserProfile = {
-              uid: authUser.uid,
-              email: authUser.email,
+          if (userDocSnap.exists()) {
+            const userDocData = userDocSnap.data() as UserDocument;
+            setUser({ ...baseProfile, ...userDocData });
+            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+          } else {
+            const initialDoc: UserDocument = { 
               displayName: authUser.displayName,
               photoURL: authUser.photoURL,
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp()
             };
-
-            if (userDocSnap.exists()) {
-              const userDocData = userDocSnap.data() as UserDocument;
-              setUser({ ...baseProfile, ...userDocData });
-              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-            } else {
-              // New user, create their document in Firestore.
-              const initialDoc: UserDocument = { 
-                displayName: authUser.displayName,
-                photoURL: authUser.photoURL,
-                createdAt: serverTimestamp(),
-                lastLogin: serverTimestamp()
-              };
-              await setDoc(userDocRef, initialDoc);
-              setUser(baseProfile);
-            }
+            await setDoc(userDocRef, initialDoc);
+            setUser(baseProfile);
+          }
         } catch (error) {
-            console.error("Firestore error during auth state change:", error);
-            // Fallback to authUser data if Firestore fails, this prevents login issues.
-            setUser({
-              uid: authUser.uid,
-              email: authUser.email,
-              displayName: authUser.displayName,
-              photoURL: authUser.photoURL,
-            });
-             toast({
-              variant: 'destructive',
-              title: 'Could not load profile',
-              description: 'There was an issue fetching your profile data. Some information may be missing.',
-            });
+          // If Firestore fails (e.g., offline), log in with basic info and show a toast.
+          console.error("Firestore error during auth state change:", error);
+          setUser(baseProfile); // Fallback to basic authUser data
+          toast({
+            variant: 'destructive',
+            title: 'Could not sync profile',
+            description: 'You appear to be offline. Some profile data may not be up to date.',
+          });
         }
       } else {
         setUser(null);
@@ -175,7 +170,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       
       let newPhotoURL: string | undefined = undefined;
 
-      // 1. Handle Photo Upload
       if (photoDataUrl) {
         const storageRef = ref(storage, `avatars/${currentUser.uid}-${Date.now()}`);
         await uploadString(storageRef, photoDataUrl, 'data_url', { contentType: 'image/jpeg' });
@@ -184,34 +178,29 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         firestoreUpdates.photoURL = newPhotoURL;
       }
 
-      // 2. Handle other fields, carefully checking for undefined
       if (profileData.displayName !== undefined) {
         authUpdates.displayName = profileData.displayName;
-        firestoreUpdates.displayName = profileData.displayName;
       }
-      if (profileData.height !== undefined) firestoreUpdates.height = profileData.height;
-      if (profileData.weight !== undefined) firestoreUpdates.weight = profileData.weight;
-      if (profileData.shoeSize !== undefined) firestoreUpdates.shoeSize = profileData.shoeSize;
-      if (profileData.age !== undefined) firestoreUpdates.age = profileData.age;
+
+      const finalFirestoreUpdates: Partial<UserDocument> = { ...firestoreUpdates };
+      // Only add fields to Firestore update if they are not undefined
+      Object.keys(profileData).forEach(key => {
+        const K = key as keyof typeof profileData;
+        if (profileData[K] !== undefined) {
+          finalFirestoreUpdates[K as keyof UserDocument] = profileData[K] as any;
+        }
+      });
       
-      // 3. Perform updates to Auth and Firestore
       const userDocRef = doc(db, 'users', currentUser.uid);
       await Promise.all([
           Object.keys(authUpdates).length > 0 ? updateProfile(currentUser, authUpdates) : Promise.resolve(),
-          Object.keys(firestoreUpdates).length > 0 ? setDoc(userDocRef, firestoreUpdates, { merge: true }) : Promise.resolve(),
+          Object.keys(finalFirestoreUpdates).length > 0 ? setDoc(userDocRef, finalFirestoreUpdates, { merge: true }) : Promise.resolve(),
       ]);
       
-      // 4. Update local state
       setUser(prevUser => {
         if (!prevUser) return null;
-        const updatedUser = {
-            ...prevUser,
-            ...firestoreUpdates,
-            ...(newPhotoURL !== undefined && { photoURL: newPhotoURL }),
-            ...(authUpdates.displayName !== undefined && { displayName: authUpdates.displayName }),
-        };
-        // This creates a new object reference to guarantee a re-render
-        return {...updatedUser};
+        const updatedUser = { ...prevUser, ...finalFirestoreUpdates, ...authUpdates };
+        return { ...updatedUser };
       });
 
       toast({
