@@ -5,12 +5,9 @@ import { createContext, useState, useEffect, ReactNode, FC } from 'react';
 import type { User } from 'firebase/auth';
 import { 
   onAuthStateChanged, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  getAdditionalUserInfo
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
@@ -19,7 +16,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -44,22 +40,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const handleAuthSuccess = () => {
     router.push('/');
   }
-
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const additionalUserInfo = getAdditionalUserInfo(result);
-      if (additionalUserInfo?.isNewUser) {
-        router.push('/settings/profile');
-      } else {
-        handleAuthSuccess();
-      }
-    } catch (error) {
-      console.error("Error signing in with Google: ", error);
-      throw error;
-    }
-  };
   
   const signInWithEmailPassword = async (email: string, password: string) => {
       try {
@@ -102,7 +82,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     <AuthContext.Provider value={{ 
       user, 
       loading, 
-      signInWithGoogle, 
       signInWithEmailPassword,
       signUpWithEmailPassword,
       signOut 

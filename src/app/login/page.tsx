@@ -31,7 +31,6 @@ import { Logo } from "@/components/logo";
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { GoogleSignInButton } from '@/components/google-sign-in-button';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -47,7 +46,7 @@ type LoginFormValues = z.infer<typeof loginSchema>
 type SignUpFormValues = z.infer<typeof signupSchema>
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, signInWithEmailPassword, signUpWithEmailPassword, loading } = useAuth();
+  const { user, signInWithEmailPassword, signUpWithEmailPassword, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast()
 
@@ -105,22 +104,6 @@ export default function LoginPage() {
     }
   }
   
-  async function handleGoogleSignIn() {
-    setIsSubmitting(true);
-    try {
-        await signInWithGoogle();
-    } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Google Sign In Failed',
-            description: error.message || 'An unexpected error occurred. Please check your Firebase project configuration.',
-        });
-    } finally {
-        setIsSubmitting(false);
-    }
-  }
-
-
   if (loading || user) {
     return (
         <div className="flex items-center justify-center min-h-screen">
@@ -133,7 +116,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="w-full max-w-md mx-auto p-4">
         <div className="flex justify-center mb-4">
-           <Logo className="h-[180px] w-[180px]" />
+           <Logo className="h-[270px] w-[270px]" />
         </div>
         <Tabs defaultValue="sign-in" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -176,20 +159,6 @@ export default function LoginPage() {
                       </Button>
                     </form>
                   </Form>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with
-                    </span>
-                  </div>
-                </div>
-                <div className="flex justify-center">
-                  <GoogleSignInButton onClick={handleGoogleSignIn} disabled={isSubmitting} />
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -229,19 +198,6 @@ export default function LoginPage() {
                       </Button>
                     </form>
                   </Form>
-                   <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
-                        Or sign up with
-                        </span>
-                    </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <GoogleSignInButton onClick={handleGoogleSignIn} disabled={isSubmitting} />
-                    </div>
                   <div className="mt-4 text-center text-sm">
                     By clicking continue, you agree to our{' '}
                     <span className="underline">Terms of Service</span> and{' '}
