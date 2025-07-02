@@ -182,7 +182,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       let newPhotoURL: string | undefined = undefined;
 
       if (photoDataUrl) {
-        const storageRef = ref(storage, `avatars/${currentUser.uid}-${Date.now()}`);
+        // Simplified filename to just be the user's UID. Easier to debug with security rules.
+        const storageRef = ref(storage, `avatars/${currentUser.uid}`);
         await uploadString(storageRef, photoDataUrl, 'data_url', { contentType: 'image/jpeg' });
         newPhotoURL = await getDownloadURL(storageRef);
         authUpdates.photoURL = newPhotoURL;
@@ -221,11 +222,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     } catch (error: any) {
       console.error("Error updating profile: ", error);
-      console.error("Firebase error code:", error.code);
       toast({
         variant: 'destructive',
         title: 'Update failed',
-        description: error.code ? `Error: ${error.code}` : 'Could not update your profile.',
+        description: `Could not update your profile. Firebase error: ${error.code}`,
       });
       throw error;
     }
