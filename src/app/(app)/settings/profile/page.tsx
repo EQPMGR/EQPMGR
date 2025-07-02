@@ -286,7 +286,7 @@ export default function ProfilePage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a shoe size system" />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="us">US</SelectItem>
@@ -308,7 +308,7 @@ export default function ProfilePage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a distance unit" />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="km">Kilometers (km)</SelectItem>
