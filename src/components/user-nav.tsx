@@ -26,15 +26,15 @@ export function UserNav() {
     return null;
   }
 
-  const userInitial = user.displayName ? user.displayName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U');
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user.photoURL || `https://placehold.co/40x40.png`} alt={user.displayName || "user avatar"} data-ai-hint="user avatar" key={user.photoURL} />
-            <AvatarFallback>{userInitial}</AvatarFallback>
+            <AvatarImage src={user.photoURL || ''} alt={user.displayName || "user avatar"} key={user.photoURL} />
+            <AvatarFallback>
+              <User className="h-5 w-5" />
+            </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

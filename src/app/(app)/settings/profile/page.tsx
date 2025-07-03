@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { Camera, Loader2 } from "lucide-react"
+import { Camera, Loader2, User } from "lucide-react"
 import React from "react"
 
 import { Button } from "@/components/ui/button"
@@ -138,8 +138,6 @@ export default function ProfilePage() {
     }
   };
   
-  const userInitial = user?.displayName ? user.displayName.charAt(0).toUpperCase() : (user?.email ? user.email.charAt(0).toUpperCase() : 'U');
-
   return (
     <>
       <Card>
@@ -153,7 +151,9 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center space-y-4 mb-8">
             <Avatar className="h-24 w-24" key={user?.photoURL}>
               <AvatarImage src={user?.photoURL || ''} alt="User avatar" />
-              <AvatarFallback>{userInitial}</AvatarFallback>
+              <AvatarFallback>
+                <User className="h-12 w-12" />
+              </AvatarFallback>
             </Avatar>
             <CameraCapture onCapture={handlePhotoUpdate}>
               <Button type="button" variant="outline" disabled={isUploadingPhoto || isSubmittingProfile}>
