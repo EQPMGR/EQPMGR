@@ -11,39 +11,39 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, updateDoc, DocumentData } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { auth, storage, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
-// UserProfile is what the components will see and use.
+// UserProfile is what the components will see and use. It must always be complete.
 export interface UserProfile {
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  height?: number | '';
-  weight?: number | '';
-  shoeSize?: number | '';
-  age?: number | '';
-  measurementSystem?: 'metric' | 'imperial';
-  shoeSizeSystem?: 'us' | 'uk' | 'eu';
-  distanceUnit?: 'km' | 'miles';
+  height: number | ''; // can be empty string if not set
+  weight: number | ''; // can be empty string if not set
+  shoeSize: number | ''; // can be empty string if not set
+  age: number | ''; // can be empty string if not set
+  measurementSystem: 'metric' | 'imperial';
+  shoeSizeSystem: 'us' | 'uk' | 'eu';
+  distanceUnit: 'km' | 'miles';
 }
 
-// UserDocument is the shape of the data in Firestore.
+// UserDocument represents the shape of the data that might be in Firestore. Fields can be missing.
 interface UserDocument {
+    displayName?: string;
+    photoURL?: string;
     height?: number;
     weight?: number;
     shoeSize?: number;
     age?: number;
-    photoURL?: string;
-    displayName?: string;
-    createdAt?: any;
-    lastLogin?: any;
     measurementSystem?: 'metric' | 'imperial';
     shoeSizeSystem?: 'us' | 'uk' | 'eu';
     distanceUnit?: 'km' | 'miles';
+    createdAt?: any;
+    lastLogin?: any;
 }
 
 interface AuthContextType {
@@ -65,25 +65,32 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
-        const userDocRef = doc(db, 'users', authUser.uid);
-        
-        getDoc(userDocRef).then(async (userDocSnap) => {
+        try {
+          const userDocRef = doc(db, 'users', authUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          
           const defaults = {
             measurementSystem: 'metric' as const,
             shoeSizeSystem: 'us' as const,
             distanceUnit: 'km' as const,
+            displayName: authUser.displayName,
+            photoURL: authUser.photoURL,
           };
 
           if (userDocSnap.exists()) {
             const userDocData = userDocSnap.data() as UserDocument;
             
+            // Create a complete, guaranteed-valid profile object.
+            // This is the most critical part: we construct a valid object in memory,
+            // using database values if they exist, or falling back to defaults.
+            // This makes the UI resilient to incomplete data in the database/cache.
             const fullProfile: UserProfile = {
               uid: authUser.uid,
               email: authUser.email,
-              displayName: userDocData.displayName || authUser.displayName,
-              photoURL: userDocData.photoURL || authUser.photoURL,
+              displayName: userDocData.displayName || defaults.displayName,
+              photoURL: userDocData.photoURL || defaults.photoURL,
               height: userDocData.height || '',
               weight: userDocData.weight || '',
               shoeSize: userDocData.shoeSize || '',
@@ -94,42 +101,52 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             };
             setUser(fullProfile);
 
-            // If any preference was missing, write it back to DB for future sessions
-            const dataToUpdate: Partial<UserDocument> = { lastLogin: serverTimestamp() };
+            // Backfill the database with any missing defaults for future consistency.
+            // This runs in the background and doesn't block the UI.
+            const dataToUpdate: UserDocument = { lastLogin: serverTimestamp() };
             if (!userDocData.measurementSystem) dataToUpdate.measurementSystem = defaults.measurementSystem;
             if (!userDocData.shoeSizeSystem) dataToUpdate.shoeSizeSystem = defaults.shoeSizeSystem;
             if (!userDocData.distanceUnit) dataToUpdate.distanceUnit = defaults.distanceUnit;
-            
-            await updateDoc(userDocRef, dataToUpdate);
+            if (Object.keys(dataToUpdate).length > 1) {
+              await updateDoc(userDocRef, dataToUpdate);
+            } else {
+              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+            }
 
           } else {
-            // Create a new user doc with defaults
-            const initialDoc: UserDocument = {
-                displayName: authUser.displayName,
-                photoURL: authUser.photoURL,
-                createdAt: serverTimestamp(),
-                lastLogin: serverTimestamp(),
+            // Create a new user doc with all fields and defaults.
+            const newProfileData: UserDocument & { createdAt: any; lastLogin: any } = {
+                displayName: defaults.displayName,
+                photoURL: defaults.photoURL,
+                height: '',
+                weight: '',
+                shoeSize: '',
+                age: '',
                 measurementSystem: defaults.measurementSystem,
                 shoeSizeSystem: defaults.shoeSizeSystem,
                 distanceUnit: defaults.distanceUnit,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp(),
             };
-            await setDoc(userDocRef, initialDoc);
+            await setDoc(userDocRef, newProfileData);
             setUser({
                  uid: authUser.uid,
                  email: authUser.email,
-                ...initialDoc,
+                 ...newProfileData
             });
           }
-        }).catch((error) => {
+        } catch (error) {
              console.error("Firestore error during profile fetch:", error);
             toast({
                 variant: 'destructive',
                 title: 'Could not sync profile',
                 description: 'There was an issue fetching your profile data.',
             });
-        }).finally(() => {
+            // Log out the user if their profile is critically broken
+            await firebaseSignOut(auth);
+        } finally {
             setLoading(false);
-        });
+        }
       } else {
         setUser(null);
         setLoading(false);
@@ -164,24 +181,36 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const userDocRef = doc(db, 'users', currentUser.uid);
 
       try {
-        // Separate displayName for Firebase Auth update
         const { displayName, ...firestoreData } = data;
 
-        // Update Firebase Auth profile if displayName is provided
         if (displayName !== undefined) {
             await updateProfile(currentUser, { displayName });
         }
         
-        // Update Firestore document with the rest of the data
         if (Object.keys(firestoreData).length > 0) {
             await setDoc(userDocRef, firestoreData, { merge: true });
         }
 
-        // Re-fetch the data from Firestore to ensure consistency
         const updatedDocSnap = await getDoc(userDocRef);
         if (updatedDocSnap.exists()) {
             const updatedData = updatedDocSnap.data() as UserDocument;
-            setUser(prev => prev ? { ...prev, ...updatedData, displayName: currentUser.displayName, photoURL: currentUser.photoURL } : null);
+            
+            // Reconstruct the full profile with defaults just in case
+            const fullProfile: UserProfile = {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              displayName: updatedData.displayName || currentUser.displayName,
+              photoURL: updatedData.photoURL || currentUser.photoURL,
+              height: updatedData.height || '',
+              weight: updatedData.weight || '',
+              shoeSize: updatedData.shoeSize || '',
+              age: updatedData.age || '',
+              measurementSystem: updatedData.measurementSystem || 'metric',
+              shoeSizeSystem: updatedData.shoeSizeSystem || 'us',
+              distanceUnit: updatedData.distanceUnit || 'km',
+            };
+
+            setUser(fullProfile);
             toast({ title: "Profile updated!" });
         } else {
             throw new Error("User document not found after update.");
@@ -208,13 +237,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     
     try {
         const uploadTask = uploadString(storageRef, photoDataUrl, 'data_url');
-
         const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('The request timed out.')), 15000)
         );
-
         await Promise.race([uploadTask, timeoutPromise]);
-        
         const newPhotoURL = await getDownloadURL(storageRef);
         
         await updateProfile(currentUser, { photoURL: newPhotoURL });
