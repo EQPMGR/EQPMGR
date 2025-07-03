@@ -31,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -100,7 +99,6 @@ const convertShoeSize = (
 
 
 export default function ProfilePage() {
-  const { toast } = useToast()
   const { user, updateProfileInfo } = useAuth()
   const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false)
   const [isSubmittingPreferences, setIsSubmittingPreferences] = React.useState(false)
@@ -271,12 +269,8 @@ export default function ProfilePage() {
     setIsSubmittingPreferences(true);
     try {
         await updateProfileInfo(data);
-        toast({
-            title: "Preferences updated!",
-            description: "Your preferences have been saved.",
-        });
     } catch (error) {
-        // Error is handled by the auth context's toast
+        // Error is handled by the auth context's toast, no need to do anything here.
     } finally {
         setIsSubmittingPreferences(false);
     }
@@ -513,5 +507,3 @@ export default function ProfilePage() {
     </>
   )
 }
-
-    

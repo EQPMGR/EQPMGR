@@ -134,30 +134,39 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'photoURL'>) => {
       const currentUser = auth.currentUser;
       if (!currentUser) {
-          toast({ variant: 'destructive', title: 'Not Authenticated' });
-          return;
+          toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Please log in again.' });
+          throw new Error('Not Authenticated');
       }
       
-      const authUpdates: { displayName?: string | null } = {};
-      if (data.displayName !== undefined) {
-          authUpdates.displayName = data.displayName;
-      }
+      try {
+        const authUpdates: { displayName?: string | null } = {};
+        if (data.displayName !== undefined) {
+            authUpdates.displayName = data.displayName;
+        }
 
-      const firestoreUpdates: DocumentData = { ...data };
-      if (Object.keys(authUpdates).length > 0) {
-          await updateProfile(currentUser, authUpdates);
-          // Don't store displayName in Firestore if it's in authUpdates
-          if ('displayName' in firestoreUpdates) {
-              delete firestoreUpdates.displayName;
-          }
-      }
-      
-      if (Object.keys(firestoreUpdates).length > 0) {
-          await setDoc(doc(db, 'users', currentUser.uid), firestoreUpdates, { merge: true });
-      }
+        const firestoreUpdates: DocumentData = { ...data };
+        if (Object.keys(authUpdates).length > 0) {
+            await updateProfile(currentUser, authUpdates);
+            if ('displayName' in firestoreUpdates) {
+                delete firestoreUpdates.displayName;
+            }
+        }
+        
+        if (Object.keys(firestoreUpdates).length > 0) {
+            await setDoc(doc(db, 'users', currentUser.uid), firestoreUpdates, { merge: true });
+        }
 
-      setUser(prev => prev ? { ...prev, ...data, ...authUpdates } : null);
-      toast({ title: "Profile updated!" });
+        setUser(prev => prev ? { ...prev, ...data, ...authUpdates } : null);
+        toast({ title: "Profile updated!" });
+      } catch (error: any) {
+        console.error("Profile update failed:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: error.message || 'Could not save changes.',
+        });
+        throw error;
+      }
   }, [toast]);
 
   const updateProfilePhotoHandler = useCallback(async (photoDataUrl: string): Promise<boolean> => {
@@ -235,7 +244,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     signInWithEmailPassword: authWrapper(signInWithEmailPasswordHandler),
     signUpWithEmailPassword: authWrapper(signUpWithEmailPasswordHandler),
     signOut: authWrapper(signOutHandler),
-    updateProfileInfo: authWrapper(updateProfileInfoHandler),
+    updateProfileInfo: updateProfileInfoHandler,
     updateProfilePhoto: updateProfilePhotoHandler
   }), [user, loading, authWrapper, signInWithEmailPasswordHandler, signUpWithEmailPasswordHandler, signOutHandler, updateProfileInfoHandler, updateProfilePhotoHandler]);
 
