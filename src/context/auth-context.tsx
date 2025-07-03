@@ -35,10 +35,10 @@ export interface UserProfile {
 interface UserDocument {
     displayName?: string;
     photoURL?: string;
-    height?: number;
-    weight?: number;
-    shoeSize?: number;
-    age?: number;
+    height?: number | '';
+    weight?: number | '';
+    shoeSize?: number | '';
+    age?: number | '';
     measurementSystem?: 'metric' | 'imperial';
     shoeSizeSystem?: 'us' | 'uk' | 'eu';
     distanceUnit?: 'km' | 'miles';
@@ -82,10 +82,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           if (userDocSnap.exists()) {
             const userDocData = userDocSnap.data() as UserDocument;
             
-            // Create a complete, guaranteed-valid profile object.
-            // This is the most critical part: we construct a valid object in memory,
-            // using database values if they exist, or falling back to defaults.
-            // This makes the UI resilient to incomplete data in the database/cache.
             const fullProfile: UserProfile = {
               uid: authUser.uid,
               email: authUser.email,
@@ -101,8 +97,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             };
             setUser(fullProfile);
 
-            // Backfill the database with any missing defaults for future consistency.
-            // This runs in the background and doesn't block the UI.
             const dataToUpdate: UserDocument = { lastLogin: serverTimestamp() };
             if (!userDocData.measurementSystem) dataToUpdate.measurementSystem = defaults.measurementSystem;
             if (!userDocData.shoeSizeSystem) dataToUpdate.shoeSizeSystem = defaults.shoeSizeSystem;
@@ -114,8 +108,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             }
 
           } else {
-            // Create a new user doc with all fields and defaults.
-            const newProfileData: UserDocument & { createdAt: any; lastLogin: any } = {
+            // Create a new user doc in firestore with all fields and defaults.
+            const dataToSave: UserDocument & { createdAt: any; lastLogin: any } = {
                 displayName: defaults.displayName,
                 photoURL: defaults.photoURL,
                 height: '',
@@ -128,12 +122,23 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 createdAt: serverTimestamp(),
                 lastLogin: serverTimestamp(),
             };
-            await setDoc(userDocRef, newProfileData);
-            setUser({
+            await setDoc(userDocRef, dataToSave);
+
+            // Create a clean profile object for the app state, without serverTimestamps
+            const newProfileForState: UserProfile = {
                  uid: authUser.uid,
                  email: authUser.email,
-                 ...newProfileData
-            });
+                 displayName: dataToSave.displayName || null,
+                 photoURL: dataToSave.photoURL || null,
+                 height: dataToSave.height || '',
+                 weight: dataToSave.weight || '',
+                 shoeSize: dataToSave.shoeSize || '',
+                 age: dataToSave.age || '',
+                 measurementSystem: dataToSave.measurementSystem || 'metric',
+                 shoeSizeSystem: dataToSave.shoeSizeSystem || 'us',
+                 distanceUnit: dataToSave.distanceUnit || 'km'
+            };
+            setUser(newProfileForState);
           }
         } catch (error) {
              console.error("Firestore error during profile fetch:", error);
@@ -142,7 +147,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 title: 'Could not sync profile',
                 description: 'There was an issue fetching your profile data.',
             });
-            // Log out the user if their profile is critically broken
             await firebaseSignOut(auth);
         } finally {
             setLoading(false);
@@ -187,15 +191,21 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             await updateProfile(currentUser, { displayName });
         }
         
-        if (Object.keys(firestoreData).length > 0) {
-            await setDoc(userDocRef, firestoreData, { merge: true });
+        const dataToSave: UserDocument = { ...firestoreData };
+        // Ensure empty strings are saved as such, but undefined values are not.
+        if (data.height === undefined) delete (dataToSave as Partial<UserProfile>).height;
+        if (data.weight === undefined) delete (dataToSave as Partial<UserProfile>).weight;
+        if (data.shoeSize === undefined) delete (dataToSave as Partial<UserProfile>).shoeSize;
+        if (data.age === undefined) delete (dataToSave as Partial<UserProfile>).age;
+
+        if (Object.keys(dataToSave).length > 0) {
+            await setDoc(userDocRef, dataToSave, { merge: true });
         }
 
         const updatedDocSnap = await getDoc(userDocRef);
         if (updatedDocSnap.exists()) {
             const updatedData = updatedDocSnap.data() as UserDocument;
             
-            // Reconstruct the full profile with defaults just in case
             const fullProfile: UserProfile = {
               uid: currentUser.uid,
               email: currentUser.email,
