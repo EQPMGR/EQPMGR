@@ -44,8 +44,10 @@ const profileFormSchema = z.object({
     .max(30, {
       message: "Name must not be longer than 30 characters.",
     }),
-  height: z.coerce.number().positive().optional().or(z.literal('')),
-  weight: z.coerce.number().positive().optional().or(z.literal('')),
+  height: z.coerce.number().positive().optional().or(z.literal('')), // cm
+  feet: z.coerce.number().positive().optional().or(z.literal('')),
+  inches: z.coerce.number().min(0).max(11.99).optional().or(z.literal('')),
+  weight: z.coerce.number().positive().optional().or(z.literal('')), // display value (kg or lbs)
   shoeSize: z.coerce.number().positive().optional().or(z.literal('')),
   age: z.coerce.number().positive().int().optional().or(z.literal('')),
 })
@@ -60,6 +62,12 @@ const preferencesFormSchema = z.object({
 
 type PreferencesFormValues = z.infer<typeof preferencesFormSchema>
 
+// Conversion constants
+const KG_TO_LBS = 2.20462;
+const LBS_TO_KG = 1 / KG_TO_LBS;
+const CM_TO_IN = 0.393701;
+const IN_TO_CM = 1 / CM_TO_IN;
+
 export default function ProfilePage() {
   const { toast } = useToast()
   const { user, updateProfileInfo } = useAuth()
@@ -71,6 +79,8 @@ export default function ProfilePage() {
     defaultValues: {
       name: '',
       height: '',
+      feet: '',
+      inches: '',
       weight: '',
       shoeSize: '',
       age: '',
@@ -93,30 +103,105 @@ export default function ProfilePage() {
 
   React.useEffect(() => {
     if (user) {
-      profileForm.reset({
-        name: user.displayName || '',
-        height: user.height || '',
-        weight: user.weight || '',
-        shoeSize: user.shoeSize || '',
-        age: user.age || '',
-      });
       preferencesForm.reset({
         measurementSystem: user.measurementSystem || 'metric',
         shoeSizeSystem: user.shoeSizeSystem || 'us',
         distanceUnit: user.distanceUnit || 'km',
       });
+      
+      const isImperial = user.measurementSystem === 'imperial';
+      const heightInCm = user.height || '';
+      const weightInKg = user.weight || '';
+      
+      let displayWeight: number | '' = typeof weightInKg === 'number' ? weightInKg : '';
+      let displayFeet: number | '' = '';
+      let displayInches: number | '' = '';
+      
+      if (isImperial) {
+        if (typeof heightInCm === 'number' && heightInCm > 0) {
+          const totalInches = heightInCm * CM_TO_IN;
+          displayFeet = Math.floor(totalInches / 12);
+          displayInches = parseFloat((totalInches % 12).toFixed(2));
+        }
+        if (typeof weightInKg === 'number' && weightInKg > 0) {
+          displayWeight = parseFloat((weightInKg * KG_TO_LBS).toFixed(2));
+        }
+      }
+
+      profileForm.reset({
+        name: user.displayName || '',
+        age: user.age || '',
+        shoeSize: user.shoeSize || '',
+        height: heightInCm, // Always store base cm
+        feet: displayFeet,
+        inches: displayInches,
+        weight: displayWeight, // Display value
+      });
     }
   }, [user, profileForm, preferencesForm]);
 
+  const handleMeasurementSystemChange = (newSystem: 'metric' | 'imperial') => {
+    const { getValues, setValue } = profileForm;
+    const oldSystem = newSystem === 'metric' ? 'imperial' : 'metric';
+    
+    // Convert Weight
+    const currentWeight = getValues('weight');
+    if (typeof currentWeight === 'number' && currentWeight > 0) {
+      const newWeight = oldSystem === 'metric' 
+        ? currentWeight * KG_TO_LBS // from kg to lbs
+        : currentWeight * LBS_TO_KG; // from lbs to kg
+      setValue('weight', parseFloat(newWeight.toFixed(2)));
+    }
+
+    // Convert Height
+    if (newSystem === 'imperial') { // switching to imperial
+      const heightCm = getValues('height');
+      if (typeof heightCm === 'number' && heightCm > 0) {
+        const totalInches = heightCm * CM_TO_IN;
+        setValue('feet', Math.floor(totalInches / 12));
+        setValue('inches', parseFloat((totalInches % 12).toFixed(2)));
+      }
+    } else { // switching to metric
+      const feet = getValues('feet');
+      const inches = getValues('inches');
+      if ((typeof feet === 'number' && feet > 0) || (typeof inches === 'number' && inches > 0)) {
+        const totalInches = (feet || 0) * 12 + (inches || 0);
+        setValue('height', parseFloat((totalInches * IN_TO_CM).toFixed(2)));
+      }
+    }
+  };
+
+
   async function onProfileSubmit(data: ProfileFormValues) {
     setIsSubmittingProfile(true);
+
+    const dataToSubmit: Partial<ProfileFormValues> = {
+      name: data.name,
+      age: data.age,
+      shoeSize: data.shoeSize,
+    };
+    
+    // Always convert data to metric for storage
+    if (measurementSystem === 'imperial') {
+      if ((data.feet && data.feet > 0) || (data.inches && data.inches > 0)) {
+        const totalInches = (data.feet || 0) * 12 + (data.inches || 0);
+        dataToSubmit.height = totalInches * IN_TO_CM;
+      }
+      if (data.weight && data.weight > 0) {
+        dataToSubmit.weight = data.weight * LBS_TO_KG;
+      }
+    } else {
+      dataToSubmit.height = data.height;
+      dataToSubmit.weight = data.weight;
+    }
+
     try {
       await updateProfileInfo({
-          displayName: data.name,
-          height: data.height || undefined,
-          weight: data.weight || undefined,
-          shoeSize: data.shoeSize || undefined,
-          age: data.age || undefined,
+          displayName: dataToSubmit.name,
+          height: dataToSubmit.height || undefined,
+          weight: dataToSubmit.weight || undefined,
+          shoeSize: dataToSubmit.shoeSize || undefined,
+          age: dataToSubmit.age || undefined,
       });
     } catch (error) {
       // Error is handled by the auth context's toast
@@ -166,19 +251,50 @@ export default function ProfilePage() {
                 )}
               />
               <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={profileForm.control}
-                  name="height"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Height ({measurementSystem === 'metric' ? 'cm' : 'in'})</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder={measurementSystem === 'metric' ? "180" : "71"} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                 {measurementSystem === 'metric' ? (
+                   <FormField
+                    control={profileForm.control}
+                    name="height"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Height (cm)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="180" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                 ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                     <FormField
+                        control={profileForm.control}
+                        name="feet"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Height (ft)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="5" {...field} />
+                            </FormControl>
+                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={profileForm.control}
+                        name="inches"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>(in)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="11" {...field} />
+                            </FormControl>
+                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                  </div>
+                 )}
                 <FormField
                   control={profileForm.control}
                   name="weight"
@@ -246,7 +362,13 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Height &amp; Weight</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value: 'metric' | 'imperial') => {
+                        field.onChange(value);
+                        handleMeasurementSystemChange(value);
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a measurement system" />
@@ -254,7 +376,7 @@ export default function ProfilePage() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="metric">Metric (cm, kg)</SelectItem>
-                        <SelectItem value="imperial">Imperial (in, lbs)</SelectItem>
+                        <SelectItem value="imperial">Imperial (ft/in, lbs)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
