@@ -1,39 +1,59 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Activity } from 'lucide-react';
-import { generateInitialComponents } from '@/ai/flows/generate-initial-components';
 
 import { Button } from '@/components/ui/button';
 import { equipmentData } from '@/lib/data';
 import type { Equipment, Component } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
-import { AddEquipmentDialog } from './add-equipment-dialog';
+import { AddEquipmentDialog, type NewEquipmentFormSubmitData } from './add-equipment-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { bikeDatabase } from '@/lib/bike-database';
 
 export function DashboardPage() {
   const [data, setData] = useState<Equipment[]>(equipmentData);
   const { toast } = useToast();
 
   async function handleAddEquipment(
-    newEquipmentData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours'> & { purchaseDate: string }
+    formData: NewEquipmentFormSubmitData
   ) {
-    const componentNames = await generateInitialComponents({
-        equipmentType: newEquipmentData.type,
-        modelYear: newEquipmentData.modelYear
-    });
+    const [brand, model, modelYearStr] = formData.bikeIdentifier.split('|');
+    const modelYear = parseInt(modelYearStr, 10);
+    const bikeFromDb = bikeDatabase.find(
+      b => b.brand === brand && b.model === model && b.modelYear === modelYear
+    );
 
-    const newComponents: Component[] = componentNames.components.map((name, index) => ({
+    if (!bikeFromDb) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Selected bike could not be found in the database.'
+      });
+      throw new Error('Selected bike not found');
+    }
+
+    const newComponents: Component[] = bikeFromDb.components.map((name, index) => ({
       id: `comp-${Date.now()}-${index}`,
       name: name,
       wearPercentage: 0,
-      purchaseDate: newEquipmentData.purchaseDate,
+      purchaseDate: formData.purchaseDate,
       lastServiceDate: null,
     }));
       
     const newEquipment: Equipment = {
-      ...newEquipmentData,
       id: `new-${Date.now()}`,
+      name: formData.name,
+      type: bikeFromDb.type,
+      brand: bikeFromDb.brand,
+      model: bikeFromDb.model,
+      modelYear: bikeFromDb.modelYear,
+      purchaseDate: formData.purchaseDate,
+      purchasePrice: formData.purchasePrice,
+      serialNumber: formData.serialNumber,
+      imageUrl: bikeFromDb.imageUrl,
+      purchaseCondition: 'new', // Defaulting to new for DB items
       totalDistance: 0,
       totalHours: 0,
       components: newComponents,
