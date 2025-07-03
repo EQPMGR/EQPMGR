@@ -151,8 +151,8 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center space-y-4 mb-8">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={user?.photoURL || ''} alt="User avatar" key={user?.photoURL} />
+            <Avatar className="h-24 w-24" key={user?.photoURL}>
+              <AvatarImage src={user?.photoURL || ''} alt="User avatar" />
               <AvatarFallback>{userInitial}</AvatarFallback>
             </Avatar>
             <CameraCapture onCapture={handlePhotoUpdate}>
@@ -287,7 +287,7 @@ export default function ProfilePage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a shoe size system" />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="us">US</SelectItem>
@@ -309,7 +309,7 @@ export default function ProfilePage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a distance unit" />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="km">Kilometers (km)</SelectItem>
