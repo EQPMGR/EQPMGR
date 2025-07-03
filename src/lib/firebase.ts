@@ -2,6 +2,8 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { getAnalytics, isSupported } from "firebase/analytics";
+import { getPerformance } from "firebase/performance";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC1hou9OBPyYAkX1Cek1BvyAITARkhCzDE",
@@ -22,5 +24,16 @@ const storage = getStorage(app);
 const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
+
+// Initialize Performance and Analytics only on the client side
+if (typeof window !== 'undefined') {
+  getPerformance(app);
+  isSupported().then(supported => {
+    if (supported) {
+      getAnalytics(app);
+    }
+  });
+}
+
 
 export { app, auth, storage, db };
