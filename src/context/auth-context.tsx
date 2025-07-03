@@ -67,48 +67,69 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       if (authUser) {
-        // Immediately set a basic user profile to make the app responsive.
-        // This stops the main loading skeleton quickly.
-        setUser({
-          uid: authUser.uid,
-          email: authUser.email,
-          displayName: authUser.displayName,
-          photoURL: authUser.photoURL,
-        });
+        const userDocRef = doc(db, 'users', authUser.uid);
         
-        // Asynchronously fetch and merge detailed profile data from Firestore.
-        (async () => {
-          const userDocRef = doc(db, 'users', authUser.uid);
-          try {
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-              const userDocData = userDocSnap.data() as UserDocument;
-              // Merge Firestore data into the profile, keeping existing state
-              setUser(prevUser => ({ ...prevUser!, ...userDocData }));
-              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-            } else {
-              const initialDoc: UserDocument = {
+        getDoc(userDocRef).then(async (userDocSnap) => {
+          const defaults = {
+            measurementSystem: 'metric' as const,
+            shoeSizeSystem: 'us' as const,
+            distanceUnit: 'km' as const,
+          };
+
+          if (userDocSnap.exists()) {
+            const userDocData = userDocSnap.data() as UserDocument;
+            
+            const fullProfile: UserProfile = {
+              uid: authUser.uid,
+              email: authUser.email,
+              displayName: userDocData.displayName || authUser.displayName,
+              photoURL: userDocData.photoURL || authUser.photoURL,
+              height: userDocData.height || '',
+              weight: userDocData.weight || '',
+              shoeSize: userDocData.shoeSize || '',
+              age: userDocData.age || '',
+              measurementSystem: userDocData.measurementSystem || defaults.measurementSystem,
+              shoeSizeSystem: userDocData.shoeSizeSystem || defaults.shoeSizeSystem,
+              distanceUnit: userDocData.distanceUnit || defaults.distanceUnit,
+            };
+            setUser(fullProfile);
+
+            // If any preference was missing, write it back to DB for future sessions
+            const dataToUpdate: Partial<UserDocument> = { lastLogin: serverTimestamp() };
+            if (!userDocData.measurementSystem) dataToUpdate.measurementSystem = defaults.measurementSystem;
+            if (!userDocData.shoeSizeSystem) dataToUpdate.shoeSizeSystem = defaults.shoeSizeSystem;
+            if (!userDocData.distanceUnit) dataToUpdate.distanceUnit = defaults.distanceUnit;
+            
+            await updateDoc(userDocRef, dataToUpdate);
+
+          } else {
+            // Create a new user doc with defaults
+            const initialDoc: UserDocument = {
                 displayName: authUser.displayName,
                 photoURL: authUser.photoURL,
                 createdAt: serverTimestamp(),
                 lastLogin: serverTimestamp(),
-                measurementSystem: 'metric',
-                shoeSizeSystem: 'us',
-                distanceUnit: 'km',
-              };
-              await setDoc(userDocRef, initialDoc);
-            }
-          } catch (error) {
-            console.error("Firestore error during profile fetch:", error);
-            toast({
-              variant: 'destructive',
-              title: 'Could not sync profile',
-              description: 'There was an issue fetching your profile data.',
+                measurementSystem: defaults.measurementSystem,
+                shoeSizeSystem: defaults.shoeSizeSystem,
+                distanceUnit: defaults.distanceUnit,
+            };
+            await setDoc(userDocRef, initialDoc);
+            setUser({
+                 uid: authUser.uid,
+                 email: authUser.email,
+                ...initialDoc,
             });
-          } finally {
-            setLoading(false);
           }
-        })();
+        }).catch((error) => {
+             console.error("Firestore error during profile fetch:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Could not sync profile',
+                description: 'There was an issue fetching your profile data.',
+            });
+        }).finally(() => {
+            setLoading(false);
+        });
       } else {
         setUser(null);
         setLoading(false);
