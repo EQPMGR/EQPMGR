@@ -9,6 +9,7 @@ import {
   Home,
   Menu,
   Settings,
+  Activity,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -37,18 +38,30 @@ export default function AppLayout({
     return (
       <div className="flex min-h-screen w-full flex-col bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4">
-            <Skeleton className="h-10 w-10 rounded-md" />
-            <div className="ml-auto flex items-center gap-2">
-                <Skeleton className="h-8 w-8 rounded-full" />
-            </div>
+          <Button size="icon" variant="ghost" className="text-destructive-foreground [&_svg]:size-10" disabled>
+            <Menu />
+          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <Skeleton className="h-80 w-full" />
-                <Skeleton className="h-80 w-full" />
-                <Skeleton className="h-80 w-full hidden lg:block" />
-                <Skeleton className="h-80 w-full hidden xl:block" />
-            </div>
+            <div className="flex items-center justify-between space-y-2 mb-6">
+                <div>
+                  <Skeleton className="h-8 w-48 mb-2" />
+                  <Skeleton className="h-4 w-72" />
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row">
+                   <Skeleton className="h-10 w-36" />
+                   <Skeleton className="h-10 w-40" />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <Skeleton className="h-[430px] w-full rounded-lg" />
+                <Skeleton className="h-[430px] w-full rounded-lg" />
+                <Skeleton className="h-[430px] w-full rounded-lg hidden lg:block" />
+                <Skeleton className="h-[430px] w-full rounded-lg hidden xl:block" />
+              </div>
         </main>
       </div>
     );
