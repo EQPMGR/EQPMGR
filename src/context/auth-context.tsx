@@ -1,7 +1,7 @@
 
 'use client';
 
-import { createContext, useState, useEffect, ReactNode, FC } from 'react';
+import { createContext, useState, useEffect, ReactNode, FC, useMemo, useCallback } from 'react';
 import type { User } from 'firebase/auth';
 import { 
   onAuthStateChanged, 
@@ -110,22 +110,22 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     return () => unsubscribe();
   }, [toast]);
 
-  const signInWithEmailPassword = async (email: string, password: string) => {
+  const signInWithEmailPasswordHandler = useCallback(async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
     router.push('/');
-  };
+  }, [router]);
 
-  const signUpWithEmailPassword = async (email: string, password: string) => {
+  const signUpWithEmailPasswordHandler = useCallback(async (email: string, password: string) => {
     await createUserWithEmailAndPassword(auth, email, password);
     router.push('/settings/profile');
-  };
+  }, [router]);
 
-  const signOut = async () => {
+  const signOutHandler = useCallback(async () => {
     await firebaseSignOut(auth);
     router.push('/login');
-  };
+  }, [router]);
 
-  const updateProfileInfo = async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'photoURL'>) => {
+  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'photoURL'>) => {
       const currentUser = auth.currentUser;
       if (!currentUser) {
           toast({ variant: 'destructive', title: 'Not Authenticated' });
@@ -153,9 +153,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       setUser(prev => prev ? { ...prev, ...data, ...authUpdates } : null);
       toast({ title: "Profile updated!" });
-  };
+  }, [toast]);
 
-  const updateProfilePhoto = async (photoDataUrl: string): Promise<boolean> => {
+  const updateProfilePhotoHandler = useCallback(async (photoDataUrl: string): Promise<boolean> => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
         toast({ variant: 'destructive', title: 'Not Authenticated' });
@@ -208,9 +208,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         });
         return false;
     }
-  };
+  }, [toast]);
   
-  const authWrapper = <T extends (...args: any[]) => Promise<any>>(fn: T) => async (...args: Parameters<T>): Promise<ReturnType<T> | void> => {
+  const authWrapper = useCallback(<T extends (...args: any[]) => Promise<any>>(fn: T) => async (...args: Parameters<T>): Promise<ReturnType<T> | void> => {
       try {
           return await fn(...args);
       } catch (error: any) {
@@ -222,18 +222,20 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           });
           throw error;
       }
-  };
+  }, [toast]);
+
+  const value = useMemo(() => ({
+    user, 
+    loading, 
+    signInWithEmailPassword: authWrapper(signInWithEmailPasswordHandler),
+    signUpWithEmailPassword: authWrapper(signUpWithEmailPasswordHandler),
+    signOut: authWrapper(signOutHandler),
+    updateProfileInfo: authWrapper(updateProfileInfoHandler),
+    updateProfilePhoto: updateProfilePhotoHandler
+  }), [user, loading, authWrapper, signInWithEmailPasswordHandler, signUpWithEmailPasswordHandler, signOutHandler, updateProfileInfoHandler, updateProfilePhotoHandler]);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      signInWithEmailPassword: authWrapper(signInWithEmailPassword),
-      signUpWithEmailPassword: authWrapper(signUpWithEmailPassword),
-      signOut: authWrapper(signOut),
-      updateProfileInfo: authWrapper(updateProfileInfo),
-      updateProfilePhoto
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

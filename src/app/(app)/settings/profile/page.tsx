@@ -1,3 +1,4 @@
+
 'use client'
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -95,7 +96,7 @@ export default function ProfilePage() {
         age: user.age || '',
       });
     }
-  }, [user, profileForm]);
+  }, [user]);
 
   const preferencesForm = useForm<PreferencesFormValues>({
     resolver: zodResolver(preferencesFormSchema),
@@ -287,7 +288,7 @@ export default function ProfilePage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a shoe size system" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="us">US</SelectItem>
@@ -309,7 +310,7 @@ export default function ProfilePage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a distance unit" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="km">Kilometers (km)</SelectItem>
