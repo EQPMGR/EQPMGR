@@ -33,10 +33,10 @@ export interface UserProfile {
 interface UserDocument {
     displayName?: string;
     photoURL?: string;
-    height?: number | '';
-    weight?: number | '';
-    shoeSize?: number | '';
-    age?: number | '';
+    height?: number;
+    weight?: number;
+    shoeSize?: number;
+    age?: number;
     measurementSystem?: 'metric' | 'imperial';
     shoeSizeSystem?: 'us' | 'uk' | 'eu';
     distanceUnit?: 'km' | 'miles';
@@ -56,17 +56,35 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const defaultProfileData = {
+const defaultProfileData: Omit<UserProfile, 'uid' | 'email'> = {
   displayName: null,
   photoURL: null,
-  height: '' as const,
-  weight: '' as const,
-  shoeSize: '' as const,
-  age: '' as const,
-  measurementSystem: 'metric' as const,
-  shoeSizeSystem: 'us' as const,
-  distanceUnit: 'km' as const,
+  height: '',
+  weight: '',
+  shoeSize: '',
+  age: '',
+  measurementSystem: 'metric',
+  shoeSizeSystem: 'us',
+  distanceUnit: 'km',
 };
+
+// Helper to ensure profile data is clean and has valid defaults
+const getCleanProfile = (docData: Partial<UserDocument>): UserProfile => {
+  return {
+    uid: '', // will be set later
+    email: null, // will be set later
+    displayName: docData.displayName || null,
+    photoURL: docData.photoURL || null,
+    height: docData.height || '',
+    weight: docData.weight || '',
+    shoeSize: docData.shoeSize || '',
+    age: docData.age || '',
+    measurementSystem: docData.measurementSystem || 'metric',
+    shoeSizeSystem: docData.shoeSizeSystem || 'us',
+    distanceUnit: docData.distanceUnit || 'km',
+  };
+};
+
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -94,31 +112,38 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
           if (userDocSnap.exists()) {
             const userDocData = userDocSnap.data() as UserDocument;
-            const fullProfile: UserProfile = {
-              ...defaultProfileData,
-              ...userDocData,
+            const cleanProfile = getCleanProfile(userDocData);
+            setUser({
+              ...cleanProfile,
               uid: authUser.uid,
               email: authUser.email,
-              displayName: userDocData.displayName || authUser.displayName,
-              photoURL: userDocData.photoURL || authUser.photoURL,
-            };
-            setUser(fullProfile);
+              displayName: authUser.displayName || cleanProfile.displayName,
+              photoURL: authUser.photoURL || cleanProfile.photoURL,
+            });
             await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
           } else {
-            const newProfileData: UserProfile = {
-              ...defaultProfileData,
-              uid: authUser.uid,
-              email: authUser.email,
-            };
-            const newDocData: UserDocument & {createdAt: any, lastLogin: any} = {
-              ...newProfileData,
+            // New user, create the document with guaranteed defaults
+            const newDocData: UserDocument = {
+              displayName: authUser.displayName || '',
+              photoURL: authUser.photoURL || '',
+              height: undefined,
+              weight: undefined,
+              shoeSize: undefined,
+              age: undefined,
+              measurementSystem: 'metric',
+              shoeSizeSystem: 'us',
+              distanceUnit: 'km',
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp(),
             };
-            delete (newDocData as any).uid;
-            delete (newDocData as any).email;
             await setDoc(userDocRef, newDocData);
-            setUser(newProfileData);
+            
+            const cleanProfile = getCleanProfile(newDocData);
+            setUser({
+              ...cleanProfile,
+              uid: authUser.uid,
+              email: authUser.email,
+            });
           }
         } catch (error) {
             handleAuthError(error, 'Profile Sync Failed');
@@ -176,7 +201,19 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         
         await setDoc(userDocRef, firestoreData, { merge: true });
 
-        setUser(prevUser => prevUser ? { ...prevUser, ...data } : null);
+        // Re-fetch data from firestore to ensure UI consistency
+        const updatedDoc = await getDoc(userDocRef);
+        if (updatedDoc.exists()) {
+             const userDocData = updatedDoc.data() as UserDocument;
+             const cleanProfile = getCleanProfile(userDocData);
+             setUser({
+               ...cleanProfile,
+               uid: currentUser.uid,
+               email: currentUser.email,
+               displayName: currentUser.displayName || cleanProfile.displayName,
+               photoURL: currentUser.photoURL || cleanProfile.photoURL,
+             });
+        }
 
         toast({ title: "Profile updated!" });
       } catch (error: any) {
