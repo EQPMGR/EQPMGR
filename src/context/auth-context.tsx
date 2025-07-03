@@ -27,6 +27,9 @@ export interface UserProfile {
   weight?: number | '';
   shoeSize?: number | '';
   age?: number | '';
+  measurementSystem?: 'metric' | 'imperial';
+  shoeSizeSystem?: 'us' | 'uk' | 'eu';
+  distanceUnit?: 'km' | 'miles';
 }
 
 // UserDocument is the shape of the data in Firestore.
@@ -39,6 +42,9 @@ interface UserDocument {
     displayName?: string;
     createdAt?: any;
     lastLogin?: any;
+    measurementSystem?: 'metric' | 'imperial';
+    shoeSizeSystem?: 'us' | 'uk' | 'eu';
+    distanceUnit?: 'km' | 'miles';
 }
 
 interface AuthContextType {
@@ -137,14 +143,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           authUpdates.displayName = data.displayName;
       }
 
+      const firestoreUpdates: DocumentData = { ...data };
       if (Object.keys(authUpdates).length > 0) {
           await updateProfile(currentUser, authUpdates);
-      }
-
-      const firestoreUpdates: DocumentData = { ...data };
-      // Don't store displayName in Firestore if it's in authUpdates
-      if ('displayName' in firestoreUpdates) {
-          delete firestoreUpdates.displayName;
+          // Don't store displayName in Firestore if it's in authUpdates
+          if ('displayName' in firestoreUpdates) {
+              delete firestoreUpdates.displayName;
+          }
       }
       
       if (Object.keys(firestoreUpdates).length > 0) {

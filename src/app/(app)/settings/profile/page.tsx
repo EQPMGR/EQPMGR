@@ -4,7 +4,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { Camera, Loader2, User } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import React from "react"
 
 import { Button } from "@/components/ui/button"
@@ -34,8 +34,6 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CameraCapture } from "@/components/camera-capture"
 
 const profileFormSchema = z.object({
   name: z
@@ -62,17 +60,11 @@ const preferencesFormSchema = z.object({
 
 type PreferencesFormValues = z.infer<typeof preferencesFormSchema>
 
-const defaultPreferencesValues: PreferencesFormValues = {
-  measurementSystem: 'metric',
-  shoeSizeSystem: 'us',
-  distanceUnit: 'km',
-}
-
 export default function ProfilePage() {
   const { toast } = useToast()
-  const { user, updateProfileInfo, updateProfilePhoto } = useAuth();
-  const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false);
-  const [isUploadingPhoto, setIsUploadingPhoto] = React.useState(false);
+  const { user, updateProfileInfo } = useAuth()
+  const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false)
+  const [isSubmittingPreferences, setIsSubmittingPreferences] = React.useState(false)
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -86,6 +78,19 @@ export default function ProfilePage() {
     mode: "onChange",
   })
 
+  const preferencesForm = useForm<PreferencesFormValues>({
+    resolver: zodResolver(preferencesFormSchema),
+    defaultValues: {
+      measurementSystem: 'metric',
+      shoeSizeSystem: 'us',
+      distanceUnit: 'km',
+    },
+    mode: "onChange",
+  })
+  
+  const measurementSystem = preferencesForm.watch('measurementSystem');
+  const shoeSizeSystem = preferencesForm.watch('shoeSizeSystem');
+
   React.useEffect(() => {
     if (user) {
       profileForm.reset({
@@ -95,14 +100,13 @@ export default function ProfilePage() {
         shoeSize: user.shoeSize || '',
         age: user.age || '',
       });
+      preferencesForm.reset({
+        measurementSystem: user.measurementSystem || 'metric',
+        shoeSizeSystem: user.shoeSizeSystem || 'us',
+        distanceUnit: user.distanceUnit || 'km',
+      });
     }
-  }, [user]);
-
-  const preferencesForm = useForm<PreferencesFormValues>({
-    resolver: zodResolver(preferencesFormSchema),
-    defaultValues: defaultPreferencesValues,
-    mode: "onChange",
-  })
+  }, [user, profileForm, preferencesForm]);
 
   async function onProfileSubmit(data: ProfileFormValues) {
     setIsSubmittingProfile(true);
@@ -121,23 +125,20 @@ export default function ProfilePage() {
     }
   }
 
-  function onPreferencesSubmit(data: PreferencesFormValues) {
-    toast({
-      title: "Preferences updated!",
-      description: "Your preferences have been saved.",
-    })
-  }
-
-  const handlePhotoUpdate = async (photoDataUrl: string) => {
-    setIsUploadingPhoto(true);
+  async function onPreferencesSubmit(data: PreferencesFormValues) {
+    setIsSubmittingPreferences(true);
     try {
-      // The updateProfilePhoto function now handles its own errors and toasts.
-      await updateProfilePhoto(photoDataUrl);
+        await updateProfileInfo(data);
+        toast({
+            title: "Preferences updated!",
+            description: "Your preferences have been saved.",
+        });
+    } catch (error) {
+        // Error is handled by the auth context's toast
     } finally {
-      // This block guarantees the loading spinner is always turned off.
-      setIsUploadingPhoto(false);
+        setIsSubmittingPreferences(false);
     }
-  };
+  }
   
   return (
     <>
@@ -149,24 +150,6 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center space-y-4 mb-8">
-            <Avatar className="h-24 w-24" key={user?.photoURL}>
-              <AvatarImage src={user?.photoURL || ''} alt="User avatar" />
-              <AvatarFallback>
-                <User className="h-12 w-12" />
-              </AvatarFallback>
-            </Avatar>
-            <CameraCapture onCapture={handlePhotoUpdate}>
-              <Button type="button" variant="outline" disabled={isUploadingPhoto || isSubmittingProfile}>
-                {isUploadingPhoto ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="mr-2" />
-                )}
-                {isUploadingPhoto ? "Uploading..." : "Change Photo"}
-              </Button>
-            </CameraCapture>
-          </div>
           <Form {...profileForm}>
             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-8">
               <FormField
@@ -188,9 +171,9 @@ export default function ProfilePage() {
                   name="height"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Height (cm)</FormLabel>
+                      <FormLabel>Height ({measurementSystem === 'metric' ? 'cm' : 'in'})</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="180" {...field} />
+                        <Input type="number" placeholder={measurementSystem === 'metric' ? "180" : "71"} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -201,9 +184,9 @@ export default function ProfilePage() {
                   name="weight"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Weight (kg)</FormLabel>
+                      <FormLabel>Weight ({measurementSystem === 'metric' ? 'kg' : 'lbs'})</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="75" {...field} />
+                        <Input type="number" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -216,7 +199,7 @@ export default function ProfilePage() {
                   name="shoeSize"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Shoe Size (US)</FormLabel>
+                      <FormLabel>Shoe Size ({shoeSizeSystem?.toUpperCase()})</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="10.5" {...field} />
                       </FormControl>
@@ -239,7 +222,7 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <Button type="submit" disabled={isSubmittingProfile || isUploadingPhoto}>
+              <Button type="submit" disabled={isSubmittingProfile || isSubmittingPreferences}>
                 {isSubmittingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmittingProfile ? "Updating..." : "Update Profile"}
               </Button>
@@ -263,7 +246,7 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Height &amp; Weight</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a measurement system" />
@@ -271,7 +254,7 @@ export default function ProfilePage() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="metric">Metric (cm, kg)</SelectItem>
-                        <SelectItem value="imperial">Imperial (ft/in, lbs)</SelectItem>
+                        <SelectItem value="imperial">Imperial (in, lbs)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -284,7 +267,7 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Shoe Size</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a shoe size system" />
@@ -306,7 +289,7 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Distance</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a distance unit" />
@@ -321,7 +304,10 @@ export default function ProfilePage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit">Update Preferences</Button>
+              <Button type="submit" disabled={isSubmittingProfile || isSubmittingPreferences}>
+                {isSubmittingPreferences && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmittingPreferences ? "Updating..." : "Update Preferences"}
+              </Button>
             </form>
           </Form>
         </CardContent>
