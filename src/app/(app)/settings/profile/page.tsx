@@ -62,11 +62,42 @@ const preferencesFormSchema = z.object({
 
 type PreferencesFormValues = z.infer<typeof preferencesFormSchema>
 
-// Conversion constants
+// --- Conversion Utilities ---
+
+// Weight & Height
 const KG_TO_LBS = 2.20462;
 const LBS_TO_KG = 1 / KG_TO_LBS;
 const CM_TO_IN = 0.393701;
 const IN_TO_CM = 1 / CM_TO_IN;
+
+// Shoe Size (approximations)
+const convertShoeSize = (
+  size: number, 
+  fromSystem: 'us' | 'uk' | 'eu', 
+  toSystem: 'us' | 'uk' | 'eu'
+): number => {
+    if (fromSystem === toSystem) return size;
+
+    // First, convert fromSystem to US standard
+    let usSize: number;
+    switch (fromSystem) {
+        case 'uk': usSize = size + 1; break;
+        case 'eu': usSize = size - 33; break;
+        default: usSize = size; break;
+    }
+
+    // Then, convert from US to toSystem
+    let newSize: number;
+    switch (toSystem) {
+        case 'uk': newSize = usSize - 1; break;
+        case 'eu': newSize = usSize + 33; break;
+        default: newSize = usSize; break;
+    }
+    
+    // Round to nearest 0.5
+    return Math.round(newSize * 2) / 2;
+}
+
 
 export default function ProfilePage() {
   const { toast } = useToast()
@@ -110,6 +141,8 @@ export default function ProfilePage() {
       });
       
       const isImperial = user.measurementSystem === 'imperial';
+      
+      // Height and Weight
       const heightInCm = user.height || '';
       const weightInKg = user.weight || '';
       
@@ -128,10 +161,18 @@ export default function ProfilePage() {
         }
       }
 
+      // Shoe Size
+      const baseUsShoeSize = user.shoeSize || '';
+      const displayShoeSystem = user.shoeSizeSystem || 'us';
+      let displayShoeSize: number | '' = '';
+      if (typeof baseUsShoeSize === 'number' && baseUsShoeSize > 0) {
+        displayShoeSize = convertShoeSize(baseUsShoeSize, 'us', displayShoeSystem);
+      }
+
       profileForm.reset({
         name: user.displayName || '',
         age: user.age || '',
-        shoeSize: user.shoeSize || '',
+        shoeSize: displayShoeSize,
         height: heightInCm, // Always store base cm
         feet: displayFeet,
         inches: displayInches,
@@ -144,7 +185,6 @@ export default function ProfilePage() {
     const { getValues, setValue } = profileForm;
     const oldSystem = newSystem === 'metric' ? 'imperial' : 'metric';
     
-    // Convert Weight
     const currentWeight = getValues('weight');
     if (typeof currentWeight === 'number' && currentWeight > 0) {
       const newWeight = oldSystem === 'metric' 
@@ -153,15 +193,14 @@ export default function ProfilePage() {
       setValue('weight', parseFloat(newWeight.toFixed(2)));
     }
 
-    // Convert Height
-    if (newSystem === 'imperial') { // switching to imperial
+    if (newSystem === 'imperial') {
       const heightCm = getValues('height');
       if (typeof heightCm === 'number' && heightCm > 0) {
         const totalInches = heightCm * CM_TO_IN;
         setValue('feet', Math.floor(totalInches / 12));
         setValue('inches', parseFloat((totalInches % 12).toFixed(2)));
       }
-    } else { // switching to metric
+    } else {
       const feet = getValues('feet');
       const inches = getValues('inches');
       if ((typeof feet === 'number' && feet > 0) || (typeof inches === 'number' && inches > 0)) {
@@ -171,14 +210,24 @@ export default function ProfilePage() {
     }
   };
 
+  const handleShoeSizeSystemChange = (newSystem: 'us' | 'uk' | 'eu') => {
+    const oldSystem = preferencesForm.getValues('shoeSizeSystem');
+    const { getValues, setValue } = profileForm;
+    
+    const currentShoeSize = getValues('shoeSize');
+    if (typeof currentShoeSize === 'number' && currentShoeSize > 0) {
+      const newShoeSize = convertShoeSize(currentShoeSize, oldSystem, newSystem);
+      setValue('shoeSize', newShoeSize);
+    }
+  };
+
 
   async function onProfileSubmit(data: ProfileFormValues) {
     setIsSubmittingProfile(true);
 
-    const dataToSubmit: Partial<ProfileFormValues> = {
+    const dataToSubmit: Partial<ProfileFormValues> & { shoeSize?: number } = {
       name: data.name,
       age: data.age,
-      shoeSize: data.shoeSize,
     };
     
     // Always convert data to metric for storage
@@ -195,12 +244,20 @@ export default function ProfilePage() {
       dataToSubmit.weight = data.weight;
     }
 
+    // Always convert shoe size to US for storage
+    const displayShoeSystem = preferencesForm.getValues('shoeSizeSystem');
+    if (data.shoeSize && data.shoeSize > 0) {
+      dataToSubmit.shoeSize = convertShoeSize(data.shoeSize, displayShoeSystem, 'us');
+    } else {
+      dataToSubmit.shoeSize = data.shoeSize || undefined;
+    }
+
     try {
       await updateProfileInfo({
           displayName: dataToSubmit.name,
           height: dataToSubmit.height || undefined,
           weight: dataToSubmit.weight || undefined,
-          shoeSize: dataToSubmit.shoeSize || undefined,
+          shoeSize: dataToSubmit.shoeSize,
           age: dataToSubmit.age || undefined,
       });
     } catch (error) {
@@ -364,8 +421,8 @@ export default function ProfilePage() {
                     <FormLabel>Height &amp; Weight</FormLabel>
                     <Select 
                       onValueChange={(value: 'metric' | 'imperial') => {
-                        field.onChange(value);
                         handleMeasurementSystemChange(value);
+                        field.onChange(value);
                       }} 
                       value={field.value}
                     >
@@ -389,7 +446,13 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Shoe Size</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={(value: 'us' | 'uk' | 'eu') => {
+                        handleShoeSizeSystemChange(value);
+                        field.onChange(value);
+                      }}
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a shoe size system" />
@@ -450,3 +513,5 @@ export default function ProfilePage() {
     </>
   )
 }
+
+    
