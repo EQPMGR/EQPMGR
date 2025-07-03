@@ -58,21 +58,19 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>
 
 // --- Conversion Utilities ---
 
-// Weight & Height
 const KG_TO_LBS = 2.20462;
 const LBS_TO_KG = 1 / KG_TO_LBS;
 const CM_TO_IN = 0.393701;
 const IN_TO_CM = 1 / CM_TO_IN;
 
-// Shoe Size (approximations)
 const convertShoeSize = (
   size: number, 
   fromSystem: 'us' | 'uk' | 'eu', 
   toSystem: 'us' | 'uk' | 'eu'
 ): number => {
     if (fromSystem === toSystem) return size;
+    if (!size) return 0;
 
-    // First, convert fromSystem to US standard
     let usSize: number;
     switch (fromSystem) {
         case 'uk': usSize = size + 1; break;
@@ -80,7 +78,6 @@ const convertShoeSize = (
         default: usSize = size; break;
     }
 
-    // Then, convert from US to toSystem
     let newSize: number;
     switch (toSystem) {
         case 'uk': newSize = usSize - 1; break;
@@ -88,7 +85,6 @@ const convertShoeSize = (
         default: newSize = usSize; break;
     }
     
-    // Round to nearest 0.5
     return Math.round(newSize * 2) / 2;
 }
 
@@ -122,9 +118,8 @@ export default function ProfilePage() {
 
   React.useEffect(() => {
     if (user) {
-      const isImperial = user.measurementSystem === 'imperial';
+      const isImperial = (user.measurementSystem || 'metric') === 'imperial';
       
-      // Height and Weight
       const heightInCm = user.height || '';
       const weightInKg = user.weight || '';
       
@@ -143,7 +138,6 @@ export default function ProfilePage() {
         }
       }
 
-      // Shoe Size
       const baseUsShoeSize = user.shoeSize || '';
       const displayShoeSystem = user.shoeSizeSystem || 'us';
       let displayShoeSize: number | '' = '';
@@ -158,10 +152,10 @@ export default function ProfilePage() {
         shoeSizeSystem: user.shoeSizeSystem || 'us',
         distanceUnit: user.distanceUnit || 'km',
         shoeSize: displayShoeSize,
-        height: heightInCm, // Always store base cm
+        height: heightInCm,
         feet: displayFeet,
         inches: displayInches,
-        weight: displayWeight, // Display value
+        weight: displayWeight,
       });
       previousMeasurementSystem.current = user.measurementSystem || 'metric';
       previousShoeSizeSystem.current = user.shoeSizeSystem || 'us';
@@ -175,8 +169,8 @@ export default function ProfilePage() {
         const currentWeight = getValues('weight');
         if (typeof currentWeight === 'number' && currentWeight > 0) {
           const newWeight = previousMeasurementSystem.current === 'metric' 
-            ? currentWeight * KG_TO_LBS // from kg to lbs
-            : currentWeight * LBS_TO_KG; // from lbs to kg
+            ? currentWeight * KG_TO_LBS
+            : currentWeight * LBS_TO_KG;
           setValue('weight', parseFloat(newWeight.toFixed(2)));
         }
 
@@ -216,7 +210,7 @@ export default function ProfilePage() {
   async function onSubmit(data: ProfileFormValues) {
     setIsSubmitting(true);
 
-    const dataToSubmit: Partial<ProfileFormValues> & { shoeSize?: number } = {
+    const dataToSubmit: Partial<UserProfile> & { shoeSize?: number } = {
       name: data.name,
       age: data.age,
       measurementSystem: data.measurementSystem,
@@ -224,23 +218,21 @@ export default function ProfilePage() {
       distanceUnit: data.distanceUnit,
     };
     
-    // Always convert data to metric for storage
     if (data.measurementSystem === 'imperial') {
       if ((data.feet && data.feet > 0) || (data.inches && data.inches > 0)) {
-        const totalInches = (data.feet || 0) * 12 + (data.inches || 0);
+        const totalInches = (Number(data.feet) || 0) * 12 + (Number(data.inches) || 0);
         dataToSubmit.height = totalInches * IN_TO_CM;
       }
       if (data.weight && data.weight > 0) {
-        dataToSubmit.weight = data.weight * LBS_TO_KG;
+        dataToSubmit.weight = Number(data.weight) * LBS_TO_KG;
       }
     } else {
       dataToSubmit.height = data.height;
       dataToSubmit.weight = data.weight;
     }
 
-    // Always convert shoe size to US for storage
     if (data.shoeSize && data.shoeSize > 0) {
-      dataToSubmit.shoeSize = convertShoeSize(data.shoeSize, data.shoeSizeSystem, 'us');
+      dataToSubmit.shoeSize = convertShoeSize(Number(data.shoeSize), data.shoeSizeSystem, 'us');
     } else {
       dataToSubmit.shoeSize = data.shoeSize || undefined;
     }
