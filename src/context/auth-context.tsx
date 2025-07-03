@@ -70,8 +70,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           displayName: authUser.displayName,
           photoURL: authUser.photoURL,
         });
-        setLoading(false);
-
+        
         // Asynchronously fetch and merge detailed profile data from Firestore.
         (async () => {
           const userDocRef = doc(db, 'users', authUser.uid);
@@ -98,6 +97,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
               title: 'Could not sync profile',
               description: 'There was an issue fetching your profile data.',
             });
+          } finally {
+            setLoading(false);
           }
         })();
       } else {
@@ -222,14 +223,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           throw error;
       }
   };
-
-  if (loading) {
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
-            <Skeleton className="h-[160px] w-[160px] rounded-lg" />
-        </div>
-    );
-  }
 
   return (
     <AuthContext.Provider value={{ 
