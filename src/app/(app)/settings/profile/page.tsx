@@ -49,17 +49,12 @@ const profileFormSchema = z.object({
   weight: z.coerce.number().positive().optional().or(z.literal('')), // display value (kg or lbs)
   shoeSize: z.coerce.number().positive().optional().or(z.literal('')),
   age: z.coerce.number().positive().int().optional().or(z.literal('')),
-})
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>
-
-const preferencesFormSchema = z.object({
   measurementSystem: z.enum(['metric', 'imperial']),
   shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
   distanceUnit: z.enum(['km', 'miles']),
 })
 
-type PreferencesFormValues = z.infer<typeof preferencesFormSchema>
+type ProfileFormValues = z.infer<typeof profileFormSchema>
 
 // --- Conversion Utilities ---
 
@@ -100,10 +95,9 @@ const convertShoeSize = (
 
 export default function ProfilePage() {
   const { user, updateProfileInfo } = useAuth()
-  const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false)
-  const [isSubmittingPreferences, setIsSubmittingPreferences] = React.useState(false)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
 
-  const profileForm = useForm<ProfileFormValues>({
+  const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: '',
@@ -113,13 +107,6 @@ export default function ProfilePage() {
       weight: '',
       shoeSize: '',
       age: '',
-    },
-    mode: "onChange",
-  })
-
-  const preferencesForm = useForm<PreferencesFormValues>({
-    resolver: zodResolver(preferencesFormSchema),
-    defaultValues: {
       measurementSystem: 'metric',
       shoeSizeSystem: 'us',
       distanceUnit: 'km',
@@ -127,17 +114,14 @@ export default function ProfilePage() {
     mode: "onChange",
   })
   
-  const measurementSystem = preferencesForm.watch('measurementSystem');
-  const shoeSizeSystem = preferencesForm.watch('shoeSizeSystem');
+  const measurementSystem = form.watch('measurementSystem');
+  const shoeSizeSystem = form.watch('shoeSizeSystem');
+  const previousMeasurementSystem = React.useRef(measurementSystem);
+  const previousShoeSizeSystem = React.useRef(shoeSizeSystem);
+
 
   React.useEffect(() => {
     if (user) {
-      preferencesForm.reset({
-        measurementSystem: user.measurementSystem || 'metric',
-        shoeSizeSystem: user.shoeSizeSystem || 'us',
-        distanceUnit: user.distanceUnit || 'km',
-      });
-      
       const isImperial = user.measurementSystem === 'imperial';
       
       // Height and Weight
@@ -167,69 +151,81 @@ export default function ProfilePage() {
         displayShoeSize = convertShoeSize(baseUsShoeSize, 'us', displayShoeSystem);
       }
 
-      profileForm.reset({
+      form.reset({
         name: user.displayName || '',
         age: user.age || '',
+        measurementSystem: user.measurementSystem || 'metric',
+        shoeSizeSystem: user.shoeSizeSystem || 'us',
+        distanceUnit: user.distanceUnit || 'km',
         shoeSize: displayShoeSize,
         height: heightInCm, // Always store base cm
         feet: displayFeet,
         inches: displayInches,
         weight: displayWeight, // Display value
       });
+      previousMeasurementSystem.current = user.measurementSystem || 'metric';
+      previousShoeSizeSystem.current = user.shoeSizeSystem || 'us';
     }
-  }, [user, profileForm, preferencesForm]);
+  }, [user, form]);
 
-  const handleMeasurementSystemChange = (newSystem: 'metric' | 'imperial') => {
-    const { getValues, setValue } = profileForm;
-    const oldSystem = newSystem === 'metric' ? 'imperial' : 'metric';
-    
-    const currentWeight = getValues('weight');
-    if (typeof currentWeight === 'number' && currentWeight > 0) {
-      const newWeight = oldSystem === 'metric' 
-        ? currentWeight * KG_TO_LBS // from kg to lbs
-        : currentWeight * LBS_TO_KG; // from lbs to kg
-      setValue('weight', parseFloat(newWeight.toFixed(2)));
+  React.useEffect(() => {
+    if (measurementSystem !== previousMeasurementSystem.current) {
+        const { getValues, setValue } = form;
+        
+        const currentWeight = getValues('weight');
+        if (typeof currentWeight === 'number' && currentWeight > 0) {
+          const newWeight = previousMeasurementSystem.current === 'metric' 
+            ? currentWeight * KG_TO_LBS // from kg to lbs
+            : currentWeight * LBS_TO_KG; // from lbs to kg
+          setValue('weight', parseFloat(newWeight.toFixed(2)));
+        }
+
+        if (measurementSystem === 'imperial') {
+          const heightCm = getValues('height');
+          if (typeof heightCm === 'number' && heightCm > 0) {
+            const totalInches = heightCm * CM_TO_IN;
+            setValue('feet', Math.floor(totalInches / 12));
+            setValue('inches', parseFloat((totalInches % 12).toFixed(2)));
+          }
+        } else {
+          const feet = getValues('feet');
+          const inches = getValues('inches');
+          if ((typeof feet === 'number' && feet > 0) || (typeof inches === 'number' && inches > 0)) {
+            const totalInches = (feet || 0) * 12 + (inches || 0);
+            setValue('height', parseFloat((totalInches * IN_TO_CM).toFixed(2)));
+          }
+        }
+        previousMeasurementSystem.current = measurementSystem;
     }
+  }, [measurementSystem, form]);
 
-    if (newSystem === 'imperial') {
-      const heightCm = getValues('height');
-      if (typeof heightCm === 'number' && heightCm > 0) {
-        const totalInches = heightCm * CM_TO_IN;
-        setValue('feet', Math.floor(totalInches / 12));
-        setValue('inches', parseFloat((totalInches % 12).toFixed(2)));
-      }
-    } else {
-      const feet = getValues('feet');
-      const inches = getValues('inches');
-      if ((typeof feet === 'number' && feet > 0) || (typeof inches === 'number' && inches > 0)) {
-        const totalInches = (feet || 0) * 12 + (inches || 0);
-        setValue('height', parseFloat((totalInches * IN_TO_CM).toFixed(2)));
-      }
+  React.useEffect(() => {
+    if (shoeSizeSystem !== previousShoeSizeSystem.current) {
+        const { getValues, setValue } = form;
+        
+        const currentShoeSize = getValues('shoeSize');
+        if (typeof currentShoeSize === 'number' && currentShoeSize > 0) {
+          const newShoeSize = convertShoeSize(currentShoeSize, previousShoeSizeSystem.current, shoeSizeSystem);
+          setValue('shoeSize', newShoeSize);
+        }
+        previousShoeSizeSystem.current = shoeSizeSystem;
     }
-  };
-
-  const handleShoeSizeSystemChange = (newSystem: 'us' | 'uk' | 'eu') => {
-    const oldSystem = preferencesForm.getValues('shoeSizeSystem');
-    const { getValues, setValue } = profileForm;
-    
-    const currentShoeSize = getValues('shoeSize');
-    if (typeof currentShoeSize === 'number' && currentShoeSize > 0) {
-      const newShoeSize = convertShoeSize(currentShoeSize, oldSystem, newSystem);
-      setValue('shoeSize', newShoeSize);
-    }
-  };
+  }, [shoeSizeSystem, form]);
 
 
-  async function onProfileSubmit(data: ProfileFormValues) {
-    setIsSubmittingProfile(true);
+  async function onSubmit(data: ProfileFormValues) {
+    setIsSubmitting(true);
 
     const dataToSubmit: Partial<ProfileFormValues> & { shoeSize?: number } = {
       name: data.name,
       age: data.age,
+      measurementSystem: data.measurementSystem,
+      shoeSizeSystem: data.shoeSizeSystem,
+      distanceUnit: data.distanceUnit,
     };
     
     // Always convert data to metric for storage
-    if (measurementSystem === 'imperial') {
+    if (data.measurementSystem === 'imperial') {
       if ((data.feet && data.feet > 0) || (data.inches && data.inches > 0)) {
         const totalInches = (data.feet || 0) * 12 + (data.inches || 0);
         dataToSubmit.height = totalInches * IN_TO_CM;
@@ -243,9 +239,8 @@ export default function ProfilePage() {
     }
 
     // Always convert shoe size to US for storage
-    const displayShoeSystem = preferencesForm.getValues('shoeSizeSystem');
     if (data.shoeSize && data.shoeSize > 0) {
-      dataToSubmit.shoeSize = convertShoeSize(data.shoeSize, displayShoeSystem, 'us');
+      dataToSubmit.shoeSize = convertShoeSize(data.shoeSize, data.shoeSizeSystem, 'us');
     } else {
       dataToSubmit.shoeSize = data.shoeSize || undefined;
     }
@@ -257,39 +252,31 @@ export default function ProfilePage() {
           weight: dataToSubmit.weight || undefined,
           shoeSize: dataToSubmit.shoeSize,
           age: dataToSubmit.age || undefined,
+          measurementSystem: dataToSubmit.measurementSystem,
+          shoeSizeSystem: dataToSubmit.shoeSizeSystem,
+          distanceUnit: dataToSubmit.distanceUnit,
       });
     } catch (error) {
       // Error is handled by the auth context's toast
     } finally {
-      setIsSubmittingProfile(false);
-    }
-  }
-
-  async function onPreferencesSubmit(data: PreferencesFormValues) {
-    setIsSubmittingPreferences(true);
-    try {
-        await updateProfileInfo(data);
-    } catch (error) {
-        // Error is handled by the auth context's toast, no need to do anything here.
-    } finally {
-        setIsSubmittingPreferences(false);
+      setIsSubmitting(false);
     }
   }
   
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>
-            Update your personal details here. This helps in providing more accurate wear simulations.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...profileForm}>
-            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-8">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personal Information &amp; Preferences</CardTitle>
+              <CardDescription>
+                Update your details here. This helps in providing more accurate wear simulations and personalized experiences.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
               <FormField
-                control={profileForm.control}
+                control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
@@ -301,10 +288,31 @@ export default function ProfilePage() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="measurementSystem"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Height &amp; Weight</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a measurement system" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="metric">Metric (cm, kg)</SelectItem>
+                          <SelectItem value="imperial">Imperial (ft/in, lbs)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                  {measurementSystem === 'metric' ? (
                    <FormField
-                    control={profileForm.control}
+                    control={form.control}
                     name="height"
                     render={({ field }) => (
                       <FormItem>
@@ -319,7 +327,7 @@ export default function ProfilePage() {
                  ) : (
                   <div className="grid grid-cols-2 gap-2">
                      <FormField
-                        control={profileForm.control}
+                        control={form.control}
                         name="feet"
                         render={({ field }) => (
                           <FormItem>
@@ -332,7 +340,7 @@ export default function ProfilePage() {
                         )}
                       />
                        <FormField
-                        control={profileForm.control}
+                        control={form.control}
                         name="inches"
                         render={({ field }) => (
                           <FormItem>
@@ -346,8 +354,10 @@ export default function ProfilePage() {
                       />
                   </div>
                  )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
-                  control={profileForm.control}
+                  control={form.control}
                   name="weight"
                   render={({ field }) => (
                     <FormItem>
@@ -359,23 +369,8 @@ export default function ProfilePage() {
                     </FormItem>
                   )}
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={profileForm.control}
-                  name="shoeSize"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Shoe Size ({shoeSizeSystem?.toUpperCase()})</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="10.5" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={profileForm.control}
+                  control={form.control}
                   name="age"
                   render={({ field }) => (
                     <FormItem>
@@ -388,122 +383,89 @@ export default function ProfilePage() {
                   )}
                 />
               </div>
-
-              <Button type="submit" disabled={isSubmittingProfile || isSubmittingPreferences}>
-                {isSubmittingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmittingProfile ? "Updating..." : "Update Profile"}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="shoeSizeSystem"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Shoe Size</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a shoe size system" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="us">US</SelectItem>
+                            <SelectItem value="uk">UK</SelectItem>
+                            <SelectItem value="eu">European</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="shoeSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Shoe Size ({shoeSizeSystem?.toUpperCase()})</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="10.5" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+              </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="distanceUnit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Distance</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a distance unit" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="km">Kilometers (km)</SelectItem>
+                            <SelectItem value="miles">Miles (mi)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+               </div>
+            </CardContent>
+          </Card>
+          <div className="flex justify-start">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? "Updating..." : "Update Profile"}
               </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+          </div>
+        </form>
+      </Form>
       <Card>
-        <CardHeader>
-          <CardTitle>Preferences</CardTitle>
-          <CardDescription>
-            Set your preferred units for measurement and distance.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...preferencesForm}>
-            <form onSubmit={preferencesForm.handleSubmit(onPreferencesSubmit)} className="space-y-8">
-              <FormField
-                control={preferencesForm.control}
-                name="measurementSystem"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Height &amp; Weight</FormLabel>
-                    <Select 
-                      onValueChange={(value: 'metric' | 'imperial') => {
-                        handleMeasurementSystemChange(value);
-                        field.onChange(value);
-                      }} 
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a measurement system" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="metric">Metric (cm, kg)</SelectItem>
-                        <SelectItem value="imperial">Imperial (ft/in, lbs)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={preferencesForm.control}
-                name="shoeSizeSystem"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Shoe Size</FormLabel>
-                    <Select
-                      onValueChange={(value: 'us' | 'uk' | 'eu') => {
-                        handleShoeSizeSystemChange(value);
-                        field.onChange(value);
-                      }}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a shoe size system" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="us">US</SelectItem>
-                        <SelectItem value="uk">UK</SelectItem>
-                        <SelectItem value="eu">European</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={preferencesForm.control}
-                name="distanceUnit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Distance</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a distance unit" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="km">Kilometers (km)</SelectItem>
-                        <SelectItem value="miles">Miles (mi)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isSubmittingProfile || isSubmittingPreferences}>
-                {isSubmittingPreferences && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmittingPreferences ? "Updating..." : "Update Preferences"}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Insurance</CardTitle>
-          <CardDescription>
-            Protect your equipment against theft and damage with one of our partners.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild>
-            <Link href="#">Explore Insurance Partners</Link>
-          </Button>
-        </CardContent>
-      </Card>
+          <CardHeader>
+            <CardTitle>Insurance</CardTitle>
+            <CardDescription>
+              Protect your equipment against theft and damage with one of our partners.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="#">Explore Insurance Partners</Link>
+            </Button>
+          </CardContent>
+        </Card>
     </>
   )
 }
