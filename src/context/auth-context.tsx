@@ -14,7 +14,6 @@ import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage"
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc, DocumentData } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { auth, storage, db } from '@/lib/firebase';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
 // UserProfile is what the components will see and use.
@@ -53,7 +52,7 @@ interface AuthContextType {
   signInWithEmailPassword: (email: string, password:string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'photoURL'>) => Promise<void>;
+  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => Promise<void>;
   updateProfilePhoto: (photoDataUrl: string) => Promise<boolean>;
 }
 
@@ -131,33 +130,38 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     router.push('/login');
   }, [router]);
 
-  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'photoURL'>) => {
+  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => {
       const currentUser = auth.currentUser;
       if (!currentUser) {
           toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Please log in again.' });
           throw new Error('Not Authenticated');
       }
       
-      try {
-        const authUpdates: { displayName?: string | null } = {};
-        if (data.displayName !== undefined) {
-            authUpdates.displayName = data.displayName;
-        }
+      const userDocRef = doc(db, 'users', currentUser.uid);
 
-        const firestoreUpdates: DocumentData = { ...data };
-        if (Object.keys(authUpdates).length > 0) {
-            await updateProfile(currentUser, authUpdates);
-            if ('displayName' in firestoreUpdates) {
-                delete firestoreUpdates.displayName;
-            }
+      try {
+        // Separate displayName for Firebase Auth update
+        const { displayName, ...firestoreData } = data;
+
+        // Update Firebase Auth profile if displayName is provided
+        if (displayName !== undefined) {
+            await updateProfile(currentUser, { displayName });
         }
         
-        if (Object.keys(firestoreUpdates).length > 0) {
-            await setDoc(doc(db, 'users', currentUser.uid), firestoreUpdates, { merge: true });
+        // Update Firestore document with the rest of the data
+        if (Object.keys(firestoreData).length > 0) {
+            await setDoc(userDocRef, firestoreData, { merge: true });
         }
 
-        setUser(prev => prev ? { ...prev, ...data, ...authUpdates } : null);
-        toast({ title: "Profile updated!" });
+        // Re-fetch the data from Firestore to ensure consistency
+        const updatedDocSnap = await getDoc(userDocRef);
+        if (updatedDocSnap.exists()) {
+            const updatedData = updatedDocSnap.data() as UserDocument;
+            setUser(prev => prev ? { ...prev, ...updatedData, displayName: currentUser.displayName, photoURL: currentUser.photoURL } : null);
+            toast({ title: "Profile updated!" });
+        } else {
+            throw new Error("User document not found after update.");
+        }
       } catch (error: any) {
         console.error("Profile update failed:", error);
         toast({
@@ -229,11 +233,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           return await fn(...args);
       } catch (error: any) {
           console.error(`Auth error in function ${fn.name}:`, error);
-          toast({
-              variant: 'destructive',
-              title: error.code || 'Authentication Error',
-              description: error.message || 'An unexpected error occurred.',
-          });
+          if (error.code !== 'auth/cancelled-popup-request') {
+            toast({
+                variant: 'destructive',
+                title: error.code || 'Authentication Error',
+                description: error.message || 'An unexpected error occurred.',
+            });
+          }
           throw error;
       }
   }, [toast]);
