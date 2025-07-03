@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
@@ -59,53 +60,50 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       if (authUser) {
-        const userDocRef = doc(db, 'users', authUser.uid);
-        try {
-          const userDocSnap = await getDoc(userDocRef);
-          
-          let userProfile: UserProfile = {
-            uid: authUser.uid,
-            email: authUser.email,
-            displayName: authUser.displayName,
-            photoURL: authUser.photoURL,
-          };
+        // Immediately set a basic user profile to make the app responsive.
+        // This stops the main loading skeleton quickly.
+        setUser({
+          uid: authUser.uid,
+          email: authUser.email,
+          displayName: authUser.displayName,
+          photoURL: authUser.photoURL,
+        });
+        setLoading(false);
 
-          if (userDocSnap.exists()) {
-            const userDocData = userDocSnap.data() as UserDocument;
-            // Merge Firestore data into the profile
-            userProfile = { ...userProfile, ...userDocData };
-            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-          } else {
-             const initialDoc: UserDocument = { 
-              displayName: authUser.displayName,
-              photoURL: authUser.photoURL,
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp()
-            };
-            await setDoc(userDocRef, initialDoc);
-          }
-           setUser(userProfile);
-        } catch (error) {
-           console.error("Firestore error during profile fetch:", error);
-           toast({
+        // Asynchronously fetch and merge detailed profile data from Firestore.
+        (async () => {
+          const userDocRef = doc(db, 'users', authUser.uid);
+          try {
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              const userDocData = userDocSnap.data() as UserDocument;
+              // Merge Firestore data into the profile, keeping existing state
+              setUser(prevUser => ({ ...prevUser!, ...userDocData }));
+              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+            } else {
+              const initialDoc: UserDocument = {
+                displayName: authUser.displayName,
+                photoURL: authUser.photoURL,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp(),
+              };
+              await setDoc(userDocRef, initialDoc);
+            }
+          } catch (error) {
+            console.error("Firestore error during profile fetch:", error);
+            toast({
               variant: 'destructive',
               title: 'Could not sync profile',
               description: 'There was an issue fetching your profile data.',
             });
-            // Set user with basic info anyway as a fallback
-            setUser({
-              uid: authUser.uid,
-              email: authUser.email,
-              displayName: authUser.displayName,
-              photoURL: authUser.photoURL,
-            });
-        }
+          }
+        })();
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -168,12 +166,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     try {
         const uploadTask = uploadString(storageRef, photoDataUrl, 'data_url');
 
-        // A 15-second timeout promise
         const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Upload timed out after 15 seconds.')), 15000)
+            setTimeout(() => reject(new Error('The request timed out.')), 15000)
         );
 
-        // Race the upload against the timeout
         await Promise.race([uploadTask, timeoutPromise]);
         
         const newPhotoURL = await getDownloadURL(storageRef);
@@ -201,7 +197,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                     description = error.message;
             }
         } else if (error.message.includes('timed out')) {
-            description = "The request timed out. Please check your network connection and Storage rules."
+            description = "The request timed out. Check Storage Rules and network."
         }
         
         toast({
@@ -213,7 +209,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
   
-  // This is a wrapper around the core auth functions to provide consistent error handling.
   const authWrapper = <T extends (...args: any[]) => Promise<any>>(fn: T) => async (...args: Parameters<T>): Promise<ReturnType<T> | void> => {
       try {
           return await fn(...args);
@@ -224,7 +219,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
               title: error.code || 'Authentication Error',
               description: error.message || 'An unexpected error occurred.',
           });
-          // Re-throwing allows the component to know the operation failed.
           throw error;
       }
   };
@@ -245,7 +239,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       signUpWithEmailPassword: authWrapper(signUpWithEmailPassword),
       signOut: authWrapper(signOut),
       updateProfileInfo: authWrapper(updateProfileInfo),
-      updateProfilePhoto // Not wrapping this one so it can return a boolean
+      updateProfilePhoto
     }}>
       {children}
     </AuthContext.Provider>
