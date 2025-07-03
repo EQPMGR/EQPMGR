@@ -2,25 +2,41 @@
 
 import { useState } from 'react';
 import { Activity } from 'lucide-react';
+import { generateInitialComponents } from '@/ai/flows/generate-initial-components';
 
 import { Button } from '@/components/ui/button';
 import { equipmentData } from '@/lib/data';
-import type { Equipment } from '@/lib/types';
+import type { Equipment, Component } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
 import { AddEquipmentDialog } from './add-equipment-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export function DashboardPage() {
   const [data, setData] = useState<Equipment[]>(equipmentData);
+  const { toast } = useToast();
 
-  function handleAddEquipment(
+  async function handleAddEquipment(
     newEquipmentData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours'> & { purchaseDate: string }
   ) {
+    const componentNames = await generateInitialComponents({
+        equipmentType: newEquipmentData.type,
+        modelYear: newEquipmentData.modelYear
+    });
+
+    const newComponents: Component[] = componentNames.components.map((name, index) => ({
+      id: `comp-${Date.now()}-${index}`,
+      name: name,
+      wearPercentage: 0,
+      purchaseDate: newEquipmentData.purchaseDate,
+      lastServiceDate: null,
+    }));
+      
     const newEquipment: Equipment = {
       ...newEquipmentData,
       id: `new-${Date.now()}`,
       totalDistance: 0,
       totalHours: 0,
-      components: [],
+      components: newComponents,
       maintenanceLog: [],
     };
     

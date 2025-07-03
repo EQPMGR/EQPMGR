@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { CalendarIcon, PlusCircle, Camera as CameraIcon } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Camera as CameraIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import Image from 'next/image';
 
@@ -63,12 +63,13 @@ const equipmentFormSchema = z.object({
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
 
 interface AddEquipmentDialogProps {
-  onAddEquipment: (equipment: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours'> & { purchaseDate: string }) => void;
+  onAddEquipment: (equipment: Omit<Equipment, 'id' | 'components' | 'maintenanceLog' | 'totalDistance' | 'totalHours'> & { purchaseDate: string }) => Promise<void>;
 }
 
 export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
@@ -92,18 +93,30 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     }
   };
 
-  function onSubmit(data: EquipmentFormValues) {
-    const newEquipmentData = {
-      ...data,
-      purchaseDate: data.purchaseDate.toISOString(),
-      imageUrl: imageUrl || 'https://placehold.co/600x400.png',
-    };
-    onAddEquipment(newEquipmentData);
-    toast({
-      title: 'Equipment Added!',
-      description: `${data.name} has been added to your inventory.`,
-    });
-    handleOpenChange(false);
+  async function onSubmit(data: EquipmentFormValues) {
+    setIsSubmitting(true);
+    try {
+        const newEquipmentData = {
+        ...data,
+        purchaseDate: data.purchaseDate.toISOString(),
+        imageUrl: imageUrl || `https://placehold.co/600x400.png?data-ai-hint=${data.type.toLowerCase()}`,
+        };
+        await onAddEquipment(newEquipmentData as any);
+        toast({
+        title: 'Equipment Added!',
+        description: `${data.name} has been added to your inventory.`,
+        });
+        handleOpenChange(false);
+    } catch (error) {
+        console.error("Error adding equipment:", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to Add Equipment",
+            description: "The AI component generation failed. Please try again.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -318,7 +331,10 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
               />
             </div>
              <DialogFooter>
-              <Button type="submit">Save Equipment</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Equipment
+              </Button>
             </DialogFooter>
           </form>
         </Form>
