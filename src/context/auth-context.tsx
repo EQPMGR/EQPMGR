@@ -92,6 +92,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 photoURL: authUser.photoURL,
                 createdAt: serverTimestamp(),
                 lastLogin: serverTimestamp(),
+                measurementSystem: 'metric',
+                shoeSizeSystem: 'us',
+                distanceUnit: 'km',
               };
               await setDoc(userDocRef, initialDoc);
             }
