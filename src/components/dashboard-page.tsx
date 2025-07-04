@@ -1,211 +1,45 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Activity } from 'lucide-react';
-import { collection, setDoc, doc, getDocs, Timestamp, query, where } from 'firebase/firestore';
-
-import { Button } from '@/components/ui/button';
-import type { Equipment } from '@/lib/types';
-import { EquipmentCard } from './equipment-card';
-import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { bikeDatabase } from '@/lib/bike-database';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { Skeleton } from '@/components/ui/skeleton';
-
-// Helper function to safely convert Firestore Timestamps or strings to Dates
-const toDate = (value: any): Date => {
-  if (value instanceof Timestamp) {
-    return value.toDate();
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    return new Date(value);
-  }
-  return new Date(); // Fallback for unexpected types
-};
-
-const toNullableDate = (value: any): Date | null => {
-  if (!value) return null;
-  return toDate(value);
-}
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/hooks/use-auth";
 
 export function DashboardPage() {
-  const [data, setData] = useState<Equipment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
-
-  useEffect(() => {
-    if (user) {
-      const fetchEquipment = async () => {
-        try {
-          const equipmentCol = collection(db, 'equipment');
-          const q = query(equipmentCol, where("ownerId", "==", user.uid));
-          const equipmentSnapshot = await getDocs(q);
-          const equipmentList = equipmentSnapshot.docs.map(doc => {
-            const docData = doc.data();
-            const components = (docData.components || []).map((c: any) => ({
-              ...c,
-              purchaseDate: toDate(c.purchaseDate),
-              lastServiceDate: toNullableDate(c.lastServiceDate),
-            }));
-            const maintenanceLog = (docData.maintenanceLog || []).map((l: any) => ({
-              ...l,
-              date: toDate(l.date),
-            }));
-
-            return {
-              ...docData,
-              id: doc.id,
-              purchaseDate: toDate(docData.purchaseDate),
-              components,
-              maintenanceLog,
-            } as Equipment;
-          });
-          setData(equipmentList);
-        } catch (error) {
-          console.error("Error fetching equipment: ", error);
-          toast({
-            variant: "destructive",
-            title: "Error fetching gear",
-            description: "Could not load your equipment from the database.",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchEquipment();
-    } else if (!authLoading) {
-      setIsLoading(false);
-    }
-  }, [user, authLoading, toast]);
-
-
-  async function handleAddEquipment(
-    formData: EquipmentFormValues
-  ) {
-    if (!user) {
-        toast({
-            variant: 'destructive',
-            title: 'Not Authenticated',
-            description: 'You must be logged in to add equipment.'
-        });
-        return;
-    }
-    const [brand, model, modelYearStr] = formData.bikeIdentifier.split('|');
-    const modelYear = parseInt(modelYearStr, 10);
-    const bikeFromDb = bikeDatabase.find(
-      b => b.brand === brand && b.model === model && b.modelYear === modelYear
-    );
-
-    if (!bikeFromDb) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Selected bike could not be found in the database.'
-      });
-      throw new Error('Selected bike not found');
-    }
-
-    const newEquipmentRef = doc(collection(db, 'equipment'));
-      
-    const newEquipmentData: Omit<Equipment, 'id'> = {
-      ownerId: user.uid,
-      name: formData.name,
-      type: bikeFromDb.type,
-      brand: bikeFromDb.brand,
-      model: bikeFromDb.model,
-      modelYear: bikeFromDb.modelYear,
-      purchaseDate: formData.purchaseDate,
-      purchasePrice: formData.purchasePrice,
-      imageUrl: bikeFromDb.imageUrl,
-      purchaseCondition: formData.purchaseCondition,
-      totalDistance: 0,
-      totalHours: 0,
-      components: [],
-      maintenanceLog: [],
-    };
-    
-    // Add serial number only if it's provided
-    if (formData.serialNumber) {
-      newEquipmentData.serialNumber = formData.serialNumber;
-    }
-    
-    await setDoc(newEquipmentRef, newEquipmentData);
-    
-    const finalEquipment: Equipment = {
-      ...newEquipmentData,
-      id: newEquipmentRef.id,
-    }
-    setData((prevData) => [finalEquipment, ...prevData]);
-  }
-
-  if (isLoading || authLoading) {
-    return (
-      <>
-        <div className="flex items-center justify-between space-y-2 mb-6">
-            <div>
-              <Skeleton className="h-8 w-48 mb-2" />
-              <Skeleton className="h-4 w-72" />
-            </div>
-            <div className="flex flex-col gap-2 md:flex-row">
-               <Skeleton className="h-10 w-36" />
-               <Skeleton className="h-10 w-40" />
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <Skeleton className="h-[430px] w-full rounded-lg" />
-            <Skeleton className="h-[430px] w-full rounded-lg" />
-            <Skeleton className="h-[430px] w-full rounded-lg hidden lg:block" />
-            <Skeleton className="h-[430px] w-full rounded-lg hidden xl:block" />
-          </div>
-      </>
-    )
-  }
-
-  if (!user) {
-     return (
-        <div className="text-center">
-            <h2 className="text-2xl font-bold">Welcome to EQPMGR</h2>
-            <p className="text-muted-foreground">Please sign in to manage your equipment.</p>
-        </div>
-     )
-  }
+  const { user } = useAuth();
 
   return (
     <>
       <div className="flex items-center justify-between space-y-2 mb-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight font-headline">My Equipment</h2>
+          <h2 className="text-3xl font-bold tracking-tight font-headline">Dashboard</h2>
           <p className="text-muted-foreground">
-            An overview of your gear's health and maintenance status.
+            Welcome back, {user?.displayName || 'gearhead'}! Here's a quick overview.
           </p>
         </div>
-        <div className="flex flex-col gap-2 md:flex-row">
-           <Button variant="secondary">
-            <Activity className="mr-2 h-4 w-4" />
-            Sync Activity
-          </Button>
-          <AddEquipmentDialog onAddEquipment={handleAddEquipment} />
-        </div>
       </div>
-      {data.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {data.map((item) => (
-            <EquipmentCard 
-              key={item.id} 
-              equipment={item} 
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-16 border-2 border-dashed rounded-lg">
-            <h3 className="text-xl font-semibold">No Equipment Found</h3>
-            <p className="text-muted-foreground mt-2">Get started by adding your first piece of gear.</p>
-        </div>
-      )}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Getting Started</CardTitle>
+            <CardDescription>
+              Your main hub for everything gear-related.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>Use the navigation menu to view your equipment, add new gear, and manage your settings.</p>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader>
+            <CardTitle>Strava Integration</CardTitle>
+            <CardDescription>
+              Connect your Strava account to automatically track usage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>Coming soon! Auto-import your activities to simulate wear and tear.</p>
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 }
