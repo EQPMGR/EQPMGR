@@ -24,26 +24,21 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import Link from "next/link"
 import { useAuth, type UserProfile } from "@/hooks/use-auth"
 
 // --- Zod Schema with Preprocessing ---
-const processEmptyString = (val: unknown) => (typeof val === 'string' && val.trim() === '') ? undefined : val;
+const emptyStringToUndefined = z.preprocess(
+  (val) => (String(val).trim() === "" ? undefined : val),
+  z.any()
+);
 
-const optionalPositiveNumber = z.preprocess(
-  processEmptyString,
+const optionalPositiveNumber = emptyStringToUndefined.pipe(
   z.coerce.number({ invalid_type_error: "Must be a number" }).positive().optional()
 );
 
-const inchesSchema = z.preprocess(
-  processEmptyString,
+const inchesSchema = emptyStringToUndefined.pipe(
   z.coerce
     .number({ invalid_type_error: "Must be a number" })
     .positive()
@@ -100,21 +95,27 @@ const convertShoeSize = (
 const mapProfileToForm = (profile: UserProfile): ProfileFormValues => {
     const isImperial = profile.measurementSystem === 'imperial';
     let feet, inches, height, weight, shoeSize;
-
-    if (isImperial) {
-        if (profile.height) {
+    
+    // Convert height for display
+    if (profile.height) {
+        if (isImperial) {
             const totalInches = profile.height * CM_TO_IN;
             feet = Math.floor(totalInches / 12);
             inches = parseFloat((totalInches % 12).toFixed(2));
+            height = undefined; // Don't set metric height
+        } else {
+            height = parseFloat(profile.height.toFixed(2));
+            feet = undefined;
+            inches = undefined;
         }
-        if (profile.weight) {
-            weight = parseFloat((profile.weight * KG_TO_LBS).toFixed(2));
-        }
-    } else {
-        height = profile.height;
-        weight = profile.weight;
     }
 
+    // Convert weight for display
+    if (profile.weight) {
+        weight = isImperial ? parseFloat((profile.weight * KG_TO_LBS).toFixed(2)) : parseFloat(profile.weight.toFixed(2));
+    }
+
+    // Convert shoe size for display
     if (profile.shoeSize) {
         shoeSize = convertShoeSize(profile.shoeSize, 'us', profile.shoeSizeSystem);
     }
@@ -133,7 +134,7 @@ const mapProfileToForm = (profile: UserProfile): ProfileFormValues => {
     };
 };
 
-const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile>, 'uid' | 'email'> => {
+const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile>, 'uid' | 'email' | 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'> => {
     let height, weight, shoeSize;
 
     if (formData.measurementSystem === 'imperial') {
@@ -156,26 +157,22 @@ const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile
     return {
         displayName: formData.name || null,
         age: formData.age,
-        measurementSystem: formData.measurementSystem,
-        shoeSizeSystem: formData.shoeSizeSystem,
-        distanceUnit: formData.distanceUnit,
         height: height,
         weight: weight,
         shoeSize: shoeSize,
     };
 };
 
-
 export default function ProfilePage() {
-  const { user, updateProfileInfo } = useAuth()
+  const { user, updateProfileInfo, updateUserPreferences } = useAuth()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      measurementSystem: 'metric',
+      measurementSystem: 'imperial',
       shoeSizeSystem: 'us',
-      distanceUnit: 'km',
+      distanceUnit: 'miles',
       name: '',
       age: undefined,
       height: undefined,
@@ -189,72 +186,12 @@ export default function ProfilePage() {
   
   const measurementSystem = form.watch('measurementSystem');
   const shoeSizeSystem = form.watch('shoeSizeSystem');
-  const previousMeasurementSystem = React.useRef(measurementSystem);
-  const previousShoeSizeSystem = React.useRef(shoeSizeSystem);
 
   React.useEffect(() => {
     if (user) {
         form.reset(mapProfileToForm(user));
-        previousMeasurementSystem.current = user.measurementSystem;
-        previousShoeSizeSystem.current = user.shoeSizeSystem;
     }
   }, [user, form]);
-
-  React.useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === 'measurementSystem') {
-        const newSystem = value.measurementSystem;
-        const oldSystem = previousMeasurementSystem.current;
-        if (newSystem === oldSystem) return;
-
-        const { getValues, setValue } = form;
-        
-        const currentWeight = getValues('weight');
-        if (currentWeight) {
-          const newWeight = oldSystem === 'metric' 
-            ? currentWeight * KG_TO_LBS
-            : currentWeight * LBS_TO_KG;
-          setValue('weight', parseFloat(newWeight.toFixed(2)));
-        }
-
-        if (newSystem === 'imperial') {
-          const heightCm = getValues('height');
-          if (heightCm) {
-            const totalInches = heightCm * CM_TO_IN;
-            setValue('feet', Math.floor(totalInches / 12));
-            setValue('inches', parseFloat((totalInches % 12).toFixed(2)));
-            setValue('height', undefined);
-          }
-        } else { // newSystem is 'metric'
-          const feet = getValues('feet');
-          const inches = getValues('inches');
-          if (feet || inches) {
-            const totalInches = (feet || 0) * 12 + (inches || 0);
-            setValue('height', parseFloat((totalInches * IN_TO_CM).toFixed(2)));
-            setValue('feet', undefined);
-            setValue('inches', undefined);
-          }
-        }
-        previousMeasurementSystem.current = newSystem;
-      }
-
-      if (name === 'shoeSizeSystem') {
-        const newSystem = value.shoeSizeSystem;
-        const oldSystem = previousShoeSizeSystem.current;
-        if (newSystem === oldSystem || !oldSystem) return;
-
-        const { getValues, setValue } = form;
-        
-        const currentShoeSize = getValues('shoeSize');
-        if (currentShoeSize) {
-          const newShoeSize = convertShoeSize(currentShoeSize, oldSystem, newSystem);
-          setValue('shoeSize', newShoeSize);
-        }
-        previousShoeSizeSystem.current = newSystem;
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
 
 
   async function onSubmit(data: ProfileFormValues) {
@@ -277,7 +214,7 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle>Personal Information &amp; Preferences</CardTitle>
               <CardDescription>
-                Update your details here. This helps in providing more accurate wear simulations and personalized experiences.
+                Update your details here. Preferences save automatically. Click the button to save personal info.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -294,28 +231,37 @@ export default function ProfilePage() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="measurementSystem"
-                  render={({ field }) => (
-                    <FormItem>
+               <FormField
+                control={form.control}
+                name="measurementSystem"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
                       <FormLabel>Height &amp; Weight</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a measurement system" />
-                          </SelectTrigger>
+                            <RadioGroup
+                                onValueChange={(value) => {
+                                    field.onChange(value);
+                                    updateUserPreferences({ measurementSystem: value as 'metric' | 'imperial' });
+                                }}
+                                value={field.value}
+                                className="flex space-x-4"
+                            >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="metric" /></FormControl>
+                                    <FormLabel className="font-normal">Metric (cm, kg)</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="imperial" /></FormControl>
+                                    <FormLabel className="font-normal">Imperial (ft/in, lbs)</FormLabel>
+                                </FormItem>
+                            </RadioGroup>
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="metric">Metric (cm, kg)</SelectItem>
-                          <SelectItem value="imperial">Imperial (ft/in, lbs)</SelectItem>
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
-                  )}
-                />
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  {measurementSystem === 'metric' ? (
                    <FormField
                     control={form.control}
@@ -360,22 +306,21 @@ export default function ProfilePage() {
                       />
                   </div>
                  )}
+                  <FormField
+                    control={form.control}
+                    name="weight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Weight ({measurementSystem === 'metric' ? 'kg' : 'lbs'})</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="any" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="weight"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weight ({measurementSystem === 'metric' ? 'kg' : 'lbs'})</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="any" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} value={field.value ?? ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
+              <FormField
                   control={form.control}
                   name="age"
                   render={({ field }) => (
@@ -388,67 +333,83 @@ export default function ProfilePage() {
                     </FormItem>
                   )}
                 />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="shoeSizeSystem"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Shoe Size</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a shoe size system" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="us">US</SelectItem>
-                            <SelectItem value="uk">UK</SelectItem>
-                            <SelectItem value="eu">European</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="shoeSize"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Shoe Size ({shoeSizeSystem?.toUpperCase()})</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="any" placeholder="10.5" {...field} value={field.value ?? ''} />
+              
+              <FormField
+                  control={form.control}
+                  name="shoeSizeSystem"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Shoe Size System</FormLabel>
+                       <FormControl>
+                            <RadioGroup
+                                onValueChange={(value) => {
+                                    field.onChange(value);
+                                    updateUserPreferences({ shoeSizeSystem: value as 'us' | 'uk' | 'eu' });
+                                }}
+                                value={field.value}
+                                className="flex space-x-4"
+                            >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="us" /></FormControl>
+                                    <FormLabel className="font-normal">US</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="uk" /></FormControl>
+                                    <FormLabel className="font-normal">UK</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="eu" /></FormControl>
+                                    <FormLabel className="font-normal">European</FormLabel>
+                                </FormItem>
+                            </RadioGroup>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-              </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="distanceUnit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Distance</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a distance unit" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="km">Kilometers (km)</SelectItem>
-                            <SelectItem value="miles">Miles (mi)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-               </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+               <FormField
+                  control={form.control}
+                  name="shoeSize"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Shoe Size ({shoeSizeSystem?.toUpperCase()})</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.5" placeholder="10.5" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              
+               <FormField
+                  control={form.control}
+                  name="distanceUnit"
+                  render={({ field }) => (
+                     <FormItem className="space-y-3">
+                      <FormLabel>Distance Unit</FormLabel>
+                       <FormControl>
+                            <RadioGroup
+                                onValueChange={(value) => {
+                                    field.onChange(value);
+                                    updateUserPreferences({ distanceUnit: value as 'km' | 'miles' });
+                                }}
+                                value={field.value}
+                                className="flex space-x-4"
+                            >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="km" /></FormControl>
+                                    <FormLabel className="font-normal">Kilometers (km)</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="miles" /></FormControl>
+                                    <FormLabel className="font-normal">Miles (mi)</FormLabel>
+                                </FormItem>
+                            </RadioGroup>
+                        </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
             </CardContent>
           </Card>
           <div className="flex justify-start">
@@ -475,5 +436,3 @@ export default function ProfilePage() {
     </>
   )
 }
-
-    

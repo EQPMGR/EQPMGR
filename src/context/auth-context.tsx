@@ -11,7 +11,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { auth, storage, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -50,7 +50,8 @@ interface AuthContextType {
   signInWithEmailPassword: (email: string, password:string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => Promise<void>;
+  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>) => Promise<void>;
+  updateUserPreferences: (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>>) => Promise<void>;
   updateProfilePhoto: (photoDataUrl: string) => Promise<boolean>;
 }
 
@@ -64,9 +65,9 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     email: authUser.email,
     displayName: authUser.displayName || data.displayName || null,
     photoURL: authUser.photoURL || data.photoURL || null,
-    measurementSystem: data.measurementSystem || 'metric',
+    measurementSystem: data.measurementSystem || 'imperial',
     shoeSizeSystem: data.shoeSizeSystem || 'us',
-    distanceUnit: data.distanceUnit || 'km',
+    distanceUnit: data.distanceUnit || 'miles',
     height: data.height,
     weight: data.weight,
     shoeSize: data.shoeSize,
@@ -97,27 +98,27 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const userDocRef = doc(db, 'users', authUser.uid);
         try {
           const userDocSnap = await getDoc(userDocRef);
-          let userProfile: UserProfile;
-
+          let userDocData: UserDocument;
+          
           if (userDocSnap.exists()) {
-            const userDocData = userDocSnap.data() as UserDocument;
-            userProfile = createSafeUserProfile(authUser, userDocData);
-            await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+            userDocData = userDocSnap.data() as UserDocument;
+            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
           } else {
             // New user: Create a complete profile document with defaults
-            const newDocData: UserDocument = {
+            userDocData = {
               displayName: authUser.displayName || '',
               photoURL: authUser.photoURL || '',
-              measurementSystem: 'metric',
+              measurementSystem: 'imperial',
               shoeSizeSystem: 'us',
-              distanceUnit: 'km',
+              distanceUnit: 'miles',
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp(),
             };
-            await setDoc(userDocRef, newDocData, { merge: true });
-            userProfile = createSafeUserProfile(authUser, newDocData);
+            await setDoc(userDocRef, userDocData);
           }
-          setUser(userProfile);
+          
+          const safeProfile = createSafeUserProfile(authUser, userDocData);
+          setUser(safeProfile);
 
         } catch (error) {
             handleAuthError(error, 'Profile Sync Failed');
@@ -143,6 +144,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
      try {
       await createUserWithEmailAndPassword(auth, email, password);
+      // The onAuthStateChanged listener will handle new user setup.
       router.push('/settings/profile');
     } catch (error) {
       handleAuthError(error, 'Sign Up Failed');
@@ -158,48 +160,63 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => {
+  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>) => {
       const currentUser = auth.currentUser;
-      if (!currentUser || !user) {
+      if (!currentUser) {
           throw new Error('Not Authenticated');
       }
       
       const userDocRef = doc(db, 'users', currentUser.uid);
 
       try {
-        // 1. Handle displayName update in Firebase Auth, as it's a special case
         if (data.displayName !== undefined && data.displayName !== currentUser.displayName) {
             await updateProfile(currentUser, { displayName: data.displayName });
         }
 
-        // 2. Prepare the document for Firestore.
-        const firestoreUpdateData: Partial<UserDocument> = { ...data };
-
-        // 3. Sanitize data: remove any undefined/null values, replacing them with a delete command for Firestore.
-        // This is crucial for optional fields like height, weight, etc.
+        const firestoreUpdateData: { [key: string]: any } = { ...data };
         for (const key in firestoreUpdateData) {
-          const typedKey = key as keyof typeof firestoreUpdateData;
-          if (firestoreUpdateData[typedKey] === undefined || firestoreUpdateData[typedKey] === null) {
-            (firestoreUpdateData as any)[typedKey] = deleteField();
+          if (firestoreUpdateData[key] === undefined || firestoreUpdateData[key] === null || firestoreUpdateData[key] === '') {
+            firestoreUpdateData[key] = deleteField();
           }
         }
         
-        // 4. Save to Firestore
         await setDoc(userDocRef, firestoreUpdateData, { merge: true });
 
-        // 5. Re-fetch and update local state to reflect changes
-        const updatedDoc = await getDoc(userDocRef);
-        if (updatedDoc.exists()) {
-             const userDocData = updatedDoc.data() as UserDocument;
-             const safeProfile = createSafeUserProfile(currentUser, userDocData);
-             setUser(safeProfile);
-        }
+        setUser(prevUser => {
+          if (!prevUser) return null;
+          const updatedUser = { ...prevUser, ...data};
+          // Clean up undefined/nulls from local state too
+          Object.keys(updatedUser).forEach(key => {
+            const uKey = key as keyof UserProfile;
+            if (updatedUser[uKey] === undefined || updatedUser[uKey] === null) {
+              delete (updatedUser as Partial<UserProfile>)[uKey];
+            }
+          });
+          return updatedUser;
+        });
 
         toast({ title: "Profile updated!" });
       } catch (error: any) {
         handleAuthError(error, 'Profile Update Failed');
       }
-  }, [user, toast, handleAuthError]);
+  }, [toast, handleAuthError]);
+
+  const updateUserPreferencesHandler = useCallback(async (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>>) => {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+          throw new Error('Not Authenticated');
+      }
+
+      const userDocRef = doc(db, 'users', currentUser.uid);
+
+      try {
+          await setDoc(userDocRef, prefs, { merge: true });
+          setUser(prevUser => prevUser ? { ...prevUser, ...prefs } : null);
+          toast({ title: "Preference saved!" });
+      } catch (error) {
+          handleAuthError(error, 'Preference Update Failed');
+      }
+  }, [handleAuthError, toast]);
   
   const updateProfilePhotoHandler = useCallback(async (photoDataUrl: string): Promise<boolean> => {
     const currentUser = auth.currentUser;
@@ -229,8 +246,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     signUpWithEmailPassword: signUpWithEmailPasswordHandler,
     signOut: signOutHandler,
     updateProfileInfo: updateProfileInfoHandler,
+    updateUserPreferences: updateUserPreferencesHandler,
     updateProfilePhoto: updateProfilePhotoHandler,
-  }), [user, loading, updateProfileInfoHandler, updateProfilePhotoHandler]);
+  }), [user, loading, updateProfileInfoHandler, updateUserPreferencesHandler, updateProfilePhotoHandler]);
 
   return (
     <AuthContext.Provider value={value}>
