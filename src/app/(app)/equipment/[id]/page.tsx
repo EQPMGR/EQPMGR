@@ -1,4 +1,3 @@
-
 'use client'
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -9,8 +8,12 @@ import {
   Footprints,
   Puzzle,
   Shield,
+  Pencil,
 } from 'lucide-react';
-import { equipmentData } from '@/lib/data';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -38,6 +41,9 @@ import { FramesetIcon } from '@/components/icons/frameset-icon';
 import { FitInfoIcon } from '@/components/icons/fit-info-icon';
 import { DrivetrainIcon } from '@/components/icons/drivetrain-icon';
 import { DiscBrakeIcon } from '@/components/icons/disc-brake-icon';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -85,12 +91,53 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
 
 export default function EquipmentDetailPage() {
   const params = useParams<{ id: string }>();
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [equipment, setEquipment] = useState<Equipment | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
-    const foundEquipment = equipmentData.find((e) => e.id === params.id);
-    setEquipment(foundEquipment);
-  }, [params.id]);
+    if (user && params.id) {
+      const fetchEquipment = async () => {
+        setIsLoading(true);
+        try {
+          const equipmentRef = doc(db, 'users', user.uid, 'equipment', params.id);
+          const equipmentSnap = await getDoc(equipmentRef);
+
+          if (equipmentSnap.exists()) {
+            setEquipment(equipmentSnap.data() as Equipment);
+          } else {
+            console.error("No such document!");
+            setEquipment(undefined);
+          }
+        } catch (error) {
+          console.error("Error fetching equipment details: ", error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not load equipment details."
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchEquipment();
+    } else if (!authLoading) {
+        setIsLoading(false);
+    }
+  }, [user, params.id, authLoading, toast]);
+  
+  const handleUpdateEquipment = async (data: UpdateEquipmentData) => {
+    if (!user || !equipment) {
+      toast({ variant: "destructive", title: "Error", description: "Could not update equipment." });
+      return;
+    }
+    const equipmentRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+    await updateDoc(equipmentRef, data);
+    setEquipment(prev => prev ? { ...prev, ...data } : undefined);
+  };
+
 
   const componentsBySystem = useMemo(() => {
     if (!equipment) return {};
@@ -105,6 +152,10 @@ export default function EquipmentDetailPage() {
   }, [equipment]);
 
   const systemNames = Object.keys(componentsBySystem);
+
+  if (isLoading || authLoading) {
+      return <div><Skeleton className="h-96 w-full" /></div>
+  }
 
   if (!equipment) {
     return (
@@ -156,11 +207,19 @@ export default function EquipmentDetailPage() {
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl font-headline flex items-center gap-2">
-                    <Icon className="h-7 w-7" />
-                    {equipment.name}
-                </CardTitle>
-                <CardDescription>{equipment.brand} {equipment.model} &bull; {equipment.type}</CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle className="text-2xl font-headline flex items-center gap-2">
+                            <Icon className="h-7 w-7" />
+                            {equipment.name}
+                        </CardTitle>
+                        <CardDescription>{equipment.brand} {equipment.model} &bull; {equipment.type}</CardDescription>
+                    </div>
+                    <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Edit Equipment</span>
+                    </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <h4 className="font-semibold mb-2">Most Worn Components</h4>
@@ -279,6 +338,12 @@ export default function EquipmentDetailPage() {
             </Card>
           </div>
         </div>
+        {equipment && <EditEquipmentDialog 
+            equipment={equipment} 
+            onUpdateEquipment={handleUpdateEquipment}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+        />}
     </>
   );
 }
