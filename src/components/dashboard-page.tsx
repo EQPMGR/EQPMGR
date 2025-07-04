@@ -95,7 +95,7 @@ export function DashboardPage() {
       purchasePrice: formData.purchasePrice,
       serialNumber: formData.serialNumber,
       imageUrl: bikeFromDb.imageUrl,
-      purchaseCondition: 'new',
+      purchaseCondition: formData.purchaseCondition,
       totalDistance: 0,
       totalHours: 0,
       components: newComponents,

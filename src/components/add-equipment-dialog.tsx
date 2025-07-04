@@ -22,6 +22,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,6 +34,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -52,7 +54,11 @@ const equipmentFormSchema = z.object({
     required_error: 'A purchase date is required.',
   }),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
-  serialNumber: z.string().optional(),
+  serialNumber: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(3, "Serial number must be at least 3 characters.").optional()
+  ),
+  purchaseCondition: z.enum(['new', 'used']),
 });
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
@@ -79,6 +85,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
       bikeIdentifier: '',
       purchasePrice: 0,
       serialNumber: '',
+      purchaseCondition: 'new',
     },
   });
 
@@ -149,7 +156,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-6">
             <div className="grid grid-cols-2 gap-4">
                 <FormItem>
                   <FormLabel>Brand</FormLabel>
@@ -198,13 +205,6 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                   )}
                 />
             </div>
-            
-            {selectedBike && (
-                <div className="p-4 border rounded-lg bg-muted/50">
-                    <p className="text-sm font-semibold">{selectedBike.brand} {selectedBike.model}</p>
-                    <p className="text-xs text-muted-foreground">{selectedBike.type} &bull; {selectedBike.modelYear}</p>
-                </div>
-            )}
 
             <FormField
               control={form.control}
@@ -220,6 +220,37 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
               )}
             />
             
+            <FormField
+              control={form.control}
+              name="purchaseCondition"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Condition</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="new" />
+                        </FormControl>
+                        <FormLabel className="font-normal">New</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="used" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Used</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
                <FormField
                 control={form.control}
@@ -249,6 +280,10 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
+                            captionLayout="dropdown-buttons"
+                            fromYear={1980}
+                            toYear={new Date().getFullYear()}
+                            fixedWeeks
                             selected={field.value}
                             onSelect={field.onChange}
                             disabled={(date) =>
@@ -289,7 +324,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                   </FormItem>
                 )}
               />
-             <DialogFooter>
+             <DialogFooter className="sticky bottom-0 bg-background pt-4 -mx-6 px-6 -mb-6 pb-6">
               <Button type="submit" disabled={isSubmitting || !selectedBike}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Equipment
