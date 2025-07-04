@@ -77,7 +77,7 @@ const convertShoeSize = (
   fromSystem: 'us' | 'uk' | 'eu', 
   toSystem: 'us' | 'uk' | 'eu'
 ): number | undefined => {
-    if (fromSystem === toSystem || !size) return size;
+    if (fromSystem === toSystem || size === undefined) return size;
 
     let usSize: number;
     switch (fromSystem) {
@@ -173,10 +173,16 @@ export default function ProfilePage() {
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      name: '',
       measurementSystem: 'metric',
       shoeSizeSystem: 'us',
       distanceUnit: 'km',
+      name: '',
+      age: undefined,
+      height: undefined,
+      feet: undefined,
+      inches: undefined,
+      weight: undefined,
+      shoeSize: undefined,
     },
     mode: "onChange",
   })
@@ -318,7 +324,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Height (cm)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="any" placeholder="180" {...field} />
+                          <Input type="number" step="any" placeholder="180" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -333,7 +339,7 @@ export default function ProfilePage() {
                           <FormItem>
                             <FormLabel>Height (ft)</FormLabel>
                             <FormControl>
-                              <Input type="number" step="any" placeholder="5" {...field} />
+                              <Input type="number" step="any" placeholder="5" {...field} value={field.value ?? ''} />
                             </FormControl>
                              <FormMessage />
                           </FormItem>
@@ -346,7 +352,7 @@ export default function ProfilePage() {
                           <FormItem>
                             <FormLabel>(in)</FormLabel>
                             <FormControl>
-                              <Input type="number" step="any" placeholder="11" {...field} />
+                              <Input type="number" step="any" placeholder="11" {...field} value={field.value ?? ''} />
                             </FormControl>
                              <FormMessage />
                           </FormItem>
@@ -363,7 +369,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Weight ({measurementSystem === 'metric' ? 'kg' : 'lbs'})</FormLabel>
                       <FormControl>
-                        <Input type="number" step="any" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} />
+                        <Input type="number" step="any" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -376,7 +382,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Age</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="32" {...field} />
+                        <Input type="number" placeholder="32" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -413,7 +419,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Shoe Size ({shoeSizeSystem?.toUpperCase()})</FormLabel>
                         <FormControl>
-                          <Input type="number" step="any" placeholder="10.5" {...field} />
+                          <Input type="number" step="any" placeholder="10.5" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -469,3 +475,5 @@ export default function ProfilePage() {
     </>
   )
 }
+
+    
