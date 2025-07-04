@@ -2,7 +2,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Bike,
   ChevronLeft,
@@ -10,8 +10,10 @@ import {
   Puzzle,
   Shield,
   Pencil,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteField } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -29,6 +31,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { ComponentStatusList } from '@/components/component-status-list';
 // import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
@@ -92,11 +105,13 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
 
 export default function EquipmentDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [equipment, setEquipment] = useState<Equipment | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (user && params.id) {
@@ -185,6 +200,35 @@ export default function EquipmentDetailPage() {
     });
   };
 
+  const handleDeleteEquipment = async () => {
+    if (!user || !equipment) {
+      toast({ variant: "destructive", title: "Error", description: "Could not delete equipment." });
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        [`equipment.${equipment.id}`]: deleteField()
+      });
+
+      toast({
+        title: "Success!",
+        description: "Equipment has been deleted."
+      });
+
+      router.push('/equipment');
+    } catch (error) {
+      console.error("Error deleting equipment: ", error);
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: "An error occurred while deleting the equipment."
+      });
+      setIsDeleting(false);
+    }
+  };
+
 
   const componentsBySystem = useMemo(() => {
     if (!equipment) return {};
@@ -262,10 +306,36 @@ export default function EquipmentDetailPage() {
                         </CardTitle>
                         <CardDescription>{equipment.brand} {equipment.model} &bull; {equipment.type}</CardDescription>
                     </div>
-                    <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
-                        <Pencil className="h-4 w-4" />
-                        <span className="sr-only">Edit Equipment</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Edit Equipment</span>
+                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="icon">
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Delete Equipment</span>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete your
+                                    equipment and all of its associated data.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteEquipment} disabled={isDeleting}>
+                                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                 </div>
               </CardHeader>
               <CardContent>
