@@ -8,7 +8,7 @@ import { collection, setDoc, doc, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import type { Equipment, Component } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
-import { AddEquipmentDialog, type NewEquipmentFormSubmitData } from './add-equipment-dialog';
+import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { bikeDatabase } from '@/lib/bike-database';
 import { useAuth } from '@/hooks/use-auth';
@@ -48,7 +48,7 @@ export function DashboardPage() {
 
 
   async function handleAddEquipment(
-    formData: NewEquipmentFormSubmitData
+    formData: EquipmentFormValues
   ) {
     if (!user) {
         toast({
@@ -73,6 +73,8 @@ export function DashboardPage() {
       throw new Error('Selected bike not found');
     }
 
+    const purchaseDateISO = formData.purchaseDate.toISOString();
+
     const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
       id: `comp-${Date.now()}-${index}`,
       name: comp.name,
@@ -80,7 +82,7 @@ export function DashboardPage() {
       model: comp.model,
       system: comp.system,
       wearPercentage: 0,
-      purchaseDate: formData.purchaseDate,
+      purchaseDate: purchaseDateISO,
       lastServiceDate: null,
     }));
       
@@ -93,9 +95,8 @@ export function DashboardPage() {
       brand: bikeFromDb.brand,
       model: bikeFromDb.model,
       modelYear: bikeFromDb.modelYear,
-      purchaseDate: formData.purchaseDate,
+      purchaseDate: purchaseDateISO,
       purchasePrice: formData.purchasePrice,
-      ...(formData.serialNumber && { serialNumber: formData.serialNumber }),
       imageUrl: bikeFromDb.imageUrl,
       purchaseCondition: formData.purchaseCondition,
       totalDistance: 0,
@@ -104,6 +105,11 @@ export function DashboardPage() {
       maintenanceLog: [],
     };
     
+    // Only add serial number if it exists and is not empty
+    if (formData.serialNumber && formData.serialNumber.trim()) {
+      newEquipment.serialNumber = formData.serialNumber.trim();
+    }
+
     console.log('Data to be saved:', newEquipment);
     await setDoc(newEquipmentRef, newEquipment);
     setData((prevData) => [newEquipment, ...prevData]);

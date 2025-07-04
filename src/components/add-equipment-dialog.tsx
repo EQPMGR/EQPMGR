@@ -44,8 +44,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Equipment } from '@/lib/types';
-import { bikeDatabase, type BikeFromDB } from '@/lib/bike-database';
+import { bikeDatabase } from '@/lib/bike-database';
 
 const equipmentFormSchema = z.object({
   name: z.string().min(2, { message: 'Nickname is required.' }),
@@ -59,15 +58,10 @@ const equipmentFormSchema = z.object({
 });
 
 
-type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
-
-export interface NewEquipmentFormSubmitData extends Omit<EquipmentFormValues, 'serialNumber'> {
-    purchaseDate: string;
-    serialNumber?: string;
-}
+export type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
 
 interface AddEquipmentDialogProps {
-  onAddEquipment: (equipment: NewEquipmentFormSubmitData) => Promise<void>;
+  onAddEquipment: (equipment: EquipmentFormValues) => Promise<void>;
 }
 
 const bikeBrands = [...new Set(bikeDatabase.map(bike => bike.brand))];
@@ -117,18 +111,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
   async function onSubmit(data: EquipmentFormValues) {
     setIsSubmitting(true);
     try {
-        const { serialNumber, ...restOfData } = data;
-        
-        const newEquipmentData: NewEquipmentFormSubmitData = {
-            ...restOfData,
-            purchaseDate: data.purchaseDate.toISOString(),
-        };
-
-        if (serialNumber && serialNumber.trim()) {
-            newEquipmentData.serialNumber = serialNumber.trim();
-        }
-        
-        await onAddEquipment(newEquipmentData);
+        await onAddEquipment(data);
         toast({
             title: 'Equipment Added!',
             description: `${data.name} has been added to your inventory.`,
