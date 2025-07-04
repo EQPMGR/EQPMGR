@@ -57,6 +57,7 @@ export function DashboardPage() {
 
             return {
               ...docData,
+              id: doc.id,
               purchaseDate: toDate(docData.purchaseDate),
               components,
               maintenanceLog,
@@ -123,13 +124,13 @@ export function DashboardPage() {
       
     const newEquipmentRef = doc(collection(db, 'users', user.uid, 'equipment'));
       
-    const newEquipmentData: Omit<Equipment, 'id' | 'serialNumber'> & { serialNumber?: string } = {
+    const newEquipmentData: Omit<Equipment, 'id'> = {
       name: formData.name,
       type: bikeFromDb.type,
       brand: bikeFromDb.brand,
       model: bikeFromDb.model,
       modelYear: bikeFromDb.modelYear,
-      purchaseDate: purchaseDate,
+      purchaseDate: formData.purchaseDate,
       purchasePrice: formData.purchasePrice,
       imageUrl: bikeFromDb.imageUrl,
       purchaseCondition: formData.purchaseCondition,
@@ -137,19 +138,16 @@ export function DashboardPage() {
       totalHours: 0,
       components: newComponents,
       maintenanceLog: [],
+      ...(formData.serialNumber && { serialNumber: formData.serialNumber }),
     };
-    
-    if (formData.serialNumber && formData.serialNumber.trim()) {
-      newEquipmentData.serialNumber = formData.serialNumber.trim();
-    }
 
-    const finalEquipment = {
+    const finalEquipment: Equipment = {
       ...newEquipmentData,
       id: newEquipmentRef.id,
     }
     
-    await setDoc(newEquipmentRef, finalEquipment);
-    setData((prevData) => [finalEquipment as Equipment, ...prevData]);
+    await setDoc(newEquipmentRef, newEquipmentData);
+    setData((prevData) => [finalEquipment, ...prevData]);
   }
 
   if (isLoading || authLoading) {

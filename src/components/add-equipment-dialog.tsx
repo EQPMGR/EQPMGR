@@ -119,7 +119,6 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
         });
         handleOpenChange(false);
     } catch (error) {
-        console.error("Error adding equipment:", error);
         toast({
             variant: "destructive",
             title: "Failed to Add Equipment",
@@ -159,7 +158,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
         fixedWeeks
         selected={field.value}
         onSelect={(date) => {
-          field.onChange(date);
+          if(date) field.onChange(date);
           setIsCalendarOpen(false);
         }}
         disabled={(date) =>
