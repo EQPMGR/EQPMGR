@@ -54,17 +54,18 @@ const equipmentFormSchema = z.object({
     required_error: 'A purchase date is required.',
   }),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
-  serialNumber: z.preprocess(
-    (val) => (val === "" ? undefined : val),
-    z.string().min(3, "Serial number must be at least 3 characters.").optional()
-  ),
+  serialNumber: z.string().optional(),
   purchaseCondition: z.enum(['new', 'used']),
+}).refine(data => !data.serialNumber || data.serialNumber.length === 0 || data.serialNumber.length >= 3, {
+  message: "Serial number must be at least 3 characters.",
+  path: ["serialNumber"],
 });
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
 
-export interface NewEquipmentFormSubmitData extends EquipmentFormValues {
+export interface NewEquipmentFormSubmitData extends Omit<EquipmentFormValues, 'serialNumber'> {
     purchaseDate: string;
+    serialNumber?: string;
 }
 
 interface AddEquipmentDialogProps {
@@ -118,9 +119,10 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
   async function onSubmit(data: EquipmentFormValues) {
     setIsSubmitting(true);
     try {
-        const newEquipmentData = {
+        const newEquipmentData: NewEquipmentFormSubmitData = {
             ...data,
             purchaseDate: data.purchaseDate.toISOString(),
+            serialNumber: data.serialNumber || undefined, // Ensure empty string becomes undefined
         };
         await onAddEquipment(newEquipmentData);
         toast({
@@ -194,7 +196,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                         </FormControl>
                         <SelectContent>
                           {availableModels.map(bike => (
-                            <SelectItem key={`${bike.brand}-${bike.model}`} value={`${bike.brand}|${bike.model}|${bike.modelYear}`}>
+                            <SelectItem key={`${bike.brand}|${bike.model}|${bike.modelYear}`} value={`${bike.brand}|${bike.model}|${bike.modelYear}`}>
                                 {bike.model} ({bike.modelYear})
                             </SelectItem>
                           ))}
