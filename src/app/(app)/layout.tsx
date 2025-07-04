@@ -10,7 +10,6 @@ import {
   Menu,
   Settings,
   Activity,
-  Bug,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
