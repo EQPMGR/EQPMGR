@@ -1,18 +1,19 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to read and write to their own user document
-    match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      // Allow any authenticated user to create their user document upon signup
-      allow create: if request.auth != null;
 
-      // Allow users to read and write to their own equipment subcollection
-      match /equipment/{equipmentId} {
-        allow read, write: if request.auth.uid == userId;
-      }
+    // User profiles: users can only read/write their own profile.
+    match /users/{userId} {
+      allow read, update, delete: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+    }
+
+    // Equipment: A user can create a document if they are setting themselves as the owner.
+    // They can read, update, or delete a document if they are the owner.
+    match /equipment/{equipmentId} {
+      allow read, update, delete: if request.auth.uid == resource.data.ownerId;
+      allow create: if request.auth.uid == request.resource.data.ownerId;
     }
   }
 }

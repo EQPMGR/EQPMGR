@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Activity } from 'lucide-react';
-import { collection, setDoc, doc, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, setDoc, doc, getDocs, Timestamp, query, where } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment, Component } from '@/lib/types';
@@ -41,8 +41,9 @@ export function DashboardPage() {
     if (user) {
       const fetchEquipment = async () => {
         try {
-          const equipmentCol = collection(db, 'users', user.uid, 'equipment');
-          const equipmentSnapshot = await getDocs(equipmentCol);
+          const equipmentCol = collection(db, 'equipment');
+          const q = query(equipmentCol, where("ownerId", "==", user.uid));
+          const equipmentSnapshot = await getDocs(q);
           const equipmentList = equipmentSnapshot.docs.map(doc => {
             const docData = doc.data();
             const components = (docData.components || []).map((c: any) => ({
@@ -108,7 +109,6 @@ export function DashboardPage() {
       throw new Error('Selected bike not found');
     }
 
-    // Ensure purchaseDate is a valid Date object.
     const purchaseDate = new Date(formData.purchaseDate);
 
     const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
@@ -122,9 +122,10 @@ export function DashboardPage() {
       lastServiceDate: null,
     }));
       
-    const newEquipmentRef = doc(collection(db, 'users', user.uid, 'equipment'));
+    const newEquipmentRef = doc(collection(db, 'equipment'));
       
-    const newEquipmentData: Omit<Equipment, 'id'> = {
+    const newEquipmentData: Omit<Equipment, 'id'> & { ownerId: string } = {
+      ownerId: user.uid,
       name: formData.name,
       type: bikeFromDb.type,
       brand: bikeFromDb.brand,
@@ -140,13 +141,13 @@ export function DashboardPage() {
       maintenanceLog: [],
       ...(formData.serialNumber && { serialNumber: formData.serialNumber }),
     };
-
+    
+    await setDoc(newEquipmentRef, newEquipmentData);
+    
     const finalEquipment: Equipment = {
       ...newEquipmentData,
       id: newEquipmentRef.id,
     }
-    
-    await setDoc(newEquipmentRef, newEquipmentData);
     setData((prevData) => [finalEquipment, ...prevData]);
   }
 

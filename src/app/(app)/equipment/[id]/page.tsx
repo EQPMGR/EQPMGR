@@ -118,11 +118,23 @@ export default function EquipmentDetailPage() {
       const fetchEquipment = async () => {
         setIsLoading(true);
         try {
-          const equipmentRef = doc(db, 'users', user.uid, 'equipment', params.id);
+          const equipmentRef = doc(db, 'equipment', params.id);
           const equipmentSnap = await getDoc(equipmentRef);
 
           if (equipmentSnap.exists()) {
             const docData = equipmentSnap.data();
+
+            if (docData.ownerId !== user.uid) {
+              console.error("User does not have permission to view this equipment.");
+              toast({
+                variant: "destructive",
+                title: "Access Denied",
+                description: "You do not have permission to view this equipment."
+              });
+              setEquipment(undefined);
+              return;
+            }
+
             const components = (docData.components || []).map((c: any) => ({
               ...c,
               purchaseDate: toDate(c.purchaseDate),
@@ -135,6 +147,7 @@ export default function EquipmentDetailPage() {
 
             setEquipment({
               ...docData,
+              id: equipmentSnap.id,
               purchaseDate: toDate(docData.purchaseDate),
               components,
               maintenanceLog,
@@ -165,7 +178,7 @@ export default function EquipmentDetailPage() {
       toast({ variant: "destructive", title: "Error", description: "Could not update equipment." });
       return;
     }
-    const equipmentRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+    const equipmentRef = doc(db, 'equipment', equipment.id);
     await updateDoc(equipmentRef, data);
     
     setEquipment(prev => {
