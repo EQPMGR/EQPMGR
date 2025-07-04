@@ -2,12 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // WARNING: INSECURE - FOR DIAGNOSTIC PURPOSES ONLY
-    // These rules allow any user to read and write to the entire database.
-    // We will replace these with secure rules once we confirm the application
-    // code is working correctly.
+    // WARNING: These rules are insecure and are for debugging only.
+    // They allow any user to read and write to any part of your database.
+    // We will replace these with secure rules once the "add" functionality is confirmed.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write;
     }
   }
 }
