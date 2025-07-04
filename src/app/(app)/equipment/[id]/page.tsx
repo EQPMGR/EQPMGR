@@ -26,11 +26,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -335,7 +336,6 @@ export default function EquipmentDetailPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <h4 className="font-semibold mb-2">Most Worn Components</h4>
                 <ComponentStatusList components={topComponents} />
               </CardContent>
             </Card>
@@ -344,25 +344,30 @@ export default function EquipmentDetailPage() {
               <CardHeader>
                   <CardTitle>Component Systems</CardTitle>
                   <CardDescription>
-                    Detailed wear status for each component group.
+                    Select a system to view detailed wear status.
                   </CardDescription>
               </CardHeader>
-              <CardContent>
-                  <Accordion type="single" collapsible className="w-full">
-                      {systemNames.map(systemName => (
-                          <AccordionItem value={systemName} key={systemName}>
-                              <AccordionTrigger className="text-base">
-                                <div className="flex items-center gap-4">
-                                  <ComponentIcon componentName={systemName} className="h-6 w-6 text-muted-foreground" />
-                                  {systemName}
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pl-4">
-                                  <ComponentStatusList components={componentsBySystem[systemName]} />
-                              </AccordionContent>
-                          </AccordionItem>
-                      ))}
-                  </Accordion>
+              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {systemNames.map(systemName => (
+                    <Dialog key={systemName}>
+                      <DialogTrigger asChild>
+                        <Card className="hover:bg-muted/50 cursor-pointer transition-colors">
+                          <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 gap-2">
+                            <ComponentIcon componentName={systemName} className="h-10 w-10 text-muted-foreground" />
+                            <h4 className="text-sm font-headline font-bold uppercase text-center tracking-wider">{systemName}</h4>
+                          </CardContent>
+                        </Card>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{systemName} Components</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                           <ComponentStatusList components={componentsBySystem[systemName]} />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ))}
               </CardContent>
             </Card>
             
@@ -460,3 +465,5 @@ export default function EquipmentDetailPage() {
     </>
   );
 }
+
+    
