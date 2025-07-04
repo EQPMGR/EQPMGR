@@ -112,14 +112,6 @@ export default function AppLayout({
                   Equipment
                 </Link>
                 <Link
-                  href="/debug"
-                  onClick={handleLinkClick}
-                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <Bug className="h-5 w-5" />
-                  Debug
-                </Link>
-                <Link
                   href="/settings/profile"
                   onClick={handleLinkClick}
                   className="mt-auto flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
