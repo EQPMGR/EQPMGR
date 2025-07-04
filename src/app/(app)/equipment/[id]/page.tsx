@@ -103,46 +103,54 @@ export default function EquipmentDetailPage() {
       const fetchEquipment = async () => {
         setIsLoading(true);
         try {
-          const equipmentRef = doc(db, 'equipment', params.id);
-          const equipmentSnap = await getDoc(equipmentRef);
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-          if (equipmentSnap.exists()) {
-            const docData = equipmentSnap.data();
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            const equipmentData = userData.equipment?.[params.id];
 
-            // The security rule `allow get: if request.auth.uid == resource.data.ownerId;`
-            // handles this check on the backend. If getDoc succeeds, the user is the owner.
-            const components = (docData.components || []).map((c: any) => ({
-              ...c,
-              purchaseDate: toDate(c.purchaseDate),
-              lastServiceDate: toNullableDate(c.lastServiceDate),
-            }));
-            const maintenanceLog = (docData.maintenanceLog || []).map((l: any) => ({
-              ...l,
-              date: toDate(l.date),
-            }));
+            if (equipmentData) {
+              const components = (equipmentData.components || []).map((c: any) => ({
+                ...c,
+                purchaseDate: toDate(c.purchaseDate),
+                lastServiceDate: toNullableDate(c.lastServiceDate),
+              }));
+              const maintenanceLog = (equipmentData.maintenanceLog || []).map((l: any) => ({
+                ...l,
+                date: toDate(l.date),
+              }));
 
-            setEquipment({
-              ...docData,
-              id: equipmentSnap.id,
-              purchaseDate: toDate(docData.purchaseDate),
-              components,
-              maintenanceLog,
-            } as Equipment);
+              setEquipment({
+                ...equipmentData,
+                id: params.id,
+                purchaseDate: toDate(equipmentData.purchaseDate),
+                components,
+                maintenanceLog,
+              } as Equipment);
+            } else {
+               toast({
+                variant: "destructive",
+                title: "Not Found",
+                description: "Could not find the requested equipment."
+              });
+              setEquipment(undefined);
+            }
           } else {
-            console.error("No such document!");
-            setEquipment(undefined);
+            // This case should ideally not happen if user is authenticated
             toast({
               variant: "destructive",
-              title: "Not Found",
-              description: "Could not find the requested equipment."
+              title: "Error",
+              description: "User profile not found."
             });
+            setEquipment(undefined);
           }
         } catch (error) {
           console.error("Error fetching equipment details: ", error);
           toast({
             variant: "destructive",
             title: "Error",
-            description: "Could not load equipment details. You may not have permission to view this item."
+            description: "Could not load equipment details."
           });
         } finally {
           setIsLoading(false);
@@ -159,8 +167,15 @@ export default function EquipmentDetailPage() {
       toast({ variant: "destructive", title: "Error", description: "Could not update equipment." });
       return;
     }
-    const equipmentRef = doc(db, 'equipment', equipment.id);
-    await updateDoc(equipmentRef, data);
+    
+    // Create an object with dot notation for the fields to update
+    const updatePayload: { [key: string]: any } = {};
+    for (const [key, value] of Object.entries(data)) {
+      updatePayload[`equipment.${equipment.id}.${key}`] = value;
+    }
+
+    const userDocRef = doc(db, 'users', user.uid);
+    await updateDoc(userDocRef, updatePayload);
     
     setEquipment(prev => {
         if (!prev) return undefined;
@@ -195,7 +210,7 @@ export default function EquipmentDetailPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold">Equipment not found</h1>
           <Button asChild variant="link">
-            <Link href="/">Go back to Dashboard</Link>
+            <Link href="/equipment">Go back to Equipment</Link>
           </Button>
         </div>
       </div>
@@ -354,7 +369,7 @@ export default function EquipmentDetailPage() {
                     <CardDescription>
                         Register your equipment against theft and get it insured.
                     </CardDescription>
-                </CardHeader>
+                </Header>
                 <CardContent className="grid gap-2">
                     <Button asChild>
                         <Link href="https://project529.com/garage" target="_blank" rel="noopener noreferrer">

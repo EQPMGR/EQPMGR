@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Activity } from 'lucide-react';
-import { collection, setDoc, doc, getDocs, Timestamp, query, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment } from '@/lib/types';
@@ -24,31 +24,35 @@ export function EquipmentListPage() {
   useEffect(() => {
     if (user) {
       const fetchEquipment = async () => {
+        setIsLoading(true);
         try {
-          const equipmentCol = collection(db, 'equipment');
-          const q = query(equipmentCol, where("ownerId", "==", user.uid));
-          const equipmentSnapshot = await getDocs(q);
-          const equipmentList = equipmentSnapshot.docs.map(doc => {
-            const docData = doc.data();
-            const components = (docData.components || []).map((c: any) => ({
-              ...c,
-              purchaseDate: toDate(c.purchaseDate),
-              lastServiceDate: toNullableDate(c.lastServiceDate),
-            }));
-            const maintenanceLog = (docData.maintenanceLog || []).map((l: any) => ({
-              ...l,
-              date: toDate(l.date),
-            }));
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            const equipmentMap = userData.equipment || {};
+            const equipmentList = Object.entries(equipmentMap).map(([id, docData]: [string, any]) => {
+              const components = (docData.components || []).map((c: any) => ({
+                ...c,
+                purchaseDate: toDate(c.purchaseDate),
+                lastServiceDate: toNullableDate(c.lastServiceDate),
+              }));
+              const maintenanceLog = (docData.maintenanceLog || []).map((l: any) => ({
+                ...l,
+                date: toDate(l.date),
+              }));
 
-            return {
-              ...docData,
-              id: doc.id,
-              purchaseDate: toDate(docData.purchaseDate),
-              components,
-              maintenanceLog,
-            } as Equipment;
-          });
-          setData(equipmentList);
+              return {
+                ...docData,
+                id: id,
+                purchaseDate: toDate(docData.purchaseDate),
+                components,
+                maintenanceLog,
+              } as Equipment;
+            });
+            setData(equipmentList);
+          }
         } catch (error) {
           console.error("Error fetching equipment: ", error);
           toast({
@@ -93,11 +97,10 @@ export function EquipmentListPage() {
       throw new Error('Selected bike not found');
     }
 
-    const newEquipmentRef = doc(collection(db, 'equipment'));
+    const newEquipmentId = crypto.randomUUID();
       
     // Create the base equipment data object
     const newEquipmentData: Omit<Equipment, 'id'> = {
-        ownerId: user.uid,
         name: formData.name,
         type: bikeFromDb.type,
         brand: bikeFromDb.brand,
@@ -124,11 +127,14 @@ export function EquipmentListPage() {
         newEquipmentData.serialNumber = formData.serialNumber;
     }
     
-    await setDoc(newEquipmentRef, newEquipmentData);
+    const userDocRef = doc(db, 'users', user.uid);
+    await updateDoc(userDocRef, {
+      [`equipment.${newEquipmentId}`]: newEquipmentData
+    });
     
     const finalEquipment: Equipment = {
       ...newEquipmentData,
-      id: newEquipmentRef.id,
+      id: newEquipmentId,
     }
     setData((prevData) => [finalEquipment, ...prevData]);
   }
