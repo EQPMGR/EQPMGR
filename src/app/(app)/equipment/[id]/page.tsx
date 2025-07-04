@@ -103,12 +103,14 @@ export default function EquipmentDetailPage() {
       const fetchEquipment = async () => {
         setIsLoading(true);
         try {
-          const equipmentRef = doc(db, 'users', user.uid, 'equipment', params.id);
+          const equipmentRef = doc(db, 'equipment', params.id);
           const equipmentSnap = await getDoc(equipmentRef);
 
           if (equipmentSnap.exists()) {
             const docData = equipmentSnap.data();
 
+            // The security rule `allow get: if request.auth.uid == resource.data.ownerId;`
+            // handles this check on the backend. If getDoc succeeds, the user is the owner.
             const components = (docData.components || []).map((c: any) => ({
               ...c,
               purchaseDate: toDate(c.purchaseDate),
@@ -140,7 +142,7 @@ export default function EquipmentDetailPage() {
           toast({
             variant: "destructive",
             title: "Error",
-            description: "Could not load equipment details."
+            description: "Could not load equipment details. You may not have permission to view this item."
           });
         } finally {
           setIsLoading(false);
@@ -157,7 +159,7 @@ export default function EquipmentDetailPage() {
       toast({ variant: "destructive", title: "Error", description: "Could not update equipment." });
       return;
     }
-    const equipmentRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+    const equipmentRef = doc(db, 'equipment', equipment.id);
     await updateDoc(equipmentRef, data);
     
     setEquipment(prev => {
