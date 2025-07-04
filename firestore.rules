@@ -3,23 +3,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /equipment/{equipmentId} {
-      // Allow a user to create a new equipment document if they are the owner.
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-
-      // Allow a user to get a single document if they are the owner.
-      allow get: if request.auth != null && resource.data.ownerId == request.auth.uid;
-
-      // Allow a user to query their own equipment. The client-side query must enforce this.
-      allow list: if request.auth != null && request.query.resource.data.ownerId == request.auth.uid;
-      
-      // Allow a user to update or delete a document if they are the owner.
-      allow update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
-    }
-
-    match /users/{userId} {
-       // Allow users to read and write their own profile data.
-       allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Allow any authenticated user to read and write to any document.
+    // This is a temporary rule for debugging.
+    match /{document=**} {
+      allow read, write: if request.auth.uid != null;
     }
   }
 }
