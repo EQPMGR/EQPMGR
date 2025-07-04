@@ -1,4 +1,3 @@
-
 'use client'
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -172,7 +171,7 @@ export default function ProfilePage() {
     defaultValues: {
       measurementSystem: 'imperial',
       shoeSizeSystem: 'us',
-      distanceUnit: 'miles',
+      distanceUnit: 'km',
       name: '',
       age: undefined,
       height: undefined,

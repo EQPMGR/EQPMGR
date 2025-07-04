@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC, useCallback, useMemo } from 'react';
@@ -11,7 +10,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { auth, storage, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -67,7 +66,7 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     photoURL: authUser.photoURL || data.photoURL || null,
     measurementSystem: data.measurementSystem || 'imperial',
     shoeSizeSystem: data.shoeSizeSystem || 'us',
-    distanceUnit: data.distanceUnit || 'miles',
+    distanceUnit: data.distanceUnit || 'km',
     height: data.height,
     weight: data.weight,
     shoeSize: data.shoeSize,
@@ -101,8 +100,28 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           let userDocData: UserDocument;
           
           if (userDocSnap.exists()) {
-            userDocData = userDocSnap.data() as UserDocument;
-            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+            const batch = writeBatch(db);
+            const data = userDocSnap.data();
+            let needsUpdate = false;
+            
+            // Check for missing preferences and add them to the batch if needed
+            if (!data.measurementSystem) { data.measurementSystem = 'imperial'; needsUpdate = true; }
+            if (!data.shoeSizeSystem) { data.shoeSizeSystem = 'us'; needsUpdate = true; }
+            if (!data.distanceUnit) { data.distanceUnit = 'km'; needsUpdate = true; }
+            
+            batch.update(userDocRef, { lastLogin: serverTimestamp() });
+
+            if (needsUpdate) {
+                batch.set(userDocRef, {
+                    measurementSystem: data.measurementSystem,
+                    shoeSizeSystem: data.shoeSizeSystem,
+                    distanceUnit: data.distanceUnit,
+                }, { merge: true });
+            }
+
+            await batch.commit();
+            userDocData = data as UserDocument;
+
           } else {
             // New user: Create a complete profile document with defaults
             userDocData = {
@@ -110,7 +129,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
               photoURL: authUser.photoURL || '',
               measurementSystem: 'imperial',
               shoeSizeSystem: 'us',
-              distanceUnit: 'miles',
+              distanceUnit: 'km',
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp(),
             };
@@ -173,27 +192,22 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             await updateProfile(currentUser, { displayName: data.displayName });
         }
 
-        const firestoreUpdateData: { [key: string]: any } = { ...data };
-        for (const key in firestoreUpdateData) {
-          if (firestoreUpdateData[key] === undefined || firestoreUpdateData[key] === null || firestoreUpdateData[key] === '') {
-            firestoreUpdateData[key] = deleteField();
-          }
+        const firestoreUpdateData: { [key: string]: any } = {};
+        for (const key in data) {
+            const typedKey = key as keyof typeof data;
+            if (data[typedKey] !== undefined && data[typedKey] !== null && data[typedKey] !== '') {
+                firestoreUpdateData[key] = data[typedKey];
+            } else {
+                firestoreUpdateData[key] = deleteField();
+            }
         }
         
         await setDoc(userDocRef, firestoreUpdateData, { merge: true });
 
-        setUser(prevUser => {
-          if (!prevUser) return null;
-          const updatedUser = { ...prevUser, ...data};
-          // Clean up undefined/nulls from local state too
-          Object.keys(updatedUser).forEach(key => {
-            const uKey = key as keyof UserProfile;
-            if (updatedUser[uKey] === undefined || updatedUser[uKey] === null) {
-              delete (updatedUser as Partial<UserProfile>)[uKey];
-            }
-          });
-          return updatedUser;
-        });
+        // Re-fetch the document to get the true state from the DB
+        const updatedDoc = await getDoc(userDocRef);
+        const newSafeProfile = createSafeUserProfile(currentUser, updatedDoc.data());
+        setUser(newSafeProfile);
 
         toast({ title: "Profile updated!" });
       } catch (error: any) {
