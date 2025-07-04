@@ -11,7 +11,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { auth, storage, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -21,10 +21,10 @@ export interface UserProfile {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  height: number | ''; 
-  weight: number | ''; 
-  shoeSize: number | ''; 
-  age: number | ''; 
+  height?: number; 
+  weight?: number; 
+  shoeSize?: number; 
+  age?: number; 
   measurementSystem: 'metric' | 'imperial';
   shoeSizeSystem: 'us' | 'uk' | 'eu';
   distanceUnit: 'km' | 'miles';
@@ -40,8 +40,8 @@ interface UserDocument {
     measurementSystem?: 'metric' | 'imperial';
     shoeSizeSystem?: 'us' | 'uk' | 'eu';
     distanceUnit?: 'km' | 'miles';
-    createdAt?: any;
-    lastLogin?: any;
+    createdAt?: FieldValue;
+    lastLogin?: FieldValue;
 }
 
 interface AuthContextType {
@@ -57,28 +57,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const defaultProfileData: Omit<UserProfile, 'uid' | 'email' | 'displayName' | 'photoURL'> = {
-  height: '',
-  weight: '',
-  shoeSize: '',
-  age: '',
+  height: undefined,
+  weight: undefined,
+  shoeSize: undefined,
+  age: undefined,
   measurementSystem: 'metric',
   shoeSizeSystem: 'us',
   distanceUnit: 'km',
 };
 
-const createSafeUserProfile = (authUser: User, docData: Partial<UserDocument> = {}): UserProfile => {
+// This function ensures that the profile object used in the app is always valid.
+const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>): UserProfile => {
+  const data = docData || {};
   return {
     uid: authUser.uid,
     email: authUser.email,
-    displayName: authUser.displayName || docData.displayName || null,
-    photoURL: authUser.photoURL || docData.photoURL || null,
-    measurementSystem: docData.measurementSystem || defaultProfileData.measurementSystem,
-    shoeSizeSystem: docData.shoeSizeSystem || defaultProfileData.shoeSizeSystem,
-    distanceUnit: docData.distanceUnit || defaultProfileData.distanceUnit,
-    height: typeof docData.height === 'number' ? docData.height : '',
-    weight: typeof docData.weight === 'number' ? docData.weight : '',
-    shoeSize: typeof docData.shoeSize === 'number' ? docData.shoeSize : '',
-    age: typeof docData.age === 'number' ? docData.age : '',
+    displayName: authUser.displayName || data.displayName || null,
+    photoURL: authUser.photoURL || data.photoURL || null,
+    measurementSystem: data.measurementSystem || 'metric',
+    shoeSizeSystem: data.shoeSizeSystem || 'us',
+    distanceUnit: data.distanceUnit || 'km',
+    height: data.height,
+    weight: data.weight,
+    shoeSize: data.shoeSize,
+    age: data.age,
   };
 };
 
@@ -112,18 +114,17 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             setUser(safeProfile);
             await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
           } else {
+            // New user: Create a complete profile document with defaults
             const newDocData: UserDocument = {
               displayName: authUser.displayName || '',
               photoURL: authUser.photoURL || '',
-              ...defaultProfileData,
-              height: undefined,
-              weight: undefined,
-              shoeSize: undefined,
-              age: undefined,
+              measurementSystem: 'metric',
+              shoeSizeSystem: 'us',
+              distanceUnit: 'km',
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp(),
             };
-            await setDoc(userDocRef, newDocData);
+            await setDoc(userDocRef, newDocData, { merge: true });
             const safeProfile = createSafeUserProfile(authUser, newDocData);
             setUser(safeProfile);
           }
@@ -177,18 +178,26 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       try {
         const { displayName, ...firestoreData } = data;
         
-        const sanitizedData: UserDocument = { ...firestoreData };
-        (Object.keys(sanitizedData) as Array<keyof typeof sanitizedData>).forEach(key => {
-            if (sanitizedData[key] === '') {
-                sanitizedData[key] = deleteField() as any;
+        const dataToSave: UserDocument = { ...firestoreData };
+        
+        // Sanitize data: remove any undefined keys and convert empty strings for numeric fields to a delete operation
+        Object.keys(dataToSave).forEach(key => {
+            const typedKey = key as keyof UserDocument;
+            if (dataToSave[typedKey] === undefined || dataToSave[typedKey] === null) {
+                dataToSave[typedKey] = deleteField() as any;
             }
         });
         
         if (displayName !== undefined && displayName !== currentUser.displayName) {
             await updateProfile(currentUser, { displayName });
+            if (displayName) {
+              dataToSave.displayName = displayName;
+            } else {
+              dataToSave.displayName = deleteField() as any;
+            }
         }
         
-        await setDoc(userDocRef, sanitizedData, { merge: true });
+        await setDoc(userDocRef, dataToSave, { merge: true });
 
         const updatedDoc = await getDoc(userDocRef);
         if (updatedDoc.exists()) {

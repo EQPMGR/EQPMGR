@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
-import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getPerformance } from "firebase/performance";
 
@@ -19,11 +19,7 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const storage = getStorage(app);
-
-// Initialize Firestore with in-memory cache for faster development.
-const db = initializeFirestore(app, {
-  localCache: memoryLocalCache({ })
-});
+const db = getFirestore(app);
 
 // Initialize Performance and Analytics only on the client side
 if (typeof window !== 'undefined') {

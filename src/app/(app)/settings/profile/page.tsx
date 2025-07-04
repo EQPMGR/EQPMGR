@@ -34,23 +34,20 @@ import {
 import Link from "next/link"
 import { useAuth, type UserProfile } from "@/hooks/use-auth"
 
+// --- Zod Schema with Preprocessing ---
+const emptyStringToUndefined = z.preprocess((val) => {
+  if (typeof val === 'string' && val.trim() === '') return undefined;
+  return val;
+}, z.coerce.number().positive().optional());
+
 const profileFormSchema = z.object({
-  name: z
-    .string()
-    .min(2, {
-      message: "Name must be at least 2 characters.",
-    })
-    .max(30, {
-      message: "Name must not be longer than 30 characters.",
-    })
-    .optional()
-    .or(z.literal('')),
-  height: z.coerce.number().positive().optional().or(z.literal('')), // cm
-  feet: z.coerce.number().positive().optional().or(z.literal('')),
-  inches: z.coerce.number().min(0).max(11.99).optional().or(z.literal('')),
-  weight: z.coerce.number().positive().optional().or(z.literal('')), // display value (kg or lbs)
-  shoeSize: z.coerce.number().positive().optional().or(z.literal('')),
-  age: z.coerce.number().positive().int().optional().or(z.literal('')),
+  name: z.string().min(2, "Name must be at least 2 characters.").max(30, "Name must not be longer than 30 characters.").optional().or(z.literal('')),
+  height: emptyStringToUndefined,
+  feet: emptyStringToUndefined,
+  inches: emptyStringToUndefined.max(11.99),
+  weight: emptyStringToUndefined,
+  shoeSize: emptyStringToUndefined,
+  age: emptyStringToUndefined,
   measurementSystem: z.enum(['metric', 'imperial']),
   shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
   distanceUnit: z.enum(['km', 'miles']),
@@ -59,17 +56,16 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>
 
 // --- Conversion Utilities ---
-
 const KG_TO_LBS = 2.20462;
 const LBS_TO_KG = 1 / KG_TO_LBS;
 const CM_TO_IN = 0.393701;
 const IN_TO_CM = 1 / CM_TO_IN;
 
 const convertShoeSize = (
-  size: number, 
+  size: number | undefined, 
   fromSystem: 'us' | 'uk' | 'eu', 
   toSystem: 'us' | 'uk' | 'eu'
-): number => {
+): number | undefined => {
     if (fromSystem === toSystem || !size) return size;
 
     let usSize: number;
@@ -89,6 +85,75 @@ const convertShoeSize = (
     return Math.round(newSize * 2) / 2;
 }
 
+// --- Mapping Functions ---
+const mapProfileToForm = (profile: UserProfile): ProfileFormValues => {
+    const isImperial = profile.measurementSystem === 'imperial';
+    let feet, inches, height, weight, shoeSize;
+
+    if (isImperial) {
+        if (profile.height) {
+            const totalInches = profile.height * CM_TO_IN;
+            feet = Math.floor(totalInches / 12);
+            inches = parseFloat((totalInches % 12).toFixed(2));
+        }
+        if (profile.weight) {
+            weight = parseFloat((profile.weight * KG_TO_LBS).toFixed(2));
+        }
+    } else {
+        height = profile.height;
+        weight = profile.weight;
+    }
+
+    if (profile.shoeSize) {
+        shoeSize = convertShoeSize(profile.shoeSize, 'us', profile.shoeSizeSystem);
+    }
+
+    return {
+        name: profile.displayName || '',
+        age: profile.age,
+        measurementSystem: profile.measurementSystem,
+        shoeSizeSystem: profile.shoeSizeSystem,
+        distanceUnit: profile.distanceUnit,
+        shoeSize: shoeSize,
+        height: height,
+        feet: feet,
+        inches: inches,
+        weight: weight,
+    };
+};
+
+const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile>, 'uid' | 'email'> => {
+    let height, weight, shoeSize;
+
+    if (formData.measurementSystem === 'imperial') {
+        if (formData.feet || formData.inches) {
+            const totalInches = (formData.feet || 0) * 12 + (formData.inches || 0);
+            height = totalInches > 0 ? totalInches * IN_TO_CM : undefined;
+        }
+        if (formData.weight) {
+            weight = formData.weight * LBS_TO_KG;
+        }
+    } else {
+        height = formData.height;
+        weight = formData.weight;
+    }
+
+    if (formData.shoeSize) {
+        shoeSize = convertShoeSize(formData.shoeSize, formData.shoeSizeSystem, 'us');
+    }
+
+    return {
+        displayName: formData.name || null,
+        age: formData.age,
+        measurementSystem: formData.measurementSystem,
+        shoeSizeSystem: formData.shoeSizeSystem,
+        distanceUnit: formData.distanceUnit,
+        height: height,
+        weight: weight,
+        shoeSize: shoeSize,
+    };
+};
+
 
 export default function ProfilePage() {
   const { user, updateProfileInfo } = useAuth()
@@ -98,12 +163,6 @@ export default function ProfilePage() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: '',
-      height: '',
-      feet: '',
-      inches: '',
-      weight: '',
-      shoeSize: '',
-      age: '',
       measurementSystem: 'metric',
       shoeSizeSystem: 'us',
       distanceUnit: 'km',
@@ -116,50 +175,11 @@ export default function ProfilePage() {
   const previousMeasurementSystem = React.useRef(measurementSystem);
   const previousShoeSizeSystem = React.useRef(shoeSizeSystem);
 
-
   React.useEffect(() => {
     if (user) {
-      const isImperial = (user.measurementSystem || 'metric') === 'imperial';
-      
-      const heightInCm = user.height || '';
-      const weightInKg = user.weight || '';
-      
-      let displayWeight: number | '' = typeof weightInKg === 'number' ? weightInKg : '';
-      let displayFeet: number | '' = '';
-      let displayInches: number | '' = '';
-      
-      if (isImperial) {
-        if (typeof heightInCm === 'number' && heightInCm > 0) {
-          const totalInches = heightInCm * CM_TO_IN;
-          displayFeet = Math.floor(totalInches / 12);
-          displayInches = parseFloat((totalInches % 12).toFixed(2));
-        }
-        if (typeof weightInKg === 'number' && weightInKg > 0) {
-          displayWeight = parseFloat((weightInKg * KG_TO_LBS).toFixed(2));
-        }
-      }
-
-      const baseUsShoeSize = user.shoeSize || '';
-      const displayShoeSystem = user.shoeSizeSystem || 'us';
-      let displayShoeSize: number | '' = '';
-      if (typeof baseUsShoeSize === 'number' && baseUsShoeSize > 0) {
-        displayShoeSize = convertShoeSize(baseUsShoeSize, 'us', displayShoeSystem);
-      }
-
-      form.reset({
-        name: user.displayName || '',
-        age: user.age || '',
-        measurementSystem: user.measurementSystem || 'metric',
-        shoeSizeSystem: user.shoeSizeSystem || 'us',
-        distanceUnit: user.distanceUnit || 'km',
-        shoeSize: displayShoeSize || '',
-        height: isImperial ? '' : (heightInCm || ''),
-        feet: displayFeet || '',
-        inches: displayInches || '',
-        weight: displayWeight || '',
-      });
-      previousMeasurementSystem.current = user.measurementSystem || 'metric';
-      previousShoeSizeSystem.current = user.shoeSizeSystem || 'us';
+        form.reset(mapProfileToForm(user));
+        previousMeasurementSystem.current = user.measurementSystem;
+        previousShoeSizeSystem.current = user.shoeSizeSystem;
     }
   }, [user, form]);
 
@@ -173,7 +193,7 @@ export default function ProfilePage() {
         const { getValues, setValue } = form;
         
         const currentWeight = getValues('weight');
-        if (typeof currentWeight === 'number' && currentWeight > 0) {
+        if (currentWeight) {
           const newWeight = oldSystem === 'metric' 
             ? currentWeight * KG_TO_LBS
             : currentWeight * LBS_TO_KG;
@@ -182,20 +202,20 @@ export default function ProfilePage() {
 
         if (newSystem === 'imperial') {
           const heightCm = getValues('height');
-          if (typeof heightCm === 'number' && heightCm > 0) {
+          if (heightCm) {
             const totalInches = heightCm * CM_TO_IN;
             setValue('feet', Math.floor(totalInches / 12));
             setValue('inches', parseFloat((totalInches % 12).toFixed(2)));
-            setValue('height', '');
+            setValue('height', undefined);
           }
         } else { // newSystem is 'metric'
           const feet = getValues('feet');
           const inches = getValues('inches');
-          if ((typeof feet === 'number' && feet > 0) || (typeof inches === 'number' && inches > 0)) {
+          if (feet || inches) {
             const totalInches = (feet || 0) * 12 + (inches || 0);
             setValue('height', parseFloat((totalInches * IN_TO_CM).toFixed(2)));
-            setValue('feet', '');
-            setValue('inches', '');
+            setValue('feet', undefined);
+            setValue('inches', undefined);
           }
         }
         previousMeasurementSystem.current = newSystem;
@@ -204,12 +224,12 @@ export default function ProfilePage() {
       if (name === 'shoeSizeSystem') {
         const newSystem = value.shoeSizeSystem;
         const oldSystem = previousShoeSizeSystem.current;
-        if (newSystem === oldSystem) return;
+        if (newSystem === oldSystem || !oldSystem) return;
 
         const { getValues, setValue } = form;
         
         const currentShoeSize = getValues('shoeSize');
-        if (typeof currentShoeSize === 'number' && currentShoeSize > 0) {
+        if (currentShoeSize) {
           const newShoeSize = convertShoeSize(currentShoeSize, oldSystem, newSystem);
           setValue('shoeSize', newShoeSize);
         }
@@ -222,38 +242,7 @@ export default function ProfilePage() {
 
   async function onSubmit(data: ProfileFormValues) {
     setIsSubmitting(true);
-
-    const dataToSubmit: Omit<Partial<UserProfile>, 'uid' | 'email'> = {
-      displayName: data.name || null,
-      age: data.age || undefined,
-      measurementSystem: data.measurementSystem,
-      shoeSizeSystem: data.shoeSizeSystem,
-      distanceUnit: data.distanceUnit,
-    };
-    
-    if (data.measurementSystem === 'imperial') {
-      if ((data.feet && data.feet > 0) || (data.inches && data.inches > 0)) {
-        const totalInches = (Number(data.feet) || 0) * 12 + (Number(data.inches) || 0);
-        dataToSubmit.height = totalInches * IN_TO_CM;
-      } else {
-        dataToSubmit.height = undefined;
-      }
-      if (data.weight && data.weight > 0) {
-        dataToSubmit.weight = Number(data.weight) * LBS_TO_KG;
-      } else {
-        dataToSubmit.weight = undefined;
-      }
-    } else {
-      dataToSubmit.height = data.height || undefined;
-      dataToSubmit.weight = data.weight || undefined;
-    }
-
-    if (data.shoeSize && data.shoeSize > 0) {
-      dataToSubmit.shoeSize = convertShoeSize(Number(data.shoeSize), data.shoeSizeSystem, 'us');
-    } else {
-      dataToSubmit.shoeSize = undefined;
-    }
-
+    const dataToSubmit = mapFormToProfile(data);
     try {
       await updateProfileInfo(dataToSubmit);
     } catch (error) {
@@ -318,7 +307,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Height (cm)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="180" {...field} />
+                          <Input type="number" step="any" placeholder="180" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -333,7 +322,7 @@ export default function ProfilePage() {
                           <FormItem>
                             <FormLabel>Height (ft)</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="5" {...field} />
+                              <Input type="number" step="any" placeholder="5" {...field} />
                             </FormControl>
                              <FormMessage />
                           </FormItem>
@@ -346,7 +335,7 @@ export default function ProfilePage() {
                           <FormItem>
                             <FormLabel>(in)</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="11" {...field} />
+                              <Input type="number" step="any" placeholder="11" {...field} />
                             </FormControl>
                              <FormMessage />
                           </FormItem>
@@ -363,7 +352,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Weight ({measurementSystem === 'metric' ? 'kg' : 'lbs'})</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} />
+                        <Input type="number" step="any" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -413,7 +402,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Shoe Size ({shoeSizeSystem?.toUpperCase()})</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="10.5" {...field} />
+                          <Input type="number" step="any" placeholder="10.5" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
