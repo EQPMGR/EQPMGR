@@ -80,6 +80,10 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
     if (name.includes('wheel')) {
         return <WheelsetIcon className={className} />;
     }
+    
+    if (name.includes('cockpit')) {
+        return <Puzzle className={className} />;
+    }
 
     if (name.includes('suspension')) {
       return <SuspensionIcon className={className} />;
@@ -220,19 +224,40 @@ export default function EquipmentDetailPage() {
   };
 
 
-  const componentsBySystem = useMemo(() => {
-    if (!equipment) return {};
-    return equipment.components.reduce((acc, component) => {
-        const { system } = component;
-        if (!acc[system]) {
-            acc[system] = [];
-        }
-        acc[system].push(component);
-        return acc;
-    }, {} as Record<string, Component[]>);
-  }, [equipment]);
+  const systemsToDisplay = useMemo(() => {
+    if (!equipment) return [];
+    
+    // Base systems for all bikes
+    const systems = new Set([
+        'Drivetrain',
+        'Brakes',
+        'Wheelset',
+        'Frameset',
+        'Cockpit',
+        'Accessories',
+    ]);
+    
+    // Add systems specific to the bike type
+    if (equipment.type === 'Mountain Bike') {
+        systems.add('Suspension');
+    }
 
-  const systemNames = Object.keys(componentsBySystem);
+    // Always include systems that might exist on the bike data already
+    equipment.components.forEach(c => systems.add(c.system));
+
+    // Define a preferred order for display
+    const preferredOrder = [
+        'Drivetrain',
+        'Suspension',
+        'Brakes',
+        'Wheelset',
+        'Frameset',
+        'Cockpit',
+        'Accessories',
+    ];
+
+    return preferredOrder.filter(system => systems.has(system));
+  }, [equipment]);
 
   if (isLoading || authLoading) {
       return <div><Skeleton className="h-96 w-full" /></div>
@@ -335,7 +360,7 @@ export default function EquipmentDetailPage() {
             
             <Card>
               <CardContent className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {systemNames.map(systemName => (
+                  {systemsToDisplay.map(systemName => (
                     <Link href={`/equipment/${equipment.id}/${systemName.toLowerCase().replace(/\s+/g, '-')}`} key={systemName}>
                         <Card className="hover:bg-muted/50 cursor-pointer transition-colors h-full">
                           <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 gap-2">
