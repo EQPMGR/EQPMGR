@@ -7,7 +7,6 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { CalendarIcon, PlusCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -202,9 +201,6 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
             
             {selectedBike && (
                 <div className="p-4 border rounded-lg bg-muted/50">
-                    <div className="w-full aspect-video rounded-md bg-muted flex items-center justify-center relative overflow-hidden mb-2">
-                         <Image src={selectedBike.imageUrl} alt={selectedBike.model} layout="fill" objectFit="cover" data-ai-hint={`${selectedBike.type.toLowerCase()}`} />
-                    </div>
                     <p className="text-sm font-semibold">{selectedBike.brand} {selectedBike.model}</p>
                     <p className="text-xs text-muted-foreground">{selectedBike.type} &bull; {selectedBike.modelYear}</p>
                 </div>
