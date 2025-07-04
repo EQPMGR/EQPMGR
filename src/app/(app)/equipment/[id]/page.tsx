@@ -334,18 +334,12 @@ export default function EquipmentDetailPage() {
             </Card>
             
             <Card>
-              <CardHeader>
-                  <CardTitle>Component Systems</CardTitle>
-                  <CardDescription>
-                    Select a system to view detailed wear status.
-                  </CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <CardContent className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
                   {systemNames.map(systemName => (
                     <Link href={`/equipment/${equipment.id}/${systemName.toLowerCase().replace(/\s+/g, '-')}`} key={systemName}>
                         <Card className="hover:bg-muted/50 cursor-pointer transition-colors h-full">
                           <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 gap-2">
-                            <ComponentIcon componentName={systemName} className="h-10 w-10 text-muted-foreground" />
+                            <ComponentIcon componentName={systemName} className="h-[50px] w-[50px] text-muted-foreground" />
                             <h4 className="text-sm font-headline font-bold uppercase text-center tracking-wider">{systemName}</h4>
                           </CardContent>
                         </Card>
