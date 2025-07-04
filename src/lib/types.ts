@@ -5,14 +5,14 @@ export interface Component {
   model: string; // e.g., "105 RD-5701"
   system: string;
   wearPercentage: number;
-  lastServiceDate: string | null;
-  purchaseDate: string;
+  lastServiceDate: Date | null;
+  purchaseDate: Date;
   notes?: string;
 }
 
 export interface MaintenanceLog {
   id: string;
-  date: string;
+  date: Date;
   logType: 'service' | 'repair' | 'modification';
   description: string;
   cost: number;
@@ -34,7 +34,7 @@ export interface Equipment {
   modelYear: number;
   serialNumber?: string;
   purchaseCondition: 'new' | 'used';
-  purchaseDate: string;
+  purchaseDate: Date;
   purchasePrice: number;
   totalDistance: number;
   totalHours: number;

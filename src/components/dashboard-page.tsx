@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Activity } from 'lucide-react';
-import { collection, setDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, setDoc, doc, getDocs, Timestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment, Component } from '@/lib/types';
@@ -14,6 +14,22 @@ import { bikeDatabase } from '@/lib/bike-database';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// Helper function to safely convert Firestore Timestamps or strings to Dates
+const toDate = (value: any): Date => {
+  if (value instanceof Timestamp) {
+    return value.toDate();
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    return new Date(value);
+  }
+  return new Date(); // Fallback for unexpected types
+};
+
+const toNullableDate = (value: any): Date | null => {
+  if (!value) return null;
+  return toDate(value);
+}
 
 export function DashboardPage() {
   const [data, setData] = useState<Equipment[]>([]);
@@ -27,7 +43,25 @@ export function DashboardPage() {
         try {
           const equipmentCol = collection(db, 'users', user.uid, 'equipment');
           const equipmentSnapshot = await getDocs(equipmentCol);
-          const equipmentList = equipmentSnapshot.docs.map(doc => doc.data() as Equipment);
+          const equipmentList = equipmentSnapshot.docs.map(doc => {
+            const docData = doc.data();
+            const components = (docData.components || []).map((c: any) => ({
+              ...c,
+              purchaseDate: toDate(c.purchaseDate),
+              lastServiceDate: toNullableDate(c.lastServiceDate),
+            }));
+            const maintenanceLog = (docData.maintenanceLog || []).map((l: any) => ({
+              ...l,
+              date: toDate(l.date),
+            }));
+
+            return {
+              ...docData,
+              purchaseDate: toDate(docData.purchaseDate),
+              components,
+              maintenanceLog,
+            } as Equipment;
+          });
           setData(equipmentList);
         } catch (error) {
           console.error("Error fetching equipment: ", error);
@@ -73,8 +107,6 @@ export function DashboardPage() {
       throw new Error('Selected bike not found');
     }
 
-    const purchaseDateISO = formData.purchaseDate.toISOString();
-
     const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
       id: `comp-${Date.now()}-${index}`,
       name: comp.name,
@@ -82,7 +114,7 @@ export function DashboardPage() {
       model: comp.model,
       system: comp.system,
       wearPercentage: 0,
-      purchaseDate: purchaseDateISO,
+      purchaseDate: formData.purchaseDate,
       lastServiceDate: null,
     }));
       
@@ -95,7 +127,7 @@ export function DashboardPage() {
       brand: bikeFromDb.brand,
       model: bikeFromDb.model,
       modelYear: bikeFromDb.modelYear,
-      purchaseDate: purchaseDateISO,
+      purchaseDate: formData.purchaseDate,
       purchasePrice: formData.purchasePrice,
       imageUrl: bikeFromDb.imageUrl,
       purchaseCondition: formData.purchaseCondition,
@@ -109,8 +141,7 @@ export function DashboardPage() {
     if (formData.serialNumber && formData.serialNumber.trim()) {
       newEquipment.serialNumber = formData.serialNumber.trim();
     }
-
-    console.log('Data to be saved:', newEquipment);
+    
     await setDoc(newEquipmentRef, newEquipment);
     setData((prevData) => [newEquipment, ...prevData]);
   }

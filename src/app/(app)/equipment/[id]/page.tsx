@@ -1,3 +1,4 @@
+
 'use client'
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -10,7 +11,7 @@ import {
   Shield,
   Pencil,
 } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -88,6 +89,21 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
     return <Puzzle className={className} />;
 }
 
+// Helper function to safely convert Firestore Timestamps or strings to Dates
+const toDate = (value: any): Date => {
+  if (value instanceof Timestamp) {
+    return value.toDate();
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    return new Date(value);
+  }
+  return new Date(); // Fallback for unexpected types
+};
+
+const toNullableDate = (value: any): Date | null => {
+  if (!value) return null;
+  return toDate(value);
+}
 
 export default function EquipmentDetailPage() {
   const params = useParams<{ id: string }>();
@@ -106,7 +122,23 @@ export default function EquipmentDetailPage() {
           const equipmentSnap = await getDoc(equipmentRef);
 
           if (equipmentSnap.exists()) {
-            setEquipment(equipmentSnap.data() as Equipment);
+            const docData = equipmentSnap.data();
+            const components = (docData.components || []).map((c: any) => ({
+              ...c,
+              purchaseDate: toDate(c.purchaseDate),
+              lastServiceDate: toNullableDate(c.lastServiceDate),
+            }));
+            const maintenanceLog = (docData.maintenanceLog || []).map((l: any) => ({
+              ...l,
+              date: toDate(l.date),
+            }));
+
+            setEquipment({
+              ...docData,
+              purchaseDate: toDate(docData.purchaseDate),
+              components,
+              maintenanceLog,
+            } as Equipment);
           } else {
             console.error("No such document!");
             setEquipment(undefined);
@@ -135,7 +167,13 @@ export default function EquipmentDetailPage() {
     }
     const equipmentRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
     await updateDoc(equipmentRef, data);
-    setEquipment(prev => prev ? { ...prev, ...data } : undefined);
+    
+    setEquipment(prev => {
+        if (!prev) return undefined;
+        // The data coming from the form is already in the correct type (Date object)
+        const updatedData: Partial<Equipment> = { ...data };
+        return { ...prev, ...updatedData };
+    });
   };
 
 
@@ -276,7 +314,7 @@ export default function EquipmentDetailPage() {
                     <CardContent className="grid grid-cols-2 text-center pt-6">
                         <div>
                             <p className="text-xl md:text-2xl font-headline pt-2">
-                                {new Date(equipment.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                                {equipment.purchaseDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}
                             </p>
                             <p className="text-xs text-muted-foreground">Purchased</p>
                         </div>

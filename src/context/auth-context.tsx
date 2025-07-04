@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC, useCallback, useMemo } from 'react';
@@ -49,7 +50,7 @@ interface AuthContextType {
   signInWithEmailPassword: (email: string, password:string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>) => Promise<void>;
+  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => Promise<void>;
   updateUserPreferences: (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>>) => Promise<void>;
   updateProfilePhoto: (photoDataUrl: string) => Promise<boolean>;
 }
@@ -179,7 +180,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>) => {
+  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => {
       const currentUser = auth.currentUser;
       if (!currentUser) {
           throw new Error('Not Authenticated');
@@ -202,7 +203,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             }
         }
         
-        await setDoc(userDocRef, firestoreUpdateData, { merge: true });
+        await updateDoc(userDocRef, firestoreUpdateData);
 
         // Re-fetch the document to get the true state from the DB
         const updatedDoc = await getDoc(userDocRef);
@@ -224,7 +225,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const userDocRef = doc(db, 'users', currentUser.uid);
 
       try {
-          await setDoc(userDocRef, prefs, { merge: true });
+          await updateDoc(userDocRef, prefs);
           setUser(prevUser => prevUser ? { ...prevUser, ...prefs } : null);
           toast({ title: "Preference saved!" });
       } catch (error) {

@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -45,6 +46,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { bikeDatabase } from '@/lib/bike-database';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 const equipmentFormSchema = z.object({
   name: z.string().min(2, { message: 'Nickname is required.' }),
@@ -69,6 +72,7 @@ const bikeBrands = [...new Set(bikeDatabase.map(bike => bike.brand))];
 export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   
   const form = useForm<EquipmentFormValues>({
@@ -127,6 +131,70 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     } finally {
         setIsSubmitting(false);
     }
+  }
+  
+  const CalendarControl = ({field}: {field: any}) => {
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    
+    const CalendarButton = (
+      <Button
+        variant={"outline"}
+        className={cn(
+          "w-full pl-3 text-left font-normal",
+          !field.value && "text-muted-foreground"
+        )}
+      >
+        {field.value ? (
+          format(field.value, "PPP")
+        ) : (
+          <span>Pick a date</span>
+        )}
+        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+      </Button>
+    )
+
+    const CalendarComponent = (
+       <Calendar
+        mode="single"
+        captionLayout="dropdown-buttons"
+        fromYear={1980}
+        toYear={new Date().getFullYear()}
+        fixedWeeks
+        selected={field.value}
+        onSelect={(date) => {
+          field.onChange(date);
+          setIsCalendarOpen(false);
+        }}
+        disabled={(date) =>
+          date > new Date() || date < new Date("1900-01-01")
+        }
+        initialFocus
+      />
+    );
+    
+    if (isMobile) {
+      return (
+        <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+          <DialogTrigger asChild>
+            <FormControl>{CalendarButton}</FormControl>
+          </DialogTrigger>
+          <DialogContent className="w-auto p-0">
+            {CalendarComponent}
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    
+    return (
+       <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+          <PopoverTrigger asChild>
+            <FormControl>{CalendarButton}</FormControl>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            {CalendarComponent}
+          </PopoverContent>
+        </Popover>
+    )
   }
 
   return (
@@ -247,41 +315,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Purchase Date</FormLabel>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            captionLayout="dropdown-buttons"
-                            fromYear={1980}
-                            toYear={new Date().getFullYear()}
-                            fixedWeeks
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                    <CalendarControl field={field} />
                     <FormMessage />
                   </FormItem>
                 )}

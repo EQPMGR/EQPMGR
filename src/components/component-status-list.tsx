@@ -37,8 +37,8 @@ export function ComponentStatusList({ components }: ComponentStatusListProps) {
             <TooltipContent>
               <p className="font-semibold">{component.brand} {component.model}</p>
               <p>{component.wearPercentage}% wear.</p>
-              <p>Purchased: {new Date(component.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
-              {component.lastServiceDate && <p>Last Service: {new Date(component.lastServiceDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>}
+              <p>Purchased: {component.purchaseDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
+              {component.lastServiceDate && <p>Last Service: {component.lastServiceDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>}
             </TooltipContent>
           </Tooltip>
         ))}

@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Card,
@@ -68,7 +69,7 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
               log.map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell>
-                    {new Date(entry.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                    {entry.date.toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </TableCell>
                   <TableCell>{entry.description}</TableCell>
                   <TableCell>

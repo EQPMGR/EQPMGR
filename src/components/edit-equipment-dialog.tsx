@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -16,6 +17,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -35,6 +37,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/lib/types';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 const editEquipmentFormSchema = z.object({
   name: z.string().min(2, { message: 'Nickname is required.' }),
@@ -51,8 +55,7 @@ const editEquipmentFormSchema = z.object({
 
 type EditEquipmentFormValues = z.infer<typeof editEquipmentFormSchema>;
 
-export interface UpdateEquipmentData extends Omit<EditEquipmentFormValues, 'serialNumber' | 'purchaseDate'> {
-    purchaseDate: string;
+export interface UpdateEquipmentData extends Omit<EditEquipmentFormValues, 'serialNumber'> {
     serialNumber?: string;
 }
 
@@ -66,13 +69,14 @@ interface EditEquipmentDialogProps {
 export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpenChange }: EditEquipmentDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const form = useForm<EditEquipmentFormValues>({
     resolver: zodResolver(editEquipmentFormSchema),
     values: {
       name: equipment.name,
       purchaseCondition: equipment.purchaseCondition,
-      purchaseDate: new Date(equipment.purchaseDate),
+      purchaseDate: equipment.purchaseDate,
       purchasePrice: equipment.purchasePrice,
       serialNumber: equipment.serialNumber || '',
     },
@@ -84,7 +88,7 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
       form.reset({
         name: equipment.name,
         purchaseCondition: equipment.purchaseCondition,
-        purchaseDate: new Date(equipment.purchaseDate),
+        purchaseDate: equipment.purchaseDate,
         purchasePrice: equipment.purchasePrice,
         serialNumber: equipment.serialNumber || '',
       });
@@ -96,7 +100,6 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
     try {
         const updateData: UpdateEquipmentData = {
             ...data,
-            purchaseDate: data.purchaseDate.toISOString(),
             serialNumber: data.serialNumber || undefined,
         };
         await onUpdateEquipment(updateData);
@@ -115,6 +118,70 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
     } finally {
         setIsSubmitting(false);
     }
+  }
+
+  const CalendarControl = ({field}: {field: any}) => {
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    
+    const CalendarButton = (
+      <Button
+        variant={"outline"}
+        className={cn(
+          "w-full pl-3 text-left font-normal",
+          !field.value && "text-muted-foreground"
+        )}
+      >
+        {field.value ? (
+          format(field.value, "PPP")
+        ) : (
+          <span>Pick a date</span>
+        )}
+        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+      </Button>
+    )
+
+    const CalendarComponent = (
+       <Calendar
+        mode="single"
+        captionLayout="dropdown-buttons"
+        fromYear={1980}
+        toYear={new Date().getFullYear()}
+        fixedWeeks
+        selected={field.value}
+        onSelect={(date) => {
+          field.onChange(date);
+          setIsCalendarOpen(false);
+        }}
+        disabled={(date) =>
+          date > new Date() || date < new Date("1900-01-01")
+        }
+        initialFocus
+      />
+    );
+    
+    if (isMobile) {
+      return (
+        <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+          <DialogTrigger asChild>
+            <FormControl>{CalendarButton}</FormControl>
+          </DialogTrigger>
+          <DialogContent className="w-auto p-0">
+            {CalendarComponent}
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    
+    return (
+       <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+          <PopoverTrigger asChild>
+            <FormControl>{CalendarButton}</FormControl>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            {CalendarComponent}
+          </PopoverContent>
+        </Popover>
+    )
   }
 
   return (
@@ -180,41 +247,7 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Purchase Date</FormLabel>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            captionLayout="dropdown-buttons"
-                            fromYear={1980}
-                            toYear={new Date().getFullYear()}
-                            fixedWeeks
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                     <CalendarControl field={field} />
                     <FormMessage />
                   </FormItem>
                 )}
