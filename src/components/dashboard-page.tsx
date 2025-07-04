@@ -76,6 +76,8 @@ export function DashboardPage() {
     const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
       id: `comp-${Date.now()}-${index}`,
       name: comp.name,
+      brand: comp.brand,
+      model: comp.model,
       system: comp.system,
       wearPercentage: 0,
       purchaseDate: formData.purchaseDate,

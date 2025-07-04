@@ -35,7 +35,8 @@ export function ComponentStatusList({ components }: ComponentStatusListProps) {
               />
             </TooltipTrigger>
             <TooltipContent>
-              <p>{component.name} wear is at {component.wearPercentage}%.</p>
+              <p className="font-semibold">{component.brand} {component.model}</p>
+              <p>{component.wearPercentage}% wear.</p>
               <p>Purchased: {new Date(component.purchaseDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
               {component.lastServiceDate && <p>Last Service: {new Date(component.lastServiceDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>}
             </TooltipContent>

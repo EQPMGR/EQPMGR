@@ -1,6 +1,8 @@
 export interface Component {
   id: string;
-  name: string;
+  name: string; // e.g., "Rear Derailleur"
+  brand: string; // e.g., "Shimano"
+  model: string; // e.g., "105 RD-5701"
   system: string;
   wearPercentage: number;
   lastServiceDate: string | null;
@@ -24,7 +26,7 @@ export interface MaintenanceLog {
 }
 
 export interface Equipment {
-  id: string;
+  id:string;
   name: string;
   type: 'Road Bike' | 'Mountain Bike' | 'Running Shoes' | 'Other';
   brand: string;

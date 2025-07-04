@@ -54,11 +54,8 @@ const equipmentFormSchema = z.object({
     required_error: 'A purchase date is required.',
   }),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
-  serialNumber: z.string().optional(),
+  serialNumber: z.string().min(3).optional().or(z.literal('')),
   purchaseCondition: z.enum(['new', 'used']),
-}).refine(data => !data.serialNumber || data.serialNumber.length === 0 || data.serialNumber.length >= 3, {
-  message: "Serial number must be at least 3 characters.",
-  path: ["serialNumber"],
 });
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
@@ -119,10 +116,11 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
   async function onSubmit(data: EquipmentFormValues) {
     setIsSubmitting(true);
     try {
+        const serialNumber = data.serialNumber?.trim();
         const newEquipmentData: NewEquipmentFormSubmitData = {
             ...data,
             purchaseDate: data.purchaseDate.toISOString(),
-            serialNumber: data.serialNumber || undefined, // Ensure empty string becomes undefined
+            serialNumber: serialNumber ? serialNumber : undefined,
         };
         await onAddEquipment(newEquipmentData);
         toast({
