@@ -106,8 +106,6 @@ export function DashboardPage() {
       });
       throw new Error('Selected bike not found');
     }
-    
-    const purchaseDateForDB = new Date(); // Using a placeholder date for the test.
 
     const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
       id: `comp-${Date.now()}-${index}`,
@@ -116,20 +114,20 @@ export function DashboardPage() {
       model: comp.model,
       system: comp.system,
       wearPercentage: 0,
-      purchaseDate: purchaseDateForDB,
+      purchaseDate: formData.purchaseDate,
       lastServiceDate: null,
     }));
       
     const newEquipmentRef = doc(collection(db, 'users', user.uid, 'equipment'));
       
-    const newEquipment: Equipment = {
-      id: newEquipmentRef.id,
+    // Use a temporary object to build the data, to avoid sending `undefined` fields to Firestore
+    const newEquipmentData: Omit<Equipment, 'id' | 'serialNumber'> & { serialNumber?: string } = {
       name: formData.name,
       type: bikeFromDb.type,
       brand: bikeFromDb.brand,
       model: bikeFromDb.model,
       modelYear: bikeFromDb.modelYear,
-      purchaseDate: purchaseDateForDB,
+      purchaseDate: formData.purchaseDate,
       purchasePrice: formData.purchasePrice,
       imageUrl: bikeFromDb.imageUrl,
       purchaseCondition: formData.purchaseCondition,
@@ -139,13 +137,17 @@ export function DashboardPage() {
       maintenanceLog: [],
     };
     
-    // Only add serial number if it exists and is not empty
     if (formData.serialNumber && formData.serialNumber.trim()) {
-      newEquipment.serialNumber = formData.serialNumber.trim();
+      newEquipmentData.serialNumber = formData.serialNumber.trim();
+    }
+
+    const finalEquipment = {
+      ...newEquipmentData,
+      id: newEquipmentRef.id,
     }
     
-    await setDoc(newEquipmentRef, newEquipment);
-    setData((prevData) => [newEquipment, ...prevData]);
+    await setDoc(newEquipmentRef, finalEquipment);
+    setData((prevData) => [finalEquipment as Equipment, ...prevData]);
   }
 
   if (isLoading || authLoading) {
