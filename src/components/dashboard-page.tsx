@@ -107,6 +107,9 @@ export function DashboardPage() {
       throw new Error('Selected bike not found');
     }
 
+    // Ensure purchaseDate is a valid Date object.
+    const purchaseDate = new Date(formData.purchaseDate);
+
     const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
       id: `comp-${Date.now()}-${index}`,
       name: comp.name,
@@ -114,20 +117,19 @@ export function DashboardPage() {
       model: comp.model,
       system: comp.system,
       wearPercentage: 0,
-      purchaseDate: formData.purchaseDate,
+      purchaseDate: purchaseDate,
       lastServiceDate: null,
     }));
       
     const newEquipmentRef = doc(collection(db, 'users', user.uid, 'equipment'));
       
-    // Use a temporary object to build the data, to avoid sending `undefined` fields to Firestore
     const newEquipmentData: Omit<Equipment, 'id' | 'serialNumber'> & { serialNumber?: string } = {
       name: formData.name,
       type: bikeFromDb.type,
       brand: bikeFromDb.brand,
       model: bikeFromDb.model,
       modelYear: bikeFromDb.modelYear,
-      purchaseDate: formData.purchaseDate,
+      purchaseDate: purchaseDate,
       purchasePrice: formData.purchasePrice,
       imageUrl: bikeFromDb.imageUrl,
       purchaseCondition: formData.purchaseCondition,
