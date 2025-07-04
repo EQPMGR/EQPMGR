@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Activity } from 'lucide-react';
-import { collection, setDoc, doc, getDocs, Timestamp, query, where } from 'firebase/firestore';
+import { collection, setDoc, doc, getDocs, Timestamp, query } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment } from '@/lib/types';
@@ -25,8 +25,8 @@ export function EquipmentListPage() {
     if (user) {
       const fetchEquipment = async () => {
         try {
-          const equipmentCol = collection(db, 'equipment');
-          const q = query(equipmentCol, where("ownerId", "==", user.uid));
+          const equipmentCol = collection(db, 'users', user.uid, 'equipment');
+          const q = query(equipmentCol);
           const equipmentSnapshot = await getDocs(q);
           const equipmentList = equipmentSnapshot.docs.map(doc => {
             const docData = doc.data();
@@ -93,11 +93,10 @@ export function EquipmentListPage() {
       throw new Error('Selected bike not found');
     }
 
-    const newEquipmentRef = doc(collection(db, 'equipment'));
+    const newEquipmentRef = doc(collection(db, 'users', user.uid, 'equipment'));
       
     // Create the base equipment data object
     const newEquipmentData: Omit<Equipment, 'id'> = {
-        ownerId: user.uid,
         name: formData.name,
         type: bikeFromDb.type,
         brand: bikeFromDb.brand,

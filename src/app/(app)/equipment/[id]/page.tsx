@@ -11,7 +11,7 @@ import {
   Shield,
   Pencil,
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -103,22 +103,11 @@ export default function EquipmentDetailPage() {
       const fetchEquipment = async () => {
         setIsLoading(true);
         try {
-          const equipmentRef = doc(db, 'equipment', params.id);
+          const equipmentRef = doc(db, 'users', user.uid, 'equipment', params.id);
           const equipmentSnap = await getDoc(equipmentRef);
 
           if (equipmentSnap.exists()) {
             const docData = equipmentSnap.data();
-
-            if (docData.ownerId !== user.uid) {
-              console.error("User does not have permission to view this equipment.");
-              toast({
-                variant: "destructive",
-                title: "Access Denied",
-                description: "You do not have permission to view this equipment."
-              });
-              setEquipment(undefined);
-              return;
-            }
 
             const components = (docData.components || []).map((c: any) => ({
               ...c,
@@ -140,6 +129,11 @@ export default function EquipmentDetailPage() {
           } else {
             console.error("No such document!");
             setEquipment(undefined);
+            toast({
+              variant: "destructive",
+              title: "Not Found",
+              description: "Could not find the requested equipment."
+            });
           }
         } catch (error) {
           console.error("Error fetching equipment details: ", error);
@@ -163,7 +157,7 @@ export default function EquipmentDetailPage() {
       toast({ variant: "destructive", title: "Error", description: "Could not update equipment." });
       return;
     }
-    const equipmentRef = doc(db, 'equipment', equipment.id);
+    const equipmentRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
     await updateDoc(equipmentRef, data);
     
     setEquipment(prev => {
