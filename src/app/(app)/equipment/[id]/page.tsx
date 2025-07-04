@@ -86,10 +86,6 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
     if (name.includes('wheel')) {
         return <WheelsetIcon className={className} />;
     }
-    
-    if (name.includes('cockpit')) {
-        return <Puzzle className={className} />;
-    }
 
     if (name.includes('suspension')) {
       return <SuspensionIcon className={className} />;
