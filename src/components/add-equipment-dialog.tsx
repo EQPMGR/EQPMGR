@@ -52,9 +52,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const equipmentFormSchema = z.object({
   name: z.string().min(2, { message: 'Nickname is required.' }),
   bikeIdentifier: z.string().min(1, { message: 'Please select a bike.' }),
-  purchaseDate: z.date({
-    required_error: 'A purchase date is required.',
-  }),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
   serialNumber: z.string().max(50, "Serial number cannot exceed 50 characters.").optional(),
   purchaseCondition: z.enum(['new', 'used']),
@@ -131,70 +128,6 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     } finally {
         setIsSubmitting(false);
     }
-  }
-  
-  const CalendarControl = ({field}: {field: any}) => {
-    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-    
-    const CalendarButton = (
-      <Button
-        variant={"outline"}
-        className={cn(
-          "w-full pl-3 text-left font-normal",
-          !field.value && "text-muted-foreground"
-        )}
-      >
-        {field.value ? (
-          format(field.value, "PPP")
-        ) : (
-          <span>Pick a date</span>
-        )}
-        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-      </Button>
-    )
-
-    const CalendarComponent = (
-       <Calendar
-        mode="single"
-        captionLayout="dropdown-buttons"
-        fromYear={1980}
-        toYear={new Date().getFullYear()}
-        fixedWeeks
-        selected={field.value}
-        onSelect={(date) => {
-          field.onChange(date);
-          setIsCalendarOpen(false);
-        }}
-        disabled={(date) =>
-          date > new Date() || date < new Date("1900-01-01")
-        }
-        initialFocus
-      />
-    );
-    
-    if (isMobile) {
-      return (
-        <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-          <DialogTrigger asChild>
-            <FormControl>{CalendarButton}</FormControl>
-          </DialogTrigger>
-          <DialogContent className="w-auto p-0">
-            {CalendarComponent}
-          </DialogContent>
-        </Dialog>
-      );
-    }
-    
-    return (
-       <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-          <PopoverTrigger asChild>
-            <FormControl>{CalendarButton}</FormControl>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            {CalendarComponent}
-          </PopoverContent>
-        </Popover>
-    )
   }
 
   return (
@@ -308,32 +241,19 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-               <FormField
-                control={form.control}
-                name="purchaseDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Purchase Date</FormLabel>
-                    <CalendarControl field={field} />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="purchasePrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Purchase Price ($)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g., 5000" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="purchasePrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Purchase Price ($)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g., 5000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
              <FormField
                 control={form.control}
                 name="serialNumber"

@@ -106,6 +106,8 @@ export function DashboardPage() {
       });
       throw new Error('Selected bike not found');
     }
+    
+    const purchaseDateForDB = new Date(); // Using a placeholder date for the test.
 
     const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
       id: `comp-${Date.now()}-${index}`,
@@ -114,7 +116,7 @@ export function DashboardPage() {
       model: comp.model,
       system: comp.system,
       wearPercentage: 0,
-      purchaseDate: formData.purchaseDate,
+      purchaseDate: purchaseDateForDB,
       lastServiceDate: null,
     }));
       
@@ -127,7 +129,7 @@ export function DashboardPage() {
       brand: bikeFromDb.brand,
       model: bikeFromDb.model,
       modelYear: bikeFromDb.modelYear,
-      purchaseDate: formData.purchaseDate,
+      purchaseDate: purchaseDateForDB,
       purchasePrice: formData.purchasePrice,
       imageUrl: bikeFromDb.imageUrl,
       purchaseCondition: formData.purchaseCondition,
