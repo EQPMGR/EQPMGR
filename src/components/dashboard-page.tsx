@@ -95,7 +95,7 @@ export function DashboardPage() {
       modelYear: bikeFromDb.modelYear,
       purchaseDate: formData.purchaseDate,
       purchasePrice: formData.purchasePrice,
-      serialNumber: formData.serialNumber,
+      ...(formData.serialNumber && { serialNumber: formData.serialNumber }),
       imageUrl: bikeFromDb.imageUrl,
       purchaseCondition: formData.purchaseCondition,
       totalDistance: 0,
