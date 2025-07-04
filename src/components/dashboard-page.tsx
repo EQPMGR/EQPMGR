@@ -73,9 +73,10 @@ export function DashboardPage() {
       throw new Error('Selected bike not found');
     }
 
-    const newComponents: Component[] = bikeFromDb.components.map((name, index) => ({
+    const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
       id: `comp-${Date.now()}-${index}`,
-      name: name,
+      name: comp.name,
+      system: comp.system,
       wearPercentage: 0,
       purchaseDate: formData.purchaseDate,
       lastServiceDate: null,

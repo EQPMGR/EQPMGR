@@ -1,6 +1,7 @@
 export interface Component {
   id: string;
   name: string;
+  system: string;
   wearPercentage: number;
   lastServiceDate: string | null;
   purchaseDate: string;

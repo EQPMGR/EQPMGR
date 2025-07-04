@@ -1,16 +1,14 @@
 
 'use client'
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   Bike,
   ChevronLeft,
   Footprints,
-  Hexagon,
   Puzzle,
   Shield,
-  Wrench,
 } from 'lucide-react';
 import { equipmentData } from '@/lib/data';
 import { Button } from '@/components/ui/button';
@@ -21,6 +19,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { ComponentStatusList } from '@/components/component-status-list';
 // import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
@@ -58,8 +62,12 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
         return <DiscBrakeIcon className={className} />;
     }
     
-    if (name.includes('tire') || name.includes('wheel')) {
+    if (name.includes('wheel')) {
         return <WheelsetIcon className={className} />;
+    }
+    
+    if (name.includes('cockpit')) {
+        return <Puzzle className={className} />;
     }
 
     if (name.includes('suspension')) {
@@ -84,6 +92,19 @@ export default function EquipmentDetailPage() {
     setEquipment(foundEquipment);
   }, [params.id]);
 
+  const componentsBySystem = useMemo(() => {
+    if (!equipment) return {};
+    return equipment.components.reduce((acc, component) => {
+        const { system } = component;
+        if (!acc[system]) {
+            acc[system] = [];
+        }
+        acc[system].push(component);
+        return acc;
+    }, {} as Record<string, Component[]>);
+  }, [equipment]);
+
+  const systemNames = Object.keys(componentsBySystem);
 
   if (!equipment) {
     return (
@@ -115,15 +136,6 @@ export default function EquipmentDetailPage() {
   }
   */
 
-  const systems = [
-    { name: 'Drivetrain', keywords: ['drivetrain'] },
-    { name: 'Brakes', keywords: ['brake'] },
-    { name: 'Wheelset', keywords: ['tire', 'wheel'] },
-    { name: 'Suspension', keywords: ['suspension', 'shock', 'dropper'] },
-    { name: 'Frameset', keywords: ['frame'] },
-    { name: 'Accessories', keywords: ['accessories'] }
-  ];
-
   const topComponents = [...equipment.components]
     .sort((a, b) => b.wearPercentage - a.wearPercentage)
     .slice(0, 3);
@@ -151,36 +163,37 @@ export default function EquipmentDetailPage() {
                 <CardDescription>{equipment.brand} {equipment.model} &bull; {equipment.type}</CardDescription>
               </CardHeader>
               <CardContent>
+                <h4 className="font-semibold mb-2">Most Worn Components</h4>
                 <ComponentStatusList components={topComponents} />
               </CardContent>
             </Card>
-             <Card>
-                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-                    {systems.map(system => {
-                      const highWearComponents = equipment.components.filter(c => 
-                          system.keywords.some(kw => c.name.toLowerCase().includes(kw)) && c.wearPercentage > 70
-                      );
-                      const notificationCount = highWearComponents.length;
-
-                      return (
-                          <div key={system.name} role="button" tabIndex={0} className="relative p-4 border rounded-lg flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-accent group">
-                              {notificationCount > 0 && (
-                                  <div className="absolute top-1 right-1 flex items-center justify-center">
-                                      <Hexagon className="h-6 w-6 text-primary fill-primary" />
-                                      <span className="absolute text-primary-foreground text-xs font-bold">
-                                          {notificationCount}
-                                      </span>
-                                  </div>
-                              )}
-                              <div className="h-[35px] w-[35px] flex items-center justify-center">
-                                  <ComponentIcon componentName={system.name} className="h-full w-full text-muted-foreground group-hover:text-accent-foreground" />
-                              </div>
-                              <span className="text-xs text-center font-headline uppercase font-black text-muted-foreground group-hover:text-accent-foreground">{system.name}</span>
-                          </div>
-                      );
-                    })}
-                </CardContent>
+            
+            <Card>
+              <CardHeader>
+                  <CardTitle>Component Systems</CardTitle>
+                  <CardDescription>
+                    Detailed wear status for each component group.
+                  </CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <Accordion type="single" collapsible className="w-full">
+                      {systemNames.map(systemName => (
+                          <AccordionItem value={systemName} key={systemName}>
+                              <AccordionTrigger className="text-base">
+                                <div className="flex items-center gap-4">
+                                  <ComponentIcon componentName={systemName} className="h-6 w-6 text-muted-foreground" />
+                                  {systemName}
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pl-4">
+                                  <ComponentStatusList components={componentsBySystem[systemName]} />
+                              </AccordionContent>
+                          </AccordionItem>
+                      ))}
+                  </Accordion>
+              </CardContent>
             </Card>
+            
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 <Card>
                     <CardContent className="grid grid-cols-2 text-center pt-6">
