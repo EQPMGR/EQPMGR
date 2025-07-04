@@ -111,7 +111,7 @@ export function DashboardPage() {
 
     const newEquipmentRef = doc(collection(db, 'equipment'));
       
-    const newEquipmentData: Omit<Equipment, 'id'> & { ownerId: string } = {
+    const newEquipmentData: Omit<Equipment, 'id'> = {
       ownerId: user.uid,
       name: formData.name,
       type: bikeFromDb.type,
@@ -124,10 +124,10 @@ export function DashboardPage() {
       purchaseCondition: formData.purchaseCondition,
       totalDistance: 0,
       totalHours: 0,
-      components: [], // Start with an empty component list as a test
+      components: [],
       maintenanceLog: [],
     };
-
+    
     // Add serial number only if it's provided
     if (formData.serialNumber) {
       newEquipmentData.serialNumber = formData.serialNumber;
