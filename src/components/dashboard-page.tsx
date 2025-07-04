@@ -6,7 +6,7 @@ import { Activity } from 'lucide-react';
 import { collection, setDoc, doc, getDocs, Timestamp, query, where } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import type { Equipment, Component } from '@/lib/types';
+import type { Equipment } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
 import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -109,19 +109,6 @@ export function DashboardPage() {
       throw new Error('Selected bike not found');
     }
 
-    const purchaseDate = new Date(formData.purchaseDate);
-
-    const newComponents: Component[] = bikeFromDb.components.map((comp, index) => ({
-      id: `comp-${Date.now()}-${index}`,
-      name: comp.name,
-      brand: comp.brand,
-      model: comp.model,
-      system: comp.system,
-      wearPercentage: 0,
-      purchaseDate: purchaseDate,
-      lastServiceDate: null,
-    }));
-      
     const newEquipmentRef = doc(collection(db, 'equipment'));
       
     const newEquipmentData: Omit<Equipment, 'id'> & { ownerId: string } = {
@@ -137,10 +124,14 @@ export function DashboardPage() {
       purchaseCondition: formData.purchaseCondition,
       totalDistance: 0,
       totalHours: 0,
-      components: newComponents,
+      components: [], // Start with an empty component list as a test
       maintenanceLog: [],
-      ...(formData.serialNumber && { serialNumber: formData.serialNumber }),
     };
+
+    // Add serial number only if it's provided
+    if (formData.serialNumber) {
+      newEquipmentData.serialNumber = formData.serialNumber;
+    }
     
     await setDoc(newEquipmentRef, newEquipmentData);
     
