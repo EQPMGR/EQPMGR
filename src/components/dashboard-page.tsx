@@ -104,6 +104,7 @@ export function DashboardPage() {
       maintenanceLog: [],
     };
     
+    console.log('Data to be saved:', newEquipment);
     await setDoc(newEquipmentRef, newEquipment);
     setData((prevData) => [newEquipment, ...prevData]);
   }

@@ -54,11 +54,8 @@ const equipmentFormSchema = z.object({
     required_error: 'A purchase date is required.',
   }),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
-  serialNumber: z.string().optional(),
+  serialNumber: z.string().max(50, "Serial number cannot exceed 50 characters.").optional(),
   purchaseCondition: z.enum(['new', 'used']),
-}).refine(data => !data.serialNumber || data.serialNumber.trim().length === 0 || data.serialNumber.trim().length >= 3, {
-  message: "Serial number must be at least 3 characters if provided.",
-  path: ["serialNumber"],
 });
 
 
