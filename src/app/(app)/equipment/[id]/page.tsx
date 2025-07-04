@@ -26,13 +26,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -349,24 +342,14 @@ export default function EquipmentDetailPage() {
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {systemNames.map(systemName => (
-                    <Dialog key={systemName}>
-                      <DialogTrigger asChild>
-                        <Card className="hover:bg-muted/50 cursor-pointer transition-colors">
+                    <Link href={`/equipment/${equipment.id}/${systemName.toLowerCase().replace(/\s+/g, '-')}`} key={systemName}>
+                        <Card className="hover:bg-muted/50 cursor-pointer transition-colors h-full">
                           <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 gap-2">
                             <ComponentIcon componentName={systemName} className="h-10 w-10 text-muted-foreground" />
                             <h4 className="text-sm font-headline font-bold uppercase text-center tracking-wider">{systemName}</h4>
                           </CardContent>
                         </Card>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>{systemName} Components</DialogTitle>
-                        </DialogHeader>
-                        <div className="py-4">
-                           <ComponentStatusList components={componentsBySystem[systemName]} />
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    </Link>
                   ))}
               </CardContent>
             </Card>
