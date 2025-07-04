@@ -56,16 +56,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const defaultProfileData: Omit<UserProfile, 'uid' | 'email' | 'displayName' | 'photoURL'> = {
-  height: undefined,
-  weight: undefined,
-  shoeSize: undefined,
-  age: undefined,
-  measurementSystem: 'metric',
-  shoeSizeSystem: 'us',
-  distanceUnit: 'km',
-};
-
 // This function ensures that the profile object used in the app is always valid.
 const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>): UserProfile => {
   const data = docData || {};
@@ -107,11 +97,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const userDocRef = doc(db, 'users', authUser.uid);
         try {
           const userDocSnap = await getDoc(userDocRef);
+          let userProfile: UserProfile;
 
           if (userDocSnap.exists()) {
             const userDocData = userDocSnap.data() as UserDocument;
-            const safeProfile = createSafeUserProfile(authUser, userDocData);
-            setUser(safeProfile);
+            userProfile = createSafeUserProfile(authUser, userDocData);
             await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
           } else {
             // New user: Create a complete profile document with defaults
@@ -125,9 +115,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
               lastLogin: serverTimestamp(),
             };
             await setDoc(userDocRef, newDocData, { merge: true });
-            const safeProfile = createSafeUserProfile(authUser, newDocData);
-            setUser(safeProfile);
+            userProfile = createSafeUserProfile(authUser, newDocData);
           }
+          setUser(userProfile);
+
         } catch (error) {
             handleAuthError(error, 'Profile Sync Failed');
             await firebaseSignOut(auth);
@@ -176,29 +167,27 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const userDocRef = doc(db, 'users', currentUser.uid);
 
       try {
-        const { displayName, ...firestoreData } = data;
-        
-        const dataToSave: UserDocument = { ...firestoreData };
-        
-        // Sanitize data: remove any undefined keys and convert empty strings for numeric fields to a delete operation
-        Object.keys(dataToSave).forEach(key => {
-            const typedKey = key as keyof UserDocument;
-            if (dataToSave[typedKey] === undefined || dataToSave[typedKey] === null) {
-                dataToSave[typedKey] = deleteField() as any;
-            }
-        });
-        
-        if (displayName !== undefined && displayName !== currentUser.displayName) {
-            await updateProfile(currentUser, { displayName });
-            if (displayName) {
-              dataToSave.displayName = displayName;
-            } else {
-              dataToSave.displayName = deleteField() as any;
-            }
+        // 1. Handle displayName update in Firebase Auth, as it's a special case
+        if (data.displayName !== undefined && data.displayName !== currentUser.displayName) {
+            await updateProfile(currentUser, { displayName: data.displayName });
+        }
+
+        // 2. Prepare the document for Firestore.
+        const firestoreUpdateData: Partial<UserDocument> = { ...data };
+
+        // 3. Sanitize data: remove any undefined/null values, replacing them with a delete command for Firestore.
+        // This is crucial for optional fields like height, weight, etc.
+        for (const key in firestoreUpdateData) {
+          const typedKey = key as keyof typeof firestoreUpdateData;
+          if (firestoreUpdateData[typedKey] === undefined || firestoreUpdateData[typedKey] === null) {
+            (firestoreUpdateData as any)[typedKey] = deleteField();
+          }
         }
         
-        await setDoc(userDocRef, dataToSave, { merge: true });
+        // 4. Save to Firestore
+        await setDoc(userDocRef, firestoreUpdateData, { merge: true });
 
+        // 5. Re-fetch and update local state to reflect changes
         const updatedDoc = await getDoc(userDocRef);
         if (updatedDoc.exists()) {
              const userDocData = updatedDoc.data() as UserDocument;
