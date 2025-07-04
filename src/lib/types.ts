@@ -27,6 +27,7 @@ export interface MaintenanceLog {
 
 export interface Equipment {
   id:string;
+  ownerId: string;
   name: string;
   type: 'Road Bike' | 'Mountain Bike' | 'Running Shoes' | 'Other';
   brand: string;
