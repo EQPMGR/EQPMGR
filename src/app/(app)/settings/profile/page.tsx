@@ -35,19 +35,30 @@ import Link from "next/link"
 import { useAuth, type UserProfile } from "@/hooks/use-auth"
 
 // --- Zod Schema with Preprocessing ---
-const emptyStringToUndefined = z.preprocess((val) => {
-  if (typeof val === 'string' && val.trim() === '') return undefined;
-  return val;
-}, z.coerce.number().positive().optional());
+const processEmptyString = (val: unknown) => (typeof val === 'string' && val.trim() === '') ? undefined : val;
+
+const optionalPositiveNumber = z.preprocess(
+  processEmptyString,
+  z.coerce.number({ invalid_type_error: "Must be a number" }).positive().optional()
+);
+
+const inchesSchema = z.preprocess(
+  processEmptyString,
+  z.coerce
+    .number({ invalid_type_error: "Must be a number" })
+    .positive()
+    .max(11.99, { message: "Inches must be less than 12." })
+    .optional()
+);
 
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(30, "Name must not be longer than 30 characters.").optional().or(z.literal('')),
-  height: emptyStringToUndefined,
-  feet: emptyStringToUndefined,
-  inches: emptyStringToUndefined.max(11.99),
-  weight: emptyStringToUndefined,
-  shoeSize: emptyStringToUndefined,
-  age: emptyStringToUndefined,
+  height: optionalPositiveNumber,
+  feet: optionalPositiveNumber,
+  inches: inchesSchema,
+  weight: optionalPositiveNumber,
+  shoeSize: optionalPositiveNumber,
+  age: optionalPositiveNumber,
   measurementSystem: z.enum(['metric', 'imperial']),
   shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
   distanceUnit: z.enum(['km', 'miles']),
