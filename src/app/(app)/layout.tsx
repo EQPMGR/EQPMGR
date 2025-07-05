@@ -10,6 +10,7 @@ import {
   Menu,
   Settings,
   Activity,
+  Database,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -109,6 +110,14 @@ export default function AppLayout({
                 >
                   <Bike className="h-5 w-5" />
                   Equipment
+                </Link>
+                <Link
+                  href="/admin"
+                  onClick={handleLinkClick}
+                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                >
+                  <Database className="h-5 w-5" />
+                  Admin
                 </Link>
                 <Link
                   href="/settings/profile"
