@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
-import { Check, ChevronsUpDown, Loader2, ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -14,18 +14,25 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { BIKE_TYPES, COMPONENT_SYSTEMS } from '@/lib/constants';
+import { BIKE_TYPES } from '@/lib/constants';
 import { bikeDatabase } from '@/lib/bike-database';
 import { cn } from '@/lib/utils';
 
 const componentSchema = z.object({
   name: z.string().min(1, 'Component name is required.'),
-  brand: z.string().min(1, 'Brand is required.'),
-  model: z.string().min(1, 'Model is required.'),
+  brand: z.string().optional(),
+  model: z.string().optional(),
   system: z.string().min(1, 'System is required.'),
   size: z.string().optional(),
+  // Drivetrain specific
+  chainring1: z.string().optional(),
+  chainring2: z.string().optional(),
+  chainring3: z.string().optional(),
+  links: z.string().optional(),
+  tensioner: z.string().optional(),
 });
 
 const addBikeModelSchema = z.object({
@@ -34,6 +41,8 @@ const addBikeModelSchema = z.object({
   model: z.string().min(1, { message: 'Model is required.' }),
   modelYear: z.coerce.number().min(1980, 'Year must be after 1980.').max(new Date().getFullYear() + 1, 'Year cannot be in the future.'),
   components: z.array(componentSchema).default([]),
+  frontMech: z.enum(['1x', '2x', '3x']).optional(),
+  rearMech: z.enum(['9', '10', '11', '12']).optional(),
 });
 
 export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
@@ -42,7 +51,7 @@ const WIZARD_SYSTEMS = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheel
 const SIZED_COMPONENTS = ['frame', 'stem', 'handlebar', 'crankset'];
 
 export default function AddBikeModelPage() {
-    const [step, setStep] = useState(1); // 1: Details, 2: Components
+    const [step, setStep] = useState(1);
     const [systemIndex, setSystemIndex] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
@@ -59,12 +68,13 @@ export default function AddBikeModelPage() {
         },
     });
     
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove, update } = useFieldArray({
       control: form.control,
       name: "components"
     });
 
     const bikeDetails = form.watch();
+    const frontMechType = form.watch('frontMech');
     const activeSystem = WIZARD_SYSTEMS[systemIndex];
 
     const availableBrands = useMemo(() => {
@@ -73,12 +83,18 @@ export default function AddBikeModelPage() {
       return uniqueBrands.sort();
     }, []);
 
-    const componentIndicesForActiveSystem = useMemo(() => {
-        return fields
-            .map((field, index) => ({ field, index }))
-            .filter(item => form.watch(`components.${item.index}.system`) === activeSystem)
-            .map(item => item.index);
-    }, [fields, activeSystem, form]);
+    const findComponentIndex = (name: string, system: string) => {
+        return fields.findIndex(field => field.name === name && field.system === system);
+    };
+
+    const framesetIndex = findComponentIndex('Frame', 'Frameset');
+    const cranksetIndex = findComponentIndex('Crankset', 'Drivetrain');
+    const frontDerailleurIndex = findComponentIndex('Front Derailleur', 'Drivetrain');
+    const rearDerailleurIndex = findComponentIndex('Rear Derailleur', 'Drivetrain');
+    const cassetteIndex = findComponentIndex('Cassette', 'Drivetrain');
+    const shiftersIndex = findComponentIndex('Shifters', 'Drivetrain');
+    const chainIndex = findComponentIndex('Chain', 'Drivetrain');
+
 
     async function handleGoToComponents() {
         const result = await form.trigger(["type", "brand", "model", "modelYear"]);
@@ -98,8 +114,26 @@ export default function AddBikeModelPage() {
     }
 
     function handleNextSystem() {
+        const nextSystemIndex = systemIndex + 1;
+        const nextSystem = WIZARD_SYSTEMS[nextSystemIndex];
+
+        // Pre-populate drivetrain components when moving to that step
+        if (nextSystem === 'Drivetrain') {
+            const hasDrivetrain = fields.some(f => f.system === 'Drivetrain');
+            if (!hasDrivetrain) {
+                append([
+                    { name: 'Crankset', system: 'Drivetrain', brand: '', model: '', size: '' },
+                    { name: 'Front Derailleur', system: 'Drivetrain', brand: '', model: '' },
+                    { name: 'Rear Derailleur', system: 'Drivetrain', brand: '', model: '' },
+                    { name: 'Cassette', system: 'Drivetrain', brand: '', model: '' },
+                    { name: 'Shifters', system: 'Drivetrain', brand: '', model: '' },
+                    { name: 'Chain', system: 'Drivetrain', brand: '', model: '', links: '', tensioner: '' },
+                ]);
+            }
+        }
+
         if (systemIndex < WIZARD_SYSTEMS.length - 1) {
-            setSystemIndex(prev => prev + 1);
+            setSystemIndex(nextSystemIndex);
         } else {
             form.handleSubmit(onSubmit)();
         }
@@ -135,6 +169,31 @@ export default function AddBikeModelPage() {
       : `Add components for the ${activeSystem.toLowerCase()} system.`;
 
     const isLastSystem = systemIndex === WIZARD_SYSTEMS.length - 1;
+    
+    const renderChainringInputs = () => {
+        if (!frontMechType) return null;
+        
+        const numRings = parseInt(frontMechType.charAt(0));
+        const inputs = [];
+
+        for (let i = 1; i <= numRings; i++) {
+            inputs.push(
+                <FormField
+                    key={`chainring${i}`}
+                    control={form.control}
+                    name={`components.${cranksetIndex}.chainring${i}` as any}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Ring {i} (teeth)</FormLabel>
+                            <FormControl><Input placeholder="e.g., 50" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            );
+        }
+        return inputs;
+    };
 
     return (
         <Card className="max-w-4xl mx-auto">
@@ -145,7 +204,7 @@ export default function AddBikeModelPage() {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <CardContent>
-                      {step === 1 ? (
+                      {step === 1 && (
                         <div className="space-y-6">
                           <FormField
                               control={form.control}
@@ -266,107 +325,164 @@ export default function AddBikeModelPage() {
                               />
                           </div>
                         </div>
-                      ) : (
-                        <div className="space-y-4">
-                           {componentIndicesForActiveSystem.map((index) => {
-                            const componentName = form.watch(`components.${index}.name`) ?? '';
-                            const showSizeField = SIZED_COMPONENTS.some(c => componentName.toLowerCase().includes(c));
+                      )}
+                      
+                      {step === 2 && activeSystem === 'Frameset' && framesetIndex !== -1 && (
+                        <Card className="p-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <FormField
+                              control={form.control}
+                              name={`components.${framesetIndex}.name`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Component Name</FormLabel>
+                                  <FormControl><Input {...field} readOnly /></FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`components.${framesetIndex}.brand`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Brand</FormLabel>
+                                  <FormControl><Input {...field} readOnly /></FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`components.${framesetIndex}.model`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Model</FormLabel>
+                                  <FormControl><Input {...field} readOnly /></FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                             <FormField
+                              control={form.control}
+                              name={`components.${framesetIndex}.size`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Size</FormLabel>
+                                  <FormControl><Input placeholder="e.g., 56cm" {...field} value={field.value ?? ''} /></FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </Card>
+                      )}
 
-                            return (
-                                <Card key={fields[index].id} className="p-4 relative">
-                                  <div className={cn(
-                                      "grid grid-cols-1 sm:grid-cols-2 gap-4",
-                                      showSizeField ? "lg:grid-cols-5" : "lg:grid-cols-4"
-                                    )}>
+                      {step === 2 && activeSystem === 'Drivetrain' && (
+                        <div className="space-y-6">
+                            <Card className="p-4 bg-muted/30">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
                                       control={form.control}
-                                      name={`components.${index}.name`}
+                                      name="frontMech"
                                       render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Component Name</FormLabel>
-                                          <FormControl><Input placeholder="e.g., Rear Derailleur" {...field} /></FormControl>
+                                        <FormItem className="space-y-3">
+                                          <FormLabel>Front Mech</FormLabel>
+                                          <FormControl>
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                                              <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="1x" /></FormControl><FormLabel className="font-normal">1x</FormLabel></FormItem>
+                                              <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="2x" /></FormControl><FormLabel className="font-normal">2x</FormLabel></FormItem>
+                                              <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="3x" /></FormControl><FormLabel className="font-normal">3x</FormLabel></FormItem>
+                                            </RadioGroup>
+                                          </FormControl>
                                           <FormMessage />
                                         </FormItem>
                                       )}
                                     />
-                                    <FormField
+                                     <FormField
                                       control={form.control}
-                                      name={`components.${index}.brand`}
+                                      name="rearMech"
                                       render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Brand</FormLabel>
-                                          <FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl>
+                                        <FormItem className="space-y-3">
+                                          <FormLabel>Rear Mech</FormLabel>
+                                          <FormControl>
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                                              <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="9" /></FormControl><FormLabel className="font-normal">9</FormLabel></FormItem>
+                                              <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="10" /></FormControl><FormLabel className="font-normal">10</FormLabel></FormItem>
+                                              <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="11" /></FormControl><FormLabel className="font-normal">11</FormLabel></FormItem>
+                                               <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="12" /></FormControl><FormLabel className="font-normal">12</FormLabel></FormItem>
+                                            </RadioGroup>
+                                          </FormControl>
                                           <FormMessage />
                                         </FormItem>
                                       )}
                                     />
-                                    <FormField
-                                      control={form.control}
-                                      name={`components.${index}.model`}
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Model</FormLabel>
-                                          <FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-                                    <FormField
-                                      control={form.control}
-                                      name={`components.${index}.system`}
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>System</FormLabel>
-                                           <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue placeholder="Select a system" />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              {COMPONENT_SYSTEMS.map(system => (
-                                                <SelectItem key={system} value={system}>{system}</SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-                                    {showSizeField && (
-                                        <FormField
-                                          control={form.control}
-                                          name={`components.${index}.size`}
-                                          render={({ field }) => (
-                                            <FormItem>
-                                              <FormLabel>Size</FormLabel>
-                                              <FormControl><Input placeholder="e.g., 56cm" {...field} value={field.value ?? ''} /></FormControl>
-                                              <FormMessage />
-                                            </FormItem>
-                                          )}
-                                        />
-                                    )}
-                                  </div>
-                                   <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="absolute top-2 right-2"
-                                      onClick={() => remove(index)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span className="sr-only">Remove Component</span>
-                                    </Button>
+                                </div>
+                            </Card>
+
+                            {cranksetIndex !== -1 && (
+                                <Card>
+                                    <CardHeader><CardTitle className="text-lg">Crankset</CardTitle></CardHeader>
+                                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        <FormField name={`components.${cranksetIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${cranksetIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${cranksetIndex}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 172.5mm" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                        {renderChainringInputs()}
+                                    </CardContent>
                                 </Card>
-                              )
-                            })}
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => append({ name: '', brand: '', model: '', system: activeSystem, size: '' })}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Component
-                          </Button>
+                            )}
+                            
+                            {frontDerailleurIndex !== -1 && (
+                                <Card>
+                                    <CardHeader><CardTitle className="text-lg">{frontMechType === '1x' ? 'Chain Guide / Front Derailleur' : 'Front Derailleur'}</CardTitle></CardHeader>
+                                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField name={`components.${frontDerailleurIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontDerailleurIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                             {rearDerailleurIndex !== -1 && (
+                                <Card>
+                                    <CardHeader><CardTitle className="text-lg">Rear Derailleur</CardTitle></CardHeader>
+                                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField name={`components.${rearDerailleurIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearDerailleurIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {cassetteIndex !== -1 && (
+                                <Card>
+                                    <CardHeader><CardTitle className="text-lg">Cassette</CardTitle></CardHeader>
+                                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField name={`components.${cassetteIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${cassetteIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED XG-1290" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                             {shiftersIndex !== -1 && (
+                                <Card>
+                                    <CardHeader><CardTitle className="text-lg">Shifters</CardTitle></CardHeader>
+                                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField name={`components.${shiftersIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${shiftersIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {chainIndex !== -1 && (
+                                <Card>
+                                    <CardHeader><CardTitle className="text-lg">Chain</CardTitle></CardHeader>
+                                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-4">
+                                        <FormField name={`components.${chainIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${chainIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED Flat-Top" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${chainIndex}.links`} render={({ field }) => (<FormItem><FormLabel>Links</FormLabel><FormControl><Input placeholder="e.g., 114" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${chainIndex}.tensioner`} render={({ field }) => (<FormItem><FormLabel>Tensioner</FormLabel><FormControl><Input placeholder="N/A" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                    </CardContent>
+                                </Card>
+                            )}
                         </div>
                       )}
                     </CardContent>
@@ -397,3 +513,4 @@ export default function AddBikeModelPage() {
         </Card>
     );
 }
+
