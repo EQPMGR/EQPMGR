@@ -1,25 +1,27 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { BIKE_TYPES } from '@/lib/constants';
 import { bikeDatabase } from '@/lib/bike-database';
-import { Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 const addBikeModelSchema = z.object({
-  type: z.string().min(1, 'Please select a bike genre.'),
-  brand: z.string().min(1, { message: 'Please select a brand.' }),
+  type: z.string().min(1, 'Please select a bike type.'),
+  brand: z.string().min(1, { message: 'Brand is required.' }),
   model: z.string().min(1, { message: 'Model is required.' }),
   modelYear: z.coerce.number().min(1980, 'Year must be after 1980.').max(new Date().getFullYear() + 1, 'Year cannot be in the future.'),
 });
@@ -55,7 +57,8 @@ export default function AddBikeModelPage() {
       const brands = bikeDatabase
         .filter(bike => bike.type === selectedType)
         .map(bike => bike.brand);
-      return [...new Set(brands)]; // Return unique brands
+      const uniqueBrands = [...new Set(brands)];
+      return uniqueBrands.sort();
     }, [selectedType]);
 
     // Reset brand when type changes to ensure data consistency
@@ -78,6 +81,7 @@ export default function AddBikeModelPage() {
                 description: <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4"><code className="text-white">{JSON.stringify(values, null, 2)}</code></pre>,
             });
             setIsSubmitting(false);
+            form.reset();
         }, 1000);
     }
 
@@ -86,7 +90,7 @@ export default function AddBikeModelPage() {
             <CardHeader>
                 <CardTitle>Add a New Bike Model</CardTitle>
                 <CardDescription>
-                    Fill out the form below to add a new bike to the central database. Start with the genre.
+                    Fill out the form below to add a new bike to the central database. Start with the type.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -97,7 +101,7 @@ export default function AddBikeModelPage() {
                             name="type"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Bike Genre / Type</FormLabel>
+                                    <FormLabel>Bike Type</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
@@ -117,33 +121,62 @@ export default function AddBikeModelPage() {
                             )}
                         />
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="brand"
-                                render={({ field }) => (
-                                    <FormItem className="md:col-span-1">
-                                        <FormLabel>Brand</FormLabel>
-                                        <Select 
-                                            onValueChange={field.onChange} 
-                                            value={field.value} 
-                                            disabled={!selectedType}
+                           <FormField
+                              control={form.control}
+                              name="brand"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-col md:col-span-1">
+                                  <FormLabel>Brand</FormLabel>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <FormControl>
+                                        <Button
+                                          variant="outline"
+                                          role="combobox"
+                                          disabled={!selectedType}
+                                          className={cn(
+                                            "w-full justify-between",
+                                            !field.value && "text-muted-foreground"
+                                          )}
                                         >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a brand" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {availableBrands.map((brand) => (
-                                                    <SelectItem key={brand} value={brand}>
-                                                        {brand}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                                          {field.value || "Select or create brand"}
+                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                      </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                      <Command>
+                                        <CommandInput placeholder="Search brand..." />
+                                        <CommandEmpty>No brand found.</CommandEmpty>
+                                        <CommandList>
+                                            <CommandGroup>
+                                            {availableBrands.map((brand) => (
+                                                <CommandItem
+                                                value={brand}
+                                                key={brand}
+                                                onSelect={() => {
+                                                    form.setValue("brand", brand)
+                                                }}
+                                                >
+                                                <Check
+                                                    className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    brand === field.value
+                                                        ? "opacity-100"
+                                                        : "opacity-0"
+                                                    )}
+                                                />
+                                                {brand}
+                                                </CommandItem>
+                                            ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
                             />
                              <FormField
                                 control={form.control}
