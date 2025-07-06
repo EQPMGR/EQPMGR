@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,13 +54,10 @@ export default function AddBikeModelPage() {
     });
 
     const availableBrands = useMemo(() => {
-      if (!selectedType) return [];
-      const brands = bikeDatabase
-        .filter(bike => bike.type === selectedType)
-        .map(bike => bike.brand);
+      const brands = bikeDatabase.map(bike => bike.brand);
       const uniqueBrands = [...new Set(brands)];
       return uniqueBrands.sort();
-    }, [selectedType]);
+    }, []);
 
     // Reset brand when type changes to ensure data consistency
     useEffect(() => {
