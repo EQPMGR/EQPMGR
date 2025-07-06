@@ -34,6 +34,8 @@ const componentSchema = z.object({
   chainring3: z.string().optional(),
   links: z.string().optional(),
   tensioner: z.string().optional(),
+  // Brakes specific
+  pads: z.string().optional(),
 });
 
 const addBikeModelSchema = z.object({
@@ -45,12 +47,14 @@ const addBikeModelSchema = z.object({
   frontMech: z.enum(['1x', '2x', '3x']).optional(),
   rearMech: z.enum(['9', '10', '11', '12']).optional(),
   shifterSetType: z.enum(['matched', 'unmatched']).default('matched'),
+  brakeSetType: z.enum(['matched', 'unmatched']).default('matched'),
 });
 
 export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
 const WIZARD_SYSTEMS = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheelset', 'Cockpit'];
 const SIZED_COMPONENTS = ['frame', 'stem', 'handlebar', 'crankset'];
+const DROP_BAR_BIKE_TYPES = ['Road', 'Cyclocross', 'Gravel'];
 
 export default function AddBikeModelPage() {
     const [step, setStep] = useState(1);
@@ -68,6 +72,7 @@ export default function AddBikeModelPage() {
             modelYear: new Date().getFullYear(),
             components: [],
             shifterSetType: 'matched',
+            brakeSetType: 'matched',
         },
     });
     
@@ -79,6 +84,7 @@ export default function AddBikeModelPage() {
     const bikeDetails = form.watch();
     const frontMechType = form.watch('frontMech');
     const shifterSetType = form.watch('shifterSetType');
+    const brakeSetType = form.watch('brakeSetType');
     const activeSystem = WIZARD_SYSTEMS[systemIndex];
 
     const availableBrands = useMemo(() => {
@@ -99,6 +105,8 @@ export default function AddBikeModelPage() {
     const frontShifterIndex = findComponentIndex('Front Shifter', 'Drivetrain');
     const rearShifterIndex = findComponentIndex('Rear Shifter', 'Drivetrain');
     const chainIndex = findComponentIndex('Chain', 'Drivetrain');
+    const frontBrakeIndex = findComponentIndex('Front Brake', 'Brakes');
+    const rearBrakeIndex = findComponentIndex('Rear Brake', 'Brakes');
 
 
     async function handleGoToComponents() {
@@ -123,7 +131,7 @@ export default function AddBikeModelPage() {
         const nextSystemIndex = systemIndex + 1;
         const nextSystem = WIZARD_SYSTEMS[nextSystemIndex];
 
-        // Pre-populate drivetrain components when moving to that step
+        // Pre-populate components when moving to a new step
         if (nextSystem === 'Drivetrain') {
             const hasDrivetrain = fields.some(f => f.system === 'Drivetrain');
             if (!hasDrivetrain) {
@@ -135,6 +143,14 @@ export default function AddBikeModelPage() {
                     { name: 'Front Shifter', system: 'Drivetrain', brand: '', model: '', partNumber: '' },
                     { name: 'Rear Shifter', system: 'Drivetrain', brand: '', model: '', partNumber: '' },
                     { name: 'Chain', system: 'Drivetrain', brand: '', model: '', partNumber: '', links: '', tensioner: '' },
+                ]);
+            }
+        } else if (nextSystem === 'Brakes') {
+            const hasBrakes = fields.some(f => f.system === 'Brakes');
+            if (!hasBrakes) {
+                append([
+                    { name: 'Front Brake', system: 'Brakes', brand: '', model: '', partNumber: '', pads: '' },
+                    { name: 'Rear Brake', system: 'Brakes', brand: '', model: '', partNumber: '', pads: '' },
                 ]);
             }
         }
@@ -595,6 +611,71 @@ export default function AddBikeModelPage() {
                                     </CardContent>
                                 </Card>
                             )}
+                        </div>
+                      )}
+
+                      {step === 2 && activeSystem === 'Brakes' && (
+                        <div className="space-y-6">
+                            {DROP_BAR_BIKE_TYPES.includes(bikeDetails.type) && fields[frontShifterIndex] && (
+                                <Card>
+                                    <CardHeader><CardTitle className="text-lg">Brake Levers</CardTitle></CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm text-muted-foreground">
+                                            Brake levers are integrated with the shifters for this bike type.
+                                        </p>
+                                        <p className="font-medium mt-1">
+                                            {fields[frontShifterIndex].brand} {fields[frontShifterIndex].model}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            )}
+                             <Card>
+                                <CardHeader><CardTitle className="text-lg">Brake Calipers</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="brakeSetType"
+                                        render={({ field }) => (
+                                        <FormItem className="space-y-3">
+                                            <FormLabel>Configuration</FormLabel>
+                                            <FormControl>
+                                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                                                    <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="matched" /></FormControl><FormLabel className="font-normal">Matched Set</FormLabel></FormItem>
+                                                    <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="unmatched" /></FormControl><FormLabel className="font-normal">Unmatched Set</FormLabel></FormItem>
+                                                </RadioGroup>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                     {brakeSetType === 'matched' && frontBrakeIndex !== -1 && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                            <FormField control={form.control} name={`components.${frontBrakeIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontBrakeIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.partNumber`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontBrakeIndex}.pads`} render={({ field }) => (<FormItem><FormLabel>Brake Pad Model</FormLabel><FormControl><Input placeholder="e.g., L05A-RF" {...field} value={field.value ?? ''} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.pads`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                        </div>
+                                    )}
+                                    {brakeSetType === 'unmatched' && frontBrakeIndex !== -1 && rearBrakeIndex !== -1 && (
+                                        <div className="space-y-4">
+                                            <h4 className="font-semibold text-sm">Front Brake</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                                <FormField name={`components.${frontBrakeIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontBrakeIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontBrakeIndex}.pads`} render={({ field }) => (<FormItem><FormLabel>Brake Pad Model</FormLabel><FormControl><Input placeholder="e.g., L05A-RF" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                            </div>
+                                            <h4 className="font-semibold text-sm mt-4">Rear Brake</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                                <FormField name={`components.${rearBrakeIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearBrakeIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearBrakeIndex}.pads`} render={({ field }) => (<FormItem><FormLabel>Brake Pad Model</FormLabel><FormControl><Input placeholder="e.g., L05A-RF" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
                         </div>
                       )}
                     </CardContent>
