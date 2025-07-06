@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2, ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
@@ -38,6 +38,8 @@ const addBikeModelSchema = z.object({
 
 export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
+const SIZED_COMPONENTS = ['frame', 'stem', 'handlebar', 'crankset'];
+
 export default function AddBikeModelPage() {
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,17 +71,21 @@ export default function AddBikeModelPage() {
     }, []);
 
     useEffect(() => {
-        if (bikeDetails.type) {
-            form.resetField('brand', { defaultValue: '' });
-        }
+        // No logic change here, but effect is kept for future use if needed
     }, [bikeDetails.type, form]);
 
     async function handleGoToNextStep() {
         const result = await form.trigger(["type", "brand", "model", "modelYear"]);
         if (result) {
             if (fields.length === 0) {
-                // Pre-populate with a common component to guide the user
-                append({ name: 'Frame', brand: bikeDetails.brand, model: '', system: 'Frameset', size: '' });
+                // Pre-populate with Frame component, including model.
+                append({ 
+                    name: 'Frame', 
+                    brand: bikeDetails.brand, 
+                    model: bikeDetails.model, 
+                    system: 'Frameset', 
+                    size: '' 
+                });
             }
             setStep(2);
         }
@@ -106,7 +112,7 @@ export default function AddBikeModelPage() {
                 <CardTitle>{step === 1 ? 'Add a New Bike Model' : `Add Components for ${bikeDetails.brand} ${bikeDetails.model}`}</CardTitle>
                 <CardDescription>
                   {step === 1 
-                    ? 'Fill out the form below to add a new bike to the central database. Start with the type.'
+                    ? 'Fill out the form below to add a new bike to the central database.'
                     : 'Add the components for this bike model. This will be used as a template for users.'
                   }
                 </CardDescription>
@@ -233,88 +239,98 @@ export default function AddBikeModelPage() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                           {fields.map((field, index) => (
-                            <Card key={field.id} className="p-4 relative">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                                <FormField
-                                  control={form.control}
-                                  name={`components.${index}.name`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Component Name</FormLabel>
-                                      <FormControl><Input placeholder="e.g., Rear Derailleur" {...field} /></FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name={`components.${index}.brand`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Brand</FormLabel>
-                                      <FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name={`components.${index}.model`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Model</FormLabel>
-                                      <FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name={`components.${index}.system`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>System</FormLabel>
-                                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select a system" />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                          {COMPONENT_SYSTEMS.map(system => (
-                                            <SelectItem key={system} value={system}>{system}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name={`components.${index}.size`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Size</FormLabel>
-                                      <FormControl><Input placeholder="e.g., 56cm" {...field} value={field.value ?? ''} /></FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                               <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="absolute top-2 right-2"
-                                  onClick={() => remove(index)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Remove Component</span>
-                                </Button>
-                            </Card>
-                          ))}
+                           {fields.map((field, index) => {
+                            const componentName = form.watch(`components.${index}.name`) ?? '';
+                            const showSizeField = SIZED_COMPONENTS.some(c => componentName.toLowerCase().includes(c));
+
+                            return (
+                                <Card key={field.id} className="p-4 relative">
+                                  <div className={cn(
+                                      "grid grid-cols-1 sm:grid-cols-2 gap-4",
+                                      showSizeField ? "lg:grid-cols-5" : "lg:grid-cols-4"
+                                    )}>
+                                    <FormField
+                                      control={form.control}
+                                      name={`components.${index}.name`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Component Name</FormLabel>
+                                          <FormControl><Input placeholder="e.g., Rear Derailleur" {...field} /></FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <FormField
+                                      control={form.control}
+                                      name={`components.${index}.brand`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Brand</FormLabel>
+                                          <FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <FormField
+                                      control={form.control}
+                                      name={`components.${index}.model`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Model</FormLabel>
+                                          <FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <FormField
+                                      control={form.control}
+                                      name={`components.${index}.system`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>System</FormLabel>
+                                           <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue placeholder="Select a system" />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              {COMPONENT_SYSTEMS.map(system => (
+                                                <SelectItem key={system} value={system}>{system}</SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    {showSizeField && (
+                                        <FormField
+                                          control={form.control}
+                                          name={`components.${index}.size`}
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel>Size</FormLabel>
+                                              <FormControl><Input placeholder="e.g., 56cm" {...field} value={field.value ?? ''} /></FormControl>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+                                    )}
+                                  </div>
+                                   <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="absolute top-2 right-2"
+                                      onClick={() => remove(index)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Remove Component</span>
+                                    </Button>
+                                </Card>
+                              )
+                            })}
                           <Button 
                             type="button" 
                             variant="outline" 
