@@ -34,6 +34,7 @@ export default function AddBikeModelPage() {
     const [bikeData, setBikeData] = useState<AddBikeModelFormValues | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
+    const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
 
     const form = useForm<AddBikeModelFormValues>({
         resolver: zodResolver(addBikeModelSchema),
@@ -159,7 +160,7 @@ export default function AddBikeModelPage() {
                               render={({ field }) => (
                                 <FormItem className="flex flex-col md:col-span-1">
                                   <FormLabel>Brand</FormLabel>
-                                  <Popover>
+                                  <Popover open={brandPopoverOpen} onOpenChange={setBrandPopoverOpen}>
                                     <PopoverTrigger asChild>
                                       <FormControl>
                                         <Button
@@ -192,6 +193,7 @@ export default function AddBikeModelPage() {
                                                 key={brand}
                                                 onSelect={() => {
                                                     form.setValue("brand", brand)
+                                                    setBrandPopoverOpen(false);
                                                 }}
                                                 >
                                                 <Check
