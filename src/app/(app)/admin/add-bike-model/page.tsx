@@ -2,23 +2,24 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { BIKE_TYPES, type BikeType } from '@/lib/constants';
+import { BIKE_TYPES } from '@/lib/constants';
+import { bikeDatabase } from '@/lib/bike-database';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 const addBikeModelSchema = z.object({
   type: z.string().min(1, 'Please select a bike genre.'),
-  brand: z.string().min(2, { message: 'Brand must be at least 2 characters.' }),
+  brand: z.string().min(1, { message: 'Please select a brand.' }),
   model: z.string().min(1, { message: 'Model is required.' }),
   modelYear: z.coerce.number().min(1980, 'Year must be after 1980.').max(new Date().getFullYear() + 1, 'Year cannot be in the future.'),
 });
@@ -38,6 +39,32 @@ export default function AddBikeModelPage() {
             modelYear: new Date().getFullYear(),
         },
     });
+
+    const selectedType = useWatch({
+      control: form.control,
+      name: 'type',
+    });
+
+    const selectedBrand = useWatch({
+      control: form.control,
+      name: 'brand',
+    });
+
+    const availableBrands = useMemo(() => {
+      if (!selectedType) return [];
+      const brands = bikeDatabase
+        .filter(bike => bike.type === selectedType)
+        .map(bike => bike.brand);
+      return [...new Set(brands)]; // Return unique brands
+    }, [selectedType]);
+
+    // Reset brand when type changes to ensure data consistency
+    useEffect(() => {
+        if (selectedType) {
+            form.resetField('brand', { defaultValue: '' });
+        }
+    }, [selectedType, form]);
+
 
     function onSubmit(values: AddBikeModelFormValues) {
         // This is a placeholder for now.
@@ -85,9 +112,6 @@ export default function AddBikeModelPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <FormDescription>
-                                        The type of bike determines the component sections that will be available.
-                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -99,9 +123,24 @@ export default function AddBikeModelPage() {
                                 render={({ field }) => (
                                     <FormItem className="md:col-span-1">
                                         <FormLabel>Brand</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Specialized" {...field} />
-                                        </FormControl>
+                                        <Select 
+                                            onValueChange={field.onChange} 
+                                            value={field.value} 
+                                            disabled={!selectedType}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a brand" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {availableBrands.map((brand) => (
+                                                    <SelectItem key={brand} value={brand}>
+                                                        {brand}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -113,7 +152,7 @@ export default function AddBikeModelPage() {
                                     <FormItem className="md:col-span-1">
                                         <FormLabel>Model</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="e.g., Tarmac SL7" {...field} />
+                                            <Input placeholder="e.g., Tarmac SL7" {...field} disabled={!selectedBrand} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -126,7 +165,7 @@ export default function AddBikeModelPage() {
                                     <FormItem className="md:col-span-1">
                                         <FormLabel>Model Year</FormLabel>
                                         <FormControl>
-                                            <Input type="number" placeholder="e.g., 2023" {...field} />
+                                            <Input type="number" placeholder="e.g., 2023" {...field} disabled={!selectedBrand} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
