@@ -142,7 +142,7 @@ export default function AddBikeModelPage() {
                                         </Button>
                                       </FormControl>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <PopoverContent side="bottom" align="start" className="w-[--radix-popover-trigger-width] p-0">
                                       <Command>
                                         <CommandInput placeholder="Search brand..." />
                                         <CommandEmpty>No brand found.</CommandEmpty>
