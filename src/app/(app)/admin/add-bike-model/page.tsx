@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2, ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
@@ -38,10 +38,12 @@ const addBikeModelSchema = z.object({
 
 export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
+const WIZARD_SYSTEMS = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheelset', 'Cockpit'];
 const SIZED_COMPONENTS = ['frame', 'stem', 'handlebar', 'crankset'];
 
 export default function AddBikeModelPage() {
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState(1); // 1: Details, 2: Components
+    const [systemIndex, setSystemIndex] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
@@ -63,6 +65,7 @@ export default function AddBikeModelPage() {
     });
 
     const bikeDetails = form.watch();
+    const activeSystem = WIZARD_SYSTEMS[systemIndex];
 
     const availableBrands = useMemo(() => {
       const brands = bikeDatabase.map(bike => bike.brand);
@@ -70,15 +73,18 @@ export default function AddBikeModelPage() {
       return uniqueBrands.sort();
     }, []);
 
-    useEffect(() => {
-        // No logic change here, but effect is kept for future use if needed
-    }, [bikeDetails.type, form]);
+    const componentIndicesForActiveSystem = useMemo(() => {
+        return fields
+            .map((field, index) => ({ field, index }))
+            .filter(item => form.watch(`components.${item.index}.system`) === activeSystem)
+            .map(item => item.index);
+    }, [fields, activeSystem, form]);
 
-    async function handleGoToNextStep() {
+    async function handleGoToComponents() {
         const result = await form.trigger(["type", "brand", "model", "modelYear"]);
         if (result) {
-            if (fields.length === 0) {
-                // Pre-populate with Frame component, including model.
+            const hasFrameset = fields.some(f => f.system === 'Frameset');
+            if (!hasFrameset) {
                 append({ 
                     name: 'Frame', 
                     brand: bikeDetails.brand, 
@@ -88,6 +94,22 @@ export default function AddBikeModelPage() {
                 });
             }
             setStep(2);
+        }
+    }
+
+    function handleNextSystem() {
+        if (systemIndex < WIZARD_SYSTEMS.length - 1) {
+            setSystemIndex(prev => prev + 1);
+        } else {
+            form.handleSubmit(onSubmit)();
+        }
+    }
+
+    function handlePreviousSystem() {
+        if (systemIndex > 0) {
+            setSystemIndex(prev => prev - 1);
+        } else {
+            setStep(1);
         }
     }
 
@@ -102,20 +124,23 @@ export default function AddBikeModelPage() {
             });
             setIsSubmitting(false);
             setStep(1);
+            setSystemIndex(0);
             form.reset();
         }, 1000);
     }
     
+    const cardTitle = step === 1 ? 'Add a New Bike Model' : activeSystem;
+    const cardDescription = step === 1 
+      ? 'Fill out the form below to add a new bike to the central database.'
+      : `Add components for the ${activeSystem.toLowerCase()} system.`;
+
+    const isLastSystem = systemIndex === WIZARD_SYSTEMS.length - 1;
+
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
-                <CardTitle>{step === 1 ? 'Add a New Bike Model' : `Add Components for ${bikeDetails.brand} ${bikeDetails.model}`}</CardTitle>
-                <CardDescription>
-                  {step === 1 
-                    ? 'Fill out the form below to add a new bike to the central database.'
-                    : 'Add the components for this bike model. This will be used as a template for users.'
-                  }
-                </CardDescription>
+                <CardTitle>{cardTitle}</CardTitle>
+                <CardDescription>{cardDescription}</CardDescription>
             </CardHeader>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -128,7 +153,10 @@ export default function AddBikeModelPage() {
                               render={({ field }) => (
                                   <FormItem>
                                       <FormLabel>Bike Type</FormLabel>
-                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <Select onValueChange={(value) => {
+                                          field.onChange(value);
+                                          form.setValue("brand", "");
+                                      }} defaultValue={field.value}>
                                           <FormControl>
                                               <SelectTrigger>
                                                   <SelectValue placeholder="Select a bike type" />
@@ -159,6 +187,7 @@ export default function AddBikeModelPage() {
                                           <Button
                                             variant="outline"
                                             role="combobox"
+                                            disabled={!bikeDetails.type}
                                             className={cn(
                                               "w-full justify-between",
                                               !field.value && "text-muted-foreground"
@@ -239,12 +268,12 @@ export default function AddBikeModelPage() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                           {fields.map((field, index) => {
+                           {componentIndicesForActiveSystem.map((index) => {
                             const componentName = form.watch(`components.${index}.name`) ?? '';
                             const showSizeField = SIZED_COMPONENTS.some(c => componentName.toLowerCase().includes(c));
 
                             return (
-                                <Card key={field.id} className="p-4 relative">
+                                <Card key={fields[index].id} className="p-4 relative">
                                   <div className={cn(
                                       "grid grid-cols-1 sm:grid-cols-2 gap-4",
                                       showSizeField ? "lg:grid-cols-5" : "lg:grid-cols-4"
@@ -335,7 +364,7 @@ export default function AddBikeModelPage() {
                             type="button" 
                             variant="outline" 
                             size="sm"
-                            onClick={() => append({ name: '', brand: '', model: '', system: '', size: '' })}>
+                            onClick={() => append({ name: '', brand: '', model: '', system: activeSystem, size: '' })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Component
                           </Button>
                         </div>
@@ -347,18 +376,18 @@ export default function AddBikeModelPage() {
                             <Button type="button" variant="outline" asChild>
                                 <Link href="/admin">Cancel</Link>
                             </Button>
-                            <Button type="button" onClick={handleGoToNextStep}>
+                            <Button type="button" onClick={handleGoToComponents}>
                                 Next: Add Components
                             </Button>
                           </div>
                        ) : (
                          <>
-                          <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                          <Button type="button" variant="outline" onClick={handlePreviousSystem}>
                               <ArrowLeft className="mr-2 h-4 w-4" /> Back
                           </Button>
-                          <Button type="submit" disabled={isSubmitting}>
-                              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                              Save Bike Model
+                          <Button type="button" onClick={handleNextSystem} disabled={isSubmitting}>
+                              {isSubmitting && isLastSystem && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              {isLastSystem ? 'Save Bike Model' : 'Next System'}
                           </Button>
                         </>
                        )}
