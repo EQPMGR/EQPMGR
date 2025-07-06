@@ -25,6 +25,7 @@ const componentSchema = z.object({
   brand: z.string().min(1, 'Brand is required.'),
   model: z.string().min(1, 'Model is required.'),
   system: z.string().min(1, 'System is required.'),
+  size: z.string().optional(),
 });
 
 const addBikeModelSchema = z.object({
@@ -78,7 +79,7 @@ export default function AddBikeModelPage() {
         if (result) {
             if (fields.length === 0) {
                 // Pre-populate with a common component to guide the user
-                append({ name: 'Frame', brand: bikeDetails.brand, model: '', system: 'Frameset' });
+                append({ name: 'Frame', brand: bikeDetails.brand, model: '', system: 'Frameset', size: '' });
             }
             setStep(2);
         }
@@ -234,7 +235,7 @@ export default function AddBikeModelPage() {
                         <div className="space-y-4">
                            {fields.map((field, index) => (
                             <Card key={field.id} className="p-4 relative">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <FormField
                                   control={form.control}
                                   name={`components.${index}.name`}
@@ -290,6 +291,17 @@ export default function AddBikeModelPage() {
                                     </FormItem>
                                   )}
                                 />
+                                <FormField
+                                  control={form.control}
+                                  name={`components.${index}.size`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Size</FormLabel>
+                                      <FormControl><Input placeholder="e.g., 56cm" {...field} value={field.value ?? ''} /></FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
                               </div>
                                <Button
                                   type="button"
@@ -307,7 +319,7 @@ export default function AddBikeModelPage() {
                             type="button" 
                             variant="outline" 
                             size="sm"
-                            onClick={() => append({ name: '', brand: '', model: '', system: '' })}>
+                            onClick={() => append({ name: '', brand: '', model: '', system: '', size: '' })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Component
                           </Button>
                         </div>
