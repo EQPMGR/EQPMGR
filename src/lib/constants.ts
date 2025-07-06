@@ -2,3 +2,6 @@ export const BIKE_TYPES = ['Road', 'Track', 'Time Trial', 'Triathlon', 'Cyclocro
 export type BikeType = (typeof BIKE_TYPES)[number];
 
 export const MOUNTAIN_BIKE_TYPES: BikeType[] = ['Cross Country', 'All Mountain', 'Enduro', 'Downhill', 'Dirt Jumper'];
+
+export const COMPONENT_SYSTEMS = ['Drivetrain', 'Brakes', 'Wheelset', 'Frameset', 'Cockpit', 'Suspension', 'Accessories'] as const;
+export type ComponentSystem = (typeof COMPONENT_SYSTEMS)[number];
