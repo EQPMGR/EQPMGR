@@ -5,11 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
-import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -27,9 +27,11 @@ const addBikeModelSchema = z.object({
   modelYear: z.coerce.number().min(1980, 'Year must be after 1980.').max(new Date().getFullYear() + 1, 'Year cannot be in the future.'),
 });
 
-type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
+export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
 export default function AddBikeModelPage() {
+    const [step, setStep] = useState(1);
+    const [bikeData, setBikeData] = useState<AddBikeModelFormValues | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
 
@@ -67,33 +69,65 @@ export default function AddBikeModelPage() {
     }, [selectedType, form]);
 
 
-    function onSubmit(values: AddBikeModelFormValues) {
+    function handleNextStep(values: AddBikeModelFormValues) {
+        setBikeData(values);
+        setStep(2);
+    }
+
+    function handleFinalSubmit() {
         // This is a placeholder for now.
         // In the next step, we will wire this up to save to Firestore.
         setIsSubmitting(true);
-        console.log('Form submitted with values:', values);
+        console.log('Final data to submit:', bikeData);
 
         setTimeout(() => {
             toast({
-                title: 'Form Submitted (Placeholder)',
-                description: <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4"><code className="text-white">{JSON.stringify(values, null, 2)}</code></pre>,
+                title: 'Bike Model Saved (Placeholder)',
+                description: <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4"><code className="text-white">{JSON.stringify(bikeData, null, 2)}</code></pre>,
             });
             setIsSubmitting(false);
+            setStep(1);
+            setBikeData(null);
             form.reset();
         }, 1000);
+    }
+    
+    if (step === 2 && bikeData) {
+        return (
+            <Card className="max-w-2xl mx-auto">
+                <CardHeader>
+                    <CardTitle>Step 2: Add Components</CardTitle>
+                    <CardDescription>
+                        Now, add the components for the {bikeData.brand} {bikeData.model}.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p>The component editor will be built here in the next step.</p>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                    </Button>
+                     <Button onClick={handleFinalSubmit} disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Bike Model
+                    </Button>
+                </CardFooter>
+            </Card>
+        )
     }
 
     return (
         <Card className="max-w-2xl mx-auto">
             <CardHeader>
-                <CardTitle>Add a New Bike Model</CardTitle>
+                <CardTitle>Add a New Bike Model (Step 1 of 2)</CardTitle>
                 <CardDescription>
                     Fill out the form below to add a new bike to the central database. Start with the type.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <form onSubmit={form.handleSubmit(handleNextStep)} className="space-y-6">
                         <FormField
                             control={form.control}
                             name="type"
@@ -131,7 +165,6 @@ export default function AddBikeModelPage() {
                                         <Button
                                           variant="outline"
                                           role="combobox"
-                                          disabled={!selectedType}
                                           className={cn(
                                             "w-full justify-between",
                                             !field.value && "text-muted-foreground"
@@ -213,8 +246,7 @@ export default function AddBikeModelPage() {
                              <Button type="button" variant="outline" asChild>
                                 <Link href="/admin">Cancel</Link>
                             </Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Button type="submit">
                                 Next: Add Components
                             </Button>
                         </div>
@@ -224,3 +256,4 @@ export default function AddBikeModelPage() {
         </Card>
     );
 }
+
