@@ -97,7 +97,7 @@ export default function AddBikeModelPage() {
         return (
             <Card className="max-w-2xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Step 2: Add Components</CardTitle>
+                    <CardTitle>Add Components</CardTitle>
                     <CardDescription>
                         Now, add the components for the {bikeData.brand} {bikeData.model}.
                     </CardDescription>
@@ -121,7 +121,7 @@ export default function AddBikeModelPage() {
     return (
         <Card className="max-w-2xl mx-auto">
             <CardHeader>
-                <CardTitle>Add a New Bike Model (Step 1 of 2)</CardTitle>
+                <CardTitle>Add a New Bike Model</CardTitle>
                 <CardDescription>
                     Fill out the form below to add a new bike to the central database. Start with the type.
                 </CardDescription>
@@ -258,4 +258,3 @@ export default function AddBikeModelPage() {
         </Card>
     );
 }
-
