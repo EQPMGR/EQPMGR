@@ -54,10 +54,12 @@ export function WearSimulation({ equipment }: WearSimulationProps) {
   const [result, setResult] = useState<SimulateWearOutput | null>(null);
   const { toast } = useToast();
 
+  const isBike = equipment.type !== 'Running Shoes' && equipment.type !== 'Other';
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      workoutType: equipment.type.toLowerCase().includes('bike') ? 'cycling' : 'running',
+      workoutType: isBike ? 'cycling' : 'running',
       distance: 10,
       duration: 60,
       intensity: 'medium',

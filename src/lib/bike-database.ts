@@ -10,7 +10,7 @@ export interface BikeFromDB {
   brand: string;
   model: string;
   modelYear: number;
-  type: 'Road Bike' | 'Mountain Bike';
+  type: string; // Using a generic string to accommodate more specific types
   components: BikeComponentFromDB[];
   imageUrl: string;
 }
@@ -20,7 +20,7 @@ export const bikeDatabase: BikeFromDB[] = [
     brand: 'Specialized',
     model: 'S-Works Tarmac SL7',
     modelYear: 2023,
-    type: 'Road Bike',
+    type: 'Road',
     components: [
       { name: 'Shifters', brand: 'SRAM', model: 'RED eTap AXS', system: 'Drivetrain' },
       { name: 'Rear Derailleur', brand: 'SRAM', model: 'RED eTap AXS', system: 'Drivetrain' },
@@ -42,7 +42,7 @@ export const bikeDatabase: BikeFromDB[] = [
     brand: 'Specialized',
     model: 'Stumpjumper Evo',
     modelYear: 2023,
-    type: 'Mountain Bike',
+    type: 'Enduro',
     components: [
       { name: 'Shifter', brand: 'SRAM', model: 'Eagle AXS Controller', system: 'Drivetrain' },
       { name: 'Rear Derailleur', brand: 'SRAM', model: 'X01 Eagle AXS', system: 'Drivetrain' },
@@ -63,7 +63,7 @@ export const bikeDatabase: BikeFromDB[] = [
     brand: 'Trek',
     model: 'Fuel EX 8 Gen 6',
     modelYear: 2022,
-    type: 'Mountain Bike',
+    type: 'All Mountain',
     components: [
         { name: 'Shifter', brand: 'Shimano', model: 'XT M8100', system: 'Drivetrain' },
         { name: 'Rear Derailleur', brand: 'Shimano', model: 'XT M8100', system: 'Drivetrain' },
@@ -84,7 +84,7 @@ export const bikeDatabase: BikeFromDB[] = [
     brand: 'Trek',
     model: 'Madone SLR 9',
     modelYear: 2023,
-    type: 'Road Bike',
+    type: 'Road',
     components: [
         { name: 'Shifters', brand: 'Shimano', model: 'Dura-Ace Di2 R9270', system: 'Drivetrain' },
         { name: 'Derailleurs', brand: 'Shimano', model: 'Dura-Ace Di2 R9250', system: 'Drivetrain' },
@@ -103,7 +103,7 @@ export const bikeDatabase: BikeFromDB[] = [
     brand: 'Cervelo',
     model: 'S5',
     modelYear: 2023,
-    type: 'Road Bike',
+    type: 'Road',
     components: [
       { name: 'Shifters', brand: 'SRAM', model: 'RED eTap AXS', system: 'Drivetrain' },
       { name: 'Derailleurs', brand: 'SRAM', model: 'RED eTap AXS', system: 'Drivetrain' },
@@ -122,7 +122,7 @@ export const bikeDatabase: BikeFromDB[] = [
     brand: 'Norco',
     model: 'Threshold C 105',
     modelYear: 2014,
-    type: 'Road Bike',
+    type: 'Cyclocross',
     components: [
         { name: 'Frame', brand: 'Norco', model: 'Threshold Cross 30T High-Mod Carbon', system: 'Frameset'},
         { name: 'Fork', brand: 'Norco', model: 'Threshold Full Carbon Tapered w/PM-Disc', system: 'Frameset' },

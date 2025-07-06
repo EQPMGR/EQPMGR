@@ -1,3 +1,5 @@
+import type { BikeType } from '@/lib/constants';
+
 export interface Component {
   id: string;
   name: string; // e.g., "Rear Derailleur"
@@ -28,7 +30,7 @@ export interface MaintenanceLog {
 export interface Equipment {
   id:string;
   name: string;
-  type: 'Road Bike' | 'Mountain Bike' | 'Running Shoes' | 'Other';
+  type: BikeType | 'Running Shoes' | 'Other';
   brand: string;
   model: string;
   modelYear: number;

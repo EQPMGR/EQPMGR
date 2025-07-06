@@ -7,7 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { bikeDatabase, type BikeFromDB, type BikeComponentFromDB } from '@/lib/bike-database';
 import { writeBatch, doc, collection } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { ArrowUpRight, Bike, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 // A simple utility to create a slug from a component's details
 const createComponentId = (component: BikeComponentFromDB) => {
@@ -93,21 +94,38 @@ export default function AdminPage() {
         <Card className="max-w-xl mx-auto">
             <CardHeader>
                 <CardTitle>Admin Utilities</CardTitle>
-                <CardDescription>One-time actions to set up the application database.</CardDescription>
+                <CardDescription>Tools to manage the application database and content.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                        <h4 className="font-semibold">Migrate Bike Catalog</h4>
-                        <p className="text-sm text-muted-foreground">
-                            Moves the hardcoded bike data from <code>bike-database.ts</code> into Firestore collections.
-                        </p>
-                    </div>
-                    <Button onClick={handleMigrate} disabled={isMigrating}>
-                        {isMigrating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Migrate Data
-                    </Button>
-                </div>
+            <CardContent className="grid gap-4">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div>
+                            <CardTitle className="text-base font-semibold">Migrate Bike Catalog</CardTitle>
+                            <CardDescription className="text-sm">
+                                Moves hardcoded bike data into Firestore collections.
+                            </CardDescription>
+                        </div>
+                         <Button onClick={handleMigrate} disabled={isMigrating} size="sm">
+                            {isMigrating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Migrate Data
+                        </Button>
+                    </CardHeader>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Add New Bike Model</CardTitle>
+                            <CardDescription className="text-sm">
+                                Manually add a new bike model to the database.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/add-bike-model">
+                                Go to Form <ArrowUpRight className="h-4 w-4 ml-2" />
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
             </CardContent>
         </Card>
     );

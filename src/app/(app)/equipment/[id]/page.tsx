@@ -53,6 +53,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
 import { toDate, toNullableDate } from '@/lib/date-utils';
+import { MOUNTAIN_BIKE_TYPES } from '@/lib/constants';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -238,7 +239,7 @@ export default function EquipmentDetailPage() {
     ]);
     
     // Add systems specific to the bike type
-    if (equipment.type === 'Mountain Bike') {
+    if (MOUNTAIN_BIKE_TYPES.includes(equipment.type as any)) {
         systems.add('Suspension');
     }
 
@@ -297,7 +298,7 @@ export default function EquipmentDetailPage() {
     .sort((a, b) => b.wearPercentage - a.wearPercentage)
     .slice(0, 3);
 
-  const Icon = equipment.type.includes('Bike') ? Bike : Footprints;
+  const Icon = (equipment.type !== 'Running Shoes' && equipment.type !== 'Other') ? Bike : Footprints;
 
   return (
     <>
