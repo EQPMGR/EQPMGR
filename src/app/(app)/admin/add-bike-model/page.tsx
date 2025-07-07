@@ -49,10 +49,8 @@ const addBikeModelSchema = z.object({
   brakeSetType: z.enum(['matched', 'unmatched']).default('matched'),
   rotorSetType: z.enum(['matched', 'unmatched']).default('matched'),
   suspensionType: z.enum(['none', 'front', 'full']).default('none'),
-  hubSetType: z.enum(['matched', 'unmatched']).default('matched'),
   rimSetType: z.enum(['matched', 'unmatched']).default('matched'),
   tireSetType: z.enum(['matched', 'unmatched']).default('matched'),
-  skewerSetType: z.enum(['matched', 'unmatched']).default('matched'),
   wheelsetSetup: z.enum(['tubes', 'tubeless']).default('tubes'),
 });
 
@@ -80,10 +78,8 @@ export default function AddBikeModelPage() {
             brakeSetType: 'matched',
             rotorSetType: 'matched',
             suspensionType: 'none',
-            hubSetType: 'matched',
             rimSetType: 'matched',
             tireSetType: 'matched',
-            skewerSetType: 'matched',
             wheelsetSetup: 'tubes',
         },
     });
@@ -99,10 +95,8 @@ export default function AddBikeModelPage() {
     const brakeSetType = form.watch('brakeSetType');
     const rotorSetType = form.watch('rotorSetType');
     const suspensionType = form.watch('suspensionType');
-    const hubSetType = form.watch('hubSetType');
     const rimSetType = form.watch('rimSetType');
     const tireSetType = form.watch('tireSetType');
-    const skewerSetType = form.watch('skewerSetType');
     const wheelsetSetup = form.watch('wheelsetSetup');
     const activeSystem = WIZARD_SYSTEMS[systemIndex];
 
@@ -248,12 +242,42 @@ export default function AddBikeModelPage() {
 
     function onSubmit(values: AddBikeModelFormValues) {
         setIsSubmitting(true);
-        console.log('Final data to submit:', values);
+        
+        const processedValues = { ...values };
+        const finalComponents = [...processedValues.components];
+
+        const forkIndex = finalComponents.findIndex(c => c.name === 'Fork');
+        const rearShockIndex = finalComponents.findIndex(c => c.name === 'Rear Shock');
+
+        if (processedValues.suspensionType === 'none') {
+            if (rearShockIndex > -1) {
+                finalComponents.splice(rearShockIndex, 1);
+            }
+            if (forkIndex > -1) {
+                // This is the "ghost fork" logic. It's a rigid fork, part of the frameset.
+                const frameComponent = finalComponents.find(c => c.name === 'Frame');
+                finalComponents[forkIndex] = {
+                    ...finalComponents[forkIndex],
+                    system: 'Frameset', // Re-assign to Frameset system
+                    brand: frameComponent?.brand || processedValues.brand,
+                    model: frameComponent?.model || processedValues.model,
+                    partNumber: '',
+                };
+            }
+        } else if (processedValues.suspensionType === 'front') {
+            if (rearShockIndex > -1) {
+                finalComponents.splice(rearShockIndex, 1);
+            }
+        }
+        
+        processedValues.components = finalComponents;
+
+        console.log('Final data to submit:', processedValues);
 
         setTimeout(() => {
             toast({
                 title: 'Bike Model Saved (Placeholder)',
-                description: <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4"><code className="text-white">{JSON.stringify(values, null, 2)}</code></pre>,
+                description: <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4"><code className="text-white">{JSON.stringify(processedValues, null, 2)}</code></pre>,
             });
             setIsSubmitting(false);
             setStep(1);
@@ -838,30 +862,18 @@ export default function AddBikeModelPage() {
                             <Card>
                                 <CardHeader><CardTitle className="text-lg">Hubs</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
-                                    <FormField control={form.control} name="hubSetType" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Configuration</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="matched" /></FormControl><FormLabel className="font-normal">Matched Set</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="unmatched" /></FormControl><FormLabel className="font-normal">Unmatched Set</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)} />
-                                    {hubSetType === 'matched' && frontHubIndex !== -1 && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <FormField control={form.control} name={`components.${frontHubIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., DT Swiss" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearHubIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearHubIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontHubIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearHubIndex}.partNumber`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                        </div>
-                                    )}
-                                    {hubSetType === 'unmatched' && frontHubIndex !== -1 && rearHubIndex !== -1 && (
-                                        <div className="space-y-4">
-                                            <h4 className="font-semibold text-sm">Front Hub</h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                <FormField name={`components.${frontHubIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., DT Swiss" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontHubIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            </div>
-                                            <h4 className="font-semibold text-sm mt-4">Rear Hub</h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                <FormField name={`components.${rearHubIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., DT Swiss" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearHubIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            </div>
-                                        </div>
-                                    )}
+                                    <h4 className="font-semibold text-sm">Front Hub</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <FormField name={`components.${frontHubIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., DT Swiss" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontHubIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
+                                    <h4 className="font-semibold text-sm mt-4">Rear Hub</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <FormField name={`components.${rearHubIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., DT Swiss" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearHubIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
                                 </CardContent>
                             </Card>
                              <Card>
@@ -938,30 +950,18 @@ export default function AddBikeModelPage() {
                              <Card>
                                 <CardHeader><CardTitle className="text-lg">Skewers / Thru-Axles</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
-                                    <FormField control={form.control} name="skewerSetType" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Configuration</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="matched" /></FormControl><FormLabel className="font-normal">Matched Set</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="unmatched" /></FormControl><FormLabel className="font-normal">Unmatched Set</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)} />
-                                    {skewerSetType === 'matched' && frontSkewerIndex !== -1 && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <FormField control={form.control} name={`components.${frontSkewerIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Maxle" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearSkewerIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearSkewerIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontSkewerIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearSkewerIndex}.partNumber`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                        </div>
-                                    )}
-                                    {skewerSetType === 'unmatched' && frontSkewerIndex !== -1 && rearSkewerIndex !== -1 && (
-                                        <div className="space-y-4">
-                                            <h4 className="font-semibold text-sm">Front Skewer/Axle</h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                <FormField name={`components.${frontSkewerIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Maxle" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontSkewerIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            </div>
-                                            <h4 className="font-semibold text-sm mt-4">Rear Skewer/Axle</h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                <FormField name={`components.${rearSkewerIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Maxle" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearSkewerIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            </div>
-                                        </div>
-                                    )}
+                                    <h4 className="font-semibold text-sm">Front Skewer/Axle</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <FormField name={`components.${frontSkewerIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Maxle" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontSkewerIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
+                                    <h4 className="font-semibold text-sm mt-4">Rear Skewer/Axle</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <FormField name={`components.${rearSkewerIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Maxle" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearSkewerIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
