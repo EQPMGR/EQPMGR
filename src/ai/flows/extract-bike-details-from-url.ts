@@ -32,6 +32,10 @@ const bikeExtractorPrompt = ai.definePrompt({
   Set the 'frontMech' and 'rearMech' fields accordingly.
 
   Valid systems are: Drivetrain, Brakes, Suspension, Wheelset, Frameset, Cockpit, Accessories.
+  The Brakes system includes brake levers, calipers, and rotors.
+  The Wheelset system includes hubs, rims, tires, and skewers/axles.
+  The Cockpit includes the Handlebar, Stem, Seatpost, Headset, Saddle, Grips or Bar Tape, and Seatpost Clamp. Standardize "Seat Post" to "Seatpost".
+
   If you cannot determine a value for a field, omit it.
 
   Provide this information back in a structured JSON format.
