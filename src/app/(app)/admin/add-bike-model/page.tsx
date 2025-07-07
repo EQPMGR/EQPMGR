@@ -211,68 +211,49 @@ function AddBikeModelFormComponent() {
     function handleNextSystem() {
         const nextSystemIndex = systemIndex + 1;
         const nextSystem = WIZARD_SYSTEMS[nextSystemIndex];
+        const componentNames = fields.map(f => f.name);
+        const componentsToAdd = [];
 
         // Pre-populate components when moving to a new step
         if (nextSystem === 'Drivetrain') {
-            const hasDrivetrain = fields.some(f => f.system === 'Drivetrain');
-            if (!hasDrivetrain) {
-                append([
-                    { name: 'Crankset', system: 'Drivetrain', brand: '', series: '', model: ''},
-                    { name: 'Bottom Bracket', system: 'Drivetrain', brand: '', series: '', model: '' },
-                    { name: 'Front Derailleur', system: 'Drivetrain', brand: '', series: '', model: '' },
-                    { name: 'Rear Derailleur', system: 'Drivetrain', brand: '', series: '', model: '' },
-                    { name: 'Cassette', system: 'Drivetrain', brand: '', series: '', model: '' },
-                    { name: 'Front Shifter', system: 'Drivetrain', brand: '', series: '', model: '' },
-                    { name: 'Rear Shifter', system: 'Drivetrain', brand: '', series: '', model: '' },
-                    { name: 'Chain', system: 'Drivetrain', brand: '', series: '', model: '', links: '', tensioner: '' },
-                ]);
-            }
+            if (!componentNames.includes('Crankset')) componentsToAdd.push({ name: 'Crankset', system: 'Drivetrain', brand: '', series: '', model: ''});
+            if (!componentNames.includes('Bottom Bracket')) componentsToAdd.push({ name: 'Bottom Bracket', system: 'Drivetrain', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Front Derailleur')) componentsToAdd.push({ name: 'Front Derailleur', system: 'Drivetrain', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Rear Derailleur')) componentsToAdd.push({ name: 'Rear Derailleur', system: 'Drivetrain', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Cassette')) componentsToAdd.push({ name: 'Cassette', system: 'Drivetrain', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Front Shifter')) componentsToAdd.push({ name: 'Front Shifter', system: 'Drivetrain', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Rear Shifter')) componentsToAdd.push({ name: 'Rear Shifter', system: 'Drivetrain', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Chain')) componentsToAdd.push({ name: 'Chain', system: 'Drivetrain', brand: '', series: '', model: '', links: '', tensioner: '' });
         } else if (nextSystem === 'Brakes') {
-            const hasBrakes = fields.some(f => f.system === 'Brakes');
-            if (!hasBrakes) {
-                append([
-                    { name: 'Front Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
-                    { name: 'Rear Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
-                    { name: 'Front Rotor', system: 'Brakes', brand: '', series: '', model: '' },
-                    { name: 'Rear Rotor', system: 'Brakes', brand: '', series: '', model: '' },
-                ]);
-            }
+            if (!componentNames.includes('Front Brake')) componentsToAdd.push({ name: 'Front Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' });
+            if (!componentNames.includes('Rear Brake')) componentsToAdd.push({ name: 'Rear Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' });
+            if (!componentNames.includes('Front Rotor')) componentsToAdd.push({ name: 'Front Rotor', system: 'Brakes', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Rear Rotor')) componentsToAdd.push({ name: 'Rear Rotor', system: 'Brakes', brand: '', series: '', model: '' });
         } else if (nextSystem === 'Suspension') {
-            const hasSuspension = fields.some(f => f.system === 'Suspension');
-            if (!hasSuspension) {
-                append([
-                    { name: 'Fork', system: 'Suspension', brand: '', series: '', model: '' },
-                    { name: 'Rear Shock', system: 'Suspension', brand: '', series: '', model: '' },
-                ]);
-            }
+            if (!componentNames.includes('Fork')) componentsToAdd.push({ name: 'Fork', system: 'Suspension', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Rear Shock')) componentsToAdd.push({ name: 'Rear Shock', system: 'Suspension', brand: '', series: '', model: '' });
         } else if (nextSystem === 'Wheelset') {
-            const hasWheelset = fields.some(f => f.system === 'Wheelset');
-            if (!hasWheelset) {
-                append([
-                    { name: 'Front Hub', system: 'Wheelset', brand: '', series: '', model: '' },
-                    { name: 'Rear Hub', system: 'Wheelset', brand: '', series: '', model: '' },
-                    { name: 'Front Rim', system: 'Wheelset', brand: '', series: '', model: '' },
-                    { name: 'Rear Rim', system: 'Wheelset', brand: '', series: '', model: '' },
-                    { name: 'Front Tire', system: 'Wheelset', brand: '', series: '', model: '' },
-                    { name: 'Rear Tire', system: 'Wheelset', brand: '', series: '', model: '' },
-                    { name: 'Front Skewer', system: 'Wheelset', brand: '', series: '', model: '' },
-                    { name: 'Rear Skewer', system: 'Wheelset', brand: '', series: '', model: '' },
-                    { name: 'Valves', system: 'Wheelset', brand: '', series: '', model: '' },
-                ]);
-            }
+            if (!componentNames.includes('Front Hub')) componentsToAdd.push({ name: 'Front Hub', system: 'Wheelset', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Rear Hub')) componentsToAdd.push({ name: 'Rear Hub', system: 'Wheelset', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Front Rim')) componentsToAdd.push({ name: 'Front Rim', system: 'Wheelset', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Rear Rim')) componentsToAdd.push({ name: 'Rear Rim', system: 'Wheelset', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Front Tire')) componentsToAdd.push({ name: 'Front Tire', system: 'Wheelset', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Rear Tire')) componentsToAdd.push({ name: 'Rear Tire', system: 'Wheelset', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Front Skewer')) componentsToAdd.push({ name: 'Front Skewer', system: 'Wheelset', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Rear Skewer')) componentsToAdd.push({ name: 'Rear Skewer', system: 'Wheelset', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Valves')) componentsToAdd.push({ name: 'Valves', system: 'Wheelset', brand: '', series: '', model: '' });
         } else if (nextSystem === 'Cockpit') {
-            const hasCockpit = fields.some(f => f.system === 'Cockpit');
-            if (!hasCockpit) {
-                append([
-                    { name: 'Handlebar', system: 'Cockpit', brand: '', series: '', model: '' },
-                    { name: 'Stem', system: 'Cockpit', brand: '', series: '', model: '' },
-                    { name: 'Seatpost', system: 'Cockpit', brand: '', series: '', model: '' },
-                    { name: 'Headset', system: 'Cockpit', brand: '', series: '', model: '' },
-                    { name: 'Saddle', system: 'Cockpit', brand: '', series: '', model: '' },
-                    { name: 'Grips', system: 'Cockpit', brand: '', series: '', model: '' },
-                    { name: 'Seatpost Clamp', system: 'Cockpit', brand: '', series: '', model: '' },
-                ]);
-            }
+            if (!componentNames.includes('Handlebar')) componentsToAdd.push({ name: 'Handlebar', system: 'Cockpit', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Stem')) componentsToAdd.push({ name: 'Stem', system: 'Cockpit', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Seatpost')) componentsToAdd.push({ name: 'Seatpost', system: 'Cockpit', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Headset')) componentsToAdd.push({ name: 'Headset', system: 'Cockpit', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Saddle')) componentsToAdd.push({ name: 'Saddle', system: 'Cockpit', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Grips')) componentsToAdd.push({ name: 'Grips', system: 'Cockpit', brand: '', series: '', model: '' });
+            if (!componentNames.includes('Seatpost Clamp')) componentsToAdd.push({ name: 'Seatpost Clamp', system: 'Cockpit', brand: '', series: '', model: '' });
+        }
+
+        if (componentsToAdd.length > 0) {
+            append(componentsToAdd, { shouldFocus: false });
         }
 
         if (systemIndex < WIZARD_SYSTEMS.length - 1) {
@@ -408,7 +389,7 @@ function AddBikeModelFormComponent() {
                                 control={form.control}
                                 name="brand"
                                 render={({ field }) => (
-                                  <FormItem className="md:col-span-1">
+                                  <FormItem className="md:col-span-1 flex flex-col justify-end">
                                     <FormLabel>Brand</FormLabel>
                                     <Popover open={brandPopoverOpen} onOpenChange={setBrandPopoverOpen}>
                                       <PopoverTrigger asChild>
@@ -416,7 +397,6 @@ function AddBikeModelFormComponent() {
                                           <Button
                                             variant="outline"
                                             role="combobox"
-                                            disabled={!bikeDetails.type}
                                             className={cn(
                                               "w-full justify-between",
                                               !field.value && "text-muted-foreground"
@@ -474,7 +454,7 @@ function AddBikeModelFormComponent() {
                                       <FormItem className="md:col-span-1">
                                           <FormLabel>Model</FormLabel>
                                           <FormControl>
-                                              <Input placeholder="e.g., Tarmac SL7" {...field} disabled={!bikeDetails.brand} />
+                                              <Input placeholder="e.g., Tarmac SL7" {...field} />
                                           </FormControl>
                                           <FormMessage />
                                       </FormItem>
@@ -487,7 +467,7 @@ function AddBikeModelFormComponent() {
                                       <FormItem className="md:col-span-1">
                                           <FormLabel>Model Year</FormLabel>
                                           <FormControl>
-                                              <Input type="number" placeholder="e.g., 2023" {...field} disabled={!bikeDetails.brand} />
+                                              <Input type="number" placeholder="e.g., 2023" {...field} />
                                           </FormControl>
                                           <FormMessage />
                                       </FormItem>
