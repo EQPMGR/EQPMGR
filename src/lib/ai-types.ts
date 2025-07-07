@@ -8,9 +8,9 @@ import { z } from 'zod';
 
 const ExtractedComponentSchema = z.object({
   name: z.string().describe('The name of the component (e.g., "Rear Derailleur", "Fork").'),
-  brand: z.string().describe('The brand of the component (e.g., "SRAM", "FOX").'),
-  model: z.string().describe('The model of the component (e.g., "RED eTap AXS", "FLOAT 36 Factory").'),
-  system: z.string().describe('The system the component belongs to (e.g., "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", "Accessories").'),
+  brand: z.string().optional().describe('The brand of the component (e.g., "SRAM", "FOX").'),
+  model: z.string().optional().describe('The model of the component (e.g., "RED eTap AXS", "FLOAT 36 Factory").'),
+  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", or "Accessories".'),
 });
 
 export const ExtractBikeDetailsInputSchema = z.object({
@@ -19,7 +19,11 @@ export const ExtractBikeDetailsInputSchema = z.object({
 export type ExtractBikeDetailsInput = z.infer<typeof ExtractBikeDetailsInputSchema>;
 
 export const ExtractBikeDetailsOutputSchema = z.object({
-  summary: z.string().describe('A simple text summary of the bike and its components.'),
+  brand: z.string().optional().describe('The brand of the bike (e.g., "Specialized").'),
+  model: z.string().optional().describe('The model name of the bike (e.g., "Tarmac SL7").'),
+  modelYear: z.coerce.number().optional().describe('The model year of the bike (e.g., 2023).'),
+  type: z.string().optional().describe('The type of bike (e.g., "Road", "Gravel", "Enduro").'),
+  components: z.array(ExtractedComponentSchema).describe('An array of all the extracted bike components.'),
 });
 export type ExtractBikeDetailsOutput = z.infer<typeof ExtractBikeDetailsOutputSchema>;
 

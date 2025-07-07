@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { extractBikeDetailsFromUrlContent } from '@/ai/flows/extract-bike-details-from-url';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ export default function ImportFromUrlPage() {
         }
     };
     
-    // const encodedData = extractedData ? encodeURIComponent(JSON.stringify(extractedData)) : '';
+    const encodedData = extractedData ? encodeURIComponent(JSON.stringify(extractedData)) : '';
 
     return (
         <Card className="max-w-2xl mx-auto">
@@ -117,13 +118,16 @@ export default function ImportFromUrlPage() {
                      <Card className="bg-muted/50">
                         <CardHeader>
                             <CardTitle className="text-xl">Extraction Result</CardTitle>
+                            <CardDescription>Review the extracted data below. You can make corrections on the next screen.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                           <pre className="whitespace-pre-wrap font-sans text-sm">{extractedData.summary}</pre>
+                           <pre className="whitespace-pre-wrap font-mono text-xs bg-slate-950 p-4 rounded-md text-white max-h-64 overflow-auto">{JSON.stringify(extractedData, null, 2)}</pre>
                         </CardContent>
                         <CardFooter>
-                            <Button disabled={true}>
-                                Proceed to Form (Disabled for Debugging)
+                            <Button asChild>
+                                <Link href={`/admin/add-bike-model?data=${encodedData}`}>
+                                    Proceed to Form
+                                </Link>
                             </Button>
                         </CardFooter>
                      </Card>

@@ -21,7 +21,13 @@ const bikeExtractorPrompt = ai.definePrompt({
   name: 'bikeExtractorPrompt',
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
-  prompt: `You are an expert bike mechanic. Analyze the following text content from a bicycle product page and provide a simple text summary of the bike's main components. Do not use JSON.
+  prompt: `You are an expert bike mechanic who is an expert at reading specification sheets. Analyze the following text and extract the bike's brand, model, and year.
+
+  Then, identify every component listed, including its brand, model, and the system it belongs to.
+  Valid systems are: Drivetrain, Brakes, Suspension, Wheelset, Frameset, Cockpit, Accessories.
+  If you cannot determine a value for a field, omit it.
+
+  Provide this information back in a structured JSON format.
 
   Page Content:
   {{{textContent}}}
