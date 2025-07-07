@@ -26,8 +26,8 @@ import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 const componentSchema = z.object({
   name: z.string().min(1, 'Component name is required.'),
   brand: z.string().optional(),
+  series: z.string().optional(),
   model: z.string().optional(),
-  partNumber: z.string().optional(),
   system: z.string().min(1, 'System is required.'),
   // Drivetrain specific
   chainring1: z.string().optional(),
@@ -71,9 +71,12 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
         components: data.components.map(c => ({
             name: c.name,
             brand: c.brand || '',
+            series: c.series || '',
             model: c.model || '',
             system: c.system,
-            partNumber: c.partNumber || '',
+            chainring1: c.chainring1,
+            chainring2: c.chainring2,
+            chainring3: c.chainring3,
         })),
         frontMech: data.frontMech,
         rearMech: data.rearMech,
@@ -157,6 +160,7 @@ function AddBikeModelFormComponent() {
 
     const framesetIndex = findComponentIndex('Frame', 'Frameset');
     const cranksetIndex = findComponentIndex('Crankset', 'Drivetrain');
+    const bottomBracketIndex = findComponentIndex('Bottom Bracket', 'Drivetrain');
     const frontDerailleurIndex = findComponentIndex('Front Derailleur', 'Drivetrain');
     const rearDerailleurIndex = findComponentIndex('Rear Derailleur', 'Drivetrain');
     const cassetteIndex = findComponentIndex('Cassette', 'Drivetrain');
@@ -195,8 +199,8 @@ function AddBikeModelFormComponent() {
                 append({ 
                     name: 'Frame', 
                     brand: bikeDetails.brand, 
-                    model: bikeDetails.model, 
-                    partNumber: '',
+                    series: bikeDetails.model, 
+                    model: '',
                     system: 'Frameset', 
                 });
             }
@@ -213,59 +217,60 @@ function AddBikeModelFormComponent() {
             const hasDrivetrain = fields.some(f => f.system === 'Drivetrain');
             if (!hasDrivetrain) {
                 append([
-                    { name: 'Crankset', system: 'Drivetrain', brand: '', model: '', partNumber: ''},
-                    { name: 'Front Derailleur', system: 'Drivetrain', brand: '', model: '', partNumber: '' },
-                    { name: 'Rear Derailleur', system: 'Drivetrain', brand: '', model: '', partNumber: '' },
-                    { name: 'Cassette', system: 'Drivetrain', brand: '', model: '', partNumber: '' },
-                    { name: 'Front Shifter', system: 'Drivetrain', brand: '', model: '', partNumber: '' },
-                    { name: 'Rear Shifter', system: 'Drivetrain', brand: '', model: '', partNumber: '' },
-                    { name: 'Chain', system: 'Drivetrain', brand: '', model: '', partNumber: '', links: '', tensioner: '' },
+                    { name: 'Crankset', system: 'Drivetrain', brand: '', series: '', model: ''},
+                    { name: 'Bottom Bracket', system: 'Drivetrain', brand: '', series: '', model: '' },
+                    { name: 'Front Derailleur', system: 'Drivetrain', brand: '', series: '', model: '' },
+                    { name: 'Rear Derailleur', system: 'Drivetrain', brand: '', series: '', model: '' },
+                    { name: 'Cassette', system: 'Drivetrain', brand: '', series: '', model: '' },
+                    { name: 'Front Shifter', system: 'Drivetrain', brand: '', series: '', model: '' },
+                    { name: 'Rear Shifter', system: 'Drivetrain', brand: '', series: '', model: '' },
+                    { name: 'Chain', system: 'Drivetrain', brand: '', series: '', model: '', links: '', tensioner: '' },
                 ]);
             }
         } else if (nextSystem === 'Brakes') {
             const hasBrakes = fields.some(f => f.system === 'Brakes');
             if (!hasBrakes) {
                 append([
-                    { name: 'Front Brake', system: 'Brakes', brand: '', model: '', partNumber: '', pads: '' },
-                    { name: 'Rear Brake', system: 'Brakes', brand: '', model: '', partNumber: '', pads: '' },
-                    { name: 'Front Rotor', system: 'Brakes', brand: '', model: '', partNumber: '' },
-                    { name: 'Rear Rotor', system: 'Brakes', brand: '', model: '', partNumber: '' },
+                    { name: 'Front Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
+                    { name: 'Rear Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
+                    { name: 'Front Rotor', system: 'Brakes', brand: '', series: '', model: '' },
+                    { name: 'Rear Rotor', system: 'Brakes', brand: '', series: '', model: '' },
                 ]);
             }
         } else if (nextSystem === 'Suspension') {
             const hasSuspension = fields.some(f => f.system === 'Suspension');
             if (!hasSuspension) {
                 append([
-                    { name: 'Fork', system: 'Suspension', brand: '', model: '', partNumber: '' },
-                    { name: 'Rear Shock', system: 'Suspension', brand: '', model: '', partNumber: '' },
+                    { name: 'Fork', system: 'Suspension', brand: '', series: '', model: '' },
+                    { name: 'Rear Shock', system: 'Suspension', brand: '', series: '', model: '' },
                 ]);
             }
         } else if (nextSystem === 'Wheelset') {
             const hasWheelset = fields.some(f => f.system === 'Wheelset');
             if (!hasWheelset) {
                 append([
-                    { name: 'Front Hub', system: 'Wheelset', brand: '', model: '', partNumber: '' },
-                    { name: 'Rear Hub', system: 'Wheelset', brand: '', model: '', partNumber: '' },
-                    { name: 'Front Rim', system: 'Wheelset', brand: '', model: '', partNumber: '' },
-                    { name: 'Rear Rim', system: 'Wheelset', brand: '', model: '', partNumber: '' },
-                    { name: 'Front Tire', system: 'Wheelset', brand: '', model: '', partNumber: '' },
-                    { name: 'Rear Tire', system: 'Wheelset', brand: '', model: '', partNumber: '' },
-                    { name: 'Front Skewer', system: 'Wheelset', brand: '', model: '', partNumber: '' },
-                    { name: 'Rear Skewer', system: 'Wheelset', brand: '', model: '', partNumber: '' },
-                    { name: 'Valves', system: 'Wheelset', brand: '', model: '', partNumber: '' },
+                    { name: 'Front Hub', system: 'Wheelset', brand: '', series: '', model: '' },
+                    { name: 'Rear Hub', system: 'Wheelset', brand: '', series: '', model: '' },
+                    { name: 'Front Rim', system: 'Wheelset', brand: '', series: '', model: '' },
+                    { name: 'Rear Rim', system: 'Wheelset', brand: '', series: '', model: '' },
+                    { name: 'Front Tire', system: 'Wheelset', brand: '', series: '', model: '' },
+                    { name: 'Rear Tire', system: 'Wheelset', brand: '', series: '', model: '' },
+                    { name: 'Front Skewer', system: 'Wheelset', brand: '', series: '', model: '' },
+                    { name: 'Rear Skewer', system: 'Wheelset', brand: '', series: '', model: '' },
+                    { name: 'Valves', system: 'Wheelset', brand: '', series: '', model: '' },
                 ]);
             }
         } else if (nextSystem === 'Cockpit') {
             const hasCockpit = fields.some(f => f.system === 'Cockpit');
             if (!hasCockpit) {
                 append([
-                    { name: 'Handlebar', system: 'Cockpit', brand: '', model: '', partNumber: '' },
-                    { name: 'Stem', system: 'Cockpit', brand: '', model: '', partNumber: '' },
-                    { name: 'Seatpost', system: 'Cockpit', brand: '', model: '', partNumber: '' },
-                    { name: 'Headset', system: 'Cockpit', brand: '', model: '', partNumber: '' },
-                    { name: 'Saddle', system: 'Cockpit', brand: '', model: '', partNumber: '' },
-                    { name: 'Grips', system: 'Cockpit', brand: '', model: '', partNumber: '' },
-                    { name: 'Seatpost Clamp', system: 'Cockpit', brand: '', model: '', partNumber: '' },
+                    { name: 'Handlebar', system: 'Cockpit', brand: '', series: '', model: '' },
+                    { name: 'Stem', system: 'Cockpit', brand: '', series: '', model: '' },
+                    { name: 'Seatpost', system: 'Cockpit', brand: '', series: '', model: '' },
+                    { name: 'Headset', system: 'Cockpit', brand: '', series: '', model: '' },
+                    { name: 'Saddle', system: 'Cockpit', brand: '', series: '', model: '' },
+                    { name: 'Grips', system: 'Cockpit', brand: '', series: '', model: '' },
+                    { name: 'Seatpost Clamp', system: 'Cockpit', brand: '', series: '', model: '' },
                 ]);
             }
         }
@@ -305,8 +310,8 @@ function AddBikeModelFormComponent() {
                     ...finalComponents[forkIndex],
                     system: 'Frameset', // Re-assign to Frameset system
                     brand: frameComponent?.brand || processedValues.brand,
-                    model: frameComponent?.model || processedValues.model,
-                    partNumber: '',
+                    series: frameComponent?.series || processedValues.model,
+                    model: '',
                 };
             }
         } else if (processedValues.suspensionType === 'front') {
@@ -339,7 +344,7 @@ function AddBikeModelFormComponent() {
     const isLastSystem = systemIndex === WIZARD_SYSTEMS.length - 1;
     
     const renderChainringInputs = () => {
-        if (!frontMechType) return null;
+        if (!frontMechType || cranksetIndex === -1) return null;
         
         const numRings = parseInt(frontMechType.charAt(0));
         const inputs = [];
@@ -380,10 +385,7 @@ function AddBikeModelFormComponent() {
                               render={({ field }) => (
                                   <FormItem>
                                       <FormLabel>Bike Type</FormLabel>
-                                      <Select onValueChange={(value) => {
-                                          field.onChange(value);
-                                          form.setValue("brand", "");
-                                      }} defaultValue={field.value}>
+                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                                           <FormControl>
                                               <SelectTrigger>
                                                   <SelectValue placeholder="Select a bike type" />
@@ -406,7 +408,7 @@ function AddBikeModelFormComponent() {
                                 control={form.control}
                                 name="brand"
                                 render={({ field }) => (
-                                  <FormItem className="flex flex-col md:col-span-1">
+                                  <FormItem className="md:col-span-1">
                                     <FormLabel>Brand</FormLabel>
                                     <Popover open={brandPopoverOpen} onOpenChange={setBrandPopoverOpen}>
                                       <PopoverTrigger asChild>
@@ -511,10 +513,10 @@ function AddBikeModelFormComponent() {
                             />
                             <FormField
                               control={form.control}
-                              name={`components.${framesetIndex}.model`}
+                              name={`components.${framesetIndex}.series`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Model</FormLabel>
+                                  <FormLabel>Series</FormLabel>
                                   <FormControl><Input {...field} readOnly /></FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -522,10 +524,10 @@ function AddBikeModelFormComponent() {
                             />
                             <FormField
                               control={form.control}
-                              name={`components.${framesetIndex}.partNumber`}
+                              name={`components.${framesetIndex}.model`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Part Number</FormLabel>
+                                  <FormLabel>Model</FormLabel>
                                   <FormControl><Input placeholder="Optional" {...field} /></FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -582,9 +584,20 @@ function AddBikeModelFormComponent() {
                                     <CardHeader><CardTitle className="text-lg">Crankset</CardTitle></CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                         <FormField name={`components.${cranksetIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${cranksetIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${cranksetIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${cranksetIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RED AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${cranksetIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         {renderChainringInputs()}
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                             {bottomBracketIndex !== -1 && (
+                                <Card>
+                                    <CardHeader><CardTitle className="text-lg">Bottom Bracket</CardTitle></CardHeader>
+                                    <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <FormField name={`components.${bottomBracketIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${bottomBracketIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., DUB" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${bottomBracketIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </CardContent>
                                 </Card>
                             )}
@@ -594,8 +607,8 @@ function AddBikeModelFormComponent() {
                                     <CardHeader><CardTitle className="text-lg">{frontMechType === '1x' ? 'Chain Guide / Front Derailleur' : 'Front Derailleur'}</CardTitle></CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${frontDerailleurIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${frontDerailleurIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${frontDerailleurIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontDerailleurIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontDerailleurIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </CardContent>
                                 </Card>
                             )}
@@ -605,8 +618,8 @@ function AddBikeModelFormComponent() {
                                     <CardHeader><CardTitle className="text-lg">Rear Derailleur</CardTitle></CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${rearDerailleurIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${rearDerailleurIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${rearDerailleurIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearDerailleurIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearDerailleurIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </CardContent>
                                 </Card>
                             )}
@@ -616,8 +629,8 @@ function AddBikeModelFormComponent() {
                                     <CardHeader><CardTitle className="text-lg">Cassette</CardTitle></CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${cassetteIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${cassetteIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED XG-1290" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${cassetteIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${cassetteIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RED XG-1290" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${cassetteIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </CardContent>
                                 </Card>
                             )}
@@ -671,17 +684,17 @@ function AddBikeModelFormComponent() {
                                         />
                                         <FormField
                                           control={form.control}
-                                          name={`components.${frontShifterIndex}.model`}
+                                          name={`components.${frontShifterIndex}.series`}
                                           render={({ field }) => (
                                             <FormItem>
-                                              <FormLabel>Model</FormLabel>
+                                              <FormLabel>Series</FormLabel>
                                               <FormControl>
                                                 <Input
                                                   placeholder="e.g., RED eTap AXS"
                                                   {...field}
                                                   onChange={(e) => {
                                                     field.onChange(e);
-                                                    form.setValue(`components.${rearShifterIndex}.model`, e.target.value);
+                                                    form.setValue(`components.${rearShifterIndex}.series`, e.target.value);
                                                   }}
                                                 />
                                               </FormControl>
@@ -691,17 +704,17 @@ function AddBikeModelFormComponent() {
                                         />
                                         <FormField
                                           control={form.control}
-                                          name={`components.${frontShifterIndex}.partNumber`}
+                                          name={`components.${frontShifterIndex}.model`}
                                           render={({ field }) => (
                                             <FormItem>
-                                              <FormLabel>Part Number</FormLabel>
+                                              <FormLabel>Model</FormLabel>
                                               <FormControl>
                                                 <Input
                                                   placeholder="Optional"
                                                   {...field}
                                                   onChange={(e) => {
                                                     field.onChange(e);
-                                                    form.setValue(`components.${rearShifterIndex}.partNumber`, e.target.value);
+                                                    form.setValue(`components.${rearShifterIndex}.model`, e.target.value);
                                                   }}
                                                 />
                                               </FormControl>
@@ -717,14 +730,14 @@ function AddBikeModelFormComponent() {
                                         <h4 className="font-semibold text-sm">Front Shifter</h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                           <FormField name={`components.${frontShifterIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                          <FormField name={`components.${frontShifterIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                          <FormField name={`components.${frontShifterIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                          <FormField name={`components.${frontShifterIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                          <FormField name={`components.${frontShifterIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                         <h4 className="font-semibold text-sm mt-4">Rear Shifter</h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                           <FormField name={`components.${rearShifterIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                          <FormField name={`components.${rearShifterIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                          <FormField name={`components.${rearShifterIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                          <FormField name={`components.${rearShifterIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RED eTap AXS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                          <FormField name={`components.${rearShifterIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                       </div>
                                     )}
@@ -737,8 +750,8 @@ function AddBikeModelFormComponent() {
                                     <CardHeader><CardTitle className="text-lg">Chain</CardTitle></CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                         <FormField name={`components.${chainIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${chainIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RED Flat-Top" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${chainIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${chainIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RED Flat-Top" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${chainIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField name={`components.${chainIndex}.links`} render={({ field }) => (<FormItem><FormLabel>Links</FormLabel><FormControl><Input placeholder="e.g., 114" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField name={`components.${chainIndex}.tensioner`} render={({ field }) => (<FormItem><FormLabel>Tensioner</FormLabel><FormControl><Input placeholder="N/A" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                     </CardContent>
@@ -757,7 +770,7 @@ function AddBikeModelFormComponent() {
                                             Brake levers are integrated with the shifters for this bike type.
                                         </p>
                                         <p className="font-medium mt-1">
-                                            {fields[frontShifterIndex].brand} {fields[frontShifterIndex].model}
+                                            {fields[frontShifterIndex].brand} {fields[frontShifterIndex].series}
                                         </p>
                                     </CardContent>
                                 </Card>
@@ -784,8 +797,8 @@ function AddBikeModelFormComponent() {
                                      {brakeSetType === 'matched' && frontBrakeIndex !== -1 && (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                             <FormField control={form.control} name={`components.${frontBrakeIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontBrakeIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.partNumber`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontBrakeIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.series`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
                                             <FormField control={form.control} name={`components.${frontBrakeIndex}.pads`} render={({ field }) => (<FormItem><FormLabel>Brake Pad Model</FormLabel><FormControl><Input placeholder="e.g., L05A-RF" {...field} value={field.value ?? ''} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearBrakeIndex}.pads`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     )}
@@ -794,15 +807,15 @@ function AddBikeModelFormComponent() {
                                             <h4 className="font-semibold text-sm">Front Brake</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                                 <FormField name={`components.${frontBrakeIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontBrakeIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontBrakeIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField name={`components.${frontBrakeIndex}.pads`} render={({ field }) => (<FormItem><FormLabel>Brake Pad Model</FormLabel><FormControl><Input placeholder="e.g., L05A-RF" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             <h4 className="font-semibold text-sm mt-4">Rear Brake</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                                 <FormField name={`components.${rearBrakeIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearBrakeIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearBrakeIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Dura-Ace R9270" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearBrakeIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField name={`components.${rearBrakeIndex}.pads`} render={({ field }) => (<FormItem><FormLabel>Brake Pad Model</FormLabel><FormControl><Input placeholder="e.g., L05A-RF" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </div>
@@ -831,8 +844,8 @@ function AddBikeModelFormComponent() {
                                     {rotorSetType === 'matched' && frontRotorIndex !== -1 && (
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <FormField control={form.control} name={`components.${frontRotorIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontRotorIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.partNumber`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontRotorIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.series`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     )}
                                     {rotorSetType === 'unmatched' && frontRotorIndex !== -1 && rearRotorIndex !== -1 && (
@@ -840,14 +853,14 @@ function AddBikeModelFormComponent() {
                                             <h4 className="font-semibold text-sm">Front Rotor</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${frontRotorIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontRotorIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontRotorIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             <h4 className="font-semibold text-sm mt-4">Rear Rotor</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${rearRotorIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearRotorIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearRotorIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RT-CL800" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </div>
                                     )}
@@ -883,8 +896,8 @@ function AddBikeModelFormComponent() {
                                     <CardHeader><CardTitle className="text-lg">Fork</CardTitle></CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${forkIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Fox" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${forkIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 36 Factory" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${forkIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${forkIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., 36 Factory" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${forkIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </CardContent>
                                 </Card>
                             )}
@@ -894,8 +907,8 @@ function AddBikeModelFormComponent() {
                                     <CardHeader><CardTitle className="text-lg">Rear Shock</CardTitle></CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${rearShockIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Fox" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${rearShockIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Float X2" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${rearShockIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearShockIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Float X2" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearShockIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </CardContent>
                                 </Card>
                             )}
@@ -910,14 +923,14 @@ function AddBikeModelFormComponent() {
                                     <h4 className="font-semibold text-sm">Front Hub</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${frontHubIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., DT Swiss" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${frontHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${frontHubIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontHubIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                     <h4 className="font-semibold text-sm mt-4">Rear Hub</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${rearHubIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., DT Swiss" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${rearHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${rearHubIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearHubIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., 240" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearHubIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                 </CardContent>
                             </Card>
@@ -928,8 +941,8 @@ function AddBikeModelFormComponent() {
                                     {rimSetType === 'matched' && frontRimIndex !== -1 && (
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <FormField control={form.control} name={`components.${frontRimIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Zipp" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRimIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontRimIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 404 Firecrest" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRimIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontRimIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRimIndex}.partNumber`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontRimIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., 404 Firecrest" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRimIndex}.series`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontRimIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRimIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     )}
                                     {rimSetType === 'unmatched' && frontRimIndex !== -1 && rearRimIndex !== -1 && (
@@ -937,14 +950,14 @@ function AddBikeModelFormComponent() {
                                             <h4 className="font-semibold text-sm">Front Rim</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${frontRimIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Zipp" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontRimIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 303 Firecrest" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontRimIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontRimIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., 303 Firecrest" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontRimIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             <h4 className="font-semibold text-sm mt-4">Rear Rim</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${rearRimIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Zipp" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearRimIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., 404 Firecrest" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearRimIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearRimIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., 404 Firecrest" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearRimIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </div>
                                     )}
@@ -957,8 +970,8 @@ function AddBikeModelFormComponent() {
                                     {tireSetType === 'matched' && frontTireIndex !== -1 && (
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <FormField control={form.control} name={`components.${frontTireIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Continental" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontTireIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.partNumber`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontTireIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.series`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     )}
                                     {tireSetType === 'unmatched' && frontTireIndex !== -1 && rearTireIndex !== -1 && (
@@ -966,14 +979,14 @@ function AddBikeModelFormComponent() {
                                             <h4 className="font-semibold text-sm">Front Tire</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${frontTireIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Continental" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontTireIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontTireIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             <h4 className="font-semibold text-sm mt-4">Rear Tire</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${rearTireIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Continental" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000 S" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearTireIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearTireIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000 S" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </div>
                                     )}
@@ -986,8 +999,8 @@ function AddBikeModelFormComponent() {
                                     {wheelsetSetup === 'tubeless' && valvesIndex !== -1 && (
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <FormField name={`components.${valvesIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Valve Brand</FormLabel><FormControl><Input placeholder="e.g., Muc-Off" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField name={`components.${valvesIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Valve Model</FormLabel><FormControl><Input placeholder="e.g., V2 Tubeless Valves" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField name={`components.${valvesIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField name={`components.${valvesIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Valve Series</FormLabel><FormControl><Input placeholder="e.g., V2 Tubeless Valves" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField name={`components.${valvesIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     )}
                                 </CardContent>
@@ -998,14 +1011,14 @@ function AddBikeModelFormComponent() {
                                     <h4 className="font-semibold text-sm">Front Skewer/Axle</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${frontSkewerIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Maxle" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${frontSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${frontSkewerIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontSkewerIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${frontSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                     <h4 className="font-semibold text-sm mt-4">Rear Skewer/Axle</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${rearSkewerIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Maxle" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${rearSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField name={`components.${rearSkewerIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearSkewerIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Stealth" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${rearSkewerIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                 </CardContent>
                             </Card>
@@ -1018,56 +1031,56 @@ function AddBikeModelFormComponent() {
                             <CardHeader><CardTitle className="text-lg">Handlebar</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                               <FormField name={`components.${handlebarIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${handlebarIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${handlebarIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${handlebarIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${handlebarIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </CardContent>
                           </Card>
                            <Card>
                             <CardHeader><CardTitle className="text-lg">Stem</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                               <FormField name={`components.${stemIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${stemIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${stemIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${stemIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${stemIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </CardContent>
                           </Card>
                            <Card>
                             <CardHeader><CardTitle className="text-lg">Seatpost</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                               <FormField name={`components.${seatpostIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${seatpostIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${seatpostIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${seatpostIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${seatpostIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </CardContent>
                           </Card>
                            <Card>
                             <CardHeader><CardTitle className="text-lg">Headset</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                               <FormField name={`components.${headsetIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${headsetIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${headsetIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${headsetIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${headsetIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </CardContent>
                           </Card>
                            <Card>
                             <CardHeader><CardTitle className="text-lg">Saddle</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                               <FormField name={`components.${saddleIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${saddleIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${saddleIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${saddleIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${saddleIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </CardContent>
                           </Card>
                            <Card>
                             <CardHeader><CardTitle className="text-lg">Grips / Bar Tape</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                               <FormField name={`components.${gripsIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${gripsIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${gripsIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${gripsIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${gripsIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </CardContent>
                           </Card>
                           <Card>
                             <CardHeader><CardTitle className="text-lg">Seatpost Clamp</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                               <FormField name={`components.${seatpostClampIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${seatpostClampIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${seatpostClampIndex}.partNumber`} render={({ field }) => (<FormItem><FormLabel>Part Number</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${seatpostClampIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${seatpostClampIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </CardContent>
                           </Card>
                         </div>

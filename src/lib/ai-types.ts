@@ -7,12 +7,17 @@ import { z } from 'zod';
 // === From extract-bike-details-from-url.ts ===
 
 const ExtractedComponentSchema = z.object({
-  name: z.string().describe('The name of the component (e.g., "Rear Derailleur", "Fork").'),
+  name: z.string().describe('The name of the component (e.g., "Rear Derailleur", "Fork", "Bottom Bracket").'),
   brand: z.string().optional().describe('The brand of the component (e.g., "SRAM", "FOX").'),
-  model: z.string().optional().describe('The model of the component (e.g., "RED eTap AXS", "FLOAT 36 Factory").'),
-  partNumber: z.string().optional().describe('The part number of the component (e.g., "RD-5701", "ST-5700L").'),
+  series: z.string().optional().describe('The product family or series name (e.g., "Dura-Ace", "Ultegra", "105", "XT", "Apex", "GX Eagle").'),
+  model: z.string().optional().describe('The specific model or part number of the component (e.g., "RD-5701", "ST-5700L", "CS-4600").'),
   system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", or "Accessories".'),
+  // Crankset specific
+  chainring1: z.string().optional().describe('The number of teeth on the largest chainring (e.g., "50").'),
+  chainring2: z.string().optional().describe('The number of teeth on the second chainring (e.g., "34").'),
+  chainring3: z.string().optional().describe('The number of teeth on the third chainring.'),
 });
+
 
 export const ExtractBikeDetailsInputSchema = z.object({
   textContent: z.string().describe("The raw text content from a bike's product webpage."),

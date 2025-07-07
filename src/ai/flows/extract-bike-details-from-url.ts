@@ -23,25 +23,30 @@ const bikeExtractorPrompt = ai.definePrompt({
   output: { schema: ExtractBikeDetailsOutputSchema },
   prompt: `You are an expert bike mechanic who is an expert at reading specification sheets. Analyze the following text and extract the bike's brand, model, and year.
 
-  Then, identify every component listed. For each component, extract its name, brand, model, and part number.
-  The model should be the product family name (e.g., '105', 'Dura-Ace', 'XT').
-  The part number is the specific identifier (e.g., 'FD-5700L', 'RD-M8100'). If no part number is obvious, omit it.
+Then, identify every component listed. For each component, extract its name, brand, series, and model.
+- The 'series' is the product family name (e.g., 'Dura-Ace', 'Ultegra', '105', 'XT', 'Apex', 'GX Eagle').
+- The 'model' is the specific part number or model identifier (e.g., 'FD-5700L', 'RD-M8100', 'CS-4600'). If no model/part number is obvious, omit it.
 
-  Also, determine the front drivetrain configuration (1x, 2x, or 3x) and the number of rear speeds (9, 10, 11, or 12).
-  For example, a crankset described as '46/36' is '2x'. A cassette described as '12-28T 10 speed' is '10' speed.
-  Set the 'frontMech' and 'rearMech' fields accordingly.
+Determine the front drivetrain configuration ('1x', '2x', or '3x') and the number of rear speeds ('9', '10', '11', or '12').
+- For example, a crankset described as '46/36' is '2x'. A cassette described as '12-28T 10 speed' is '10' speed.
+- Set the 'frontMech' and 'rearMech' fields accordingly.
 
-  Valid systems are: Drivetrain, Brakes, Suspension, Wheelset, Frameset, Cockpit, Accessories.
-  The Brakes system includes brake levers, calipers, and rotors.
-  The Wheelset system includes hubs, rims, tires, and skewers/axles.
-  The Cockpit includes the Handlebar, Stem, Seatpost, Headset, Saddle, Grips or Bar Tape, and Seatpost Clamp. Standardize "Seat Post" to "Seatpost".
+For Cranksets, if you see a specification like '46/36' or '50/34T', extract the number of teeth for each chainring.
+- 'chainring1' should always be the largest number.
+- For a '46/36' crankset, 'chainring1' would be '46' and 'chainring2' would be '36'.
 
-  If you cannot determine a value for a field, omit it.
+Valid systems are: Drivetrain, Brakes, Suspension, Wheelset, Frameset, Cockpit, Accessories.
+- The Drivetrain system includes the Crankset, Bottom Bracket, Derailleurs, Shifters, Cassette, and Chain.
+- The Brakes system includes brake levers, calipers, and rotors.
+- The Wheelset system includes hubs, rims, tires, and skewers/axles.
+- The Cockpit includes the Handlebar, Stem, Seatpost, Headset, Saddle, Grips or Bar Tape, and Seatpost Clamp. Standardize "Seat Post" to "Seatpost".
 
-  Provide this information back in a structured JSON format.
+If you cannot determine a value for a field, omit it.
 
-  Page Content:
-  {{{textContent}}}
+Provide this information back in a structured JSON format.
+
+Page Content:
+{{{textContent}}}
   `,
   config: {
     safetySettings: [
