@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -9,30 +8,46 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowRight, Bot, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { Bot, Loader2 } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { getUrlTextContent } from './actions';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 
 
 export default function ImportFromUrlPage() {
     const [url, setUrl] = useState('');
+    const [textContent, setTextContent] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [extractedData, setExtractedData] = useState<ExtractBikeDetailsOutput | null>(null);
     const { toast } = useToast();
 
     const handleExtract = async () => {
-        if (!url) {
-            toast({ variant: 'destructive', title: 'URL is required' });
-            return;
-        }
         setIsLoading(true);
         setExtractedData(null);
+        
         try {
-            const textContent = await getUrlTextContent(url);
-            const result = await extractBikeDetailsFromUrlContent({ textContent });
+            let contentToProcess = '';
+            if (textContent.trim()) {
+                contentToProcess = textContent.trim();
+            } else if (url.trim()) {
+                contentToProcess = await getUrlTextContent(url.trim());
+            } else {
+                toast({ variant: 'destructive', title: 'Input required', description: 'Please provide a URL or paste text content.' });
+                setIsLoading(false);
+                return;
+            }
+
+            if (!contentToProcess) {
+                 toast({ variant: 'destructive', title: 'No Content', description: 'Could not retrieve any text from the provided source. Try pasting the text directly.' });
+                 setIsLoading(false);
+                 return;
+            }
+
+            const result = await extractBikeDetailsFromUrlContent({ textContent: contentToProcess });
             setExtractedData(result);
             toast({ title: 'Extraction Successful!' });
+
         } catch (error: any) {
             console.error('Extraction failed:', error);
             toast({
@@ -50,7 +65,7 @@ export default function ImportFromUrlPage() {
     return (
         <Card className="max-w-2xl mx-auto">
             <CardHeader>
-                <CardTitle>Import Bike Model from URL</CardTitle>
+                <CardTitle>Import Bike Model from URL or Text</CardTitle>
                 <CardDescription>
                     Let AI read a bike's specification page and extract its details to pre-fill the form.
                 </CardDescription>
@@ -58,24 +73,44 @@ export default function ImportFromUrlPage() {
             <CardContent className="space-y-4">
                  <div className="space-y-2">
                     <Label htmlFor="url">Bike Specification URL</Label>
-                    <div className="flex gap-2">
-                        <Input
-                            id="url"
-                            placeholder="https://www.some-brand.com/bikes/model-x"
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
-                            disabled={isLoading}
-                        />
-                        <Button onClick={handleExtract} disabled={isLoading}>
-                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
-                            <span className="ml-2">Extract</span>
-                        </Button>
-                    </div>
+                    <Input
+                        id="url"
+                        placeholder="https://www.some-brand.com/bikes/model-x"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        disabled={isLoading}
+                    />
                 </div>
+                
+                <div className="flex items-center space-x-2">
+                    <Separator className="flex-1" />
+                    <span className="text-xs text-muted-foreground">OR</span>
+                    <Separator className="flex-1" />
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="text-content">Paste Raw Text</Label>
+                    <Textarea
+                        id="text-content"
+                        placeholder="Paste the bike's specs here..."
+                        value={textContent}
+                        onChange={(e) => setTextContent(e.target.value)}
+                        disabled={isLoading}
+                        rows={8}
+                    />
+                </div>
+
+                <div className="pt-2">
+                    <Button onClick={handleExtract} disabled={isLoading} className="w-full">
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                        <span className="ml-2">Extract Details</span>
+                    </Button>
+                </div>
+
                  {isLoading && (
                      <div className="flex items-center gap-2 text-muted-foreground p-4 border rounded-lg">
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <p>AI is reading the page... this may take a moment.</p>
+                        <p>AI is reading the provided content... this may take a moment.</p>
                      </div>
                  )}
                  {extractedData && (
@@ -96,7 +131,7 @@ export default function ImportFromUrlPage() {
                  <Alert>
                     <AlertTitle>How does this work?</AlertTitle>
                     <AlertDescription>
-                        This tool fetches the text content from the URL you provide and sends it to an AI agent. The agent is instructed to find and structure the bike's specifications. Results may vary based on the website's format.
+                        Provide a URL or paste raw text. The AI will read the content and attempt to structure the bike's specs. Pasting text is often more reliable than using a URL, as some websites block automated fetching.
                     </AlertDescription>
                 </Alert>
             </CardContent>
