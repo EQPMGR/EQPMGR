@@ -32,7 +32,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { bikeDatabase } from '@/lib/bike-database';
-import { getBikeModelDetails, type BikeModelDetailsOutput } from '@/ai/flows/get-bike-model-details';
+import { getBikeModelDetails } from '@/ai/flows/get-bike-model-details';
+import type { BikeModelDetailsOutput } from '@/lib/ai-types';
 
 const formSchema = z.object({
   brand: z.string().min(1, { message: 'Please select a brand.' }),

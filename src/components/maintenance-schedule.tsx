@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Bot, Loader2, Wrench } from 'lucide-react';
-import { generateMaintenanceSchedule, type GenerateMaintenanceScheduleOutput } from '@/ai/flows/generate-maintenance-schedule';
+import { generateMaintenanceSchedule } from '@/ai/flows/generate-maintenance-schedule';
+import type { GenerateMaintenanceScheduleOutput } from '@/lib/ai-types';
 
 import { Button } from '@/components/ui/button';
 import {

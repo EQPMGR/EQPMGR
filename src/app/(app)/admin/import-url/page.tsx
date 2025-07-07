@@ -2,7 +2,8 @@
 'use client';
 
 import { useState } from 'react';
-import { extractBikeDetailsFromUrlContent, type ExtractBikeDetailsOutput } from '@/ai/flows/extract-bike-details-from-url';
+import { extractBikeDetailsFromUrlContent } from '@/ai/flows/extract-bike-details-from-url';
+import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

@@ -1,27 +1,16 @@
 'use server';
 /**
  * @fileOverview An AI agent that provides detailed information about a bike model.
- *
- * - getBikeModelDetails - A function that fetches bike details and generates a description.
- * - BikeModelDetailsInput - The input type for the getBikeModelDetails function.
- * - BikeModelDetailsOutput - The return type for the getBikeModelDetails function.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
 import { bikeDatabase } from '@/lib/bike-database';
-
-export const BikeModelDetailsInputSchema = z.object({
-  brand: z.string().describe('The brand of the bike.'),
-  model: z.string().describe('The model of the bike.'),
-  modelYear: z.coerce.number().describe('The model year of the bike.'),
-});
-export type BikeModelDetailsInput = z.infer<typeof BikeModelDetailsInputSchema>;
-
-export const BikeModelDetailsOutputSchema = z.object({
-  details: z.string().describe('A detailed, paragraph-style overview of the bike, its purpose, and its components.'),
-});
-export type BikeModelDetailsOutput = z.infer<typeof BikeModelDetailsOutputSchema>;
+import {
+    BikeModelDetailsInput,
+    BikeModelDetailsInputSchema,
+    BikeModelDetailsOutput,
+    BikeModelDetailsOutputSchema
+} from '@/lib/ai-types';
 
 export async function getBikeModelDetails(input: BikeModelDetailsInput): Promise<BikeModelDetailsOutput> {
   return getBikeModelDetailsFlow(input);

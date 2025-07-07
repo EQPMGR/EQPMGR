@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BIKE_TYPES } from '@/lib/constants';
 import { bikeDatabase } from '@/lib/bike-database';
 import { cn } from '@/lib/utils';
-import type { ExtractBikeDetailsOutput } from '@/ai/flows/extract-bike-details-from-url';
+import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 
 const componentSchema = z.object({
   name: z.string().min(1, 'Component name is required.'),
