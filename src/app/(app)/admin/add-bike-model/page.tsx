@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2, ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { writeBatch, doc, collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -17,6 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
 import { BIKE_TYPES } from '@/lib/constants';
 import { bikeDatabase } from '@/lib/bike-database';
 import { cn } from '@/lib/utils';
@@ -57,8 +59,20 @@ const addBikeModelSchema = z.object({
 
 export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
-const WIZARD_SYSTEMS = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheelset', 'Cockpit'];
-const DROP_BAR_BIKE_TYPES = ['Road', 'Cyclocross', 'Gravel'];
+// A simple utility to create a slug from a component's details
+const createComponentId = (component: z.infer<typeof componentSchema>) => {
+    return `${component.brand}-${component.model}-${component.name}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+};
+
+const createBikeModelId = (bike: AddBikeModelFormValues) => {
+    return `${bike.brand}-${bike.model}-${bike.modelYear}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+}
 
 // Helper to map data from AI to form values
 const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelFormValues => {
@@ -270,50 +284,67 @@ function AddBikeModelFormComponent() {
         }
     }
 
-    function onSubmit(values: AddBikeModelFormValues) {
+    async function onSubmit(values: AddBikeModelFormValues) {
         setIsSubmitting(true);
         
-        const processedValues = { ...values };
-        const finalComponents = [...processedValues.components];
+        try {
+            const batch = writeBatch(db);
+            const masterComponentsRef = collection(db, 'masterComponents');
+            const bikeModelsRef = collection(db, 'bikeModels');
 
-        const forkIndex = findComponentIndex('Fork', 'Suspension');
-        const rearShockIndex = findComponentIndex('Rear Shock', 'Suspension');
+            const componentReferences: string[] = [];
 
-        if (processedValues.suspensionType === 'none') {
-            if (rearShockIndex > -1) {
-                finalComponents.splice(rearShockIndex, 1);
+            // Process all components for the current bike
+            for (const component of values.components) {
+                // Skip components with no brand, series, or model
+                if (!component.brand && !component.series && !component.model) {
+                    continue;
+                }
+                const componentId = createComponentId(component);
+                
+                // Add component to master list
+                const masterComponentDocRef = doc(masterComponentsRef, componentId);
+                batch.set(masterComponentDocRef, component, { merge: true }); // Use merge to avoid overwriting
+                
+                // Use the full path for the reference
+                componentReferences.push(masterComponentDocRef.path);
             }
-            if (forkIndex > -1) {
-                // This is the "ghost fork" logic. It's a rigid fork, part of the frameset.
-                const frameComponent = finalComponents.find(c => c.name === 'Frame');
-                finalComponents[forkIndex] = {
-                    ...finalComponents[forkIndex],
-                    system: 'Frameset', // Re-assign to Frameset system
-                    brand: frameComponent?.brand || processedValues.brand,
-                    series: frameComponent?.series || processedValues.model,
-                    model: '',
-                };
-            }
-        } else if (processedValues.suspensionType === 'front') {
-            if (rearShockIndex > -1) {
-                finalComponents.splice(rearShockIndex, 1);
-            }
-        }
-        
-        processedValues.components = finalComponents;
 
-        console.log('Final data to submit:', processedValues);
+            // Create the bike model document
+            const bikeModelId = createBikeModelId(values);
+            const bikeModelDocRef = doc(bikeModelsRef, bikeModelId);
+            
+            // Exclude full components object from the bike model data before setting it
+            const { components, ...bikeModelData } = values;
 
-        setTimeout(() => {
-            toast({
-                title: 'Bike Model Saved (Placeholder)',
-                description: <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4"><code className="text-white">{JSON.stringify(processedValues, null, 2)}</code></pre>,
+            batch.set(bikeModelDocRef, {
+                ...bikeModelData,
+                components: componentReferences,
+                imageUrl: `https://placehold.co/600x400.png` // Placeholder image
             });
-            setIsSubmitting(false);
+            
+            await batch.commit();
+
+            toast({
+                title: 'Bike Model Saved!',
+                description: `${values.brand} ${values.model} (${values.modelYear}) has been added to the database.`,
+            });
+            
+            // Reset form state
             setStep(1);
             setSystemIndex(0);
             form.reset();
-        }, 1000);
+
+        } catch (error: any) {
+            console.error("Failed to save bike model:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Save Failed',
+                description: error.message || 'An unexpected error occurred while saving the bike model.',
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     }
     
     const cardTitle = step === 1 ? 'Add a New Bike Model' : activeSystem;
