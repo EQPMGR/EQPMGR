@@ -27,7 +27,7 @@ Identify all components listed. For each component, extract its name, brand, ser
 
 IMPORTANT RULES:
 1.  The 'series' is the product family name (e.g., 'Dura-Ace', '105', 'GX Eagle').
-2.  The 'model' is the specific part number (e.g., 'RD-5701', 'CS-4600').
+2.  The 'model' is the specific part number (e.g., 'RD-5701', 'CS-4600'). The model should ONLY contain the part number.
 3.  If a value isn't available for a field, omit that field. Do not make up values.
 4.  Standardize "Seat Post" to "Seatpost".
 
