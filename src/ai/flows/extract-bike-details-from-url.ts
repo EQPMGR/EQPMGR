@@ -16,7 +16,7 @@ const ExtractedComponentSchema = z.object({
   name: z.string().describe('The name of the component (e.g., "Rear Derailleur", "Fork").'),
   brand: z.string().describe('The brand of the component (e.g., "SRAM", "FOX").'),
   model: z.string().describe('The model of the component (e.g., "RED eTap AXS", "FLOAT 36 Factory").'),
-  system: z.string().describe('The system the component belongs to (e.g., "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit").'),
+  system: z.string().describe('The system the component belongs to (e.g., "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", "Accessories").'),
 });
 
 export const ExtractBikeDetailsInputSchema = z.object({
@@ -38,27 +38,29 @@ export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetails
   return extractBikeDetailsFlow(input);
 }
 
+const bikeExtractorPrompt = ai.definePrompt({
+  name: 'bikeExtractorPrompt',
+  input: { schema: ExtractBikeDetailsInputSchema },
+  output: { schema: ExtractBikeDetailsOutputSchema },
+  prompt: `You are an expert bike mechanic who is an expert at reading specification sheets. Analyze the following text content from a bicycle product page and extract the bike's brand, model, and model year.
+
+  Then, identify every component listed. For each component, determine its brand, model, and the system it belongs to. The valid systems are: Drivetrain, Brakes, Suspension, Wheelset, Frameset, Cockpit, Accessories.
+
+  Provide this information back in the requested JSON format. Be as precise as possible.
+
+  Page Content:
+  {{{textContent}}}
+  `,
+});
+
 const extractBikeDetailsFlow = ai.defineFlow(
   {
     name: 'extractBikeDetailsFlow',
     inputSchema: ExtractBikeDetailsInputSchema,
     outputSchema: ExtractBikeDetailsOutputSchema,
   },
-  async ({ textContent }) => {
-    const prompt = ai.definePrompt({
-      name: 'bikeExtractorPrompt',
-      prompt: `You are an expert bike mechanic who is an expert at reading specification sheets. Analyze the following text content from a bicycle product page and extract the bike's brand, model, and model year.
-
-      Then, identify every component listed. For each component, determine its brand, model, and the system it belongs to. The valid systems are: Drivetrain, Brakes, Suspension, Wheelset, Frameset, Cockpit, Accessories.
-
-      Provide this information back in the requested JSON format. Be as precise as possible.
-
-      Page Content:
-      {{{textContent}}}
-      `,
-    });
-
-    const { output } = await prompt({ textContent });
+  async (input) => {
+    const { output } = await bikeExtractorPrompt(input);
     if (!output) {
       throw new Error('Could not extract bike details from the provided text.');
     }
