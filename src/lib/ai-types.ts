@@ -12,10 +12,6 @@ const ExtractedComponentSchema = z.object({
   series: z.string().optional().describe('The product family or series name (e.g., "Dura-Ace", "Ultegra", "105", "XT", "Apex", "GX Eagle").'),
   model: z.string().optional().describe('The specific model or part number of the component (e.g., "RD-5701", "ST-5700L", "CS-4600").'),
   system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", or "Accessories".'),
-  // Crankset specific
-  chainring1: z.string().optional().describe('The number of teeth on the largest chainring (e.g., "50").'),
-  chainring2: z.string().optional().describe('The number of teeth on the second chainring (e.g., "34").'),
-  chainring3: z.string().optional().describe('The number of teeth on the third chainring.'),
 });
 
 
@@ -29,8 +25,6 @@ export const ExtractBikeDetailsOutputSchema = z.object({
   model: z.string().optional().describe('The model name of the bike (e.g., "Tarmac SL7").'),
   modelYear: z.coerce.number().optional().describe('The model year of the bike (e.g., 2023).'),
   type: z.string().optional().describe('The type of bike (e.g., "Road", "Gravel", "Enduro").'),
-  frontMech: z.enum(['1x', '2x', '3x']).optional().describe('The front chainring configuration.'),
-  rearMech: z.enum(['9', '10', '11', '12']).optional().describe('The number of speeds in the rear cassette.'),
   components: z.array(ExtractedComponentSchema).describe('An array of all the extracted bike components.'),
 });
 export type ExtractBikeDetailsOutput = z.infer<typeof ExtractBikeDetailsOutputSchema>;

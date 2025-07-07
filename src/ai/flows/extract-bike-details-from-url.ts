@@ -17,25 +17,24 @@ export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetails
   return extractBikeDetailsFlow(input);
 }
 
+// Reverting to a simpler prompt that is more stable, with minor tweaks for accuracy.
 const bikeExtractorPrompt = ai.definePrompt({
   name: 'bikeExtractorPrompt',
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
-  prompt: `You are an expert bike mechanic who is an expert at reading specification sheets.
-  Analyze the provided text and extract the bike's brand, model, and year.
-  Then, identify all components listed. For each component, extract its name, brand, series, and model, and determine which system it belongs to.
-  - The 'series' is the product family name (e.g., 'Dura-Ace', '105', 'GX Eagle').
-  - The 'model' is the specific part number (e.g., 'RD-5701', 'CS-4600').
-  - If a value isn't available, omit the field.
-  - Standardize "Seat Post" to "Seatpost".
-  - Determine the front drivetrain configuration ('1x', '2x', '3x') from the crankset specs.
-  - Determine the rear speeds ('9', '10', '11', '12') from the cassette specs.
-  - For cranksets, extract the teeth counts for each chainring.
+  prompt: `You are an expert bike mechanic. Analyze the provided text. Extract the bike's brand, model, and modelYear.
+Identify all components listed. For each component, extract its name, brand, series, and model. Assign it to a 'system'.
 
-  Return the data in the structured JSON format requested.
+IMPORTANT RULES:
+1.  The 'series' is the product family name (e.g., 'Dura-Ace', '105', 'GX Eagle').
+2.  The 'model' is the specific part number (e.g., 'RD-5701', 'CS-4600').
+3.  If a value isn't available for a field, omit that field. Do not make up values.
+4.  Standardize "Seat Post" to "Seatpost".
 
-  Page Content:
-  {{{textContent}}}
+Return ONLY the structured JSON format.
+
+Page Content:
+{{{textContent}}}
   `,
 });
 
