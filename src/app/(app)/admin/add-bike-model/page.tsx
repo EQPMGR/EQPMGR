@@ -4,7 +4,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Check, ChevronsUpDown, Loader2, ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -20,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BIKE_TYPES } from '@/lib/constants';
 import { bikeDatabase } from '@/lib/bike-database';
 import { cn } from '@/lib/utils';
+import type { ExtractBikeDetailsOutput } from '@/ai/flows/extract-bike-details-from-url';
 
 const componentSchema = z.object({
   name: z.string().min(1, 'Component name is required.'),
@@ -59,11 +61,40 @@ export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 const WIZARD_SYSTEMS = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheelset', 'Cockpit'];
 const DROP_BAR_BIKE_TYPES = ['Road', 'Cyclocross', 'Gravel'];
 
-export default function AddBikeModelPage() {
+// Helper to map data from AI to form values
+const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelFormValues => {
+    return {
+        brand: data.brand || '',
+        model: data.model || '',
+        modelYear: data.modelYear || new Date().getFullYear(),
+        type: data.type || '',
+        components: data.components.map(c => ({
+            name: c.name,
+            brand: c.brand || '',
+            model: c.model || '',
+            system: c.system,
+            partNumber: '',
+        })),
+        // keep other wizard fields at their default values
+        frontMech: undefined,
+        rearMech: undefined,
+        shifterSetType: 'matched',
+        brakeSetType: 'matched',
+        rotorSetType: 'matched',
+        suspensionType: 'none',
+        rimSetType: 'matched',
+        tireSetType: 'matched',
+        wheelsetSetup: 'tubes',
+    };
+};
+
+function AddBikeModelFormComponent() {
+    const searchParams = useSearchParams();
+    const { toast } = useToast();
+    
     const [step, setStep] = useState(1);
     const [systemIndex, setSystemIndex] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { toast } = useToast();
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
 
     const form = useForm<AddBikeModelFormValues>({
@@ -83,6 +114,21 @@ export default function AddBikeModelPage() {
             wheelsetSetup: 'tubes',
         },
     });
+
+    useEffect(() => {
+        const importedData = searchParams.get('data');
+        if (importedData) {
+            try {
+                const parsedData = JSON.parse(decodeURIComponent(importedData));
+                const formValues = mapAiDataToFormValues(parsedData);
+                form.reset(formValues);
+                toast({ title: "Data Imported!", description: "The form has been pre-filled with the extracted data." });
+            } catch (e) {
+                console.error("Failed to parse imported data", e);
+                toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read the data from the import page.' });
+            }
+        }
+    }, [searchParams, form, toast]);
     
     const { fields, append, remove, update } = useFieldArray({
       control: form.control,
@@ -1055,4 +1101,13 @@ export default function AddBikeModelPage() {
             </Form>
         </Card>
     );
+}
+
+
+export default function AddBikeModelPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <AddBikeModelFormComponent />
+        </Suspense>
+    )
 }

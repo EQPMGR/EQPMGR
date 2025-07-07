@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { bikeDatabase, type BikeFromDB, type BikeComponentFromDB } from '@/lib/bike-database';
 import { writeBatch, doc, collection } from 'firebase/firestore';
-import { ArrowUpRight, Bike, Loader2 } from 'lucide-react';
+import { ArrowUpRight, Bike, Loader2, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 
 // A simple utility to create a slug from a component's details
@@ -97,17 +98,18 @@ export default function AdminPage() {
                 <CardDescription>Tools to manage the application database and content.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
-                <Card>
+                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <div>
-                            <CardTitle className="text-base font-semibold">Migrate Bike Catalog</CardTitle>
+                         <div>
+                            <CardTitle className="text-base font-semibold">Import from URL (AI)</CardTitle>
                             <CardDescription className="text-sm">
-                                Moves hardcoded bike data into Firestore collections.
+                                Use AI to extract bike specs from a webpage.
                             </CardDescription>
                         </div>
-                         <Button onClick={handleMigrate} disabled={isMigrating} size="sm">
-                            {isMigrating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Migrate Data
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/import-url">
+                                <LinkIcon className="h-4 w-4 mr-2" /> Go to Importer
+                            </Link>
                         </Button>
                     </CardHeader>
                 </Card>
@@ -123,6 +125,20 @@ export default function AdminPage() {
                             <Link href="/admin/add-bike-model">
                                 Go to Form <ArrowUpRight className="h-4 w-4 ml-2" />
                             </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div>
+                            <CardTitle className="text-base font-semibold">Migrate Bike Catalog</CardTitle>
+                            <CardDescription className="text-sm">
+                                Moves hardcoded bike data into Firestore collections.
+                            </CardDescription>
+                        </div>
+                         <Button onClick={handleMigrate} disabled={isMigrating} size="sm">
+                            {isMigrating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Migrate Data
                         </Button>
                     </CardHeader>
                 </Card>
