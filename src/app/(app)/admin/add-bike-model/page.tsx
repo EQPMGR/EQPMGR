@@ -60,8 +60,10 @@ const addBikeModelSchema = z.object({
 export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
 // A simple utility to create a slug from a component's details
-const createComponentId = (component: z.infer<typeof componentSchema>) => {
-    return `${component.brand}-${component.model}-${component.name}`
+const createComponentId = (component: Partial<z.infer<typeof componentSchema>>) => {
+    return [component.brand, component.model, component.name]
+        .filter(Boolean)
+        .join('-')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
@@ -297,16 +299,27 @@ function AddBikeModelFormComponent() {
             const componentReferences: string[] = [];
 
             // Process all components for the current bike
-            for (const component of values.components) {
+            for (const originalComponent of values.components) {
+
+                const componentToSave: Partial<z.infer<typeof componentSchema>> = {};
+                // Copy only defined and non-empty values to the object we'll save
+                Object.keys(originalComponent).forEach((key: any) => {
+                    const value = originalComponent[key as keyof typeof originalComponent];
+                    if (value !== undefined && value !== '') {
+                        (componentToSave as any)[key] = value;
+                    }
+                });
+                
                 // Skip components with no brand, series, or model
-                if (!component.brand && !component.series && !component.model) {
+                if (!componentToSave.brand && !componentToSave.series && !componentToSave.model) {
                     continue;
                 }
-                const componentId = createComponentId(component);
+
+                const componentId = createComponentId(componentToSave);
                 
                 // Add component to master list
                 const masterComponentDocRef = doc(masterComponentsRef, componentId);
-                batch.set(masterComponentDocRef, component, { merge: true }); // Use merge to avoid overwriting
+                batch.set(masterComponentDocRef, componentToSave, { merge: true });
                 
                 // Use the full path for the reference
                 componentReferences.push(masterComponentDocRef.path);
