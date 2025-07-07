@@ -66,7 +66,7 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
         brand: data.brand || '',
         model: data.model || '',
         modelYear: data.modelYear || new Date().getFullYear(),
-        type: data.type || '',
+        type: '', // User will select this manually
         components: data.components.map(c => ({
             name: c.name,
             brand: c.brand || '',
@@ -77,8 +77,9 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
             chainring2: c.chainring2,
             chainring3: c.chainring3,
         })),
-        frontMech: data.frontMech,
-        rearMech: data.rearMech,
+        // These will be selected manually by the user
+        frontMech: undefined,
+        rearMech: undefined,
         shifterSetType: 'matched',
         brakeSetType: 'matched',
         rotorSetType: 'matched',
@@ -984,7 +985,7 @@ function AddBikeModelFormComponent() {
                                 </CardContent>
                             </Card>
                              <Card>
-                                <CardHeader><CardTitle className="text-lg">Skewers / Thru-Axles</CardHeader></CardHeader>
+                                <CardHeader><CardTitle className="text-lg">Skewers / Thru-Axles</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
                                     <h4 className="font-semibold text-sm">Front Skewer/Axle</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
