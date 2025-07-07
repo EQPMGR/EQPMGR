@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Centralized type and schema definitions for AI flows.
  */
@@ -18,11 +19,7 @@ export const ExtractBikeDetailsInputSchema = z.object({
 export type ExtractBikeDetailsInput = z.infer<typeof ExtractBikeDetailsInputSchema>;
 
 export const ExtractBikeDetailsOutputSchema = z.object({
-  brand: z.string().describe('The brand of the bike.'),
-  model: z.string().describe('The model of the bike.'),
-  modelYear: z.coerce.number().describe('The model year of the bike.'),
-  type: z.string().describe('The type of bike (e.g., "Road", "Enduro", "Gravel").'),
-  components: z.array(ExtractedComponentSchema).describe('A list of all extracted components.'),
+  summary: z.string().describe('A simple text summary of the bike and its components.'),
 });
 export type ExtractBikeDetailsOutput = z.infer<typeof ExtractBikeDetailsOutputSchema>;
 

@@ -32,7 +32,7 @@ export default function ImportFromUrlPage() {
             const textContent = await getUrlTextContent(url);
             const result = await extractBikeDetailsFromUrlContent({ textContent });
             setExtractedData(result);
-            toast({ title: 'Extraction Successful!', description: `Found ${result.components.length} components.` });
+            toast({ title: 'Extraction Successful!' });
         } catch (error: any) {
             console.error('Extraction failed:', error);
             toast({
@@ -45,7 +45,7 @@ export default function ImportFromUrlPage() {
         }
     };
     
-    const encodedData = extractedData ? encodeURIComponent(JSON.stringify(extractedData)) : '';
+    // const encodedData = extractedData ? encodeURIComponent(JSON.stringify(extractedData)) : '';
 
     return (
         <Card className="max-w-2xl mx-auto">
@@ -84,16 +84,11 @@ export default function ImportFromUrlPage() {
                             <CardTitle className="text-xl">Extraction Result</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            <p><strong>Brand:</strong> {extractedData.brand}</p>
-                            <p><strong>Model:</strong> {extractedData.model} ({extractedData.modelYear})</p>
-                            <p><strong>Type:</strong> {extractedData.type}</p>
-                            <p><strong>Components Found:</strong> {extractedData.components.length}</p>
+                           <pre className="whitespace-pre-wrap font-sans text-sm">{extractedData.summary}</pre>
                         </CardContent>
                         <CardFooter>
-                            <Button asChild>
-                                <Link href={`/admin/add-bike-model?data=${encodedData}`}>
-                                    Proceed to Form <ArrowRight className="ml-2 h-4 w-4" />
-                                </Link>
+                            <Button disabled={true}>
+                                Proceed to Form (Disabled for Debugging)
                             </Button>
                         </CardFooter>
                      </Card>
