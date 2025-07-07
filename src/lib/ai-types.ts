@@ -10,6 +10,7 @@ const ExtractedComponentSchema = z.object({
   name: z.string().describe('The name of the component (e.g., "Rear Derailleur", "Fork").'),
   brand: z.string().optional().describe('The brand of the component (e.g., "SRAM", "FOX").'),
   model: z.string().optional().describe('The model of the component (e.g., "RED eTap AXS", "FLOAT 36 Factory").'),
+  partNumber: z.string().optional().describe('The part number of the component (e.g., "RD-5701", "ST-5700L").'),
   system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", or "Accessories".'),
 });
 
@@ -23,6 +24,8 @@ export const ExtractBikeDetailsOutputSchema = z.object({
   model: z.string().optional().describe('The model name of the bike (e.g., "Tarmac SL7").'),
   modelYear: z.coerce.number().optional().describe('The model year of the bike (e.g., 2023).'),
   type: z.string().optional().describe('The type of bike (e.g., "Road", "Gravel", "Enduro").'),
+  frontMech: z.enum(['1x', '2x', '3x']).optional().describe('The front chainring configuration.'),
+  rearMech: z.enum(['9', '10', '11', '12']).optional().describe('The number of speeds in the rear cassette.'),
   components: z.array(ExtractedComponentSchema).describe('An array of all the extracted bike components.'),
 });
 export type ExtractBikeDetailsOutput = z.infer<typeof ExtractBikeDetailsOutputSchema>;

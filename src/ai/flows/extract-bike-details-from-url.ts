@@ -23,7 +23,14 @@ const bikeExtractorPrompt = ai.definePrompt({
   output: { schema: ExtractBikeDetailsOutputSchema },
   prompt: `You are an expert bike mechanic who is an expert at reading specification sheets. Analyze the following text and extract the bike's brand, model, and year.
 
-  Then, identify every component listed, including its brand, model, and the system it belongs to.
+  Then, identify every component listed. For each component, extract its name, brand, model, and part number.
+  The model should be the product family name (e.g., '105', 'Dura-Ace', 'XT').
+  The part number is the specific identifier (e.g., 'FD-5700L', 'RD-M8100'). If no part number is obvious, omit it.
+
+  Also, determine the front drivetrain configuration (1x, 2x, or 3x) and the number of rear speeds (9, 10, 11, or 12).
+  For example, a crankset described as '46/36' is '2x'. A cassette described as '12-28T 10 speed' is '10' speed.
+  Set the 'frontMech' and 'rearMech' fields accordingly.
+
   Valid systems are: Drivetrain, Brakes, Suspension, Wheelset, Frameset, Cockpit, Accessories.
   If you cannot determine a value for a field, omit it.
 
