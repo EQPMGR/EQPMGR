@@ -20,7 +20,7 @@ const bikeExtractorPrompt = ai.definePrompt({
   name: 'bikeExtractorPrompt',
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
-  prompt: `You are an expert bike mechanic who is an expert at reading specification sheets. Analyze the following text content from a bicycle product page and extract the bike's brand, model, and model year.
+  prompt: `You are an expert bike mechanic who is an expert at reading specification sheets. Analyze the following text content from a bicycle product page and extract the's brand, model, and model year.
 
   Then, identify every component listed. For each component, determine its brand, model, and the system it belongs to. The valid systems are: Drivetrain, Brakes, Suspension, Wheelset, Frameset, Cockpit, Accessories.
 
@@ -29,6 +29,26 @@ const bikeExtractorPrompt = ai.definePrompt({
   Page Content:
   {{{textContent}}}
   `,
+  config: {
+    safetySettings: [
+        {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_NONE',
+        },
+        {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_NONE',
+        },
+        {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_NONE',
+        },
+        {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_NONE',
+        },
+    ]
+  }
 });
 
 const extractBikeDetailsFlow = ai.defineFlow(
