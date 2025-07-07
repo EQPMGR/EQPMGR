@@ -19,7 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { BIKE_TYPES } from '@/lib/constants';
+import { BIKE_TYPES, DROP_BAR_BIKE_TYPES } from '@/lib/constants';
 import { bikeDatabase } from '@/lib/bike-database';
 import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
@@ -103,6 +103,8 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
         wheelsetSetup: 'tubes',
     };
 };
+
+const WIZARD_SYSTEMS = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheelset', 'Cockpit'];
 
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
@@ -772,7 +774,7 @@ function AddBikeModelFormComponent() {
 
                       {step === 2 && activeSystem === 'Brakes' && (
                         <div className="space-y-6">
-                            {DROP_BAR_BIKE_TYPES.includes(bikeDetails.type) && fields[frontShifterIndex] && (
+                            {DROP_BAR_BIKE_TYPES.includes(bikeDetails.type as any) && fields[frontShifterIndex] && (
                                 <Card>
                                     <CardHeader><CardTitle className="text-lg">Brake Levers</CardTitle></CardHeader>
                                     <CardContent>
