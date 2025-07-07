@@ -17,7 +17,7 @@ export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetails
   return extractBikeDetailsFlow(input);
 }
 
-// Reverting to a simpler prompt that is more stable, with minor tweaks for accuracy.
+// Reverting to a simpler prompt that is more stable.
 const bikeExtractorPrompt = ai.definePrompt({
   name: 'bikeExtractorPrompt',
   input: { schema: ExtractBikeDetailsInputSchema },
