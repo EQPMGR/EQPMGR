@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -47,6 +48,7 @@ export default function ImportFromUrlPage() {
 
             const result = await extractBikeDetailsFromUrlContent({ textContent: contentToProcess });
             setExtractedData(result);
+            sessionStorage.setItem('importedBikeData', JSON.stringify(result));
             toast({ title: 'Extraction Successful!' });
 
         } catch (error: any) {
@@ -61,8 +63,6 @@ export default function ImportFromUrlPage() {
         }
     };
     
-    const encodedData = extractedData ? encodeURIComponent(JSON.stringify(extractedData)) : '';
-
     return (
         <Card className="max-w-2xl mx-auto">
             <CardHeader>
@@ -125,7 +125,7 @@ export default function ImportFromUrlPage() {
                         </CardContent>
                         <CardFooter>
                             <Button asChild>
-                                <Link href={`/admin/add-bike-model?data=${encodedData}`}>
+                                <Link href={`/admin/add-bike-model`}>
                                     Proceed to Form
                                 </Link>
                             </Button>

@@ -4,8 +4,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
-import { useState, useMemo, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2, ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -91,7 +90,6 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
 };
 
 function AddBikeModelFormComponent() {
-    const searchParams = useSearchParams();
     const { toast } = useToast();
     
     const [step, setStep] = useState(1);
@@ -118,19 +116,21 @@ function AddBikeModelFormComponent() {
     });
 
     useEffect(() => {
-        const importedData = searchParams.get('data');
+        const importedData = sessionStorage.getItem('importedBikeData');
         if (importedData) {
             try {
-                const parsedData = JSON.parse(decodeURIComponent(importedData));
+                const parsedData = JSON.parse(importedData);
                 const formValues = mapAiDataToFormValues(parsedData);
                 form.reset(formValues);
                 toast({ title: "Data Imported!", description: "The form has been pre-filled with the extracted data." });
             } catch (e) {
                 console.error("Failed to parse imported data", e);
                 toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read the data from the import page.' });
+            } finally {
+                sessionStorage.removeItem('importedBikeData');
             }
         }
-    }, [searchParams, form, toast]);
+    }, [form, toast]);
     
     const { fields, append, remove, update } = useFieldArray({
       control: form.control,
@@ -1118,10 +1118,6 @@ function AddBikeModelFormComponent() {
 
 export default function AddBikeModelPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
-            <AddBikeModelFormComponent />
-        </Suspense>
+        <AddBikeModelFormComponent />
     )
 }
-
-    
