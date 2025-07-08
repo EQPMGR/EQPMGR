@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect } from 'react';
@@ -124,14 +125,16 @@ export default function AppLayout({
                   <BrainCircuit className="h-5 w-5" />
                   Bike Insights
                 </Link>
-                <Link
-                  href="/admin"
-                  onClick={handleLinkClick}
-                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <Database className="h-5 w-5" />
-                  Admin
-                </Link>
+                {user?.isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={handleLinkClick}
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <Database className="h-5 w-5" />
+                    Admin
+                  </Link>
+                )}
                 <Link
                   href="/settings/profile"
                   onClick={handleLinkClick}
