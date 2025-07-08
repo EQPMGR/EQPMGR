@@ -6,13 +6,13 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 import { getPerformance } from "firebase/performance";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyC1hou9OBPyYAkX1Cek1BvyAITARkhCzDE",
+  authDomain: "eqpmgr-f82e7.firebaseapp.com",
+  projectId: "eqpmgr-f82e7",
+  storageBucket: "eqpmgr-f82e7.appspot.com",
+  messagingSenderId: "111719283783",
+  appId: "1:111719283783:web:5e83cc7e9ba8c8f6e84562",
+  measurementId: "G-BS4C41B3TE"
 };
 
 // Initialize Firebase
