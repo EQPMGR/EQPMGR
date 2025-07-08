@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 import { db } from '@/lib/firebase';
@@ -26,15 +26,20 @@ export default function DebugPage() {
   const [result, setResult] = useState<string | null>(null);
 
   const handleTestWrite = async () => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Not Logged In', description: 'Cannot run test without a user.' });
+      return;
+    }
     setIsLoading(true);
     setResult(null);
     try {
-      const docRef = await addDoc(collection(db, "test"), {
+      const testDocRef = doc(db, 'test', user.uid); // Use UID for document ID
+      await setDoc(testDocRef, { // Use setDoc to write to that specific ID
         test: "success",
         timestamp: serverTimestamp(),
-        uid: user?.uid || 'unknown'
+        uid: user.uid,
       });
-      const message = `Successfully wrote to DB. Document ID: ${docRef.id}`;
+      const message = `Successfully wrote to DB. Document ID: ${testDocRef.id}`;
       setResult(message);
       toast({
         title: 'Success!',
