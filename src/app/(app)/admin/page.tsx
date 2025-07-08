@@ -93,17 +93,6 @@ export default function AdminPage() {
         }
     };
 
-    if (!user?.isAdmin) {
-        return (
-            <Card className="max-w-xl mx-auto">
-                <CardHeader>
-                    <CardTitle>Access Denied</CardTitle>
-                    <CardDescription>You do not have permission to view this page.</CardDescription>
-                </CardHeader>
-            </Card>
-        )
-    }
-
     return (
         <Card className="max-w-xl mx-auto">
             <CardHeader>
