@@ -11,7 +11,7 @@ const ExtractedComponentSchema = z.object({
   brand: z.string().optional().describe('The brand of the component (e.g., "SRAM", "FOX").'),
   series: z.string().optional().describe('The product family or series name (e.g., "Dura-Ace", "Ultegra", "105", "XT", "Apex", "GX Eagle").'),
   model: z.string().optional().describe('The specific model or part number of the component (e.g., "RD-5701", "ST-5700L", "CS-4600").'),
-  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", or "Accessories".'),
+  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", "E-Bike", or "Accessories".'),
   chainring1: z.string().optional().describe("For cranksets with multiple rings, the tooth count of the largest chainring."),
   chainring2: z.string().optional().describe("The tooth count of the second chainring."),
   chainring3: z.string().optional().describe("The tooth count of the third chainring."),
@@ -86,3 +86,5 @@ export const SimulateWearOutputSchema = z.object({
   recommendations: z.array(z.string()).describe('Recommendations for maintenance or replacement based on the wear.'),
 });
 export type SimulateWearOutput = z.infer<typeof SimulateWearOutputSchema>;
+
+    

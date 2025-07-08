@@ -12,6 +12,7 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  Zap,
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, deleteField } from 'firebase/firestore';
 
@@ -53,7 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
 import { toDate, toNullableDate } from '@/lib/date-utils';
-import { MOUNTAIN_BIKE_TYPES } from '@/lib/constants';
+import { MOUNTAIN_BIKE_TYPES, EBIKE_TYPES } from '@/lib/constants';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -92,6 +93,10 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
 
     if (name.includes('drivetrain')) {
       return <DrivetrainIcon className={className} />;
+    }
+
+    if (name.includes('e-bike')) {
+      return <Zap className={className} />;
     }
 
     // Default icon
@@ -242,6 +247,10 @@ export default function EquipmentDetailPage() {
     if (MOUNTAIN_BIKE_TYPES.includes(equipment.type as any)) {
         systems.add('Suspension');
     }
+    if (EBIKE_TYPES.includes(equipment.type as any)) {
+        systems.add('E-Bike');
+    }
+
 
     // Always include systems that might exist on the bike data already
     equipment.components.forEach(c => systems.add(c.system));
@@ -250,6 +259,7 @@ export default function EquipmentDetailPage() {
     const preferredOrder = [
         'Drivetrain',
         'Suspension',
+        'E-Bike',
         'Brakes',
         'Wheelset',
         'Frameset',
@@ -468,5 +478,7 @@ export default function EquipmentDetailPage() {
     </>
   );
 }
+
+    
 
     

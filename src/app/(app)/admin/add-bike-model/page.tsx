@@ -5,18 +5,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
-import { Check, ChevronsUpDown, Loader2, ArrowLeft, Trash2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, ArrowLeft, Trash2, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { writeBatch, doc, collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES } from '@/lib/constants';
@@ -39,6 +40,9 @@ const componentSchema = z.object({
   tensioner: z.string().optional(),
   // Brakes specific
   pads: z.string().optional(),
+  // E-Bike specific
+  power: z.string().optional(),
+  capacity: z.string().optional(),
 });
 
 const addBikeModelSchema = z.object({
@@ -46,6 +50,7 @@ const addBikeModelSchema = z.object({
   brand: z.string().min(1, { message: 'Brand is required.' }),
   model: z.string().min(1, { message: 'Model is required.' }),
   modelYear: z.coerce.number().min(1980, 'Year must be after 1980.').max(new Date().getFullYear() + 1, 'Year cannot be in the future.'),
+  isEbike: z.boolean().default(false),
   components: z.array(componentSchema).default([]),
   frontMech: z.enum(['1x', '2x', '3x']).optional(),
   rearMech: z.enum(['9', '10', '11', '12']).optional(),
@@ -88,6 +93,7 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
         model: data.model || '',
         modelYear: data.modelYear || new Date().getFullYear(),
         type: '', // User will select this manually
+        isEbike: !!data.components.find(c => c.system === 'E-Bike'),
         components: data.components.map(c => ({
             name: c.name,
             brand: c.brand || '',
@@ -112,7 +118,7 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
     };
 };
 
-const WIZARD_SYSTEMS = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheelset', 'Cockpit'];
+const WIZARD_SYSTEMS_BASE = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheelset', 'Cockpit'];
 
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
@@ -129,6 +135,7 @@ function AddBikeModelFormComponent() {
             brand: '',
             model: '',
             modelYear: new Date().getFullYear(),
+            isEbike: false,
             components: [],
             shifterSetType: 'matched',
             brakeSetType: 'matched',
@@ -163,6 +170,7 @@ function AddBikeModelFormComponent() {
     });
 
     const bikeDetails = form.watch();
+    const isEbike = form.watch('isEbike');
     const frontMechType = form.watch('frontMech');
     const shifterSetType = form.watch('shifterSetType');
     const brakeSetType = form.watch('brakeSetType');
@@ -171,7 +179,9 @@ function AddBikeModelFormComponent() {
     const rimSetType = form.watch('rimSetType');
     const tireSetType = form.watch('tireSetType');
     const wheelsetSetup = form.watch('wheelsetSetup');
-    const activeSystem = WIZARD_SYSTEMS[systemIndex];
+    
+    const wizardSystems = isEbike ? [...WIZARD_SYSTEMS_BASE, 'E-Bike'] : WIZARD_SYSTEMS_BASE;
+    const activeSystem = wizardSystems[systemIndex];
 
     const availableBrands = useMemo(() => {
       const brands = bikeDatabase.map(bike => bike.brand);
@@ -198,6 +208,9 @@ function AddBikeModelFormComponent() {
     const rearRotorIndex = findComponentIndex('Rear Rotor', 'Brakes');
     const forkIndex = findComponentIndex('Fork', 'Suspension');
     const rearShockIndex = findComponentIndex('Rear Shock', 'Suspension');
+    const motorIndex = findComponentIndex('Motor', 'E-Bike');
+    const batteryIndex = findComponentIndex('Battery', 'E-Bike');
+    const displayIndex = findComponentIndex('Display', 'E-Bike');
     const frontHubIndex = findComponentIndex('Front Hub', 'Wheelset');
     const rearHubIndex = findComponentIndex('Rear Hub', 'Wheelset');
     const frontRimIndex = findComponentIndex('Front Rim', 'Wheelset');
@@ -234,7 +247,7 @@ function AddBikeModelFormComponent() {
 
     function handleNextSystem() {
         const nextSystemIndex = systemIndex + 1;
-        const nextSystem = WIZARD_SYSTEMS[nextSystemIndex];
+        const nextSystem = wizardSystems[nextSystemIndex];
         const componentsToAdd = [];
 
         // Pre-populate components when moving to a new step
@@ -273,13 +286,18 @@ function AddBikeModelFormComponent() {
             if (findComponentIndex('Saddle', 'Cockpit') === -1) componentsToAdd.push({ name: 'Saddle', system: 'Cockpit', brand: '', series: '', model: '' });
             if (findComponentIndex('Grips', 'Cockpit') === -1) componentsToAdd.push({ name: 'Grips', system: 'Cockpit', brand: '', series: '', model: '' });
             if (findComponentIndex('Seatpost Clamp', 'Cockpit') === -1) componentsToAdd.push({ name: 'Seatpost Clamp', system: 'Cockpit', brand: '', series: '', model: '' });
+        } else if (nextSystem === 'E-Bike') {
+            if (findComponentIndex('Motor', 'E-Bike') === -1) componentsToAdd.push({ name: 'Motor', system: 'E-Bike', brand: '', model: '', power: '' });
+            if (findComponentIndex('Battery', 'E-Bike') === -1) componentsToAdd.push({ name: 'Battery', system: 'E-Bike', brand: '', model: '', capacity: '' });
+            if (findComponentIndex('Display', 'E-Bike') === -1) componentsToAdd.push({ name: 'Display', system: 'E-Bike', brand: '', model: '' });
         }
+
 
         if (componentsToAdd.length > 0) {
             append(componentsToAdd, { shouldFocus: false });
         }
 
-        if (systemIndex < WIZARD_SYSTEMS.length - 1) {
+        if (systemIndex < wizardSystems.length - 1) {
             setSystemIndex(nextSystemIndex);
         } else {
             form.handleSubmit(onSubmit)();
@@ -386,7 +404,7 @@ function AddBikeModelFormComponent() {
       ? 'Fill out the form below to add a new bike to the central database.'
       : `Add components for the ${activeSystem.toLowerCase()} system.`;
 
-    const isLastSystem = systemIndex === WIZARD_SYSTEMS.length - 1;
+    const isLastSystem = systemIndex === wizardSystems.length - 1;
     
     const renderChainringInputs = () => {
         if (!frontMechType || cranksetIndex === -1) return null;
@@ -538,6 +556,26 @@ function AddBikeModelFormComponent() {
                                   )}
                               />
                           </div>
+                          <FormField
+                            control={form.control}
+                            name="isEbike"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                  <FormLabel>E-Bike</FormLabel>
+                                  <FormDescription>
+                                    Does this model have a motor and battery?
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
                         </div>
                       )}
                       
@@ -959,6 +997,34 @@ function AddBikeModelFormComponent() {
                         </div>
                       )}
                       
+                      {step === 2 && activeSystem === 'E-Bike' && (
+                        <div className="space-y-6">
+                            <Card>
+                                <CardHeader><CardTitle className="text-lg">Motor</CardTitle></CardHeader>
+                                <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    <FormField control={form.control} name={`components.${motorIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Bosch" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name={`components.${motorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Performance Line CX" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name={`components.${motorIndex}.power`} render={({ field }) => (<FormItem><FormLabel>Power</FormLabel><FormControl><Input placeholder="e.g., 250W" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle className="text-lg">Battery</CardTitle></CardHeader>
+                                <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    <FormField control={form.control} name={`components.${batteryIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Bosch" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name={`components.${batteryIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., PowerTube" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name={`components.${batteryIndex}.capacity`} render={({ field }) => (<FormItem><FormLabel>Capacity</FormLabel><FormControl><Input placeholder="e.g., 750Wh" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle className="text-lg">Display</CardTitle></CardHeader>
+                                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name={`components.${displayIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Bosch" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name={`components.${displayIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Kiox 300" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                        </div>
+                      )}
+
                       {step === 2 && activeSystem === 'Wheelset' && (
                         <div className="space-y-6">
                             <Card>
@@ -1166,3 +1232,5 @@ export default function AddBikeModelPage() {
     )
 }
 
+
+    
