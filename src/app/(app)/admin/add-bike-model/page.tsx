@@ -29,6 +29,7 @@ const componentSchema = z.object({
   brand: z.string().optional(),
   series: z.string().optional(),
   model: z.string().optional(),
+  size: z.string().optional(),
   system: z.string().min(1, 'System is required.'),
   // Drivetrain specific
   chainring1: z.string().optional(),
@@ -61,9 +62,13 @@ export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
 // A simple utility to create a slug from a component's details
 const createComponentId = (component: Partial<z.infer<typeof componentSchema>>) => {
-    return [component.brand, component.model, component.name]
+    const idString = [component.brand, component.model, component.name]
         .filter(Boolean)
-        .join('-')
+        .join('-');
+    
+    if (!idString) return null;
+
+    return idString
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
@@ -88,6 +93,7 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
             brand: c.brand || '',
             series: c.series || '',
             model: c.model || '',
+            size: '',
             system: c.system,
             chainring1: c.chainring1,
             chainring2: c.chainring2,
@@ -301,12 +307,13 @@ function AddBikeModelFormComponent() {
             // Process all components for the current bike
             for (const originalComponent of values.components) {
 
-                const componentToSave: Partial<z.infer<typeof componentSchema>> = {};
+                const componentToSave: { [key: string]: any } = {};
                 // Copy only defined and non-empty values to the object we'll save
                 Object.keys(originalComponent).forEach((key: any) => {
-                    const value = originalComponent[key as keyof typeof originalComponent];
-                    if (value !== undefined && value !== '') {
-                        (componentToSave as any)[key] = value;
+                    const typedKey = key as keyof typeof originalComponent;
+                    const value = originalComponent[typedKey];
+                    if (value !== undefined && value !== null && value !== '') {
+                        componentToSave[key] = value;
                     }
                 });
                 
@@ -315,8 +322,10 @@ function AddBikeModelFormComponent() {
                     continue;
                 }
 
-                const componentId = createComponentId(componentToSave);
+                const componentId = createComponentId(componentToSave as Partial<z.infer<typeof componentSchema>>);
                 
+                if (!componentId) continue;
+
                 // Add component to master list
                 const masterComponentDocRef = doc(masterComponentsRef, componentId);
                 batch.set(masterComponentDocRef, componentToSave, { merge: true });
@@ -332,8 +341,18 @@ function AddBikeModelFormComponent() {
             // Exclude full components object from the bike model data before setting it
             const { components, ...bikeModelData } = values;
 
+            const bikeModelDataToSave: { [key: string]: any } = {};
+             Object.keys(bikeModelData).forEach((key: any) => {
+                const typedKey = key as keyof typeof bikeModelData;
+                const value = bikeModelData[typedKey];
+                if (value !== undefined && value !== null && value !== '') {
+                    bikeModelDataToSave[key] = value;
+                }
+            });
+
+
             batch.set(bikeModelDocRef, {
-                ...bikeModelData,
+                ...bikeModelDataToSave,
                 components: componentReferences,
                 imageUrl: `https://placehold.co/600x400.png` // Placeholder image
             });
@@ -869,8 +888,8 @@ function AddBikeModelFormComponent() {
                                     {rotorSetType === 'matched' && frontRotorIndex !== -1 && (
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <FormField control={form.control} name={`components.${frontRotorIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontRotorIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.series`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontRotorIndex}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 160mm" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearRotorIndex}.size`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     )}
                                     {rotorSetType === 'unmatched' && frontRotorIndex !== -1 && rearRotorIndex !== -1 && (
@@ -878,14 +897,14 @@ function AddBikeModelFormComponent() {
                                             <h4 className="font-semibold text-sm">Front Rotor</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${frontRotorIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontRotorIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RT-CL900" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontRotorIndex}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 160mm" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             <h4 className="font-semibold text-sm mt-4">Rear Rotor</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${rearRotorIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearRotorIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RT-CL800" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearRotorIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., RT-CL800" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearRotorIndex}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 140mm" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </div>
                                     )}
@@ -995,8 +1014,8 @@ function AddBikeModelFormComponent() {
                                     {tireSetType === 'matched' && frontTireIndex !== -1 && (
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <FormField control={form.control} name={`components.${frontTireIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Continental" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontTireIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.series`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`components.${frontTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.model`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`components.${frontTireIndex}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 700x28c" {...field} onChange={(e) => { field.onChange(e); form.setValue(`components.${rearTireIndex}.size`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     )}
                                     {tireSetType === 'unmatched' && frontTireIndex !== -1 && rearTireIndex !== -1 && (
@@ -1004,14 +1023,14 @@ function AddBikeModelFormComponent() {
                                             <h4 className="font-semibold text-sm">Front Tire</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${frontTireIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Continental" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontTireIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${frontTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${frontTireIndex}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 700x28c" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             <h4 className="font-semibold text-sm mt-4">Rear Tire</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <FormField name={`components.${rearTireIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Continental" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearTireIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000 S" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField name={`components.${rearTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearTireIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Grand Prix 5000 S" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField name={`components.${rearTireIndex}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 700x28c" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </div>
                                     )}
@@ -1072,8 +1091,8 @@ function AddBikeModelFormComponent() {
                             <CardHeader><CardTitle className="text-lg">Seatpost</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                               <FormField name={`components.${seatpostIndex}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${seatpostIndex}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField name={`components.${seatpostIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${seatpostIndex}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField name={`components.${seatpostIndex}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 27.2mm" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </CardContent>
                           </Card>
                            <Card>
@@ -1146,3 +1165,4 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
+
