@@ -1231,6 +1231,3 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
-
-
-    

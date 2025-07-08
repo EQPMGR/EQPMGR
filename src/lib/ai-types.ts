@@ -86,5 +86,3 @@ export const SimulateWearOutputSchema = z.object({
   recommendations: z.array(z.string()).describe('Recommendations for maintenance or replacement based on the wear.'),
 });
 export type SimulateWearOutput = z.infer<typeof SimulateWearOutputSchema>;
-
-    

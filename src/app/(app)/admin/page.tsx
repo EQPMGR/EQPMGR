@@ -10,6 +10,7 @@ import { bikeDatabase, type BikeFromDB, type BikeComponentFromDB } from '@/lib/b
 import { writeBatch, doc, collection } from 'firebase/firestore';
 import { ArrowUpRight, Bike, Loader2, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 // A simple utility to create a slug from a component's details
 const createComponentId = (component: BikeComponentFromDB) => {
@@ -27,6 +28,7 @@ const createBikeModelId = (bike: BikeFromDB) => {
 }
 
 export default function AdminPage() {
+    const { user } = useAuth();
     const [isMigrating, setIsMigrating] = useState(false);
     const { toast } = useToast();
 
@@ -91,6 +93,17 @@ export default function AdminPage() {
         }
     };
 
+    if (!user?.isAdmin) {
+        return (
+            <Card className="max-w-xl mx-auto">
+                <CardHeader>
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>You do not have permission to view this page.</CardDescription>
+                </CardHeader>
+            </Card>
+        )
+    }
+
     return (
         <Card className="max-w-xl mx-auto">
             <CardHeader>
@@ -133,7 +146,7 @@ export default function AdminPage() {
                         <div>
                             <CardTitle className="text-base font-semibold">Migrate Bike Catalog</CardTitle>
                             <CardDescription className="text-sm">
-                                Moves hardcoded bike data into Firestore collections.
+                                Seeds the database with the initial bike models.
                             </CardDescription>
                         </div>
                          <Button onClick={handleMigrate} disabled={isMigrating} size="sm">
