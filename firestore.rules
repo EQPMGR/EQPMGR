@@ -1,28 +1,12 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Allow authenticated users to write to the test collection for debugging
-    match /test/{testId} {
-      allow write: if request.auth != null;
-    }
-
-    // Users can only read and update their own documents.
-    // They can create a document for themselves upon signup.
-    match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
-    }
-
-    // Any authenticated user can read or write to the shared bike database.
-    match /bikeModels/{bikeId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Any authenticated user can read or write to the shared component database.
-    match /masterComponents/{componentId} {
-      allow read, write: if request.auth != null;
+    // This is a temporary, insecure rule for debugging purposes only.
+    // It allows all reads and writes to the entire database.
+    match /{document=**} {
+      allow read, write;
     }
   }
 }
