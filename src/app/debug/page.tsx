@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 import { db } from '@/lib/firebase';
@@ -33,13 +33,13 @@ export default function DebugPage() {
     setIsLoading(true);
     setResult(null);
     try {
-      const testDocRef = doc(db, 'test', user.uid); // Use UID for document ID
-      await setDoc(testDocRef, { // Use setDoc to write to that specific ID
-        test: "success",
-        timestamp: serverTimestamp(),
-        uid: user.uid,
+      const userDocRef = doc(db, 'users', user.uid);
+      
+      await updateDoc(userDocRef, {
+        lastTestWrite: serverTimestamp(),
       });
-      const message = `Successfully wrote to DB. Document ID: ${testDocRef.id}`;
+      
+      const message = `Successfully wrote a test field to your user profile document in Firestore. Path: users/${user.uid}`;
       setResult(message);
       toast({
         title: 'Success!',
@@ -67,7 +67,7 @@ export default function DebugPage() {
         <CardHeader>
           <CardTitle>Firestore Write Test</CardTitle>
           <CardDescription>
-            This page performs a simple write to the 'test' collection to confirm database permissions.
+            This page performs a simple write to your user profile to confirm database permissions.
           </CardDescription>
         </CardHeader>
         <CardContent>
