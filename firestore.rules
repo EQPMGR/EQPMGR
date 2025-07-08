@@ -1,23 +1,22 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can only read and write to their own document.
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Only admins can read or write to the shared bike and component collections.
-    match /bikeModels/{bikeId} {
-      allow read: if request.auth != null; // All authenticated users can read models
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    // Allow any authenticated user to read all bike models.
+    match /bikeModels/{bike} {
+      allow read: if request.auth != null;
+      // Allow any authenticated user to create/update bike models.
+      allow write: if request.auth != null;
     }
 
-    match /masterComponents/{componentId} {
-      allow read: if request.auth != null; // All authenticated users can read components
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    // Allow any authenticated user to read all master components.
+    match /masterComponents/{component} {
+      allow read: if request.auth != null;
+      // Allow any authenticated user to create/update components.
+      allow write: if request.auth != null;
     }
   }
 }

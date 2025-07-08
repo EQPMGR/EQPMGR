@@ -28,7 +28,6 @@ export interface UserProfile {
   measurementSystem: 'metric' | 'imperial';
   shoeSizeSystem: 'us' | 'uk' | 'eu';
   distanceUnit: 'km' | 'miles';
-  isAdmin: boolean;
 }
 
 interface UserDocument {
@@ -43,7 +42,6 @@ interface UserDocument {
     distanceUnit?: 'km' | 'miles';
     createdAt?: FieldValue;
     lastLogin?: FieldValue;
-    isAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -70,7 +68,6 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     measurementSystem: data.measurementSystem || 'imperial',
     shoeSizeSystem: data.shoeSizeSystem || 'us',
     distanceUnit: data.distanceUnit || 'km',
-    isAdmin: data.isAdmin || false,
     height: data.height,
     weight: data.weight,
     shoeSize: data.shoeSize,
@@ -112,7 +109,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             if (!data.measurementSystem) { data.measurementSystem = 'imperial'; needsUpdate = true; }
             if (!data.shoeSizeSystem) { data.shoeSizeSystem = 'us'; needsUpdate = true; }
             if (!data.distanceUnit) { data.distanceUnit = 'km'; needsUpdate = true; }
-            if (data.isAdmin === undefined) { data.isAdmin = false; needsUpdate = true; }
             
             batch.update(userDocRef, { lastLogin: serverTimestamp() });
 
@@ -121,7 +117,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                     measurementSystem: data.measurementSystem,
                     shoeSizeSystem: data.shoeSizeSystem,
                     distanceUnit: data.distanceUnit,
-                    isAdmin: data.isAdmin,
                 }, { merge: true });
             }
 
@@ -136,7 +131,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
               measurementSystem: 'imperial',
               shoeSizeSystem: 'us',
               distanceUnit: 'km',
-              isAdmin: false,
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp(),
             };
