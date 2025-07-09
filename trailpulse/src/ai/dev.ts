@@ -1,0 +1,7 @@
+'use server';
+
+import '@/ai/flows/generate-maintenance-schedule.ts';
+import '@/ai/flows/simulate-wear.ts';
+import '@/ai/flows/get-bike-model-details.ts';
+import '@/ai/flows/extract-bike-details-from-url.ts';
+import '@/ai/flows/text-to-speech.ts';
