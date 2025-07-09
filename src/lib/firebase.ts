@@ -15,6 +15,13 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+// DEBUG: Log the config to the browser console to verify it's loaded.
+console.log("Firebase Config Loaded:", {
+    apiKey: firebaseConfig.apiKey ? 'Loaded' : 'MISSING!',
+    authDomain: firebaseConfig.authDomain,
+    projectId: firebaseConfig.projectId,
+});
+
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
