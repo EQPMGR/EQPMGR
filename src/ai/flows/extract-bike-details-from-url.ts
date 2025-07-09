@@ -22,16 +22,20 @@ const bikeExtractorPrompt = ai.definePrompt({
   name: 'bikeExtractorPrompt',
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
+  config: {
+    temperature: 0.2,
+  },
   prompt: `You are an expert bike mechanic. Analyze the provided text. Extract the bike's brand, model, and modelYear.
-Identify all components listed. For each component, extract its name, brand, series, and model. Assign it to a 'system'.
+Identify all unique components listed. Do not list the same component twice.
+For each component, extract its name, brand, series, and model. Assign it to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
 
 IMPORTANT RULES:
 1.  The 'series' is the product family name (e.g., 'Dura-Ace', '105', 'GX Eagle').
 2.  The 'model' is the specific part number (e.g., 'RD-5701', 'CS-4600'). The model should ONLY contain the part number.
-3.  If a value isn't available for a field, omit that field. Do not make up values.
+3.  If a value isn't available for a field, omit that field. Do not invent or guess values.
 4.  Standardize "Seat Post" to "Seatpost".
 
-Return ONLY the structured JSON format.
+Return ONLY the structured JSON object. Do not include any other text or explanations.
 
 Page Content:
 {{{textContent}}}
