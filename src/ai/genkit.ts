@@ -2,8 +2,8 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
-// Genkit will read the Gemini API key from the GOOGLE_API_KEY environment variable.
-const GEMINI_API_KEY = process.env.GOOGLE_API_KEY;
+// Use the same API key as the main Firebase app for simplicity.
+const GEMINI_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 export const ai = genkit({
   plugins: [googleAI({
