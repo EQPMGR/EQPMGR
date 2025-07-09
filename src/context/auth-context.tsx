@@ -12,7 +12,6 @@ import {
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
 import { auth, storage, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -78,7 +77,6 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const { toast } = useToast();
 
   const handleAuthError = useCallback((error: any, title: string) => {
@@ -155,7 +153,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/');
+      // Let the onAuthStateChanged handler redirect
     } catch (error) {
       handleAuthError(error, 'Sign In Failed');
     }
@@ -163,9 +161,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
      try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      // The onAuthStateChanged listener will handle new user setup.
-      router.push('/settings/profile');
+      await signUpWithEmailAndPassword(auth, email, password);
+      // The onAuthStateChanged listener will handle new user setup and redirect.
     } catch (error) {
       handleAuthError(error, 'Sign Up Failed');
     }
@@ -174,7 +171,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signOutHandler = async () => {
     try {
         await firebaseSignOut(auth);
-        router.push('/login');
+        // Redirection will now be handled in the component that calls this.
     } catch (error) {
         handleAuthError(error, 'Sign Out Failed');
     }
@@ -196,8 +193,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const firestoreUpdateData: { [key: string]: any } = {};
         for (const key in data) {
             const typedKey = key as keyof typeof data;
-            if (data[typedKey] !== undefined && data[typedKey] !== null && data[typedKey] !== '') {
-                firestoreUpdateData[key] = data[typedKey];
+            const value = data[typedKey];
+            if (value !== undefined && value !== null && value !== '') {
+                firestoreUpdateData[key] = value;
             } else {
                 firestoreUpdateData[key] = deleteField();
             }
@@ -273,3 +271,5 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 };
 
 export { AuthContext };
+
+    

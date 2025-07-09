@@ -1,5 +1,7 @@
+
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { LogOut, Settings, User } from 'lucide-react';
 
 import {
@@ -21,10 +23,16 @@ import { useAuth } from '@/hooks/use-auth';
 
 export function UserNav() {
   const { user, signOut } = useAuth();
+  const router = useRouter();
   
   if (!user) {
     return null;
   }
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
+  };
 
   return (
     <DropdownMenu>
@@ -63,7 +71,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={signOut}>
+        <DropdownMenuItem onClick={handleSignOut}>
           <LogOut />
           Log out
         </DropdownMenuItem>
