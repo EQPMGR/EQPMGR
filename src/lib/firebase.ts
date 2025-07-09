@@ -17,7 +17,7 @@ const firebaseConfig = {
 
 // DEBUG: Log the config to the browser console to verify it's loaded.
 console.log("Firebase Config Loaded:", {
-    apiKey: firebaseConfig.apiKey ? 'Loaded' : 'MISSING!',
+    apiKey: firebaseConfig.apiKey?.startsWith('REPLACE') ? 'MISSING! Please add new config.' : 'Loaded',
     authDomain: firebaseConfig.authDomain,
     projectId: firebaseConfig.projectId,
 });
