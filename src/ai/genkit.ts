@@ -3,7 +3,7 @@ import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
 // Use the same API key as the main Firebase app for simplicity.
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const GEMINI_API_KEY = "AIzaSyBmjQjRubeRl_hoAJLDxvhexEwGPvpxj4k";
 
 export const ai = genkit({
   plugins: [googleAI({
