@@ -6,7 +6,7 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 import { getPerformance } from "firebase/performance";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyBmjQjRubeRl_hoAJLDxvhexEwGPvpxj4k",
   authDomain: "eqpmgr-f82e7.firebaseapp.com",
   projectId: "eqpmgr-f82e7",
   storageBucket: "eqpmgr-f82e7.appspot.com",
