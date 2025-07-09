@@ -53,10 +53,14 @@ export default function ImportFromUrlPage() {
 
         } catch (error: any) {
             console.error('Extraction failed:', error);
+            let description = error.message || 'An unexpected error occurred.';
+            if (error.message && (error.message.includes('API_KEY_SERVICE_BLOCKED') || error.message.includes('SERVICE_DISABLED'))) {
+                description = "The AI service is blocked. Please ensure the 'Generative Language API' is enabled for your project AND added to your API key's restrictions in the Google Cloud Console.";
+            }
             toast({
                 variant: 'destructive',
                 title: 'Extraction Failed',
-                description: error.message || 'An unexpected error occurred.',
+                description: description,
             });
         } finally {
             setIsLoading(false);
