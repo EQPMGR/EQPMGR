@@ -31,7 +31,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  allowedDevOrigins: ['https://6000-firebase-studio-1751254405660.cluster-pb4ljhlmg5hqsxnzpc56r3prxw.cloudworkstations.dev'],
+  allowedDevOrigins: [
+    'https://6000-firebase-studio-1751254405660.cluster-pb4ljhlmg5hqsxnzpc56r3prxw.cloudworkstations.dev',
+    'http://localhost:3000',
+    'http://localhost:6000',
+  ],
   webpack: (config, { isServer }) => {
     // Fix for Genkit's dependency on handlebars
     config.module.rules.push({
