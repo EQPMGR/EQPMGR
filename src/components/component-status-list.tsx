@@ -22,7 +22,7 @@ export function ComponentStatusList({ components }: ComponentStatusListProps) {
     <TooltipProvider>
       <div className="space-y-3">
         {components.map((component) => (
-          <Tooltip key={component.id}>
+          <Tooltip key={component.userComponentId}>
             <TooltipTrigger className="w-full text-left">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-sm font-medium">{component.name}</p>

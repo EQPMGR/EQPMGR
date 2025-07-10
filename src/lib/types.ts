@@ -1,29 +1,46 @@
 import type { BikeType } from '@/lib/constants';
 
-export interface Component {
+// Data from the master/central database
+export interface MasterComponent {
   id: string;
-  name: string; // e.g., "Rear Derailleur"
-  brand: string; // e.g., "Shimano"
-  model: string; // e.g., "105 RD-5701"
+  name: string;
+  brand: string;
+  series?: string;
+  model?: string;
   system: string;
+  // Future fields for lifespan analysis
+  // manufacturerLifespanKm?: number;
+  // observedAvgLifespanKm?: number;
+}
+
+// Data specific to a user's instance of a component
+export interface UserComponent {
+  id: string; // Unique ID for this specific instance
+  masterComponentId: string; // Reference to the MasterComponent
   wearPercentage: number;
   lastServiceDate: Date | null;
   purchaseDate: Date;
   notes?: string;
 }
 
+// The combined object we'll use in the app UI
+export interface Component extends MasterComponent, Omit<UserComponent, 'id' | 'masterComponentId'> {
+  userComponentId: string;
+}
+
+
 export interface MaintenanceLog {
   id: string;
   date: Date;
-  logType: 'service' | 'repair' | 'modification';
+  logType: 'service' | 'repair' | 'modification' | 'replacement';
   description: string;
   cost: number;
   serviceType: 'diy' | 'shop';
   serviceProvider?: string;
   technician?: string;
-  componentReplaced: boolean;
-  isOEM?: boolean;
-  replacementPart?: string;
+  replacedComponentId?: string; // ID of the UserComponent that was replaced
+  replacementReason?: 'worn' | 'damaged' | 'upgrade' | 'other';
+  newComponentId?: string; // ID of the new UserComponent that was installed
   notes?: string;
 }
 
@@ -41,6 +58,6 @@ export interface Equipment {
   totalDistance: number;
   totalHours: number;
   imageUrl: string;
-  components: Component[];
+  components: Component[]; // This will now be the combined type
   maintenanceLog: MaintenanceLog[];
 }

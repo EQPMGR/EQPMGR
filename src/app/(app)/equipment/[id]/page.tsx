@@ -1,6 +1,6 @@
 
 'use client'
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -14,7 +14,7 @@ import {
   Loader2,
   Zap,
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, deleteField } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteField, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -41,7 +41,7 @@ import { ComponentStatusList } from '@/components/component-status-list';
 // import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
-import type { Equipment, MaintenanceLog as MaintenanceLogType, Component } from '@/lib/types';
+import type { Equipment, MaintenanceLog as MaintenanceLogType, Component, MasterComponent, UserComponent } from '@/lib/types';
 import { AccessoriesIcon } from '@/components/icons/accessories-icon';
 import { WheelsetIcon } from '@/components/icons/wheelset-icon';
 import { RimBrakeIcon } from '@/components/icons/rim-brake-icon';
@@ -62,43 +62,33 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
     if (name.includes('accessories')) {
         return <AccessoriesIcon className={className} />;
     }
-
     if (name.includes('frame')) {
         return <FramesetIcon className={className} />;
     }
-
     if (name.includes('disc brake')) {
         return <DiscBrakeIcon className={className} />;
     }
-
     if (name.includes('rim brake')) {
         return <RimBrakeIcon className={className} />;
     }
-
     if (name.includes('brake')) {
         return <DiscBrakeIcon className={className} />;
     }
-    
     if (name.includes('wheel')) {
         return <WheelsetIcon className={className} />;
     }
-    
     if (name.includes('cockpit')) {
         return <Puzzle className={className} />;
     }
-
     if (name.includes('suspension')) {
       return <SuspensionIcon className={className} />;
     }
-
     if (name.includes('drivetrain')) {
       return <DrivetrainIcon className={className} />;
     }
-
     if (name.includes('e-bike')) {
       return <Zap className={className} />;
     }
-
     // Default icon
     return <Puzzle className={className} />;
 }
@@ -113,69 +103,80 @@ export default function EquipmentDetailPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    if (user && params.id) {
-      const fetchEquipment = async () => {
-        setIsLoading(true);
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
+  const fetchEquipment = useCallback(async (uid: string, equipmentId: string) => {
+    setIsLoading(true);
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      const userDocSnap = await getDoc(userDocRef);
 
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            const equipmentData = userData.equipment?.[params.id];
-
-            if (equipmentData) {
-              const components = (equipmentData.components || []).map((c: any) => ({
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const equipmentData = userData.equipment?.[equipmentId];
+        
+        if (equipmentData) {
+            const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
                 ...c,
                 purchaseDate: toDate(c.purchaseDate),
                 lastServiceDate: toNullableDate(c.lastServiceDate),
-              }));
-              const maintenanceLog = (equipmentData.maintenanceLog || []).map((l: any) => ({
-                ...l,
-                date: toDate(l.date),
-              }));
+            }));
 
-              setEquipment({
-                ...equipmentData,
-                id: params.id,
-                purchaseDate: toDate(equipmentData.purchaseDate),
-                components,
-                maintenanceLog,
-              } as Equipment);
-            } else {
-               toast({
-                variant: "destructive",
-                title: "Not Found",
-                description: "Could not find the requested equipment."
-              });
-              setEquipment(undefined);
+            const masterComponentIds = userComponents.map(c => c.masterComponentId);
+            
+            const masterComponentsMap = new Map<string, MasterComponent>();
+            if (masterComponentIds.length > 0) {
+                const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', masterComponentIds));
+                const querySnapshot = await getDocs(masterComponentsQuery);
+                querySnapshot.forEach(doc => {
+                    masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                });
             }
-          } else {
-            // This case should ideally not happen if user is authenticated
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "User profile not found."
-            });
-            setEquipment(undefined);
-          }
-        } catch (error) {
-          console.error("Error fetching equipment details: ", error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not load equipment details."
-          });
-        } finally {
-          setIsLoading(false);
+
+            const combinedComponents: Component[] = userComponents.map(userComp => {
+                const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+                if (!masterComp) return null;
+                return {
+                    ...masterComp,
+                    userComponentId: userComp.id,
+                    wearPercentage: userComp.wearPercentage,
+                    purchaseDate: userComp.purchaseDate,
+                    lastServiceDate: userComp.lastServiceDate,
+                    notes: userComp.notes,
+                };
+            }).filter((c): c is Component => c !== null);
+
+            setEquipment({
+                ...equipmentData,
+                id: equipmentId,
+                purchaseDate: toDate(equipmentData.purchaseDate),
+                components: combinedComponents,
+                maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+                    ...l,
+                    date: toDate(l.date),
+                })),
+            } as Equipment);
+        } else {
+           toast({ variant: "destructive", title: "Not Found", description: "Could not find the requested equipment." });
+           setEquipment(undefined);
         }
-      };
-      fetchEquipment();
+      } else {
+        toast({ variant: "destructive", title: "Error", description: "User profile not found." });
+        setEquipment(undefined);
+      }
+    } catch (error) {
+      console.error("Error fetching equipment details: ", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not load equipment details." });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+  
+  useEffect(() => {
+    if (user && params.id) {
+        fetchEquipment(user.uid, params.id as string);
     } else if (!authLoading) {
         setIsLoading(false);
     }
-  }, [user, params.id, authLoading, toast]);
+  }, [user, params.id, authLoading, fetchEquipment]);
   
   const handleUpdateEquipment = async (data: UpdateEquipmentData) => {
     if (!user || !equipment) {
@@ -183,7 +184,6 @@ export default function EquipmentDetailPage() {
       return;
     }
     
-    // Create an object with dot notation for the fields to update
     const updatePayload: { [key: string]: any } = {};
     for (const [key, value] of Object.entries(data)) {
       updatePayload[`equipment.${equipment.id}.${key}`] = value;
@@ -194,7 +194,6 @@ export default function EquipmentDetailPage() {
     
     setEquipment(prev => {
         if (!prev) return undefined;
-        // The data coming from the form is already in the correct type (Date object)
         const updatedData: Partial<Equipment> = { ...data };
         return { ...prev, ...updatedData };
     });
@@ -233,38 +232,12 @@ export default function EquipmentDetailPage() {
   const systemsToDisplay = useMemo(() => {
     if (!equipment) return [];
     
-    // Base systems for all bikes
-    const systems = new Set([
-        'Drivetrain',
-        'Brakes',
-        'Wheelset',
-        'Frameset',
-        'Cockpit',
-        'Accessories',
-    ]);
-    
-    // Add systems specific to the bike type
-    if (MOUNTAIN_BIKE_TYPES.includes(equipment.type as any)) {
-        systems.add('Suspension');
-    }
-    if (EBIKE_TYPES.includes(equipment.type as any)) {
-        systems.add('E-Bike');
-    }
-
-
-    // Always include systems that might exist on the bike data already
+    const systems = new Set<string>();
     equipment.components.forEach(c => systems.add(c.system));
-
-    // Define a preferred order for display
+    
     const preferredOrder = [
-        'Drivetrain',
-        'Suspension',
-        'E-Bike',
-        'Brakes',
-        'Wheelset',
-        'Frameset',
-        'Cockpit',
-        'Accessories',
+        'Drivetrain', 'Suspension', 'E-Bike', 'Brakes', 
+        'Wheelset', 'Frameset', 'Cockpit', 'Accessories'
     ];
 
     return preferredOrder.filter(system => systems.has(system));
@@ -286,23 +259,6 @@ export default function EquipmentDetailPage() {
       </div>
     );
   }
-  
-  /*
-  const handleAddLog = (newLog: Omit<MaintenanceLogType, 'id'>) => {
-    setEquipment(prev => {
-        if (!prev) return undefined;
-        const newLogEntry: MaintenanceLogType = {
-            ...newLog,
-            id: `ml-${Date.now()}`,
-        };
-        const updatedEquipment = {
-            ...prev,
-            maintenanceLog: [newLogEntry, ...prev.maintenanceLog],
-        };
-        return updatedEquipment;
-    });
-  }
-  */
 
   const topComponents = [...equipment.components]
     .sort((a, b) => b.wearPercentage - a.wearPercentage)
@@ -478,7 +434,3 @@ export default function EquipmentDetailPage() {
     </>
   );
 }
-
-    
-
-    

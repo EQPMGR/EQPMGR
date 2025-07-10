@@ -1,11 +1,12 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Activity } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, writeBatch, collection, getDocs, query, where } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import type { Equipment } from '@/lib/types';
+import type { Equipment, MasterComponent, UserComponent, Component } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
 import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -21,54 +22,100 @@ export function EquipmentListPage() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      const fetchEquipment = async () => {
-        setIsLoading(true);
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            const equipmentMap = userData.equipment || {};
-            const equipmentList = Object.entries(equipmentMap).map(([id, docData]: [string, any]) => {
-              const components = (docData.components || []).map((c: any) => ({
+  const fetchEquipment = useCallback(async (uid: string) => {
+    setIsLoading(true);
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const equipmentMap = userData.equipment || {};
+        const equipmentList: Equipment[] = [];
+        
+        // This will hold all master component IDs we need to fetch
+        const allMasterComponentIds = new Set<string>();
+        
+        // First pass: aggregate all component IDs
+        for (const id in equipmentMap) {
+            const equipmentData = equipmentMap[id];
+            if (Array.isArray(equipmentData.components)) {
+                equipmentData.components.forEach((c: any) => {
+                    if (c.masterComponentId) {
+                        allMasterComponentIds.add(c.masterComponentId);
+                    }
+                });
+            }
+        }
+
+        // Fetch all required master components in a single query if any exist
+        const masterComponentsMap = new Map<string, MasterComponent>();
+        if (allMasterComponentIds.size > 0) {
+            const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', Array.from(allMasterComponentIds)));
+            const querySnapshot = await getDocs(masterComponentsQuery);
+            querySnapshot.forEach(doc => {
+                masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+            });
+        }
+        
+        // Second pass: build the final equipment objects
+        for (const id in equipmentMap) {
+            const equipmentData = equipmentMap[id];
+            const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
                 ...c,
                 purchaseDate: toDate(c.purchaseDate),
                 lastServiceDate: toNullableDate(c.lastServiceDate),
-              }));
-              const maintenanceLog = (docData.maintenanceLog || []).map((l: any) => ({
-                ...l,
-                date: toDate(l.date),
-              }));
+            }));
 
-              return {
-                ...docData,
-                id: id,
-                purchaseDate: toDate(docData.purchaseDate),
-                components,
-                maintenanceLog,
-              } as Equipment;
-            });
-            setData(equipmentList);
-          }
-        } catch (error) {
-          console.error("Error fetching equipment: ", error);
-          toast({
-            variant: "destructive",
-            title: "Error fetching gear",
-            description: "Could not load your equipment from the database.",
-          });
-        } finally {
-          setIsLoading(false);
+            const combinedComponents: Component[] = userComponents.map(userComp => {
+                const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+                if (!masterComp) {
+                    // Handle cases where master component might be missing
+                    console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
+                    return null;
+                }
+                return {
+                    ...masterComp,
+                    userComponentId: userComp.id,
+                    wearPercentage: userComp.wearPercentage,
+                    purchaseDate: userComp.purchaseDate,
+                    lastServiceDate: userComp.lastServiceDate,
+                    notes: userComp.notes,
+                };
+            }).filter((c): c is Component => c !== null);
+
+            equipmentList.push({
+                ...equipmentData,
+                id,
+                purchaseDate: toDate(equipmentData.purchaseDate),
+                components: combinedComponents,
+                maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+                    ...l,
+                    date: toDate(l.date),
+                })),
+              } as Equipment);
         }
-      };
-      fetchEquipment();
+        setData(equipmentList);
+      }
+    } catch (error) {
+      console.error("Error fetching equipment: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching gear",
+        description: "Could not load your equipment from the database.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (user) {
+      fetchEquipment(user.uid);
     } else if (!authLoading) {
       setIsLoading(false);
     }
-  }, [user, authLoading, toast]);
+  }, [user, authLoading, fetchEquipment]);
 
 
   async function handleAddEquipment(
@@ -84,11 +131,13 @@ export function EquipmentListPage() {
     }
     const [brand, model, modelYearStr] = formData.bikeIdentifier.split('|');
     const modelYear = parseInt(modelYearStr, 10);
-    const bikeFromDb = bikeDatabase.find(
-      b => b.brand === brand && b.model === model && b.modelYear === modelYear
-    );
+    
+    // In a real app with a full backend, we would fetch the bike model from Firestore.
+    // For now, we simulate this by finding it in our local database.
+    const bikeModelRef = doc(db, 'bikeModels', `${brand}-${model}-${modelYear}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+    const bikeModelSnap = await getDoc(bikeModelRef);
 
-    if (!bikeFromDb) {
+    if (!bikeModelSnap.exists()) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -96,11 +145,22 @@ export function EquipmentListPage() {
       });
       throw new Error('Selected bike not found');
     }
+    const bikeFromDb = bikeModelSnap.data();
 
     const newEquipmentId = crypto.randomUUID();
       
-    // Create the base equipment data object
-    const newEquipmentData: Omit<Equipment, 'id'> = {
+    const userComponents: UserComponent[] = (bikeFromDb.components as string[]).map((masterComponentPath: string) => {
+        const masterComponentId = masterComponentPath.split('/').pop()!;
+        return {
+            id: crypto.randomUUID(),
+            masterComponentId: masterComponentId,
+            wearPercentage: 0,
+            purchaseDate: new Date(formData.purchaseDate),
+            lastServiceDate: null,
+        }
+    });
+
+    const newEquipmentData: Omit<Equipment, 'id' | 'components'> = {
         name: formData.name,
         type: bikeFromDb.type,
         brand: bikeFromDb.brand,
@@ -112,31 +172,24 @@ export function EquipmentListPage() {
         imageUrl: bikeFromDb.imageUrl,
         totalDistance: 0,
         totalHours: 0,
-        components: bikeFromDb.components.map(c => ({
-            ...c,
-            id: crypto.randomUUID(),
-            wearPercentage: 0,
-            purchaseDate: new Date(formData.purchaseDate),
-            lastServiceDate: null,
-        })),
         maintenanceLog: [],
     };
-
+    
     // Conditionally add serial number if it exists and is not an empty string
     if (formData.serialNumber && formData.serialNumber.trim() !== '') {
-        newEquipmentData.serialNumber = formData.serialNumber;
+        (newEquipmentData as any).serialNumber = formData.serialNumber;
     }
     
     const userDocRef = doc(db, 'users', user.uid);
     await updateDoc(userDocRef, {
-      [`equipment.${newEquipmentId}`]: newEquipmentData
+      [`equipment.${newEquipmentId}`]: {
+          ...newEquipmentData,
+          components: userComponents, // Store the array of user-component objects
+      }
     });
     
-    const finalEquipment: Equipment = {
-      ...newEquipmentData,
-      id: newEquipmentId,
-    }
-    setData((prevData) => [finalEquipment, ...prevData]);
+    // We need to refetch to get the full component data for the newly added item
+    await fetchEquipment(user.uid);
   }
 
   if (isLoading || authLoading) {

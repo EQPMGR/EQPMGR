@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { toDate, toNullableDate } from '@/lib/date-utils';
-import type { Component } from '@/lib/types';
+import type { Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 
 export default function ComponentDetailPage() {
@@ -24,48 +24,58 @@ export default function ComponentDetailPage() {
   const [component, setComponent] = useState<Component | undefined>();
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchComponent = useCallback(async (uid: string, equipmentId: string, userComponentId: string) => {
+    setIsLoading(true);
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const equipmentData = userData.equipment?.[equipmentId];
+
+        if (equipmentData) {
+          const userComp = (equipmentData.components as UserComponent[]).find(c => c.id === userComponentId);
+
+          if (userComp) {
+            const masterCompRef = doc(db, 'masterComponents', userComp.masterComponentId);
+            const masterCompSnap = await getDoc(masterCompRef);
+
+            if (masterCompSnap.exists()) {
+              const masterComp = { id: masterCompSnap.id, ...masterCompSnap.data() } as MasterComponent;
+              setComponent({
+                ...masterComp,
+                userComponentId: userComp.id,
+                wearPercentage: userComp.wearPercentage,
+                purchaseDate: toDate(userComp.purchaseDate),
+                lastServiceDate: toNullableDate(userComp.lastServiceDate),
+                notes: userComp.notes,
+              });
+            } else {
+              toast({ variant: "destructive", title: "Master Component not found" });
+            }
+          } else {
+            toast({ variant: "destructive", title: "Component not found" });
+          }
+        } else {
+           toast({ variant: "destructive", title: "Equipment not found" });
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching component details: ", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not load component details." });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+  
   useEffect(() => {
     if (user && params.id && params.componentId) {
-       const fetchComponent = async () => {
-        setIsLoading(true);
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            const equipmentData = userData.equipment?.[params.id];
-
-            if (equipmentData) {
-              const foundComponent = (equipmentData.components || []).find((c: any) => c.id === params.componentId);
-
-              if (foundComponent) {
-                setComponent({
-                  ...foundComponent,
-                  purchaseDate: toDate(foundComponent.purchaseDate),
-                  lastServiceDate: toNullableDate(foundComponent.lastServiceDate),
-                });
-              } else {
-                toast({ variant: "destructive", title: "Component not found" });
-                setComponent(undefined);
-              }
-            } else {
-               toast({ variant: "destructive", title: "Equipment not found" });
-               setComponent(undefined);
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching component details: ", error);
-          toast({ variant: "destructive", title: "Error", description: "Could not load component details." });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchComponent();
+      fetchComponent(user.uid, params.id, params.componentId);
     } else if (!authLoading) {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [user, params.id, params.componentId, authLoading, toast]);
+  }, [user, params.id, params.componentId, authLoading, toast, fetchComponent]);
 
 
   if (isLoading || authLoading) {

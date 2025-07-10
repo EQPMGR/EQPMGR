@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChevronLeft, ArrowUpRight } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { toDate, toNullableDate } from '@/lib/date-utils';
-import type { Equipment, Component } from '@/lib/types';
+import type { Equipment, Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 
 export default function SystemDetailPage() {
@@ -26,69 +26,85 @@ export default function SystemDetailPage() {
 
   const systemName = useMemo(() => {
     if (!params.system) return '';
-    // Convert slug back to title case for display
     return params.system.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }, [params.system]);
 
-  useEffect(() => {
-    if (user && params.id) {
-      const fetchEquipment = async () => {
-        setIsLoading(true);
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
+  const fetchEquipment = useCallback(async (uid: string, equipmentId: string) => {
+    setIsLoading(true);
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      const userDocSnap = await getDoc(userDocRef);
 
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            const equipmentData = userData.equipment?.[params.id];
-
-            if (equipmentData) {
-              const components = (equipmentData.components || []).map((c: any) => ({
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const equipmentData = userData.equipment?.[equipmentId];
+        
+        if (equipmentData) {
+            const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
                 ...c,
                 purchaseDate: toDate(c.purchaseDate),
                 lastServiceDate: toNullableDate(c.lastServiceDate),
-              }));
-              const maintenanceLog = (equipmentData.maintenanceLog || []).map((l: any) => ({
-                ...l,
-                date: toDate(l.date),
-              }));
+            }));
 
-              setEquipment({
-                ...equipmentData,
-                id: params.id,
-                purchaseDate: toDate(equipmentData.purchaseDate),
-                components,
-                maintenanceLog,
-              } as Equipment);
-            } else {
-               toast({
-                variant: "destructive",
-                title: "Not Found",
-                description: "Could not find the requested equipment."
-              });
-              setEquipment(undefined);
+            const masterComponentIds = userComponents.map(c => c.masterComponentId);
+            
+            const masterComponentsMap = new Map<string, MasterComponent>();
+            if (masterComponentIds.length > 0) {
+                const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', masterComponentIds));
+                const querySnapshot = await getDocs(masterComponentsQuery);
+                querySnapshot.forEach(doc => {
+                    masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                });
             }
-          }
-        } catch (error) {
-          console.error("Error fetching equipment details: ", error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not load equipment details."
-          });
-        } finally {
-          setIsLoading(false);
+
+            const combinedComponents: Component[] = userComponents.map(userComp => {
+                const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+                if (!masterComp) return null;
+                return {
+                    ...masterComp,
+                    userComponentId: userComp.id,
+                    wearPercentage: userComp.wearPercentage,
+                    purchaseDate: userComp.purchaseDate,
+                    lastServiceDate: userComp.lastServiceDate,
+                    notes: userComp.notes,
+                };
+            }).filter((c): c is Component => c !== null);
+
+            setEquipment({
+                ...equipmentData,
+                id: equipmentId,
+                purchaseDate: toDate(equipmentData.purchaseDate),
+                components: combinedComponents,
+                maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+                    ...l,
+                    date: toDate(l.date),
+                })),
+            } as Equipment);
+        } else {
+           toast({ variant: "destructive", title: "Not Found", description: "Could not find the requested equipment." });
+           setEquipment(undefined);
         }
-      };
-      fetchEquipment();
+      }
+    } catch (error) {
+      console.error("Error fetching equipment details: ", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not load equipment details." });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+  
+  useEffect(() => {
+    if (user && params.id) {
+        fetchEquipment(user.uid, params.id as string);
     } else if (!authLoading) {
         setIsLoading(false);
     }
-  }, [user, params.id, authLoading, toast]);
+  }, [user, params.id, authLoading, fetchEquipment]);
 
   const systemComponents = useMemo(() => {
     if (!equipment) return [];
-    return equipment.components.filter(c => c.system.toLowerCase().replace(/\s+/g, '-') === params.system);
+    const systemSlug = params.system.replace(/-/g, ' ').toLowerCase();
+    return equipment.components.filter(c => c.system.toLowerCase() === systemSlug);
   }, [equipment, params.system]);
   
   if (isLoading || authLoading) {
@@ -130,7 +146,7 @@ export default function SystemDetailPage() {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {systemComponents.map(component => (
-            <Link href={`/equipment/${params.id}/${params.system}/${component.id}`} key={component.id} className="block">
+            <Link href={`/equipment/${params.id}/${params.system}/${component.userComponentId}`} key={component.userComponentId} className="block">
               <Card className="hover:bg-muted/50 cursor-pointer transition-colors h-full flex flex-col">
                 <CardHeader>
                   <CardTitle className="text-lg">{component.name}</CardTitle>
