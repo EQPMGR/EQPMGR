@@ -32,15 +32,15 @@ export interface Component extends MasterComponent, Omit<UserComponent, 'id' | '
 export interface MaintenanceLog {
   id: string;
   date: Date;
-  logType: 'service' | 'repair' | 'modification' | 'replacement';
+  logType: 'service' | 'repair' | 'modification';
   description: string;
   cost: number;
   serviceType: 'diy' | 'shop';
   serviceProvider?: string;
   technician?: string;
-  replacedComponentId?: string; // ID of the UserComponent that was replaced
-  replacementReason?: 'worn' | 'damaged' | 'upgrade' | 'other';
-  newComponentId?: string; // ID of the new UserComponent that was installed
+  componentReplaced: boolean;
+  isOEM?: boolean;
+  replacementPart?: string;
   notes?: string;
 }
 
@@ -58,6 +58,6 @@ export interface Equipment {
   totalDistance: number;
   totalHours: number;
   imageUrl: string;
-  components: Component[]; // This will now be the combined type
+  components: Component[];
   maintenanceLog: MaintenanceLog[];
 }

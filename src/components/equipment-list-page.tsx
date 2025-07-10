@@ -3,14 +3,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Activity } from 'lucide-react';
-import { doc, getDoc, updateDoc, writeBatch, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import type { Equipment, MasterComponent, UserComponent, Component } from '@/lib/types';
+import type { Equipment, MasterComponent, UserComponent, Component, MaintenanceLog } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
 import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { bikeDatabase } from '@/lib/bike-database';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,10 +32,8 @@ export function EquipmentListPage() {
         const equipmentMap = userData.equipment || {};
         const equipmentList: Equipment[] = [];
         
-        // This will hold all master component IDs we need to fetch
         const allMasterComponentIds = new Set<string>();
         
-        // First pass: aggregate all component IDs
         for (const id in equipmentMap) {
             const equipmentData = equipmentMap[id];
             if (Array.isArray(equipmentData.components)) {
@@ -48,7 +45,6 @@ export function EquipmentListPage() {
             }
         }
 
-        // Fetch all required master components in a single query if any exist
         const masterComponentsMap = new Map<string, MasterComponent>();
         if (allMasterComponentIds.size > 0) {
             const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', Array.from(allMasterComponentIds)));
@@ -58,7 +54,6 @@ export function EquipmentListPage() {
             });
         }
         
-        // Second pass: build the final equipment objects
         for (const id in equipmentMap) {
             const equipmentData = equipmentMap[id];
             const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
@@ -70,7 +65,6 @@ export function EquipmentListPage() {
             const combinedComponents: Component[] = userComponents.map(userComp => {
                 const masterComp = masterComponentsMap.get(userComp.masterComponentId);
                 if (!masterComp) {
-                    // Handle cases where master component might be missing
                     console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
                     return null;
                 }
@@ -132,9 +126,8 @@ export function EquipmentListPage() {
     const [brand, model, modelYearStr] = formData.bikeIdentifier.split('|');
     const modelYear = parseInt(modelYearStr, 10);
     
-    // In a real app with a full backend, we would fetch the bike model from Firestore.
-    // For now, we simulate this by finding it in our local database.
-    const bikeModelRef = doc(db, 'bikeModels', `${brand}-${model}-${modelYear}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+    const bikeModelId = `${brand}-${model}-${modelYear}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const bikeModelRef = doc(db, 'bikeModels', bikeModelId);
     const bikeModelSnap = await getDoc(bikeModelRef);
 
     if (!bikeModelSnap.exists()) {
@@ -155,40 +148,37 @@ export function EquipmentListPage() {
             id: crypto.randomUUID(),
             masterComponentId: masterComponentId,
             wearPercentage: 0,
-            purchaseDate: new Date(formData.purchaseDate),
+            purchaseDate: formData.purchaseDate,
             lastServiceDate: null,
+            notes: '',
         }
     });
 
-    const newEquipmentData: Omit<Equipment, 'id' | 'components'> = {
+    const newEquipmentData: Partial<Equipment> & { components: UserComponent[] } = {
         name: formData.name,
         type: bikeFromDb.type,
         brand: bikeFromDb.brand,
         model: bikeFromDb.model,
         modelYear: bikeFromDb.modelYear,
-        purchaseDate: new Date(formData.purchaseDate),
+        purchaseDate: formData.purchaseDate,
         purchasePrice: formData.purchasePrice,
         purchaseCondition: formData.purchaseCondition,
         imageUrl: bikeFromDb.imageUrl,
         totalDistance: 0,
         totalHours: 0,
         maintenanceLog: [],
+        components: userComponents,
     };
     
-    // Conditionally add serial number if it exists and is not an empty string
     if (formData.serialNumber && formData.serialNumber.trim() !== '') {
-        (newEquipmentData as any).serialNumber = formData.serialNumber;
+        newEquipmentData.serialNumber = formData.serialNumber;
     }
     
     const userDocRef = doc(db, 'users', user.uid);
     await updateDoc(userDocRef, {
-      [`equipment.${newEquipmentId}`]: {
-          ...newEquipmentData,
-          components: userComponents, // Store the array of user-component objects
-      }
+      [`equipment.${newEquipmentId}`]: newEquipmentData
     });
     
-    // We need to refetch to get the full component data for the newly added item
     await fetchEquipment(user.uid);
   }
 

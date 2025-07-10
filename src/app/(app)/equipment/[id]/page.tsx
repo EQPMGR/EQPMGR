@@ -38,7 +38,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { ComponentStatusList } from '@/components/component-status-list';
-// import { MaintenanceLog } from '@/components/maintenance-log';
+import { MaintenanceLog } from '@/components/maintenance-log';
 import { WearSimulation } from '@/components/wear-simulation';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
 import type { Equipment, MaintenanceLog as MaintenanceLogType, Component, MasterComponent, UserComponent } from '@/lib/types';
@@ -54,7 +54,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
 import { toDate, toNullableDate } from '@/lib/date-utils';
-import { MOUNTAIN_BIKE_TYPES, EBIKE_TYPES } from '@/lib/constants';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -228,6 +227,18 @@ export default function EquipmentDetailPage() {
     }
   };
 
+  const handleAddLog = async (newLog: Omit<MaintenanceLogType, 'id'>) => {
+    if (!user || !equipment) return;
+    const logWithId = { ...newLog, id: crypto.randomUUID() };
+    const updatedLog = [...equipment.maintenanceLog, logWithId];
+    
+    const userDocRef = doc(db, 'users', user.uid);
+    await updateDoc(userDocRef, {
+      [`equipment.${equipment.id}.maintenanceLog`]: updatedLog.map(l => ({...l, date: toDate(l.date)})),
+    });
+
+    setEquipment(prev => prev ? ({ ...prev, maintenanceLog: updatedLog.map(l => ({...l, date: toDate(l.date)})) }) : undefined);
+  }
 
   const systemsToDisplay = useMemo(() => {
     if (!equipment) return [];
@@ -377,7 +388,7 @@ export default function EquipmentDetailPage() {
                 </Card>
             </div>
             
-            {/* <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} /> */}
+            <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
             <WearSimulation equipment={equipment} />
             <MaintenanceSchedule equipment={equipment} />
           </div>

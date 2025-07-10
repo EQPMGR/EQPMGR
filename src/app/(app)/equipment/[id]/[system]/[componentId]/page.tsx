@@ -71,7 +71,7 @@ export default function ComponentDetailPage() {
   
   useEffect(() => {
     if (user && params.id && params.componentId) {
-      fetchComponent(user.uid, params.id, params.componentId);
+      fetchComponent(user.uid, params.id as string, params.componentId as string);
     } else if (!authLoading) {
       setIsLoading(false);
     }
