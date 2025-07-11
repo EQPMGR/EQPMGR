@@ -198,33 +198,6 @@ export function EquipmentListPage() {
     await fetchEquipment(user.uid);
   }
 
-  const handleDeleteEquipment = async (equipmentId: string) => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Not Authenticated' });
-      return;
-    }
-    const userDocRef = doc(db, 'users', user.uid);
-    try {
-      await updateDoc(userDocRef, {
-        [`equipment.${equipmentId}`]: deleteField(),
-      });
-      toast({
-        title: 'Success!',
-        description: 'Equipment has been deleted.',
-      });
-      // Refresh the list after deletion
-      setData((prevData) => prevData.filter((eq) => eq.id !== equipmentId));
-    } catch (error) {
-      console.error('Error deleting equipment:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Delete Failed',
-        description: 'Could not delete the equipment.',
-      });
-    }
-  };
-
-
   if (isLoading || authLoading) {
     return (
       <>
@@ -280,7 +253,6 @@ export function EquipmentListPage() {
             <EquipmentCard 
               key={item.id} 
               equipment={item}
-              onDelete={handleDeleteEquipment}
             />
           ))}
         </div>
