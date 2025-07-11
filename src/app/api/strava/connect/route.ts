@@ -3,9 +3,12 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  const redirectUri = process.env.STRAVA_REDIRECT_URI;
   
-  if (!clientId || !redirectUri) {
+  // For development, it's safer to hardcode this to avoid environment issues.
+  // When you publish, this will need to be updated to your production URL.
+  const redirectUri = 'http://localhost:3000/api/strava/callback';
+  
+  if (!clientId) {
     console.error('Strava environment variables are not set.');
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
   }
