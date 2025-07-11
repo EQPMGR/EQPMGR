@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Activity } from 'lucide-react';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, deleteField } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment, MasterComponent, UserComponent, Component, MaintenanceLog } from '@/lib/types';
@@ -47,11 +47,19 @@ export function EquipmentListPage() {
 
         const masterComponentsMap = new Map<string, MasterComponent>();
         if (allMasterComponentIds.size > 0) {
-            const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', Array.from(allMasterComponentIds)));
-            const querySnapshot = await getDocs(masterComponentsQuery);
-            querySnapshot.forEach(doc => {
-                masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
-            });
+            // Firestore 'in' queries are limited to 30 elements. 
+            // If you have more components, you'd need to batch these queries.
+            const masterComponentIdsArray = Array.from(allMasterComponentIds);
+            for (let i = 0; i < masterComponentIdsArray.length; i += 30) {
+                const batchIds = masterComponentIdsArray.slice(i, i + 30);
+                 if (batchIds.length > 0) {
+                    const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
+                    const querySnapshot = await getDocs(masterComponentsQuery);
+                    querySnapshot.forEach(doc => {
+                        masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                    });
+                }
+            }
         }
         
         for (const id in equipmentMap) {
@@ -64,9 +72,17 @@ export function EquipmentListPage() {
 
             const combinedComponents: Component[] = userComponents.map(userComp => {
                 const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+                // Gracefully handle missing master components - the card might show partial data
                 if (!masterComp) {
                     console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
-                    return null;
+                    return {
+                        id: userComp.masterComponentId,
+                        userComponentId: userComp.id,
+                        name: 'Unknown Component',
+                        brand: 'Unknown',
+                        system: 'Unknown',
+                        ...userComp,
+                    } as Component;
                 }
                 return {
                     ...masterComp,
@@ -154,7 +170,7 @@ export function EquipmentListPage() {
         }
     });
 
-    const newEquipmentData: Partial<Equipment> & { components: UserComponent[] } = {
+    const newEquipmentData: Omit<Equipment, 'id' | 'components'> & { components: UserComponent[] } = {
         name: formData.name,
         type: bikeFromDb.type,
         brand: bikeFromDb.brand,
@@ -181,6 +197,33 @@ export function EquipmentListPage() {
     
     await fetchEquipment(user.uid);
   }
+
+  const handleDeleteEquipment = async (equipmentId: string) => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Not Authenticated' });
+      return;
+    }
+    const userDocRef = doc(db, 'users', user.uid);
+    try {
+      await updateDoc(userDocRef, {
+        [`equipment.${equipmentId}`]: deleteField(),
+      });
+      toast({
+        title: 'Success!',
+        description: 'Equipment has been deleted.',
+      });
+      // Refresh the list after deletion
+      setData((prevData) => prevData.filter((eq) => eq.id !== equipmentId));
+    } catch (error) {
+      console.error('Error deleting equipment:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Delete Failed',
+        description: 'Could not delete the equipment.',
+      });
+    }
+  };
+
 
   if (isLoading || authLoading) {
     return (
@@ -236,7 +279,8 @@ export function EquipmentListPage() {
           {data.map((item) => (
             <EquipmentCard 
               key={item.id} 
-              equipment={item} 
+              equipment={item}
+              onDelete={handleDeleteEquipment}
             />
           ))}
         </div>
