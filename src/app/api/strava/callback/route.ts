@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
   const clientSecret = process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET;
   
-  // The redirect URI must be IDENTICAL to the one used in the initial /connect request.
+  // This redirect URI must be IDENTICAL to the one used in the initial /connect request.
   const redirectUri = 'http://127.0.0.1:3000/api/strava/callback';
 
   if (error) {
@@ -42,13 +42,14 @@ export async function GET(request: NextRequest) {
     const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
+      body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
         code: code,
         grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
       }),
     });
 
