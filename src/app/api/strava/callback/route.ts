@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
         client_secret: process.env.STRAVA_CLIENT_SECRET,
         code: code,
         grant_type: 'authorization_code',
+        redirect_uri: process.env.STRAVA_REDIRECT_URI, // Ensure this matches the connect request
       }),
     });
 
