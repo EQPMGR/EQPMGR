@@ -82,6 +82,27 @@ function StravaAuthComponent() {
     }
   }, [searchParams, user, router, toast]);
 
+  const getStravaConnectUrl = () => {
+    const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+    // Using localhost is more reliable for local dev than 127.0.0.1
+    const redirectUri = 'http://localhost:3000/strava';
+
+    if (!clientId) {
+      // This should not happen if .env.local is set up
+      return '#';
+    }
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      approval_prompt: 'force', // 'force' is more reliable for avoiding loops
+      scope: 'read_all,profile:read_all,activity:read_all',
+    });
+
+    return `https://www.strava.com/oauth/authorize?${params.toString()}`;
+  }
+
   return (
     <Card className="max-w-lg mx-auto">
       <CardHeader>
@@ -95,7 +116,7 @@ function StravaAuthComponent() {
             <div>
                 <p className="mb-4">Click the button below to be redirected to Strava to approve the connection.</p>
                 <Button asChild>
-                    <Link href="/api/strava/connect">Step 1: Authorize with Strava</Link>
+                    <Link href={getStravaConnectUrl()}>Step 1: Authorize with Strava</Link>
                 </Button>
             </div>
         )}
