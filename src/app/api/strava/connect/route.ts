@@ -6,8 +6,8 @@ export async function GET() {
   
   // This is the full URL that the user will be sent back to after they authorize the app.
   // It must match a URL that is allowed by the "Authorization Callback Domain" in your Strava app settings.
-  // For local development, Strava allows "localhost", which will match this full URL.
-  const redirectUri = 'http://localhost:3000/api/strava/callback';
+  // Using 127.0.0.1 is more explicit and reliable than localhost for OAuth flows.
+  const redirectUri = 'http://127.0.0.1:3000/api/strava/callback';
 
   if (!clientId) {
     console.error('Strava client ID is not set in environment variables.');

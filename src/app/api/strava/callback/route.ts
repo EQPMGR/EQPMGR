@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const clientSecret = process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET;
   
   // The redirect URI must be IDENTICAL to the one used in the initial /connect request.
-  const redirectUri = 'http://localhost:3000/api/strava/callback';
+  const redirectUri = 'http://127.0.0.1:3000/api/strava/callback';
 
   if (error) {
     console.error('Strava OAuth Error:', error);
@@ -49,7 +49,6 @@ export async function GET(request: NextRequest) {
         client_secret: clientSecret,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: redirectUri, // Pass the exact same redirect_uri
       }),
     });
 
