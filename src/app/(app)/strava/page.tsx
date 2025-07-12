@@ -10,31 +10,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-
-// This function will be triggered by a button click on the client side.
-const redirectToStrava = () => {
-  const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  if (!clientId) {
-    console.error("Strava Client ID is not configured.");
-    alert("Server configuration error: Strava integration is not set up correctly.");
-    return;
-  }
-  
-  // Hardcoding the redirect URI to the most stable local address.
-  // Using 'force' for approval_prompt to avoid login loops.
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: 'http://127.0.0.1:3000/strava',
-    response_type: 'code',
-    approval_prompt: 'force',
-    scope: 'read_all,profile:read_all,activity:read_all',
-  });
-
-  const stravaAuthorizeUrl = `https://www.strava.com/oauth/authorize?${params.toString()}`;
-  
-  // Redirect the user to the Strava authorization page.
-  window.location.href = stravaAuthorizeUrl;
-};
+import Link from 'next/link';
 
 function StravaAuthComponent() {
   const { user } = useAuth();
@@ -118,8 +94,8 @@ function StravaAuthComponent() {
         {!searchParams.get('code') && !error && (
             <div>
                 <p className="mb-4">Click the button below to be redirected to Strava to approve the connection.</p>
-                <Button onClick={redirectToStrava}>
-                    Step 1: Authorize with Strava
+                <Button asChild>
+                    <Link href="/api/strava/connect">Step 1: Authorize with Strava</Link>
                 </Button>
             </div>
         )}
