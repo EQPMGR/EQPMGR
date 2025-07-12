@@ -7,11 +7,12 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const scope = searchParams.get('scope');
 
   const sessionCookie = cookies().get('__session')?.value;
   
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  const clientSecret = process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET;
+  const clientSecret = process.env.STRAVA_CLIENT_SECRET;
   
   // This redirect URI must be IDENTICAL to the one used in the initial /connect request.
   const redirectUri = 'http://127.0.0.1:3000/api/strava/callback';
@@ -26,11 +27,12 @@ export async function GET(request: NextRequest) {
   }
   
   if (!sessionCookie) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    // This could happen if the user clears cookies mid-flow
+    return NextResponse.json({ error: 'Not authenticated. Please try connecting again.' }, { status: 401 });
   }
 
   if (!clientId || !clientSecret) {
-    console.error('Strava environment variables are not set.');
+    console.error('Strava environment variables are not set correctly on the server.');
     return NextResponse.redirect(new URL('/settings/apps?error=server_config_error', request.url));
   }
 
@@ -38,18 +40,18 @@ export async function GET(request: NextRequest) {
     const decodedToken = await admin.auth().verifySessionCookie(sessionCookie, true);
     const uid = decodedToken.uid;
     
-    // Exchange the authorization code for an access token
+    // Exchange the authorization code for an access token using form data
     const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
+      // IMPORTANT: The body must be a URL-encoded string
       body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: redirectUri,
       }),
     });
 
@@ -57,7 +59,8 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok || tokenData.errors) {
       console.error('Strava Token Exchange Error:', tokenData);
-      throw new Error(tokenData.message || 'Failed to get token from Strava.');
+      const errorMessage = tokenData.errors?.[0]?.message || 'Failed to get token from Strava.';
+      throw new Error(errorMessage);
     }
 
     const {
@@ -75,7 +78,7 @@ export async function GET(request: NextRequest) {
         accessToken: access_token,
         refreshToken: refresh_token,
         expiresAt: expires_at,
-        scope: searchParams.get('scope'),
+        scope: scope,
         connectedAt: new Date().toISOString(),
       }
     }, { merge: true });
@@ -85,6 +88,6 @@ export async function GET(request: NextRequest) {
 
   } catch (err: any) {
     console.error('Callback handler error:', err);
-    return NextResponse.redirect(new URL(`/settings/apps?error=${err.message || 'strava_callback_failed'}`, request.url));
+    return NextResponse.redirect(new URL(`/settings/apps?error=${encodeURIComponent(err.message || 'strava_callback_failed')}`, request.url));
   }
 }
