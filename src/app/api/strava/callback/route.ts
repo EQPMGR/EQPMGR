@@ -80,4 +80,3 @@ export async function GET(request: NextRequest) {
     console.error('Callback handler error:', err);
     return NextResponse.redirect(new URL('/settings/apps?error=strava_callback_failed', request.url));
   }
-}
