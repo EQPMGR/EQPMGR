@@ -12,7 +12,9 @@ export async function GET(request: NextRequest) {
   
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
   const clientSecret = process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET;
-  const redirectUri = process.env.NEXT_PUBLIC_STRAVA_REDIRECT_URI;
+  
+  // The redirect URI must be IDENTICAL to the one used in the initial /connect request.
+  const redirectUri = 'http://localhost:3000/api/strava/callback';
 
   if (error) {
     console.error('Strava OAuth Error:', error);
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  if (!clientId || !clientSecret || !redirectUri) {
+  if (!clientId || !clientSecret) {
     console.error('Strava environment variables are not set.');
     return NextResponse.redirect(new URL('/settings/apps?error=server_config_error', request.url));
   }
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
         client_secret: clientSecret,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: redirectUri,
+        redirect_uri: redirectUri, // Pass the exact same redirect_uri
       }),
     });
 
