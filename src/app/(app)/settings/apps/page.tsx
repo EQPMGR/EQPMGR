@@ -9,9 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface StravaData {
@@ -64,7 +63,7 @@ export default function ConnectedAppsPage() {
                   <Button variant="secondary" disabled>Connected</Button>
                 ) : (
                   <Button asChild>
-                    <Link href="/api/strava/connect">Connect</Link>
+                    <a href="/api/strava/connect">Connect</a>
                   </Button>
                 )}
             </div>
