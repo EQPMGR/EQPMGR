@@ -10,7 +10,10 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
 
   const sessionCookie = cookies().get('__session')?.value;
-  const redirectUri = process.env.STRAVA_REDIRECT_URI;
+  
+  const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+  const clientSecret = process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET;
+  const redirectUri = process.env.NEXT_PUBLIC_STRAVA_REDIRECT_URI;
 
   if (error) {
     console.error('Strava OAuth Error:', error);
@@ -27,8 +30,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  if (!redirectUri) {
-    console.error('STRAVA_REDIRECT_URI is not set in environment variables.');
+  if (!redirectUri || !clientId || !clientSecret) {
+    console.error('Strava environment variables are not set.');
     return NextResponse.redirect(new URL('/settings/apps?error=server_config_error', request.url));
   }
 
@@ -43,8 +46,8 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        client_id: process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID,
-        client_secret: process.env.STRAVA_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         code: code,
         grant_type: 'authorization_code',
         redirect_uri: redirectUri,

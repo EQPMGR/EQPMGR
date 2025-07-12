@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  const redirectUri = process.env.STRAVA_REDIRECT_URI;
+  const redirectUri = process.env.NEXT_PUBLIC_STRAVA_REDIRECT_URI;
   
   if (!clientId || !redirectUri) {
     console.error('Strava client ID or redirect URI is not set in environment variables.');
