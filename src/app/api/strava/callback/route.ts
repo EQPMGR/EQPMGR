@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
 
   const sessionCookie = cookies().get('__session')?.value;
-  const redirectUri = 'http://localhost:3000/api/strava/callback';
+  const redirectUri = process.env.STRAVA_REDIRECT_URI;
 
   if (error) {
     console.error('Strava OAuth Error:', error);
@@ -25,6 +25,11 @@ export async function GET(request: NextRequest) {
   if (!sessionCookie) {
     // This should not happen if middleware is set up correctly
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  if (!redirectUri) {
+    console.error('STRAVA_REDIRECT_URI is not set in environment variables.');
+    return NextResponse.redirect(new URL('/settings/apps?error=server_config_error', request.url));
   }
 
   try {
@@ -80,3 +85,4 @@ export async function GET(request: NextRequest) {
     console.error('Callback handler error:', err);
     return NextResponse.redirect(new URL('/settings/apps?error=strava_callback_failed', request.url));
   }
+}
