@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Link from "next/link";
 
 interface StravaData {
   id: number;
@@ -63,7 +64,7 @@ export default function ConnectedAppsPage() {
                   <Button variant="secondary" disabled>Connected</Button>
                 ) : (
                   <Button asChild>
-                    <a href="/api/strava/connect">Connect</a>
+                    <Link href="/strava">Connect</Link>
                   </Button>
                 )}
             </div>

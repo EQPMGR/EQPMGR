@@ -1,17 +1,16 @@
 
 import { NextResponse } from 'next/server';
 
+// This route is no longer used by the new authentication flow,
+// but we will keep it for reference. The new flow is initiated
+// from the client-side on the /strava page.
 export async function GET() {
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  
-  // This is the full URL that the user will be sent back to after they authorize the app.
-  // Using 127.0.0.1 is more explicit and reliable than localhost for OAuth flows.
-  const redirectUri = 'http://127.0.0.1:3000/api/strava/callback';
+  const redirectUri = 'http://127.0.0.1:3000/strava';
 
   if (!clientId) {
-    console.error('Strava client ID is not set in environment variables.');
     return NextResponse.json(
-      { error: 'Server configuration error. Strava integration is not set up correctly.' }, 
+      { error: 'Server configuration error.' }, 
       { status: 500 }
     );
   }
@@ -21,11 +20,10 @@ export async function GET() {
     redirect_uri: redirectUri,
     response_type: 'code',
     approval_prompt: 'auto',
-    scope: 'read,activity:read_all', // Requesting read access for public activities and all activities
+    scope: 'read_all,profile:read_all,activity:read_all',
   });
 
   const stravaAuthorizeUrl = `https://www.strava.com/oauth/authorize?${params.toString()}`;
   
-  // Redirect the user to the Strava authorization page.
   return NextResponse.redirect(stravaAuthorizeUrl);
 }
