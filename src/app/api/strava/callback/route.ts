@@ -1,8 +1,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { admin } from '@/lib/firebase-admin';
-import { db } from '@/lib/firebase-admin';
+import { admin, db } from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -13,13 +12,10 @@ export async function GET(request: NextRequest) {
   
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
   const clientSecret = process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET;
-  
-  // Hardcoding the exact redirect URI to ensure consistency.
-  const redirectUri = 'http://127.0.0.1:3000/api/strava/callback';
+  const redirectUri = process.env.NEXT_PUBLIC_STRAVA_REDIRECT_URI;
 
   if (error) {
     console.error('Strava OAuth Error:', error);
-    // Redirect to a settings page with an error message
     return NextResponse.redirect(new URL('/settings/apps?error=strava_access_denied', request.url));
   }
 
@@ -28,11 +24,10 @@ export async function GET(request: NextRequest) {
   }
   
   if (!sessionCookie) {
-    // This should not happen if middleware is set up correctly
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  if (!clientId || !clientSecret) {
+  if (!clientId || !clientSecret || !redirectUri) {
     console.error('Strava environment variables are not set.');
     return NextResponse.redirect(new URL('/settings/apps?error=server_config_error', request.url));
   }
@@ -58,9 +53,9 @@ export async function GET(request: NextRequest) {
 
     const tokenData = await tokenResponse.json();
 
-    if (tokenData.errors) {
-      console.error('Strava Token Exchange Error:', tokenData.errors);
-      throw new Error('Failed to get token from Strava.');
+    if (!tokenResponse.ok || tokenData.errors) {
+      console.error('Strava Token Exchange Error:', tokenData);
+      throw new Error(tokenData.message || 'Failed to get token from Strava.');
     }
 
     const {
@@ -88,5 +83,6 @@ export async function GET(request: NextRequest) {
 
   } catch (err: any) {
     console.error('Callback handler error:', err);
-    return NextResponse.redirect(new URL('/settings/apps?error=strava_callback_failed', request.url));
+    return NextResponse.redirect(new URL(`/settings/apps?error=${err.message || 'strava_callback_failed'}`, request.url));
   }
+}
