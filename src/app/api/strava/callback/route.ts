@@ -1,3 +1,4 @@
+
 import { type NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { admin } from '@/lib/firebase-admin';
@@ -9,7 +10,6 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
 
   const sessionCookie = cookies().get('__session')?.value;
-  // Hardcoding the redirect URI to ensure it matches the connect request exactly.
   const redirectUri = 'http://localhost:3000/api/strava/callback';
 
   if (error) {

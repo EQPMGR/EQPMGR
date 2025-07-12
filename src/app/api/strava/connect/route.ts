@@ -1,8 +1,8 @@
+
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  // Hardcoding the redirect URI to ensure consistency.
   const redirectUri = 'http://localhost:3000/api/strava/callback';
   
   if (!clientId) {
@@ -22,7 +22,6 @@ export async function GET() {
   });
 
   const stravaAuthorizeUrl = `https://www.strava.com/oauth/authorize?${params.toString()}`;
-
-  // Using NextResponse.redirect for a more standard and robust redirection.
+  
   return NextResponse.redirect(stravaAuthorizeUrl);
 }
