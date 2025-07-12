@@ -19,13 +19,14 @@ const redirectToStrava = () => {
     alert("Server configuration error: Strava integration is not set up correctly.");
     return;
   }
-
-  // These parameters match the working Python example.
+  
+  // Hardcoding the redirect URI to the most stable local address.
+  // Using 'force' for approval_prompt to avoid login loops.
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: 'http://127.0.0.1:3000/strava', // The page we are currently on
+    redirect_uri: 'http://127.0.0.1:3000/strava',
     response_type: 'code',
-    approval_prompt: 'auto',
+    approval_prompt: 'force',
     scope: 'read_all,profile:read_all,activity:read_all',
   });
 
