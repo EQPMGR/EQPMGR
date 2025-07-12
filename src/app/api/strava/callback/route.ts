@@ -1,4 +1,3 @@
-
 import { type NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { admin } from '@/lib/firebase-admin';
@@ -10,6 +9,8 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
 
   const sessionCookie = cookies().get('__session')?.value;
+  // Hardcoding the redirect URI to ensure it matches the connect request exactly.
+  const redirectUri = 'http://localhost:3000/api/strava/callback';
 
   if (error) {
     console.error('Strava OAuth Error:', error);
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
         client_secret: process.env.STRAVA_CLIENT_SECRET,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: process.env.STRAVA_REDIRECT_URI, // Ensure this matches the connect request
+        redirect_uri: redirectUri,
       }),
     });
 
