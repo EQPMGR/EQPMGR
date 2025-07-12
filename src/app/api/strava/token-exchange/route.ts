@@ -17,19 +17,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });
     }
 
-    // This section now perfectly mirrors the logic from the Python example's
-    // client.exchange_code_for_token() function.
+    const body = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code: code,
+      grant_type: 'authorization_code',
+    });
+
     const response = await fetch('https://www.strava.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        grant_type: 'authorization_code',
-      }),
+      body: body.toString(),
     });
 
     const data = await response.json();
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
 
   } catch (err: any) {
-    console.error('Callback handler error:', err);
+    console.error('Token exchange handler error:', err);
     return NextResponse.json({ error: err.message || 'An unexpected internal error occurred' }, { status: 500 });
   }
 }
