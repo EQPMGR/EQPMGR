@@ -147,7 +147,7 @@ function ConnectedAppsManager() {
                   <Button variant="secondary" disabled>Connected</Button>
                 ) : (
                   <Button asChild>
-                    <Link href="/strava">Connect</Link>
+                    <Link href="/api/strava/connect">Connect</Link>
                   </Button>
                 )}
             </div>
