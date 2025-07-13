@@ -3,23 +3,24 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  
-  if (!clientId) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!clientId || !appUrl) {
+    console.error('Strava Client ID or App URL is not configured in environment variables.');
     return NextResponse.json(
-      { error: 'Strava Client ID is not configured.' },
+      { error: 'Application is not configured correctly. Please contact support.' },
       { status: 500 }
     );
   }
 
-  // Redirect URI points back to the settings page where the code will be handled.
-  // Using 127.0.0.1 is often more reliable for local development than localhost.
-  const redirectUri = 'http://127.0.0.1:3000/settings/apps';
+  // The redirect URI must be absolute and match what's expected for the environment.
+  const redirectUri = `${appUrl}/settings/apps`;
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    approval_prompt: 'force', // Always ask for approval, helps avoid loops
+    approval_prompt: 'force',
     scope: 'read_all,profile:read_all,activity:read_all',
   });
 
