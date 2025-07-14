@@ -10,10 +10,8 @@ import {
 } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 import React, { useEffect, useState, Suspense } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -26,72 +24,12 @@ interface StravaData {
 function ConnectedAppsManager() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const searchParams = useSearchParams();
-  const router = useRouter();
 
   const [stravaData, setStravaData] = useState<StravaData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isExchangingToken, setIsExchangingToken] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
-      const code = searchParams.get('code');
-      const stravaError = searchParams.get('error');
-
-      if (stravaError) {
-        setError(`Strava returned an error: ${stravaError}`);
-        // Clear the URL query parameters
-        router.replace('/settings/apps');
-        return;
-      }
-      
-      if (code) {
-        setIsExchangingToken(true);
-        fetch('/api/strava/token-exchange', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
-        })
-        .then(res => {
-            if (!res.ok) {
-                return res.json().then(err => { throw new Error(err.error || 'Token exchange failed') });
-            }
-            return res.json();
-        })
-        .then(async (data) => {
-            const userDocRef = doc(db, 'users', user.uid);
-            await setDoc(userDocRef, {
-                strava: {
-                    id: data.athlete.id,
-                    accessToken: data.access_token,
-                    refreshToken: data.refresh_token,
-                    expiresAt: data.expires_at,
-                    scope: searchParams.get('scope'),
-                    connectedAt: new Date().toISOString(),
-                }
-            }, { merge: true });
-
-            toast({
-                title: 'Strava Connected!',
-                description: 'Your account has been successfully linked.',
-            });
-        })
-        .catch((err) => {
-            setError(err.message);
-            toast({
-              variant: 'destructive',
-              title: 'Connection Failed',
-              description: err.message,
-            })
-        })
-        .finally(() => {
-            setIsExchangingToken(false);
-            // Clear the URL query parameters after processing
-            router.replace('/settings/apps');
-        });
-      }
-
       const userDocRef = doc(db, 'users', user.uid);
       const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -104,7 +42,41 @@ function ConnectedAppsManager() {
     } else {
         setIsLoading(false);
     }
-  }, [user, searchParams, router, toast]);
+  }, [user]);
+
+  const handleStravaConnect = () => {
+    const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+    if (!clientId) {
+      toast({
+        variant: 'destructive',
+        title: 'Configuration Error',
+        description: 'Strava integration is not configured correctly.',
+      });
+      return;
+    }
+
+    const redirectUri = 'http://localhost:3000/strava/callback';
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      approval_prompt: 'force',
+      scope: 'read_all,profile:read_all,activity:read_all',
+    });
+
+    const stravaAuthUrl = `https://www.strava.com/oauth/authorize?${params.toString()}`;
+    window.location.href = stravaAuthUrl;
+  };
+
+  const handleStravaDisconnect = async () => {
+    if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+            strava: null
+        });
+        toast({ title: 'Strava Disconnected' });
+    }
+  }
 
   return (
     <Card>
@@ -115,21 +87,6 @@ function ConnectedAppsManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            {isExchangingToken && (
-              <Alert>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <AlertTitle>Connecting to Strava...</AlertTitle>
-                <AlertDescription>
-                  Please wait while we securely connect your account.
-                </AlertDescription>
-              </Alert>
-            )}
-            {error && (
-              <Alert variant="destructive">
-                <AlertTitle>Connection Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
             <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                     <h4 className="font-semibold">Strava</h4>
@@ -144,11 +101,9 @@ function ConnectedAppsManager() {
                     )}
                 </div>
                 {stravaData ? (
-                  <Button variant="secondary" disabled>Connected</Button>
+                  <Button variant="destructive" onClick={handleStravaDisconnect}>Disconnect</Button>
                 ) : (
-                  <Button asChild>
-                    <Link href="/api/strava/connect">Connect</Link>
-                  </Button>
+                  <Button onClick={handleStravaConnect}>Connect</Button>
                 )}
             </div>
              <div className="flex items-center justify-between p-4 border rounded-lg opacity-50">
@@ -165,7 +120,7 @@ function ConnectedAppsManager() {
 
 export default function ConnectedAppsPage() {
     return (
-      // Suspense is required for pages that use useSearchParams()
+      // Suspense is required for pages that might use useSearchParams() in children
       <Suspense fallback={<div>Loading settings...</div>}>
         <ConnectedAppsManager />
       </Suspense>
