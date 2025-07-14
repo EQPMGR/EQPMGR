@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const appUrl = 'http://localhost:3000'; // Hardcode for local development
 
-  if (!clientId || !appUrl) {
-    console.error('Strava Client ID or App URL is not configured in environment variables.');
+  if (!clientId) {
+    console.error('Strava Client ID is not configured in environment variables.');
     return NextResponse.json(
       { error: 'Application is not configured correctly. Please contact support.' },
       { status: 500 }
