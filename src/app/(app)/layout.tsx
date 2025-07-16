@@ -149,7 +149,7 @@ export default function AppLayout({
             <UserNav />
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:px-6 md:px-8">
             {children}
         </main>
     </div>
