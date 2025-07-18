@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -88,18 +87,18 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>AI Maintenance Schedule</CardTitle>
+      <CardHeader>
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>AI Maintenance Schedule</CardTitle>
+            <Button onClick={handleGenerateSchedule} disabled={isLoading} size="sm" className="gap-1 w-full sm:w-auto">
+                {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <Bot className="mr-2 h-4 w-4" />
+                )}
+                Generate Schedule
+            </Button>
         </div>
-        <Button onClick={handleGenerateSchedule} disabled={isLoading} size="sm" className="ml-auto gap-1">
-          {isLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Bot className="mr-2 h-4 w-4" />
-          )}
-          Generate Schedule
-        </Button>
       </CardHeader>
       <CardContent>
         {result ? (

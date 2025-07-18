@@ -3,7 +3,6 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -39,16 +38,16 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Maintenance Log</CardTitle>
+      <CardHeader>
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>Maintenance Log</CardTitle>
+            <AddMaintenanceLogDialog onAddLog={onAddLog}>
+                <Button size="sm" className="gap-1 w-full sm:w-auto">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    Add Log
+                </Button>
+            </AddMaintenanceLogDialog>
         </div>
-        <AddMaintenanceLogDialog onAddLog={onAddLog}>
-          <Button size="sm" className="ml-auto gap-1">
-            <PlusCircle className="h-3.5 w-3.5" />
-            Add Log
-          </Button>
-        </AddMaintenanceLogDialog>
       </CardHeader>
       <CardContent>
         <Table>
