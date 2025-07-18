@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -95,9 +96,6 @@ export function WearSimulation({ equipment }: WearSimulationProps) {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardHeader>
             <CardTitle>AI Wear Simulation</CardTitle>
-            <CardDescription>
-              Log a recent workout to simulate its impact on your equipment.
-            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <FormField

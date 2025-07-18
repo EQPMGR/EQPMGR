@@ -402,9 +402,6 @@ export default function EquipmentDetailPage() {
                       <FitInfoIcon className="h-5 w-5" />
                       Fit Information
                   </CardTitle>
-                  <CardDescription>
-                      Dial in your bike fit for optimal comfort and performance.
-                  </CardDescription>
               </CardHeader>
               <CardContent>
                   <Button asChild variant="secondary" className="w-full">
@@ -420,9 +417,6 @@ export default function EquipmentDetailPage() {
                         <Shield />
                         Protect Your Gear
                     </CardTitle>
-                    <CardDescription>
-                        Register your equipment against theft and get it insured.
-                    </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-2">
                     <Button asChild>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -90,9 +91,6 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>AI Maintenance Schedule</CardTitle>
-          <CardDescription>
-            Generate a smart maintenance plan based on current wear.
-          </CardDescription>
         </div>
         <Button onClick={handleGenerateSchedule} disabled={isLoading} size="sm" className="ml-auto gap-1">
           {isLoading ? (

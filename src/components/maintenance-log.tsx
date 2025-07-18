@@ -42,9 +42,6 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Maintenance Log</CardTitle>
-          <CardDescription>
-            A history of all service and repairs.
-          </CardDescription>
         </div>
         <AddMaintenanceLogDialog onAddLog={onAddLog}>
           <Button size="sm" className="ml-auto gap-1">
