@@ -98,7 +98,7 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
             brand: c.brand || '',
             series: c.series || '',
             model: c.model || '',
-            size: '',
+            size: '', // Size is not extracted by AI currently
             system: c.system,
             chainring1: c.chainring1,
             chainring2: c.chainring2,
@@ -171,7 +171,7 @@ function AddBikeModelFormComponent() {
         const importedData = sessionStorage.getItem('importedBikeData');
         if (importedData) {
             try {
-                const parsedData = JSON.parse(importedData);
+                const parsedData: ExtractBikeDetailsOutput = JSON.parse(importedData);
                 const formValues = mapAiDataToFormValues(parsedData);
                 form.reset(formValues);
                 toast({ title: "Data Imported!", description: "The form has been pre-filled with the extracted data." });
@@ -349,8 +349,8 @@ function AddBikeModelFormComponent() {
                     }
                 });
                 
-                // Skip components with no brand, series, or model
-                if (!componentToSave.brand && !componentToSave.series && !componentToSave.model) {
+                // Skip components with no brand, series, or model if they're not the frame
+                if (componentToSave.name !== 'Frame' && !componentToSave.brand && !componentToSave.series && !componentToSave.model) {
                     continue;
                 }
 
