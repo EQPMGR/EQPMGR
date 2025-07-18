@@ -120,7 +120,7 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
           </div>
         ) : (
           <div className="text-center text-muted-foreground py-8">
-            <p>Click "Generate Schedule" to get AI-powered maintenance recommendations.</p>
+            
           </div>
         )}
       </CardContent>
