@@ -297,7 +297,10 @@ export default function EquipmentDetailPage() {
                             <Icon className="h-7 w-7" />
                             {equipment.name}
                         </CardTitle>
-                        <CardDescription>{equipment.brand} {equipment.model} &bull; {equipment.type}</CardDescription>
+                        <CardDescription>
+                          <span>{equipment.brand} {equipment.model}</span>
+                          <span className="block">{equipment.type}</span>
+                        </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
