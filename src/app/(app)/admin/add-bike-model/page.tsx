@@ -354,6 +354,10 @@ function AddBikeModelFormComponent() {
                     continue;
                 }
 
+                if (componentToSave.brand && componentToSave.brand.toLowerCase() === 'sram') {
+                    componentToSave.brand = 'SRAM';
+                }
+
                 const componentId = createComponentId(componentToSave as Partial<z.infer<typeof componentSchema>>);
                 
                 if (!componentId) continue;
@@ -382,6 +386,9 @@ function AddBikeModelFormComponent() {
                 }
             });
 
+            if (bikeModelDataToSave.brand && bikeModelDataToSave.brand.toLowerCase() === 'sram') {
+                bikeModelDataToSave.brand = 'SRAM';
+            }
 
             batch.set(bikeModelDocRef, {
                 ...bikeModelDataToSave,
