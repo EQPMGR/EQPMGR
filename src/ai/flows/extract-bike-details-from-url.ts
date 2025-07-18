@@ -32,8 +32,10 @@ const getExistingComponents = ai.defineTool(
     },
     async ({ brand }) => {
         try {
+            // Standardize brand query
+            const brandToQuery = brand.toLowerCase() === 'sram' ? 'SRAM' : brand;
             const componentsRef = collection(db, 'masterComponents');
-            const q = query(componentsRef, where("brand", "==", brand));
+            const q = query(componentsRef, where("brand", "==", brandToQuery));
             const querySnapshot = await getDocs(q);
             const components: any[] = [];
             querySnapshot.forEach((doc) => {
@@ -71,7 +73,7 @@ Follow these steps:
 4.  **Crucially, compare each component you extracted from the text with the list from the database.** If an extracted component is a clear match for an existing component (e.g., text says "Crankarms" but database has "Crankset" for the same brand/series), you MUST use the exact 'name' from the database. This prevents duplicates.
 5.  Assign every component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
 6.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
-7.  Standardize "Seat Post" to "Seatpost".
+7.  Standardize "Seat Post" to "Seatpost". If you see "Sram", "sram", or "SRAM", always standardize the brand to "SRAM".
 8.  For cranksets or chainrings, if you see a tooth count (e.g., 40t, 50/34t), extract the number(s) into the 'chainring1', 'chainring2' fields.
 
 Return ONLY the structured JSON object. Do not include any other text or explanations.
@@ -92,6 +94,15 @@ const extractBikeDetailsFlow = ai.defineFlow(
     if (!output) {
       throw new Error('Could not extract bike details from the provided text.');
     }
+    // Final check to ensure brand is capitalized correctly
+    if (output.brand && output.brand.toLowerCase() === 'sram') {
+      output.brand = 'SRAM';
+    }
+    output.components.forEach(c => {
+        if (c.brand && c.brand.toLowerCase() === 'sram') {
+            c.brand = 'SRAM';
+        }
+    })
     return output;
   }
 );

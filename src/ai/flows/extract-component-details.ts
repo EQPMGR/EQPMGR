@@ -45,7 +45,7 @@ The user is replacing a component from the '{{originalSystem}}' system. Use this
 Follow these rules:
 1.  Analyze the provided text to determine the component's name, brand, series, model, and size.
 2.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
-3.  Standardize "Seat Post" to "Seatpost".
+3.  Standardize "Seat Post" to "Seatpost". If you see "Sram", "sram", or "SRAM", always standardize the brand to "SRAM".
 4.  For chainrings, if you see a tooth count (e.g., 44t), extract it into the 'chainring1' field.
 5.  Assign the component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
 
@@ -66,6 +66,10 @@ const extractComponentDetailsFlow = ai.defineFlow(
     const { output } = await componentExtractorPrompt(input);
     if (!output) {
       throw new Error('Could not extract component details from the provided text.');
+    }
+    // Final check to ensure brand is capitalized correctly
+    if (output.brand && output.brand.toLowerCase() === 'sram') {
+      output.brand = 'SRAM';
     }
     return output;
   }
