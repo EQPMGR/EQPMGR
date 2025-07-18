@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { toDate, toNullableDate } from '@/lib/date-utils';
 import type { Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
+import { ReplaceComponentDialog } from '@/components/replace-component-dialog';
 
 export default function ComponentDetailPage() {
   const params = useParams<{ id: string; system: string; componentId: string }>();
@@ -135,7 +136,12 @@ export default function ComponentDetailPage() {
              <div className="mt-6 border-t pt-6">
                 <h4 className="font-semibold mb-2">Actions</h4>
                 <div className="flex gap-2">
-                    <Button>Replace Part</Button>
+                    <ReplaceComponentDialog 
+                        userId={user?.uid} 
+                        equipmentId={params.id as string} 
+                        componentToReplace={component}
+                        onSuccess={() => fetchComponent(user!.uid, params.id as string, params.componentId as string)}
+                    />
                     <Button variant="secondary">Log Maintenance</Button>
                 </div>
              </div>
