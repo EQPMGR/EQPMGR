@@ -55,9 +55,6 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead className="text-right">Cost</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -68,18 +65,11 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
                     {entry.date.toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </TableCell>
                   <TableCell>{entry.description}</TableCell>
-                  <TableCell>
-                    <Badge variant={getBadgeVariant(entry.logType)} className="capitalize">{entry.logType}</Badge>
-                  </TableCell>
-                  <TableCell>{entry.serviceProvider || (entry.serviceType === 'diy' ? 'DIY' : 'N/A')}</TableCell>
-                  <TableCell className="text-right">
-                    ${entry.cost.toFixed(2)}
-                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={2} className="text-center">
                   No maintenance logged yet.
                 </TableCell>
               </TableRow>
