@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2, ArrowLeft, Trash2, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { writeBatch, doc, collection } from 'firebase/firestore';
+import { writeBatch, doc, collection, getDocs } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -21,7 +21,6 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES } from '@/lib/constants';
-import { bikeDatabase } from '@/lib/bike-database';
 import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 
@@ -127,6 +126,7 @@ function AddBikeModelFormComponent() {
     const [systemIndex, setSystemIndex] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
+    const [availableBrands, setAvailableBrands] = useState<string[]>([]);
 
     const form = useForm<AddBikeModelFormValues>({
         resolver: zodResolver(addBikeModelSchema),
@@ -146,6 +146,26 @@ function AddBikeModelFormComponent() {
             wheelsetSetup: 'tubes',
         },
     });
+
+    useEffect(() => {
+      async function fetchBrands() {
+        try {
+          const querySnapshot = await getDocs(collection(db, "bikeModels"));
+          const brands = new Set<string>();
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.brand) {
+                brands.add(data.brand);
+            }
+          });
+          setAvailableBrands(Array.from(brands).sort());
+        } catch (error) {
+          console.error("Error fetching brands: ", error);
+          toast({ variant: 'destructive', title: "Error", description: "Could not fetch bike brands." });
+        }
+      }
+      fetchBrands();
+    }, [toast]);
 
     useEffect(() => {
         const importedData = sessionStorage.getItem('importedBikeData');
@@ -182,12 +202,6 @@ function AddBikeModelFormComponent() {
     
     const wizardSystems = isEbike ? [...WIZARD_SYSTEMS_BASE, 'E-Bike'] : WIZARD_SYSTEMS_BASE;
     const activeSystem = wizardSystems[systemIndex];
-
-    const availableBrands = useMemo(() => {
-      const brands = bikeDatabase.map(bike => bike.brand);
-      const uniqueBrands = [...new Set(brands)];
-      return uniqueBrands.sort();
-    }, []);
 
     const findComponentIndex = (name: string, system: string) => {
         return fields.findIndex(field => field.name === name && field.system === system);
