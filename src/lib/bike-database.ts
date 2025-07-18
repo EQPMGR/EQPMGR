@@ -4,6 +4,8 @@ export interface BikeComponentFromDB {
   brand: string;
   model: string;
   system: string;
+  chainring1?: string;
+  chainring2?: string;
 }
 
 export interface BikeFromDB {
@@ -11,7 +13,7 @@ export interface BikeFromDB {
   model: string;
   modelYear: number;
   type: string; // Using a generic string to accommodate more specific types
-  components: BikeComponentFromDB[];
+  components: BikeComponentFromD[];
   imageUrl: string;
 }
 
@@ -34,7 +36,7 @@ export const bikeDatabase: BikeFromDB[] = [
         { name: 'Front Derailleur', brand: 'Shimano', model: '105 FD-5700L', system: 'Drivetrain' },
         { name: 'Rear Derailleur', brand: 'Shimano', model: '105 RD-5701', system: 'Drivetrain' },
         { name: 'Cassette', brand: 'Shimano', model: 'CS-4600 12-28T 10 speed', system: 'Drivetrain' },
-        { name: 'Crankset', brand: 'Sram', model: 'S350 PF30 46/36', system: 'Drivetrain' },
+        { name: 'Crankset', brand: 'Sram', model: 'S350 PF30', system: 'Drivetrain', chainring1: '46', chainring2: '36'},
         { name: 'Bottom Bracket', brand: 'Sram', model: 'PressFit30', system: 'Drivetrain' },
         { name: 'Chain', brand: 'Sram', model: 'CN-PC1031 10speed', system: 'Drivetrain' },
         { name: 'Seat Post', brand: 'Norco', model: 'Alloy 27.2mm', system: 'Frameset' },
