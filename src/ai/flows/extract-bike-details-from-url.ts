@@ -72,7 +72,7 @@ Follow these steps:
 5.  Assign every component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
 6.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
 7.  Standardize "Seat Post" to "Seatpost".
-8.  For chainrings, if you see a tooth count (e.g., 40t), extract the number into the 'chainring1' field.
+8.  For cranksets or chainrings, if you see a tooth count (e.g., 40t, 50/34t), extract the number(s) into the 'chainring1', 'chainring2' fields.
 
 Return ONLY the structured JSON object. Do not include any other text or explanations.
 
