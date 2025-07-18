@@ -139,10 +139,9 @@ export function EquipmentListPage() {
         });
         return;
     }
-    const [brand, model, modelYearStr] = formData.bikeIdentifier.split('|');
-    const modelYear = parseInt(modelYearStr, 10);
+
+    const bikeModelId = formData.bikeIdentifier;
     
-    const bikeModelId = `${brand}-${model}-${modelYear}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const bikeModelRef = doc(db, 'bikeModels', bikeModelId);
     const bikeModelSnap = await getDoc(bikeModelRef);
 

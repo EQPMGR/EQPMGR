@@ -1,12 +1,13 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { CalendarIcon, PlusCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { collection, getDocs } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -44,8 +45,9 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { bikeDatabase } from '@/lib/bike-database';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { db } from '@/lib/firebase';
+import type { Equipment } from '@/lib/types';
 
 
 const equipmentFormSchema = z.object({
@@ -62,17 +64,24 @@ const equipmentFormSchema = z.object({
 
 export type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
 
+interface BikeModelOption {
+  id: string;
+  brand: string;
+  model: string;
+  modelYear: number;
+}
+
 interface AddEquipmentDialogProps {
   onAddEquipment: (equipment: EquipmentFormValues) => Promise<void>;
 }
-
-const bikeBrands = [...new Set(bikeDatabase.map(bike => bike.brand))];
 
 export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const [bikeModels, setBikeModels] = useState<BikeModelOption[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(true);
   
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
@@ -86,26 +95,57 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     },
   });
 
-  const selectedBikeIdentifier = useWatch({
+  const selectedBrand = useWatch({
       control: form.control,
-      name: 'bikeIdentifier'
+      name: 'brand'
   });
-  
-  const [selectedBrand, setSelectedBrand] = useState('');
 
-  const availableModels = bikeDatabase.filter(bike => bike.brand === selectedBrand);
+  useEffect(() => {
+    async function fetchBikeModels() {
+      if (!open) return;
+      setIsLoadingModels(true);
+      try {
+        const querySnapshot = await getDocs(collection(db, "bikeModels"));
+        const models: BikeModelOption[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          models.push({
+            id: doc.id,
+            brand: data.brand,
+            model: data.model,
+            modelYear: data.modelYear,
+          });
+        });
+        setBikeModels(models);
+      } catch (error) {
+        console.error("Error fetching bike models:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not load bike models from the database.',
+        });
+      } finally {
+        setIsLoadingModels(false);
+      }
+    }
+    fetchBikeModels();
+  }, [open, toast]);
+
+  const bikeBrands = useMemo(() => {
+    const brands = bikeModels.map(bike => bike.brand);
+    return [...new Set(brands)].sort();
+  }, [bikeModels]);
+
+  const availableModels = useMemo(() => {
+    if (!selectedBrand) return [];
+    return bikeModels.filter(bike => bike.brand === selectedBrand);
+  }, [selectedBrand, bikeModels]);
   
-  const selectedBike = useMemo(() => {
-    if (!selectedBikeIdentifier) return null;
-    const [brand, model, year] = selectedBikeIdentifier.split('|');
-    return bikeDatabase.find(b => b.brand === brand && b.model === model && b.modelYear === parseInt(year));
-  }, [selectedBikeIdentifier]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
-      setSelectedBrand('');
     }
   };
 
@@ -211,24 +251,35 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-6">
             <div className="grid grid-cols-2 gap-4">
-                <FormItem>
-                  <FormLabel>Brand</FormLabel>
-                   <Select onValueChange={(brand) => {
-                       setSelectedBrand(brand);
-                       form.setValue('bikeIdentifier', '');
-                   }}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a brand" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {bikeBrands.map(brand => (
-                          <SelectItem key={brand} value={brand}>{brand}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
+                 <FormField
+                  control={form.control}
+                  name="brand"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Brand</FormLabel>
+                       <Select 
+                        onValueChange={(brand) => {
+                           field.onChange(brand);
+                           form.setValue('bikeIdentifier', '');
+                        }}
+                        value={field.value}
+                        disabled={isLoadingModels}
+                       >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingModels ? "Loading..." : "Select a brand"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {bikeBrands.map(brand => (
+                              <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="bikeIdentifier"
@@ -238,16 +289,16 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value}
-                        disabled={!selectedBrand}
+                        disabled={!selectedBrand || isLoadingModels}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a model" />
+                            <SelectValue placeholder={isLoadingModels ? "Loading..." : "Select a model"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {availableModels.map(bike => (
-                            <SelectItem key={`${bike.brand}|${bike.model}|${bike.modelYear}`} value={`${bike.brand}|${bike.model}|${bike.modelYear}`}>
+                            <SelectItem key={bike.id} value={bike.id}>
                                 {bike.model} ({bike.modelYear})
                             </SelectItem>
                           ))}
@@ -344,7 +395,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                 )}
               />
              <DialogFooter className="sticky bottom-0 bg-background pt-4 -mx-6 px-6 -mb-6 pb-6">
-              <Button type="submit" disabled={isSubmitting || !selectedBike}>
+              <Button type="submit" disabled={isSubmitting || form.getValues('bikeIdentifier') === ''}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Equipment
               </Button>
@@ -355,3 +406,4 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     </Dialog>
   );
 }
+
