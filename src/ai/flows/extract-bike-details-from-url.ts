@@ -32,7 +32,7 @@ const getExistingComponents = ai.defineTool(
     },
     async ({ brand }) => {
         try {
-            // Standardize brand query
+            // Standardize brand query to be case-insensitive for SRAM
             const brandToQuery = brand.toLowerCase() === 'sram' ? 'SRAM' : brand;
             const componentsRef = collection(db, 'masterComponents');
             const q = query(componentsRef, where("brand", "==", brandToQuery));
@@ -106,3 +106,4 @@ const extractBikeDetailsFlow = ai.defineFlow(
     return output;
   }
 );
+

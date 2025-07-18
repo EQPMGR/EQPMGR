@@ -354,6 +354,7 @@ function AddBikeModelFormComponent() {
                     continue;
                 }
 
+                // Final programmatic check for SRAM capitalization
                 if (componentToSave.brand && componentToSave.brand.toLowerCase() === 'sram') {
                     componentToSave.brand = 'SRAM';
                 }
@@ -386,6 +387,7 @@ function AddBikeModelFormComponent() {
                 }
             });
 
+            // Final programmatic check for SRAM capitalization on the bike itself
             if (bikeModelDataToSave.brand && bikeModelDataToSave.brand.toLowerCase() === 'sram') {
                 bikeModelDataToSave.brand = 'SRAM';
             }
