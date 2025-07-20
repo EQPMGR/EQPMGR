@@ -66,7 +66,7 @@ export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
 // A simple utility to create a slug from a component's details
 const createComponentId = (component: Partial<z.infer<typeof componentSchema>>) => {
-    const idString = [component.brand, component.model, component.name]
+    const idString = [component.brand, component.name, component.model]
         .filter(Boolean)
         .join('-');
     
