@@ -1,0 +1,29 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // USER DATA: Only the authenticated user can read or write to their own document.
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // BIKE MODELS: Public data, any authenticated user can read or write.
+    // This supports the crowdsourced data model.
+    match /bikeModels/{bikeId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // MASTER COMPONENTS: Public data, any authenticated user can read or write.
+    // This supports the crowdsourced data model.
+    match /masterComponents/{componentId} {
+     allow read, write: if isSignedIn();
+    }
+  }
+}

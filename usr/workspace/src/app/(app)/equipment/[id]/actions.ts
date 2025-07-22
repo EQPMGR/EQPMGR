@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, deleteField } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, deleteField, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserComponent, MasterComponent } from '@/lib/types';
 
@@ -119,41 +119,56 @@ export async function updateUserComponentAction({
     }
 
     const userDocRef = doc(db, 'users', userId);
-    const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap.exists()) {
-        throw new Error("User document not found.");
-    }
-    const userData = userDocSnap.data();
-    const equipmentData = userData.equipment?.[equipmentId];
-    if (!equipmentData) {
-        throw new Error("Equipment not found in user data.");
-    }
     
-    const currentComponents: UserComponent[] = equipmentData.components || [];
-    const componentIndex = currentComponents.findIndex(c => c.id === userComponentId);
+    try {
+        const userDocSnap = await getDoc(userDocRef);
+        if (!userDocSnap.exists()) {
+            throw new Error("User document not found.");
+        }
+        
+        const userData = userDocSnap.data();
+        const equipmentData = userData.equipment?.[equipmentId];
+        if (!equipmentData) {
+            throw new Error("Equipment not found in user data.");
+        }
+        
+        const currentComponents: UserComponent[] = equipmentData.components || [];
+        const componentIndex = currentComponents.findIndex(c => c.id === userComponentId);
 
-    if (componentIndex === -1) {
-        throw new Error("Component to update not found in user's equipment.");
+        if (componentIndex === -1) {
+            throw new Error("Component to update not found in user's equipment.");
+        }
+
+        const componentToUpdate = { ...currentComponents[componentIndex] };
+        
+        // Apply updates to the component object.
+        // Use deleteField() for values that are null or empty strings.
+        for (const key in updatedData) {
+            const typedKey = key as keyof typeof updatedData;
+            const value = updatedData[typedKey];
+            if (value === null || value === '') {
+                 // Use deleteField only if the key exists
+                if (typedKey in componentToUpdate) {
+                    delete (componentToUpdate as any)[typedKey];
+                }
+            } else {
+                (componentToUpdate as any)[typedKey] = value;
+            }
+        }
+        
+        // Replace the old component with the updated one in the array.
+        currentComponents[componentIndex] = componentToUpdate;
+        
+        // Atomically update the entire components array in the equipment map.
+        await updateDoc(userDocRef, {
+            [`equipment.${equipmentId}.components`]: currentComponents,
+        });
+
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error in updateUserComponentAction:", error);
+        // Re-throw the error to be caught by the calling function
+        throw error;
     }
-
-    const fieldsToUpdate: { [key: string]: any } = {};
-    for (const key in updatedData) {
-        const typedKey = key as keyof typeof updatedData;
-        const value = updatedData[typedKey];
-        fieldsToUpdate[typedKey] = (value === null || value === '') ? deleteField() : value;
-    }
-    
-    // Update the component in the array
-    currentComponents[componentIndex] = {
-        ...currentComponents[componentIndex],
-        ...fieldsToUpdate
-    };
-    
-    const updatePayload = {
-      [`equipment.${equipmentId}.components`]: currentComponents,
-    };
-
-    await writeBatch(db).update(userDocRef, updatePayload).commit();
-
-    return { success: true };
 }
