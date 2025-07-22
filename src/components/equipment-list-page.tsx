@@ -188,6 +188,9 @@ export function EquipmentListPage() {
     if (formData.serialNumber && formData.serialNumber.trim() !== '') {
         newEquipmentData.serialNumber = formData.serialNumber;
     }
+    if (formData.frameSize && formData.frameSize.trim() !== '') {
+        newEquipmentData.frameSize = formData.frameSize;
+    }
     
     const userDocRef = doc(db, 'users', user.uid);
     await updateDoc(userDocRef, {

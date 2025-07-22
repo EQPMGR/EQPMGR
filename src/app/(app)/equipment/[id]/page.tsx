@@ -190,9 +190,9 @@ export default function EquipmentDetailPage() {
     
     const updatePayload: { [key: string]: any } = {};
     for (const [key, value] of Object.entries(data)) {
-        if (key === 'serialNumber' && (value === undefined || value === '')) {
+        if ((key === 'serialNumber' || key === 'frameSize') && (value === undefined || value === '')) {
             updatePayload[`equipment.${equipment.id}.${key}`] = deleteField();
-        } else {
+        } else if (value !== undefined) {
             updatePayload[`equipment.${equipment.id}.${key}`] = value;
         }
     }
@@ -304,7 +304,7 @@ export default function EquipmentDetailPage() {
                             {equipment.name}
                         </CardTitle>
                         <CardDescription>
-                          <span>{equipment.brand} {equipment.model}</span>
+                          <span>{equipment.brand} {equipment.model}{equipment.frameSize && ` - ${equipment.frameSize}`}</span>
                           <span className="block">{equipment.type}</span>
                         </CardDescription>
                     </div>

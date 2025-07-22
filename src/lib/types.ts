@@ -1,3 +1,4 @@
+
 import type { BikeType } from '@/lib/constants';
 
 // Data from the master/central database
@@ -52,6 +53,7 @@ export interface Equipment {
   model: string;
   modelYear: number;
   serialNumber?: string;
+  frameSize?: string;
   purchaseCondition: 'new' | 'used';
   purchaseDate: Date;
   purchasePrice: number;

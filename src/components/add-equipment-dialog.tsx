@@ -58,6 +58,7 @@ const equipmentFormSchema = z.object({
   }),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
   serialNumber: z.string().optional(),
+  frameSize: z.string().optional(),
   purchaseCondition: z.enum(['new', 'used']),
 });
 
@@ -91,6 +92,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
       purchaseDate: new Date(),
       purchasePrice: 0,
       serialNumber: '',
+      frameSize: '',
       purchaseCondition: 'new',
     },
   });
@@ -381,19 +383,34 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                 )}
               />
             </div>
-             <FormField
-                control={form.control}
-                name="serialNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Serial Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Optional" {...field} value={field.value ?? ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                  control={form.control}
+                  name="frameSize"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Frame Size</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 56cm or Large" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              <FormField
+                  control={form.control}
+                  name="serialNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Serial Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Optional" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
              <DialogFooter className="sticky bottom-0 bg-background pt-4 -mx-6 px-6 -mb-6 pb-6">
               <Button type="submit" disabled={isSubmitting || form.getValues('bikeIdentifier') === ''}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -406,4 +423,3 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     </Dialog>
   );
 }
-

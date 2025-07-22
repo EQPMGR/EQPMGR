@@ -45,6 +45,7 @@ const editEquipmentFormSchema = z.object({
   }),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
   serialNumber: z.string().optional(),
+  frameSize: z.string().optional(),
   purchaseCondition: z.enum(['new', 'used']),
 }).refine(data => !data.serialNumber || data.serialNumber.length === 0 || data.serialNumber.length >= 3, {
   message: "Serial number must be at least 3 characters.",
@@ -53,8 +54,9 @@ const editEquipmentFormSchema = z.object({
 
 type EditEquipmentFormValues = z.infer<typeof editEquipmentFormSchema>;
 
-export interface UpdateEquipmentData extends Omit<EditEquipmentFormValues, 'serialNumber'> {
+export interface UpdateEquipmentData extends Omit<EditEquipmentFormValues, 'serialNumber' | 'frameSize'> {
     serialNumber?: string;
+    frameSize?: string;
 }
 
 interface EditEquipmentDialogProps {
@@ -80,6 +82,7 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, onOpenChange
       purchaseDate: equipment.purchaseDate,
       purchasePrice: equipment.purchasePrice,
       serialNumber: equipment.serialNumber || '',
+      frameSize: equipment.frameSize || '',
     });
   }, [equipment, form]);
 
@@ -89,6 +92,7 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, onOpenChange
         const updateData: UpdateEquipmentData = {
             ...data,
             serialNumber: data.serialNumber || undefined,
+            frameSize: data.frameSize || undefined,
         };
         await onUpdateEquipment(updateData);
         toast({
@@ -253,19 +257,34 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, onOpenChange
                 )}
               />
             </div>
-             <FormField
-                control={form.control}
-                name="serialNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Serial Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Optional" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+             <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="frameSize"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Frame Size</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 56cm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                    control={form.control}
+                    name="serialNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Serial Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Optional" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+             </div>
              <DialogFooter className="sticky bottom-0 bg-background pt-4 -mx-6 px-6 -mb-6 pb-6">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
