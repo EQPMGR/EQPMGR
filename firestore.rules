@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -7,13 +8,15 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Public collections that any authenticated user can read from.
-    // Write access is also given for the admin tools to add new models.
-    match /bikeModels/{modelId} {
+    
+    // Bike models are public, readable by any authenticated user.
+    // Writing is allowed for any authenticated user to support admin functions.
+    match /bikeModels/{bikeId} {
         allow read, write: if request.auth != null;
     }
 
+    // Master components are public, readable by any authenticated user.
+    // Writing is allowed for any authenticated user to support admin functions.
     match /masterComponents/{componentId} {
         allow read, write: if request.auth != null;
     }
