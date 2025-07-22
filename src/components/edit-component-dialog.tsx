@@ -6,8 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { updateUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
 import type { Component } from '@/lib/types';
 import {
   Dialog,
@@ -30,14 +28,6 @@ import {
 import { Input } from './ui/input';
 import { Separator } from './ui/separator';
 
-interface EditComponentDialogProps {
-  userId: string;
-  equipmentId: string;
-  component: Component;
-  onSuccess: () => void;
-  children: React.ReactNode;
-}
-
 const formSchema = z.object({
   chainring1: z.string().optional(),
   chainring1_brand: z.string().optional(),
@@ -50,18 +40,21 @@ const formSchema = z.object({
   chainring3_model: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+export type FormValues = z.infer<typeof formSchema>;
+
+interface EditComponentDialogProps {
+  component: Component;
+  onSave: (data: FormValues) => Promise<void>;
+  children: React.ReactNode;
+}
 
 export function EditComponentDialog({
-  userId,
-  equipmentId,
   component,
-  onSuccess,
+  onSave,
   children,
 }: EditComponentDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -100,32 +93,9 @@ export function EditComponentDialog({
 
   const onSubmit = async (data: FormValues) => {
     setIsSaving(true);
-    try {
-      await updateUserComponentAction({
-        userId,
-        equipmentId,
-        userComponentId: component.userComponentId,
-        updatedData: {
-          chainring1: data.chainring1 || null,
-          chainring1_brand: data.chainring1_brand || null,
-          chainring1_model: data.chainring1_model || null,
-          chainring2: data.chainring2 || null,
-          chainring2_brand: data.chainring2_brand || null,
-          chainring2_model: data.chainring2_model || null,
-          chainring3: data.chainring3 || null,
-          chainring3_brand: data.chainring3_brand || null,
-          chainring3_model: data.chainring3_model || null,
-        },
-      });
-      toast({ title: 'Component Updated!', description: 'Your changes have been saved.' });
-      onSuccess();
-      handleOpenChange(false);
-    } catch (error: any) {
-      console.error('Update failed:', error);
-      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
-    } finally {
-      setIsSaving(false);
-    }
+    await onSave(data);
+    setIsSaving(false);
+    handleOpenChange(false); // Close the dialog on success
   };
 
   return (

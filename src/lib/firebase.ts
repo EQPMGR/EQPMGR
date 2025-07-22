@@ -32,8 +32,8 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const db = getFirestore(app);
 
-// Initialize Performance and Analytics only on the client side
-if (typeof window !== 'undefined') {
+// Initialize Performance and Analytics only on the client side and if keys are present
+if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
   getPerformance(app);
   isSupported().then(supported => {
     if (supported) {

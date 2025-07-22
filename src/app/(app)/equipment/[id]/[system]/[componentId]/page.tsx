@@ -17,7 +17,8 @@ import { toDate, toNullableDate } from '@/lib/date-utils';
 import type { Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { ReplaceComponentDialog } from '@/components/replace-component-dialog';
-import { EditComponentDialog } from '@/components/edit-component-dialog';
+import { EditComponentDialog, type FormValues as EditComponentFormValues } from '@/components/edit-component-dialog';
+import { updateUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
 
 export default function ComponentDetailPage() {
   const params = useParams<{ id: string; system: string; componentId: string }>();
@@ -78,7 +79,38 @@ export default function ComponentDetailPage() {
     }
   }, [user, params.id, params.componentId, authLoading, toast, fetchComponent]);
 
-  const handleSuccess = () => {
+  const handleEditSuccess = async (data: EditComponentFormValues) => {
+      if (!user || !component) {
+        toast({ variant: "destructive", title: "Error", description: "Not authorized or component not found." });
+        return;
+      }
+      try {
+        await updateUserComponentAction({
+          userId,
+          equipmentId: params.id as string,
+          userComponentId: component.userComponentId,
+          updatedData: {
+            chainring1: data.chainring1 || null,
+            chainring1_brand: data.chainring1_brand || null,
+            chainring1_model: data.chainring1_model || null,
+            chainring2: data.chainring2 || null,
+            chainring2_brand: data.chainring2_brand || null,
+            chainring2_model: data.chainring2_model || null,
+            chainring3: data.chainring3 || null,
+            chainring3_brand: data.chainring3_brand || null,
+            chainring3_model: data.chainring3_model || null,
+          },
+        });
+        toast({ title: 'Component Updated!', description: 'Your changes have been saved.' });
+        // Refetch data to show the update
+        await fetchComponent(user.uid, params.id as string, params.componentId as string);
+      } catch (error: any) {
+        console.error('Update failed:', error);
+        toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+      }
+  }
+
+  const handleReplaceSuccess = () => {
       if (user && params.id && params.componentId) {
         fetchComponent(user.uid, params.id as string, params.componentId as string);
     }
@@ -107,10 +139,16 @@ export default function ComponentDetailPage() {
   const isCrankset = component.name.toLowerCase().includes('crankset');
 
   const renderChainringDetail = (ringNum: 1 | 2 | 3) => {
-      const teeth = component[`chainring${ringNum}` as keyof Component];
-      const brand = component[`chainring${ringNum}_brand` as keyof Component];
-      const model = component[`chainring${ringNum}_model` as keyof Component];
+      const teethKey = `chainring${ringNum}` as keyof Component;
+      const brandKey = `chainring${ringNum}_brand` as keyof Component;
+      const modelKey = `chainring${ringNum}_model` as keyof Component;
+
+      const teeth = component[teethKey];
+      const brand = component[brandKey];
+      const model = component[modelKey];
+      
       if (!teeth) return null;
+
       return (
         <div>
             <p className="text-muted-foreground">Chainring {ringNum}</p>
@@ -163,14 +201,12 @@ export default function ComponentDetailPage() {
                         userId={user?.uid} 
                         equipmentId={params.id as string} 
                         componentToReplace={component}
-                        onSuccess={handleSuccess}
+                        onSuccess={handleReplaceSuccess}
                     />
                     {isCrankset && user && (
                        <EditComponentDialog 
-                           userId={user.uid}
-                           equipmentId={params.id as string}
                            component={component}
-                           onSuccess={handleSuccess}
+                           onSave={handleEditSuccess}
                        >
                          <Button variant="secondary">
                             <Pencil className="mr-2 h-4 w-4"/>
