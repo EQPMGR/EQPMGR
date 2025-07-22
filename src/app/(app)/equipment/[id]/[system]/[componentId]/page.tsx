@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -115,7 +115,6 @@ export default function ComponentDetailPage() {
           <CardDescription>{component.brand} {component.model}</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="mb-4">Component details and maintenance options will be available here.</p>
             <div className="mt-4">
               <ComponentStatusList components={[component]} />
             </div>
@@ -124,6 +123,10 @@ export default function ComponentDetailPage() {
                     <p className="text-muted-foreground">System</p>
                     <p className="font-medium capitalize">{component.system}</p>
                 </div>
+                 {component.size && <div><p className="text-muted-foreground">Size</p><p className="font-medium">{component.size}</p></div>}
+                 {component.chainring1 && <div><p className="text-muted-foreground">Chainring 1</p><p className="font-medium">{component.chainring1}</p></div>}
+                 {component.chainring2 && <div><p className="text-muted-foreground">Chainring 2</p><p className="font-medium">{component.chainring2}</p></div>}
+                 {component.chainring3 && <div><p className="text-muted-foreground">Chainring 3</p><p className="font-medium">{component.chainring3}</p></div>}
                 <div>
                     <p className="text-muted-foreground">Purchase Date</p>
                     <p className="font-medium">{component.purchaseDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>

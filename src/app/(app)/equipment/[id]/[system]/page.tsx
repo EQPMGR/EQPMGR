@@ -46,15 +46,20 @@ export default function SystemDetailPage() {
                 lastServiceDate: toNullableDate(c.lastServiceDate),
             }));
 
-            const masterComponentIds = userComponents.map(c => c.masterComponentId);
+            const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
             
             const masterComponentsMap = new Map<string, MasterComponent>();
             if (masterComponentIds.length > 0) {
-                const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', masterComponentIds));
-                const querySnapshot = await getDocs(masterComponentsQuery);
-                querySnapshot.forEach(doc => {
-                    masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
-                });
+                 for (let i = 0; i < masterComponentIds.length; i += 30) {
+                    const batchIds = masterComponentIds.slice(i, i + 30);
+                     if (batchIds.length > 0) {
+                        const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
+                        const querySnapshot = await getDocs(masterComponentsQuery);
+                        querySnapshot.forEach(doc => {
+                            masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                        });
+                    }
+                }
             }
 
             const combinedComponents: Component[] = userComponents.map(userComp => {
