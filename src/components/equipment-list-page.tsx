@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Activity } from 'lucide-react';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where, deleteField } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment, MasterComponent, UserComponent, Component, MaintenanceLog } from '@/lib/types';
@@ -47,8 +47,6 @@ export function EquipmentListPage() {
 
         const masterComponentsMap = new Map<string, MasterComponent>();
         if (allMasterComponentIds.size > 0) {
-            // Firestore 'in' queries are limited to 30 elements. 
-            // If you have more components, you'd need to batch these queries.
             const masterComponentIdsArray = Array.from(allMasterComponentIds);
             for (let i = 0; i < masterComponentIdsArray.length; i += 30) {
                 const batchIds = masterComponentIdsArray.slice(i, i + 30);
@@ -72,7 +70,6 @@ export function EquipmentListPage() {
 
             const combinedComponents: Component[] = userComponents.map(userComp => {
                 const masterComp = masterComponentsMap.get(userComp.masterComponentId);
-                // Gracefully handle missing master components - the card might show partial data
                 if (!masterComp) {
                     console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
                     return {
@@ -91,6 +88,7 @@ export function EquipmentListPage() {
                     purchaseDate: userComp.purchaseDate,
                     lastServiceDate: userComp.lastServiceDate,
                     notes: userComp.notes,
+                    size: userComp.size, // Get the specific size for this user's instance
                 };
             }).filter((c): c is Component => c !== null);
 
@@ -155,10 +153,42 @@ export function EquipmentListPage() {
     }
     const bikeFromDb = bikeModelSnap.data();
 
+    // Fetch master components to resolve size variants
+    const masterComponentPaths = bikeFromDb.components as string[];
+    const masterComponentIds = masterComponentPaths.map(p => p.split('/').pop()!);
+    const masterComponentsMap = new Map<string, MasterComponent>();
+
+    if (masterComponentIds.length > 0) {
+      for (let i = 0; i < masterComponentIds.length; i += 30) {
+        const batchIds = masterComponentIds.slice(i, i + 30);
+        if (batchIds.length > 0) {
+          const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
+          const querySnapshot = await getDocs(masterComponentsQuery);
+          querySnapshot.forEach(doc => {
+            masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+          });
+        }
+      }
+    }
+
     const newEquipmentId = crypto.randomUUID();
       
-    const userComponents: UserComponent[] = (bikeFromDb.components as string[]).map((masterComponentPath: string) => {
+    const userComponents: UserComponent[] = masterComponentPaths.map((masterComponentPath: string) => {
         const masterComponentId = masterComponentPath.split('/').pop()!;
+        const masterComp = masterComponentsMap.get(masterComponentId);
+        let specificSize = masterComp?.size;
+
+        // If a frame size is selected and the component has size variants, find the correct one.
+        if (formData.frameSize && masterComp?.sizeVariants) {
+            // Find a case-insensitive key match
+            const frameSizeKey = Object.keys(masterComp.sizeVariants).find(
+              (key) => key.toLowerCase() === formData.frameSize!.toLowerCase()
+            );
+            if (frameSizeKey) {
+                specificSize = masterComp.sizeVariants[frameSizeKey];
+            }
+        }
+
         return {
             id: crypto.randomUUID(),
             masterComponentId: masterComponentId,
@@ -166,6 +196,7 @@ export function EquipmentListPage() {
             purchaseDate: formData.purchaseDate,
             lastServiceDate: null,
             notes: '',
+            size: specificSize, // Save the resolved size
         }
     });
 
@@ -183,20 +214,17 @@ export function EquipmentListPage() {
         totalHours: 0,
         maintenanceLog: [],
         components: userComponents,
+        frameSize: formData.frameSize,
     };
     
-    if (formData.serialNumber && formData.serialNumber.trim() !== '') {
-        newEquipmentData.serialNumber = formData.serialNumber;
-    }
-    if (formData.frameSize && formData.frameSize.trim() !== '') {
-        newEquipmentData.frameSize = formData.frameSize;
-    }
-    
+    // Use a write batch for atomicity
+    const batch = writeBatch(db);
     const userDocRef = doc(db, 'users', user.uid);
-    await updateDoc(userDocRef, {
-      [`equipment.${newEquipmentId}`]: newEquipmentData
-    });
     
+    // Using dot notation to add/update the equipment in the map
+    batch.update(userDocRef, { [`equipment.${newEquipmentId}`]: newEquipmentData });
+    
+    await batch.commit();
     await fetchEquipment(user.uid);
   }
 

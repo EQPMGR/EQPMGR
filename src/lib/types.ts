@@ -10,7 +10,7 @@ export interface MasterComponent {
   series?: string;
   model?: string;
   system: string;
-  size?: string; // For components with a single size
+  size?: string; // For components with a single size, or as a default/base size.
   sizeVariants?: { [frameSize: string]: string }; // For components with size tied to frame, e.g. { "S": "170mm", "M": "172.5mm" }
   // Drivetrain specific
   chainring1?: string;
@@ -29,6 +29,7 @@ export interface UserComponent {
   lastServiceDate: Date | null;
   purchaseDate: Date;
   notes?: string;
+  size?: string; // The specific size for this user's instance, resolved from size or sizeVariants.
 }
 
 // The combined object we'll use in the app UI

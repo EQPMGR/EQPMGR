@@ -51,6 +51,7 @@ export default function ComponentDetailPage() {
                 purchaseDate: toDate(userComp.purchaseDate),
                 lastServiceDate: toNullableDate(userComp.lastServiceDate),
                 notes: userComp.notes,
+                size: userComp.size, // Get the specific size for this user's instance
               });
             } else {
               toast({ variant: "destructive", title: "Master Component not found" });

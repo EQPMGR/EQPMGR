@@ -33,11 +33,12 @@ Follow these steps:
 1.  Analyze the provided text to determine the bike's overall brand, model, and model year.
 2.  Extract every individual component listed in the text. For each, identify its name, brand, series, and model.
 3.  Assign every component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
-4.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
-5.  **Critical Naming Rules**:
+4.  **SIZE EXTRACTION RULE**: If a component's size depends on the frame size (e.g., "Handlebar... XS:40cm, S:40cm, M:42cm" or "Crankset... S:170mm, M:172.5mm"), you MUST extract these into the 'sizeVariants' object. The frame size (e.g., "S") is the key, and the component size (e.g., "170mm") is the value.
+5.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
+6.  **Critical Naming Rules**:
     - Standardize "Seat Post" to "Seatpost".
     - If you see "Sram", "sram", or "SRAM", ALWAYS standardize the brand to "SRAM".
-6.  **Crankset/Chainring Rule**: If you see a tooth count for a crankset or chainrings (e.g., 40t, 50/34t), you MUST extract the number(s) into the 'chainring1' and 'chainring2' fields in the component object.
+7.  **Crankset/Chainring Rule**: If you see a tooth count for a crankset or chainrings (e.g., 40t, 50/34t), you MUST extract the number(s) into the 'chainring1' and 'chainring2' fields in the component object.
 
 Return ONLY the structured JSON object. Do not include any other text or explanations.
 
