@@ -86,7 +86,7 @@ export default function ComponentDetailPage() {
       }
       try {
         await updateUserComponentAction({
-          userId,
+          userId: user.uid,
           equipmentId: params.id as string,
           userComponentId: component.userComponentId,
           updatedData: {
