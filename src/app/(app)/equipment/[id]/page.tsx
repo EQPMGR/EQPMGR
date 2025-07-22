@@ -54,6 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
 import { toDate, toNullableDate } from '@/lib/date-utils';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -99,7 +100,6 @@ export default function EquipmentDetailPage() {
   const { toast } = useToast();
   const [equipment, setEquipment] = useState<Equipment | undefined>();
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchEquipment = useCallback(async (uid: string, equipmentId: string) => {
@@ -190,17 +190,18 @@ export default function EquipmentDetailPage() {
     
     const updatePayload: { [key: string]: any } = {};
     for (const [key, value] of Object.entries(data)) {
-      updatePayload[`equipment.${equipment.id}.${key}`] = value;
+        if (key === 'serialNumber' && (value === undefined || value === '')) {
+            updatePayload[`equipment.${equipment.id}.${key}`] = deleteField();
+        } else {
+            updatePayload[`equipment.${equipment.id}.${key}`] = value;
+        }
     }
 
     const userDocRef = doc(db, 'users', user.uid);
     await updateDoc(userDocRef, updatePayload);
     
-    setEquipment(prev => {
-        if (!prev) return undefined;
-        const updatedData: Partial<Equipment> = { ...data };
-        return { ...prev, ...updatedData };
-    });
+    // After successful update, re-fetch the data to ensure UI is in sync
+    await fetchEquipment(user.uid, equipment.id);
   };
 
   const handleDeleteEquipment = async () => {
@@ -308,10 +309,18 @@ export default function EquipmentDetailPage() {
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
-                            <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Edit Equipment</span>
-                        </Button>
+                         <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="icon">
+                                    <Pencil className="h-4 w-4" />
+                                    <span className="sr-only">Edit Equipment</span>
+                                </Button>
+                            </DialogTrigger>
+                            <EditEquipmentDialog 
+                                equipment={equipment} 
+                                onUpdateEquipment={handleUpdateEquipment}
+                            />
+                        </Dialog>
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" size="icon">
@@ -438,12 +447,6 @@ export default function EquipmentDetailPage() {
             </Card>
           </div>
         </div>
-        {equipment && <EditEquipmentDialog 
-            equipment={equipment} 
-            onUpdateEquipment={handleUpdateEquipment}
-            open={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
-        />}
     </>
   );
 }

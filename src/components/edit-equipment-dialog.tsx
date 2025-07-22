@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -11,13 +11,11 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -62,38 +60,28 @@ export interface UpdateEquipmentData extends Omit<EditEquipmentFormValues, 'seri
 interface EditEquipmentDialogProps {
   equipment: Equipment;
   onUpdateEquipment: (equipment: UpdateEquipmentData) => Promise<void>;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpenChange }: EditEquipmentDialogProps) {
+export function EditEquipmentDialog({ equipment, onUpdateEquipment, onOpenChange }: EditEquipmentDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
   const form = useForm<EditEquipmentFormValues>({
     resolver: zodResolver(editEquipmentFormSchema),
-    values: {
+    // Use useEffect to reset the form when the equipment prop changes.
+  });
+
+  useEffect(() => {
+    form.reset({
       name: equipment.name,
       purchaseCondition: equipment.purchaseCondition,
       purchaseDate: equipment.purchaseDate,
       purchasePrice: equipment.purchasePrice,
       serialNumber: equipment.serialNumber || '',
-    },
-  });
-
-  const handleOpenChange = (isOpen: boolean) => {
-    onOpenChange(isOpen);
-    if (!isOpen) {
-      form.reset({
-        name: equipment.name,
-        purchaseCondition: equipment.purchaseCondition,
-        purchaseDate: equipment.purchaseDate,
-        purchasePrice: equipment.purchasePrice,
-        serialNumber: equipment.serialNumber || '',
-      });
-    }
-  };
+    });
+  }, [equipment, form]);
 
   async function onSubmit(data: EditEquipmentFormValues) {
     setIsSubmitting(true);
@@ -107,7 +95,7 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
             title: 'Equipment Updated!',
             description: `${data.name} has been updated.`,
         });
-        handleOpenChange(false);
+        onOpenChange?.(false);
     } catch (error) {
         console.error("Error updating equipment:", error);
         toast({
@@ -149,7 +137,7 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
         fixedWeeks
         selected={field.value}
         onSelect={(date) => {
-          field.onChange(date);
+          if (date) field.onChange(date);
           setIsCalendarOpen(false);
         }}
         disabled={(date) =>
@@ -161,14 +149,14 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
     
     if (isMobile) {
       return (
-        <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-          <DialogTrigger asChild>
+        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+          <PopoverTrigger asChild>
             <FormControl>{CalendarButton}</FormControl>
-          </DialogTrigger>
+          </PopoverTrigger>
           <DialogContent className="w-auto p-0">
             {CalendarComponent}
           </DialogContent>
-        </Dialog>
+        </Popover>
       );
     }
     
@@ -185,7 +173,6 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Equipment</DialogTitle>
@@ -288,6 +275,5 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, open, onOpen
           </form>
         </Form>
       </DialogContent>
-    </Dialog>
   );
 }
