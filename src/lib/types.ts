@@ -16,9 +16,6 @@ export interface MasterComponent {
   chainring1?: string;
   chainring2?: string;
   chainring3?: string;
-  // Future fields for lifespan analysis
-  // manufacturerLifespanKm?: number;
-  // observedAvgLifespanKm?: number;
 }
 
 // Data specific to a user's instance of a component
@@ -30,6 +27,9 @@ export interface UserComponent {
   purchaseDate: Date;
   notes?: string;
   size?: string; // The specific size for this user's instance, resolved from size or sizeVariants.
+  chainring1?: string; // User-specific override
+  chainring2?: string; // User-specific override
+  chainring3?: string; // User-specific override
 }
 
 // The combined object we'll use in the app UI

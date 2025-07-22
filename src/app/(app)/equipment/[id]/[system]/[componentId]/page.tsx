@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Pencil } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -17,6 +17,7 @@ import { toDate, toNullableDate } from '@/lib/date-utils';
 import type { Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { ReplaceComponentDialog } from '@/components/replace-component-dialog';
+import { EditComponentDialog } from '@/components/edit-component-dialog';
 
 export default function ComponentDetailPage() {
   const params = useParams<{ id: string; system: string; componentId: string }>();
@@ -46,12 +47,10 @@ export default function ComponentDetailPage() {
               const masterComp = { id: masterCompSnap.id, ...masterCompSnap.data() } as MasterComponent;
               setComponent({
                 ...masterComp,
+                ...userComp, // This will overwrite master fields with user-specific ones if they exist
                 userComponentId: userComp.id,
-                wearPercentage: userComp.wearPercentage,
                 purchaseDate: toDate(userComp.purchaseDate),
                 lastServiceDate: toNullableDate(userComp.lastServiceDate),
-                notes: userComp.notes,
-                size: userComp.size, // Get the specific size for this user's instance
               });
             } else {
               toast({ variant: "destructive", title: "Master Component not found" });
@@ -79,6 +78,11 @@ export default function ComponentDetailPage() {
     }
   }, [user, params.id, params.componentId, authLoading, toast, fetchComponent]);
 
+  const handleSuccess = () => {
+      if (user && params.id && params.componentId) {
+        fetchComponent(user.uid, params.id as string, params.componentId as string);
+    }
+  }
 
   if (isLoading || authLoading) {
       return (
@@ -99,6 +103,8 @@ export default function ComponentDetailPage() {
       </div>
     );
   }
+  
+  const isCrankset = component.name.toLowerCase().includes('crankset');
 
   return (
      <>
@@ -144,8 +150,21 @@ export default function ComponentDetailPage() {
                         userId={user?.uid} 
                         equipmentId={params.id as string} 
                         componentToReplace={component}
-                        onSuccess={() => fetchComponent(user!.uid, params.id as string, params.componentId as string)}
+                        onSuccess={handleSuccess}
                     />
+                    {isCrankset && user && (
+                       <EditComponentDialog 
+                           userId={user.uid}
+                           equipmentId={params.id as string}
+                           component={component}
+                           onSuccess={handleSuccess}
+                       >
+                         <Button variant="secondary">
+                            <Pencil className="mr-2 h-4 w-4"/>
+                            Edit
+                        </Button>
+                       </EditComponentDialog>
+                    )}
                     <Button variant="secondary">Log Maintenance</Button>
                 </div>
              </div>

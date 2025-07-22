@@ -1,6 +1,7 @@
+
 'use server';
 
-import { doc, getDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, deleteField } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserComponent, MasterComponent } from '@/lib/types';
 
@@ -62,15 +63,21 @@ export async function replaceUserComponentAction({
     if (componentIndex === -1) {
         throw new Error("Component to replace not found in user's equipment.");
     }
+    
+    const originalComponent = currentComponents[componentIndex];
 
     // Update the specific user component in the array
     currentComponents[componentIndex] = {
-        ...currentComponents[componentIndex],
+        ...originalComponent,
         masterComponentId: newMasterComponentId,
         wearPercentage: 0, // Reset wear for the new component
         purchaseDate: new Date(), // Set purchase date to now
         lastServiceDate: null,
         notes: `Replaced on ${new Date().toLocaleDateString()}`,
+        // Clear old chainring data when replacing the whole crankset
+        chainring1: undefined,
+        chainring2: undefined,
+        chainring3: undefined,
     };
 
     const updatePayload = {
@@ -83,4 +90,77 @@ export async function replaceUserComponentAction({
     await batch.commit();
 
     return { success: true, newMasterComponentId };
+}
+
+
+export async function updateUserComponentAction({
+    userId,
+    equipmentId,
+    userComponentId,
+    updatedData
+}: {
+    userId: string;
+    equipmentId: string;
+    userComponentId: string;
+    updatedData: {
+        chainring1?: string | null;
+        chainring2?: string | null;
+        chainring3?: string | null;
+    }
+}) {
+    if (!userId || !equipmentId || !userComponentId) {
+        throw new Error("Missing required parameters for component update.");
+    }
+
+    const userDocRef = doc(db, 'users', userId);
+    const userDocSnap = await getDoc(userDocRef);
+    if (!userDocSnap.exists()) {
+        throw new Error("User document not found.");
+    }
+    const userData = userDocSnap.data();
+    const equipmentData = userData.equipment?.[equipmentId];
+    if (!equipmentData) {
+        throw new Error("Equipment not found in user data.");
+    }
+    
+    const currentComponents: UserComponent[] = equipmentData.components || [];
+    const componentIndex = currentComponents.findIndex(c => c.id === userComponentId);
+
+    if (componentIndex === -1) {
+        throw new Error("Component to update not found in user's equipment.");
+    }
+
+    // Prepare the update object. Use deleteField() for null/empty values to remove them from Firestore.
+    const fieldsToUpdate: {[key: string]: any} = {};
+    if (updatedData.chainring1 === null || updatedData.chainring1 === '') {
+        fieldsToUpdate.chainring1 = deleteField();
+    } else if (updatedData.chainring1) {
+        fieldsToUpdate.chainring1 = updatedData.chainring1;
+    }
+
+    if (updatedData.chainring2 === null || updatedData.chainring2 === '') {
+        fieldsToUpdate.chainring2 = deleteField();
+    } else if (updatedData.chainring2) {
+        fieldsToUpdate.chainring2 = updatedData.chainring2;
+    }
+    
+    if (updatedData.chainring3 === null || updatedData.chainring3 === '') {
+        fieldsToUpdate.chainring3 = deleteField();
+    } else if (updatedData.chainring3) {
+        fieldsToUpdate.chainring3 = updatedData.chainring3;
+    }
+    
+    // Update the component in the array
+    currentComponents[componentIndex] = {
+        ...currentComponents[componentIndex],
+        ...fieldsToUpdate
+    };
+    
+    const updatePayload = {
+      [`equipment.${equipmentId}.components`]: currentComponents,
+    };
+
+    await writeBatch(db).update(userDocRef, updatePayload).commit();
+
+    return { success: true };
 }
