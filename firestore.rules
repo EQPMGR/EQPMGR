@@ -1,24 +1,25 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Users can only read and write to their own user document.
+
+    // Users can only read and write their own document.
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Bike Models are public, but only authenticated users can modify them.
-    match /bikeModels/{bike} {
-      allow read: true;
-      allow create, update, delete: if request.auth != null;
+    // bikeModels can be read by anyone, but only written to by authenticated users.
+    // This allows the "Add Equipment" dialog to function for all users,
+    // and the admin panel to work for authenticated users.
+    match /bikeModels/{bikeId} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
-    
-    // Master Components are public, but only authenticated users can modify them.
-    match /masterComponents/{component} {
-      allow read: true;
-      allow create, update, delete: if request.auth != null;
+
+    // masterComponents can be read by anyone, but only written to by authenticated users.
+    match /masterComponents/{componentId} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }
