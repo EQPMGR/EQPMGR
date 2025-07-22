@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
@@ -14,6 +15,16 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
+
+// DEBUG: Log the config to the browser console to verify it's loaded.
+if (typeof window !== 'undefined') {
+  console.log("Firebase Config Loaded:", {
+      apiKey: firebaseConfig.apiKey ? 'Loaded' : 'MISSING!',
+      authDomain: firebaseConfig.authDomain,
+      projectId: firebaseConfig.projectId,
+  });
+}
+
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
