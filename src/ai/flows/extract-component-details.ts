@@ -5,27 +5,13 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import {
+    ExtractComponentDetailsInput,
+    ExtractComponentDetailsInputSchema,
+    ExtractComponentDetailsOutput,
+    ExtractComponentDetailsOutputSchema
+} from '@/lib/ai-types';
 
-const ExtractedComponentSchema = z.object({
-  name: z.string().describe('The name of the component (e.g., "Chainring", "Rear Derailleur"). Standardize "Seat Post" to "Seatpost".'),
-  brand: z.string().optional().describe('The brand of the component (e.g., "SRAM", "Shimano").'),
-  series: z.string().optional().describe('The product family or series name (e.g., "GX Eagle").'),
-  model: z.string().optional().describe('The specific model or part number of the component (e.g., "XG-1275").'),
-  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", "E-Bike", or "Accessories".'),
-  // Drivetrain specific
-  chainring1: z.string().optional().describe("For chainrings, the tooth count (e.g., '44t')."),
-  size: z.string().optional().describe("Size of the component, if applicable (e.g., '175mm' for cranks, '27.2mm' for seatposts)."),
-});
-
-export const ExtractComponentDetailsInputSchema = z.object({
-  textContent: z.string().describe("The raw text content from the component's product webpage."),
-  originalSystem: z.string().describe("The system of the component being replaced, to guide the AI.")
-});
-export type ExtractComponentDetailsInput = z.infer<typeof ExtractComponentDetailsInputSchema>;
-
-export const ExtractComponentDetailsOutputSchema = ExtractedComponentSchema;
-export type ExtractComponentDetailsOutput = z.infer<typeof ExtractComponentDetailsOutputSchema>;
 
 export async function extractComponentDetails(input: ExtractComponentDetailsInput): Promise<ExtractComponentDetailsOutput> {
   return extractComponentDetailsFlow(input);

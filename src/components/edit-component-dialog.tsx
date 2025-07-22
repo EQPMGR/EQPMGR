@@ -28,6 +28,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from './ui/input';
+import { Separator } from './ui/separator';
 
 interface EditComponentDialogProps {
   userId: string;
@@ -39,8 +40,14 @@ interface EditComponentDialogProps {
 
 const formSchema = z.object({
   chainring1: z.string().optional(),
+  chainring1_brand: z.string().optional(),
+  chainring1_model: z.string().optional(),
   chainring2: z.string().optional(),
+  chainring2_brand: z.string().optional(),
+  chainring2_model: z.string().optional(),
   chainring3: z.string().optional(),
+  chainring3_brand: z.string().optional(),
+  chainring3_model: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -59,9 +66,15 @@ export function EditComponentDialog({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      chainring1: component.chainring1 || '',
-      chainring2: component.chainring2 || '',
-      chainring3: component.chainring3 || '',
+        chainring1: component.chainring1 || '',
+        chainring1_brand: (component as any).chainring1_brand || '',
+        chainring1_model: (component as any).chainring1_model || '',
+        chainring2: component.chainring2 || '',
+        chainring2_brand: (component as any).chainring2_brand || '',
+        chainring2_model: (component as any).chainring2_model || '',
+        chainring3: component.chainring3 || '',
+        chainring3_brand: (component as any).chainring3_brand || '',
+        chainring3_model: (component as any).chainring3_model || '',
     },
   });
 
@@ -69,8 +82,14 @@ export function EditComponentDialog({
     if (open) {
       form.reset({
         chainring1: component.chainring1 || '',
+        chainring1_brand: (component as any).chainring1_brand || '',
+        chainring1_model: (component as any).chainring1_model || '',
         chainring2: component.chainring2 || '',
+        chainring2_brand: (component as any).chainring2_brand || '',
+        chainring2_model: (component as any).chainring2_model || '',
         chainring3: component.chainring3 || '',
+        chainring3_brand: (component as any).chainring3_brand || '',
+        chainring3_model: (component as any).chainring3_model || '',
       });
     }
   }, [open, component, form]);
@@ -87,9 +106,15 @@ export function EditComponentDialog({
         equipmentId,
         userComponentId: component.userComponentId,
         updatedData: {
-          chainring1: data.chainring1 || null, // Send null to delete
+          chainring1: data.chainring1 || null,
+          chainring1_brand: data.chainring1_brand || null,
+          chainring1_model: data.chainring1_model || null,
           chainring2: data.chainring2 || null,
+          chainring2_brand: data.chainring2_brand || null,
+          chainring2_model: data.chainring2_model || null,
           chainring3: data.chainring3 || null,
+          chainring3_brand: data.chainring3_brand || null,
+          chainring3_model: data.chainring3_model || null,
         },
       });
       toast({ title: 'Component Updated!', description: 'Your changes have been saved.' });
@@ -106,55 +131,47 @@ export function EditComponentDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit: {component.name}</DialogTitle>
           <DialogDescription>
-            Modify the details of this component. Leave a field blank to remove it.
+            Modify the details of the chainrings. Leave fields blank to remove them.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="chainring1"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Chainring 1 (teeth)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., 52t" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="chainring2"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Chainring 2 (teeth)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., 36t" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="chainring3"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Chainring 3 (teeth)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., 26t" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-4">
+              <h4 className="font-semibold text-md">Chainring 1</h4>
+              <FormField control={form.control} name="chainring1" render={({ field }) => (<FormItem><FormLabel>Teeth</FormLabel><FormControl><Input placeholder="e.g., 52t" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="chainring1_brand" render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="chainring1_model" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., X-Sync 2" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h4 className="font-semibold text-md">Chainring 2</h4>
+              <FormField control={form.control} name="chainring2" render={({ field }) => (<FormItem><FormLabel>Teeth</FormLabel><FormControl><Input placeholder="e.g., 36t" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="chainring2_brand" render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="chainring2_model" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Ultegra R8000" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
+            </div>
+
+            <Separator />
+            
+            <div className="space-y-4">
+              <h4 className="font-semibold text-md">Chainring 3</h4>
+              <FormField control={form.control} name="chainring3" render={({ field }) => (<FormItem><FormLabel>Teeth</FormLabel><FormControl><Input placeholder="e.g., 26t" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="chainring3_brand" render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="chainring3_model" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4">
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>

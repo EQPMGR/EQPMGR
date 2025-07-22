@@ -76,8 +76,14 @@ export async function replaceUserComponentAction({
         notes: `Replaced on ${new Date().toLocaleDateString()}`,
         // Clear old chainring data when replacing the whole crankset
         chainring1: undefined,
+        chainring1_brand: undefined,
+        chainring1_model: undefined,
         chainring2: undefined,
+        chainring2_brand: undefined,
+        chainring2_model: undefined,
         chainring3: undefined,
+        chainring3_brand: undefined,
+        chainring3_model: undefined,
     };
 
     const updatePayload = {
@@ -102,11 +108,11 @@ export async function updateUserComponentAction({
     userId: string;
     equipmentId: string;
     userComponentId: string;
-    updatedData: {
-        chainring1?: string | null;
-        chainring2?: string | null;
-        chainring3?: string | null;
-    }
+    updatedData: Partial<Pick<UserComponent, 
+        'chainring1' | 'chainring1_brand' | 'chainring1_model' |
+        'chainring2' | 'chainring2_brand' | 'chainring2_model' |
+        'chainring3' | 'chainring3_brand' | 'chainring3_model'
+    >>;
 }) {
     if (!userId || !equipmentId || !userComponentId) {
         throw new Error("Missing required parameters for component update.");
@@ -130,24 +136,11 @@ export async function updateUserComponentAction({
         throw new Error("Component to update not found in user's equipment.");
     }
 
-    // Prepare the update object. Use deleteField() for null/empty values to remove them from Firestore.
-    const fieldsToUpdate: {[key: string]: any} = {};
-    if (updatedData.chainring1 === null || updatedData.chainring1 === '') {
-        fieldsToUpdate.chainring1 = deleteField();
-    } else if (updatedData.chainring1) {
-        fieldsToUpdate.chainring1 = updatedData.chainring1;
-    }
-
-    if (updatedData.chainring2 === null || updatedData.chainring2 === '') {
-        fieldsToUpdate.chainring2 = deleteField();
-    } else if (updatedData.chainring2) {
-        fieldsToUpdate.chainring2 = updatedData.chainring2;
-    }
-    
-    if (updatedData.chainring3 === null || updatedData.chainring3 === '') {
-        fieldsToUpdate.chainring3 = deleteField();
-    } else if (updatedData.chainring3) {
-        fieldsToUpdate.chainring3 = updatedData.chainring3;
+    const fieldsToUpdate: { [key: string]: any } = {};
+    for (const key in updatedData) {
+        const typedKey = key as keyof typeof updatedData;
+        const value = updatedData[typedKey];
+        fieldsToUpdate[typedKey] = (value === null || value === '') ? deleteField() : value;
     }
     
     // Update the component in the array

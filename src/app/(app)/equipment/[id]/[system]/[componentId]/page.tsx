@@ -106,6 +106,19 @@ export default function ComponentDetailPage() {
   
   const isCrankset = component.name.toLowerCase().includes('crankset');
 
+  const renderChainringDetail = (ringNum: 1 | 2 | 3) => {
+      const teeth = component[`chainring${ringNum}` as keyof Component];
+      const brand = component[`chainring${ringNum}_brand` as keyof Component];
+      const model = component[`chainring${ringNum}_model` as keyof Component];
+      if (!teeth) return null;
+      return (
+        <div>
+            <p className="text-muted-foreground">Chainring {ringNum}</p>
+            <p className="font-medium">{teeth}{brand ? ` by ${brand}` : ''}{model ? ` (${model})` : ''}</p>
+        </div>
+      )
+  }
+
   return (
      <>
       <div className="flex items-center gap-2 mb-4">
@@ -131,9 +144,9 @@ export default function ComponentDetailPage() {
                     <p className="font-medium capitalize">{component.system}</p>
                 </div>
                  {component.size && <div><p className="text-muted-foreground">Size</p><p className="font-medium">{component.size}</p></div>}
-                 {component.chainring1 && <div><p className="text-muted-foreground">Chainring 1</p><p className="font-medium">{component.chainring1}</p></div>}
-                 {component.chainring2 && <div><p className="text-muted-foreground">Chainring 2</p><p className="font-medium">{component.chainring2}</p></div>}
-                 {component.chainring3 && <div><p className="text-muted-foreground">Chainring 3</p><p className="font-medium">{component.chainring3}</p></div>}
+                 {renderChainringDetail(1)}
+                 {renderChainringDetail(2)}
+                 {renderChainringDetail(3)}
                 <div>
                     <p className="text-muted-foreground">Purchase Date</p>
                     <p className="font-medium">{component.purchaseDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>

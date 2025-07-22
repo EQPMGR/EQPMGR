@@ -28,8 +28,14 @@ export interface UserComponent {
   notes?: string;
   size?: string; // The specific size for this user's instance, resolved from size or sizeVariants.
   chainring1?: string; // User-specific override
+  chainring1_brand?: string;
+  chainring1_model?: string;
   chainring2?: string; // User-specific override
+  chainring2_brand?: string;
+  chainring2_model?: string;
   chainring3?: string; // User-specific override
+  chainring3_brand?: string;
+  chainring3_model?: string;
 }
 
 // The combined object we'll use in the app UI
