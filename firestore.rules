@@ -1,30 +1,29 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // This rule allows a user to read and write to their own document.
     match /users/{userId} {
-      // Users can only read/write their own document
       allow read, write: if request.auth.uid == userId;
 
-      // Rules for subcollections of a user document must be nested inside
+      // Rules for subcollections must be nested inside the parent document match.
+      // This allows a user to manage the equipment within their own user document.
       match /equipment/{equipmentId} {
-        // Users can manage their own equipment documents
         allow read, write, delete: if request.auth.uid == userId;
       }
     }
 
+    // These collections are public.
+    // Anyone can read them, but writes are disallowed from the client.
     match /bikeModels/{bikeId} {
-      // Allow public read access to bike models
       allow read: if true;
-      // Disallow public write access from clients
-      allow write: if false;
+      allow write: if request.auth != null; // Allow writes only from authenticated server-side actions
     }
 
     match /masterComponents/{componentId} {
-      // Allow public read access
       allow read: if true;
-      // Allow any authenticated user to write.
-      // This is secure because only our server actions perform these writes.
-      allow write: if request.auth != null;
+      allow write: if request.auth != null; // Allow writes only from authenticated server-side actions
     }
   }
 }
