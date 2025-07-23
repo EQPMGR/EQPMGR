@@ -109,4 +109,4 @@ export const ExtractComponentDetailsInputSchema = z.object({
 export type ExtractComponentDetailsInput = z.infer<typeof ExtractComponentDetailsInputSchema>;
 
 export const ExtractComponentDetailsOutputSchema = ExtractedSingleComponentSchema;
-export type ExtractComponentDetailsOutput = z.infer<typeof
+export type ExtractComponentDetailsOutput = z.infer<typeof ExtractComponentDetailsOutputSchema>;
