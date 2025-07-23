@@ -23,7 +23,6 @@ const ExtractedComponentSchema = z.object({
 
 export const ExtractBikeDetailsInputSchema = z.object({
   textContent: z.string().describe("The raw text content from a bike's product webpage."),
-  existingComponentsJson: z.string().optional().describe("A JSON string of existing master components to use as a reference."),
 });
 export type ExtractBikeDetailsInput = z.infer<typeof ExtractBikeDetailsInputSchema>;
 

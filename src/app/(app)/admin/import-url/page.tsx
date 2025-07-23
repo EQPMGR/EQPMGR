@@ -15,7 +15,6 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { getUrlTextContent } from './actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { fetchAllMasterComponents } from '@/services/components';
 
 export default function ImportFromUrlPage() {
     const [url, setUrl] = useState('');
@@ -46,13 +45,8 @@ export default function ImportFromUrlPage() {
                  return;
             }
 
-            // Fetch existing components to provide as context to the AI
-            const existingComponents = await fetchAllMasterComponents();
-            const existingComponentsJson = JSON.stringify(existingComponents);
-
             const result = await extractBikeDetailsFromUrlContent({ 
                 textContent: contentToProcess,
-                existingComponentsJson,
             });
 
             setExtractedData(result);
