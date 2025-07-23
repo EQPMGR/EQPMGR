@@ -1,9 +1,10 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, updateDoc, arrayUnion, arrayRemove, setDoc } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserComponent, MasterComponent } from '@/lib/types';
+import { toDate } from '@/lib/date-utils';
 
 // Helper to create a slug from a component's details
 const createComponentId = (component: Omit<MasterComponent, 'id'>) => {
@@ -119,24 +120,18 @@ export async function updateSubComponentsAction({
     throw new Error('Equipment not found in user data.');
   }
 
-  // --- Step 1: Prepare new components and identify old ones to remove ---
-  const newSubComponentsForUser: UserComponent[] = [];
-  const oldSubComponents = (equipmentData.components || []).filter(
-    (c: UserComponent) => c.parentUserComponentId === parentUserComponentId
-  );
-  
-  // Use a batch for all database writes
-  const batch = writeBatch(db);
+  const masterComponentBatch = writeBatch(db);
+  const newSubUserComponents: UserComponent[] = [];
 
-  // --- Step 2: Create master components and prepare user components ---
+  // --- Step 1: Create master components and prepare new user components ---
   for (const subCompData of subComponentsData) {
-    if (!subCompData.name) continue;
+    if (!subCompData.name || !subCompData.name.trim()) continue;
 
     const masterCompData: Omit<MasterComponent, 'id'> = {
-      name: subCompData.name,
-      brand: subCompData.brand,
-      model: subCompData.model,
-      system: 'Drivetrain',
+      name: subCompData.name.trim(),
+      brand: subCompData.brand?.trim(),
+      model: subCompData.model?.trim(),
+      system: 'Drivetrain', // Sub-components like chainrings are always Drivetrain
     };
     
     const masterComponentId = createComponentId(masterCompData);
@@ -144,9 +139,9 @@ export async function updateSubComponentsAction({
 
     // Add master component creation to the batch
     const masterComponentRef = doc(db, 'masterComponents', masterComponentId);
-    batch.set(masterComponentRef, masterCompData, { merge: true });
+    masterComponentBatch.set(masterComponentRef, masterCompData, { merge: true });
 
-    newSubComponentsForUser.push({
+    newSubUserComponents.push({
       id: crypto.randomUUID(),
       masterComponentId,
       parentUserComponentId,
@@ -156,42 +151,31 @@ export async function updateSubComponentsAction({
       notes: `Added on ${new Date().toLocaleDateString()}`,
     });
   }
-  
-  // --- Step 3: Update the user's document using array operations ---
-  const updatePayload: { [key: string]: any } = {};
 
-  // Atomically remove the old sub-components
-  if (oldSubComponents.length > 0) {
-      updatePayload[`equipment.${equipmentId}.components`] = arrayRemove(...oldSubComponents);
-  }
+  // Commit all master component writes first.
+  await masterComponentBatch.commit();
   
-  // Add the new sub-components
-  if (newSubComponentsForUser.length > 0) {
-      // If we are also removing, we need to handle this differently
-      // because you can't have arrayRemove and arrayUnion on the same field in one update.
-      // However, since we are replacing the set, we'll do this in two steps inside the transaction logic.
-      // For now, let's assume we can do this in separate updates for simplicity.
-      // The most robust way is a transaction, but let's try this first.
-      if (updatePayload[`equipment.${equipmentId}.components`]) {
-        // First, remove old ones
-        await updateDoc(userDocRef, updatePayload);
-        // Then, add new ones
-        await updateDoc(userDocRef, {
-            [`equipment.${equipmentId}.components`]: arrayUnion(...newSubComponentsForUser)
-        });
-      } else if (newSubComponentsForUser.length > 0) {
-        // If there were no old components, just add the new ones
-         await updateDoc(userDocRef, {
-            [`equipment.${equipmentId}.components`]: arrayUnion(...newSubComponentsForUser)
-        });
-      }
-  } else if (oldSubComponents.length > 0) {
-      // If there are no new components but there were old ones, just run the remove update
-      await updateDoc(userDocRef, updatePayload);
-  }
+  // --- Step 2: Manually rebuild the components array for the user's equipment ---
+  const existingComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
+      ...c,
+      // Ensure dates are correctly formatted for comparison if needed, though we filter by ID.
+      purchaseDate: toDate(c.purchaseDate), 
+      lastServiceDate: toDate(c.lastServiceDate)
+  }));
   
-  // The master component writes still need to be committed.
-  await batch.commit();
+  // Keep all components that are NOT sub-components of the one we're editing
+  const finalComponents = existingComponents.filter(
+    (c) => c.parentUserComponentId !== parentUserComponentId
+  );
+
+  // Add the newly created sub-components to the list
+  finalComponents.push(...newSubUserComponents);
+
+  // --- Step 3: Perform a single, clean update of the entire components array ---
+  await updateDoc(userDocRef, {
+      [`equipment.${equipmentId}.components`]: finalComponents,
+  });
+
 
   return { success: true };
 }
