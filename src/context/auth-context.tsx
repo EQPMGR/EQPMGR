@@ -11,7 +11,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { auth, storage, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -99,27 +99,26 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           let userDocData: UserDocument;
           
           if (userDocSnap.exists()) {
-            const batch = writeBatch(db);
-            const data = userDocSnap.data();
-            let needsUpdate = false;
-            
-            // Check for missing preferences and add them to the batch if needed
-            if (!data.measurementSystem) { data.measurementSystem = 'imperial'; needsUpdate = true; }
-            if (!data.shoeSizeSystem) { data.shoeSizeSystem = 'us'; needsUpdate = true; }
-            if (!data.distanceUnit) { data.distanceUnit = 'km'; needsUpdate = true; }
-            
-            batch.update(userDocRef, { lastLogin: serverTimestamp() });
-
-            if (needsUpdate) {
-                batch.set(userDocRef, {
-                    measurementSystem: data.measurementSystem,
-                    shoeSizeSystem: data.shoeSizeSystem,
-                    distanceUnit: data.distanceUnit,
-                }, { merge: true });
+            const data = userDocSnap.data() as UserDocument;
+             // Check if the old equipment map exists and migrate it
+            if (data.hasOwnProperty('equipment')) {
+              console.log("Old equipment data model found. Migrating...");
+              const equipmentMap = (data as any).equipment;
+              const batch = writeBatch(db);
+              for (const equipmentId in equipmentMap) {
+                const equipmentData = equipmentMap[equipmentId];
+                const newEquipmentDocRef = doc(db, 'users', authUser.uid, 'equipment', equipmentId);
+                batch.set(newEquipmentDocRef, equipmentData);
+              }
+              // Remove the old map field
+              batch.update(userDocRef, { equipment: deleteField() });
+              await batch.commit();
+              console.log("Migration complete.");
             }
 
-            await batch.commit();
-            userDocData = data as UserDocument;
+            // Standard login / profile update
+            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+            userDocData = userDocSnap.data() as UserDocument;
 
           } else {
             // New user: Create a complete profile document with defaults
@@ -153,7 +152,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Let the onAuthStateChanged handler redirect
     } catch (error) {
       handleAuthError(error, 'Sign In Failed');
     }
@@ -162,7 +160,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
      try {
       await signUpWithEmailAndPassword(auth, email, password);
-      // The onAuthStateChanged listener will handle new user setup and redirect.
     } catch (error) {
       handleAuthError(error, 'Sign Up Failed');
     }
@@ -171,7 +168,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signOutHandler = async () => {
     try {
         await firebaseSignOut(auth);
-        // Redirection will now be handled in the component that calls this.
     } catch (error) {
         handleAuthError(error, 'Sign Out Failed');
     }
@@ -203,7 +199,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         
         await updateDoc(userDocRef, firestoreUpdateData);
 
-        // Re-fetch the document to get the true state from the DB
         const updatedDoc = await getDoc(userDocRef);
         const newSafeProfile = createSafeUserProfile(currentUser, updatedDoc.data());
         setUser(newSafeProfile);
@@ -271,5 +266,3 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 };
 
 export { AuthContext };
-
-    

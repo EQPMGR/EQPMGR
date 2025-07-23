@@ -14,7 +14,7 @@ import {
   Loader2,
   Zap,
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, deleteField, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -105,65 +105,59 @@ export default function EquipmentDetailPage() {
   const fetchEquipment = useCallback(async (uid: string, equipmentId: string) => {
     setIsLoading(true);
     try {
-      const userDocRef = doc(db, 'users', uid);
-      const userDocSnap = await getDoc(userDocRef);
+      const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
+      const equipmentDocSnap = await getDoc(equipmentDocRef);
 
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        const equipmentData = userData.equipment?.[equipmentId];
+      if (equipmentDocSnap.exists()) {
+        const equipmentData = equipmentDocSnap.data();
         
-        if (equipmentData) {
-            const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
-                ...c,
-                purchaseDate: toDate(c.purchaseDate),
-                lastServiceDate: toNullableDate(c.lastServiceDate),
-            }));
+        const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
+            ...c,
+            purchaseDate: toDate(c.purchaseDate),
+            lastServiceDate: toNullableDate(c.lastServiceDate),
+        }));
 
-            const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
-            
-            const masterComponentsMap = new Map<string, MasterComponent>();
-            if (masterComponentIds.length > 0) {
-                 for (let i = 0; i < masterComponentIds.length; i += 30) {
-                    const batchIds = masterComponentIds.slice(i, i + 30);
-                    if (batchIds.length > 0) {
-                        const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
-                        const querySnapshot = await getDocs(masterComponentsQuery);
-                        querySnapshot.forEach(doc => {
-                            masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
-                        });
-                    }
+        const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
+        
+        const masterComponentsMap = new Map<string, MasterComponent>();
+        if (masterComponentIds.length > 0) {
+             for (let i = 0; i < masterComponentIds.length; i += 30) {
+                const batchIds = masterComponentIds.slice(i, i + 30);
+                if (batchIds.length > 0) {
+                    const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
+                    const querySnapshot = await getDocs(masterComponentsQuery);
+                    querySnapshot.forEach(doc => {
+                        masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                    });
                 }
             }
-
-            const combinedComponents: Component[] = userComponents.map(userComp => {
-                const masterComp = masterComponentsMap.get(userComp.masterComponentId);
-                if (!masterComp) return null; // Gracefully skip if master component is missing
-                return {
-                    ...masterComp,
-                    userComponentId: userComp.id,
-                    wearPercentage: userComp.wearPercentage,
-                    purchaseDate: userComp.purchaseDate,
-                    lastServiceDate: userComp.lastServiceDate,
-                    notes: userComp.notes,
-                };
-            }).filter((c): c is Component => c !== null);
-
-            setEquipment({
-                ...equipmentData,
-                id: equipmentId,
-                purchaseDate: toDate(equipmentData.purchaseDate),
-                components: combinedComponents,
-                maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
-                    ...l,
-                    date: toDate(l.date),
-                })),
-            } as Equipment);
-        } else {
-           toast({ variant: "destructive", title: "Not Found", description: "Could not find the requested equipment." });
-           setEquipment(undefined);
         }
+
+        const combinedComponents: Component[] = userComponents.map(userComp => {
+            const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+            if (!masterComp) return null; // Gracefully skip if master component is missing
+            return {
+                ...masterComp,
+                userComponentId: userComp.id,
+                wearPercentage: userComp.wearPercentage,
+                purchaseDate: userComp.purchaseDate,
+                lastServiceDate: userComp.lastServiceDate,
+                notes: userComp.notes,
+            };
+        }).filter((c): c is Component => c !== null);
+
+        setEquipment({
+            ...equipmentData,
+            id: equipmentId,
+            purchaseDate: toDate(equipmentData.purchaseDate),
+            components: combinedComponents,
+            maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+                ...l,
+                date: toDate(l.date),
+            })),
+        } as Equipment);
       } else {
-        toast({ variant: "destructive", title: "Error", description: "User profile not found." });
+        toast({ variant: "destructive", title: "Not Found", description: "Could not find the requested equipment." });
         setEquipment(undefined);
       }
     } catch (error) {
@@ -188,17 +182,8 @@ export default function EquipmentDetailPage() {
       return;
     }
     
-    const updatePayload: { [key: string]: any } = {};
-    for (const [key, value] of Object.entries(data)) {
-        if ((key === 'serialNumber' || key === 'frameSize') && (value === undefined || value === '')) {
-            updatePayload[`equipment.${equipment.id}.${key}`] = deleteField();
-        } else if (value !== undefined) {
-            updatePayload[`equipment.${equipment.id}.${key}`] = value;
-        }
-    }
-
-    const userDocRef = doc(db, 'users', user.uid);
-    await updateDoc(userDocRef, updatePayload);
+    const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+    await updateDoc(equipmentDocRef, data as any);
     
     // After successful update, re-fetch the data to ensure UI is in sync
     await fetchEquipment(user.uid, equipment.id);
@@ -211,10 +196,8 @@ export default function EquipmentDetailPage() {
     }
     setIsDeleting(true);
     try {
-      const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, {
-        [`equipment.${equipment.id}`]: deleteField()
-      });
+      const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+      await deleteDoc(equipmentDocRef);
 
       toast({
         title: "Success!",
@@ -238,9 +221,9 @@ export default function EquipmentDetailPage() {
     const logWithId = { ...newLog, id: crypto.randomUUID() };
     const updatedLog = [...equipment.maintenanceLog, logWithId];
     
-    const userDocRef = doc(db, 'users', user.uid);
-    await updateDoc(userDocRef, {
-      [`equipment.${equipment.id}.maintenanceLog`]: updatedLog.map(l => ({...l, date: toDate(l.date)})),
+    const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+    await updateDoc(equipmentDocRef, {
+      maintenanceLog: updatedLog.map(l => ({...l, date: toDate(l.date)})),
     });
 
     setEquipment(prev => prev ? ({ ...prev, maintenanceLog: updatedLog.map(l => ({...l, date: toDate(l.date)})) }) : undefined);

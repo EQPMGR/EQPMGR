@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Activity } from 'lucide-react';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
+import { doc, getDocs, updateDoc, collection, query, where, writeBatch, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment, MasterComponent, UserComponent, Component, MaintenanceLog } from '@/lib/types';
@@ -24,28 +24,24 @@ export function EquipmentListPage() {
   const fetchEquipment = useCallback(async (uid: string) => {
     setIsLoading(true);
     try {
-      const userDocRef = doc(db, 'users', uid);
-      const userDocSnap = await getDoc(userDocRef);
+      const equipmentQuery = query(collection(db, 'users', uid, 'equipment'));
+      const equipmentSnapshot = await getDocs(equipmentQuery);
+      const equipmentList: Equipment[] = [];
       
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        const equipmentMap = userData.equipment || {};
-        const equipmentList: Equipment[] = [];
-        
-        const allMasterComponentIds = new Set<string>();
-        
-        for (const id in equipmentMap) {
-            const equipmentData = equipmentMap[id];
-            if (Array.isArray(equipmentData.components)) {
+      const allMasterComponentIds = new Set<string>();
+      
+      equipmentSnapshot.forEach(doc => {
+          const equipmentData = doc.data();
+           if (Array.isArray(equipmentData.components)) {
                 equipmentData.components.forEach((c: any) => {
                     if (c.masterComponentId) {
                         allMasterComponentIds.add(c.masterComponentId);
                     }
                 });
             }
-        }
-
-        const masterComponentsMap = new Map<string, MasterComponent>();
+      });
+      
+      const masterComponentsMap = new Map<string, MasterComponent>();
         if (allMasterComponentIds.size > 0) {
             const masterComponentIdsArray = Array.from(allMasterComponentIds);
             for (let i = 0; i < masterComponentIdsArray.length; i += 30) {
@@ -59,16 +55,16 @@ export function EquipmentListPage() {
                 }
             }
         }
-        
-        for (const id in equipmentMap) {
-            const equipmentData = equipmentMap[id];
-            const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
+
+      equipmentSnapshot.forEach(doc => {
+        const equipmentData = doc.data();
+        const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
                 ...c,
                 purchaseDate: toDate(c.purchaseDate),
                 lastServiceDate: toNullableDate(c.lastServiceDate),
             }));
-
-            const combinedComponents: Component[] = userComponents.map(userComp => {
+        
+        const combinedComponents: Component[] = userComponents.map(userComp => {
                 const masterComp = masterComponentsMap.get(userComp.masterComponentId);
                 if (!masterComp) {
                     console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
@@ -88,23 +84,24 @@ export function EquipmentListPage() {
                     purchaseDate: userComp.purchaseDate,
                     lastServiceDate: userComp.lastServiceDate,
                     notes: userComp.notes,
-                    size: userComp.size, // Get the specific size for this user's instance
+                    size: userComp.size, 
                 };
             }).filter((c): c is Component => c !== null);
+        
+        equipmentList.push({
+          id: doc.id,
+          ...equipmentData,
+          purchaseDate: toDate(equipmentData.purchaseDate),
+          components: combinedComponents,
+          maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+              ...l,
+              date: toDate(l.date),
+          })),
+        } as Equipment);
+      });
+      
+      setData(equipmentList);
 
-            equipmentList.push({
-                ...equipmentData,
-                id,
-                purchaseDate: toDate(equipmentData.purchaseDate),
-                components: combinedComponents,
-                maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
-                    ...l,
-                    date: toDate(l.date),
-                })),
-              } as Equipment);
-        }
-        setData(equipmentList);
-      }
     } catch (error) {
       console.error("Error fetching equipment: ", error);
       toast({
@@ -214,17 +211,13 @@ export function EquipmentListPage() {
         totalHours: 0,
         maintenanceLog: [],
         components: userComponents,
+        serialNumber: formData.serialNumber,
         frameSize: formData.frameSize,
     };
     
-    // Use a write batch for atomicity
-    const batch = writeBatch(db);
-    const userDocRef = doc(db, 'users', user.uid);
+    const newEquipmentDocRef = doc(db, 'users', user.uid, 'equipment', newEquipmentId);
     
-    // Using dot notation to add/update the equipment in the map
-    batch.update(userDocRef, { [`equipment.${newEquipmentId}`]: newEquipmentData });
-    
-    await batch.commit();
+    await setDoc(newEquipmentDocRef, newEquipmentData);
     await fetchEquipment(user.uid);
   }
 

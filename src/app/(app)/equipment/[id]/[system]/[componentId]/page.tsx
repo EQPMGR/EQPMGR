@@ -31,27 +31,23 @@ export default function ComponentDetailPage() {
   const fetchComponentData = useCallback(async (uid: string, equipmentId: string, userComponentId: string) => {
     setIsLoading(true);
     try {
-      const userDocRef = doc(db, 'users', uid);
-      const userDocSnap = await getDoc(userDocRef);
+      const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
+      const equipmentDocSnap = await getDoc(equipmentDocRef);
 
-      if (!userDocSnap.exists()) {
-        toast({ variant: 'destructive', title: 'User not found' });
-        return;
-      }
-
-      const userData = userDocSnap.data();
-      const equipmentData = userData.equipment?.[equipmentId];
-      if (!equipmentData) {
+      if (!equipmentDocSnap.exists()) {
         toast({ variant: 'destructive', title: 'Equipment not found' });
+        setIsLoading(false);
         return;
       }
       
+      const equipmentData = equipmentDocSnap.data();
       const allUserComponents = (equipmentData.components || []) as UserComponent[];
 
       // Find the main component
       const mainUserComp = allUserComponents.find(c => c.id === userComponentId);
       if (!mainUserComp) {
         toast({ variant: 'destructive', title: 'Component not found' });
+        setIsLoading(false);
         return;
       }
 
@@ -62,18 +58,21 @@ export default function ComponentDetailPage() {
       const masterIdsToFetch = [
         mainUserComp.masterComponentId,
         ...subUserComps.map(sc => sc.masterComponentId)
-      ];
+      ].filter(Boolean); // Filter out any undefined/null IDs
+
       const uniqueMasterIds = [...new Set(masterIdsToFetch)];
 
       // Fetch all required master components
       const masterCompsMap = new Map<string, MasterComponent>();
-      for (let i = 0; i < uniqueMasterIds.length; i += 30) {
-        const batchIds = uniqueMasterIds.slice(i, i + 30);
-        if (batchIds.length > 0) {
-            const masterCompsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
-            const querySnapshot = await getDocs(masterCompsQuery);
-            querySnapshot.forEach(doc => masterCompsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent));
-        }
+      if (uniqueMasterIds.length > 0) {
+          for (let i = 0; i < uniqueMasterIds.length; i += 30) {
+            const batchIds = uniqueMasterIds.slice(i, i + 30);
+            if (batchIds.length > 0) {
+                const masterCompsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
+                const querySnapshot = await getDocs(masterCompsQuery);
+                querySnapshot.forEach(doc => masterCompsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent));
+            }
+          }
       }
 
       // Combine main component data
@@ -230,4 +229,3 @@ export default function ComponentDetailPage() {
      </>
   );
 }
-

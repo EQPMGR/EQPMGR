@@ -32,14 +32,12 @@ export default function SystemDetailPage() {
   const fetchEquipment = useCallback(async (uid: string, equipmentId: string) => {
     setIsLoading(true);
     try {
-      const userDocRef = doc(db, 'users', uid);
-      const userDocSnap = await getDoc(userDocRef);
+      const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
+      const equipmentDocSnap = await getDoc(equipmentDocRef);
 
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        const equipmentData = userData.equipment?.[equipmentId];
-        
-        if (equipmentData) {
+        if (equipmentDocSnap.exists()) {
+            const equipmentData = equipmentDocSnap.data();
+            
             const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
                 ...c,
                 purchaseDate: toDate(c.purchaseDate),
@@ -89,7 +87,6 @@ export default function SystemDetailPage() {
            toast({ variant: "destructive", title: "Not Found", description: "Could not find the requested equipment." });
            setEquipment(undefined);
         }
-      }
     } catch (error) {
       console.error("Error fetching equipment details: ", error);
       toast({ variant: "destructive", title: "Error", description: "Could not load equipment details." });
@@ -109,7 +106,8 @@ export default function SystemDetailPage() {
   const systemComponents = useMemo(() => {
     if (!equipment) return [];
     const systemSlug = params.system.replace(/-/g, ' ').toLowerCase();
-    return equipment.components.filter(c => c.system.toLowerCase() === systemSlug);
+    // Filter out sub-components from this main list view
+    return equipment.components.filter(c => c.system.toLowerCase() === systemSlug && !c.parentUserComponentId);
   }, [equipment, params.system]);
   
   if (isLoading || authLoading) {

@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserComponent, MasterComponent } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
@@ -35,8 +35,8 @@ export async function replaceUserComponentAction({
     if (!userId || !equipmentId || !userComponentIdToReplace || !newComponentData) {
         throw new Error("Missing required parameters for component replacement.");
     }
-
-    const batch = writeBatch(db);
+    
+    const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
 
     // 1. Create or get the new master component
     const newMasterComponentId = createComponentId(newComponentData);
@@ -44,20 +44,17 @@ export async function replaceUserComponentAction({
         throw new Error("Could not generate a valid ID for the new component.");
     }
     const newMasterComponentRef = doc(db, 'masterComponents', newMasterComponentId);
+
+    const batch = writeBatch(db);
     batch.set(newMasterComponentRef, newComponentData, { merge: true });
-
+    
     // 2. Update the user's equipment data
-    const userDocRef = doc(db, 'users', userId);
-    const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap.exists()) {
-        throw new Error("User document not found.");
-    }
-    const userData = userDocSnap.data();
-    const equipmentData = userData.equipment?.[equipmentId];
-    if (!equipmentData) {
-        throw new Error("Equipment not found in user data.");
+    const equipmentDocSnap = await getDoc(equipmentDocRef);
+    if (!equipmentDocSnap.exists()) {
+        throw new Error("Equipment document not found.");
     }
 
+    const equipmentData = equipmentDocSnap.data();
     const currentComponents: UserComponent[] = equipmentData.components || [];
     const componentIndex = currentComponents.findIndex(c => c.id === userComponentIdToReplace);
 
@@ -67,23 +64,22 @@ export async function replaceUserComponentAction({
     
     const originalComponent = currentComponents[componentIndex];
 
-    // Update the specific user component in the array
-    currentComponents[componentIndex] = {
+    // Create a new component object with the updated details
+    const updatedComponent = {
         ...originalComponent,
         masterComponentId: newMasterComponentId,
-        wearPercentage: 0, // Reset wear for the new component
-        purchaseDate: new Date(), // Set purchase date to now
+        wearPercentage: 0,
+        purchaseDate: new Date(),
         lastServiceDate: null,
         notes: `Replaced on ${new Date().toLocaleDateString()}`,
     };
 
-    const updatePayload = {
-      [`equipment.${equipmentId}.components`]: currentComponents,
-    };
+    // Replace the old component with the new one in the array
+    currentComponents[componentIndex] = updatedComponent;
 
-    batch.update(userDocRef, updatePayload);
+    // Update the entire components array
+    batch.update(equipmentDocRef, { components: currentComponents });
 
-    // 3. Commit the batch
     await batch.commit();
 
     return { success: true, newMasterComponentId };
@@ -109,21 +105,12 @@ export async function updateSubComponentsAction({
     throw new Error('Missing required parameters for sub-component update.');
   }
 
-  const userDocRef = doc(db, 'users', userId);
-  const userDocSnap = await getDoc(userDocRef);
+  const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
 
-  if (!userDocSnap.exists()) {
-    throw new Error('User document not found.');
-  }
-  const equipmentData = userDocSnap.data().equipment?.[equipmentId];
-  if (!equipmentData) {
-    throw new Error('Equipment not found in user data.');
-  }
-
+  // --- Step 1: Create master components ---
   const masterComponentBatch = writeBatch(db);
   const newSubUserComponents: UserComponent[] = [];
 
-  // --- Step 1: Create master components and prepare new user components ---
   for (const subCompData of subComponentsData) {
     if (!subCompData.name || !subCompData.name.trim()) continue;
 
@@ -131,13 +118,12 @@ export async function updateSubComponentsAction({
       name: subCompData.name.trim(),
       brand: subCompData.brand?.trim(),
       model: subCompData.model?.trim(),
-      system: 'Drivetrain', // Sub-components like chainrings are always Drivetrain
+      system: 'Drivetrain',
     };
     
     const masterComponentId = createComponentId(masterCompData);
     if (!masterComponentId) continue;
 
-    // Add master component creation to the batch
     const masterComponentRef = doc(db, 'masterComponents', masterComponentId);
     masterComponentBatch.set(masterComponentRef, masterCompData, { merge: true });
 
@@ -151,18 +137,16 @@ export async function updateSubComponentsAction({
       notes: `Added on ${new Date().toLocaleDateString()}`,
     });
   }
-
-  // Commit all master component writes first.
   await masterComponentBatch.commit();
   
-  // --- Step 2: Manually rebuild the components array for the user's equipment ---
-  const existingComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
-      ...c,
-      // Ensure dates are correctly formatted for comparison if needed, though we filter by ID.
-      purchaseDate: toDate(c.purchaseDate), 
-      lastServiceDate: toDate(c.lastServiceDate)
-  }));
-  
+  // --- Step 2: Manually rebuild the components array ---
+  const equipmentDocSnap = await getDoc(equipmentDocRef);
+  if (!equipmentDocSnap.exists()) {
+    throw new Error('Equipment document not found.');
+  }
+  const equipmentData = equipmentDocSnap.data();
+  const existingComponents: UserComponent[] = equipmentData.components || [];
+
   // Keep all components that are NOT sub-components of the one we're editing
   const finalComponents = existingComponents.filter(
     (c) => c.parentUserComponentId !== parentUserComponentId
@@ -172,8 +156,8 @@ export async function updateSubComponentsAction({
   finalComponents.push(...newSubUserComponents);
 
   // --- Step 3: Perform a single, clean update of the entire components array ---
-  await updateDoc(userDocRef, {
-      [`equipment.${equipmentId}.components`]: finalComponents,
+  await updateDoc(equipmentDocRef, {
+      components: finalComponents,
   });
 
 
