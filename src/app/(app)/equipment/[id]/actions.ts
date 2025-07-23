@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, deleteField, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserComponent, MasterComponent } from '@/lib/types';
 
@@ -74,16 +74,6 @@ export async function replaceUserComponentAction({
         purchaseDate: new Date(), // Set purchase date to now
         lastServiceDate: null,
         notes: `Replaced on ${new Date().toLocaleDateString()}`,
-        // Clear old chainring data when replacing the whole crankset
-        chainring1: undefined,
-        chainring1_brand: undefined,
-        chainring1_model: undefined,
-        chainring2: undefined,
-        chainring2_brand: undefined,
-        chainring2_model: undefined,
-        chainring3: undefined,
-        chainring3_brand: undefined,
-        chainring3_model: undefined,
     };
 
     const updatePayload = {
@@ -99,73 +89,79 @@ export async function replaceUserComponentAction({
 }
 
 
-export async function updateUserComponentAction({
-    userId,
-    equipmentId,
-    userComponentId,
-    updatedData
+export async function updateSubComponentsAction({
+  userId,
+  equipmentId,
+  parentUserComponentId,
+  subComponentsData,
 }: {
-    userId: string;
-    equipmentId: string;
-    userComponentId: string;
-    updatedData: Partial<Pick<UserComponent, 
-        'chainring1' | 'chainring1_brand' | 'chainring1_model' |
-        'chainring2' | 'chainring2_brand' | 'chainring2_model' |
-        'chainring3' | 'chainring3_brand' | 'chainring3_model'
-    >>;
+  userId: string;
+  equipmentId: string;
+  parentUserComponentId: string;
+  subComponentsData: {
+    name: string;
+    brand?: string;
+    model?: string;
+  }[];
 }) {
-    if (!userId || !equipmentId || !userComponentId) {
-        throw new Error("Missing required parameters for component update.");
-    }
+  if (!userId || !equipmentId || !parentUserComponentId) {
+    throw new Error('Missing required parameters for sub-component update.');
+  }
 
-    const userDocRef = doc(db, 'users', userId);
+  const userDocRef = doc(db, 'users', userId);
+  const batch = writeBatch(db);
+
+  const userDocSnap = await getDoc(userDocRef);
+  if (!userDocSnap.exists()) {
+    throw new Error('User document not found.');
+  }
+
+  const equipmentData = userDocSnap.data().equipment?.[equipmentId];
+  if (!equipmentData) {
+    throw new Error('Equipment not found in user data.');
+  }
+
+  let currentComponents: UserComponent[] = equipmentData.components || [];
+
+  // Remove all existing sub-components of the parent
+  currentComponents = currentComponents.filter(c => c.parentUserComponentId !== parentUserComponentId);
+
+  // Process and add new/updated sub-components
+  for (const subCompData of subComponentsData) {
+    if (!subCompData.name) continue; // Skip if there's no data
+
+    const masterCompData: Omit<MasterComponent, 'id'> = {
+      name: subCompData.name,
+      brand: subCompData.brand,
+      model: subCompData.model,
+      system: 'Drivetrain', // Assuming sub-components are part of the same system
+    };
     
-    try {
-        const userDocSnap = await getDoc(userDocRef);
-        if (!userDocSnap.exists()) {
-            throw new Error("User document not found.");
-        }
-        
-        const userData = userDocSnap.data();
-        const equipmentData = userData.equipment?.[equipmentId];
-        if (!equipmentData) {
-            throw new Error("Equipment not found in user data.");
-        }
-        
-        const currentComponents: UserComponent[] = equipmentData.components || [];
-        const componentIndex = currentComponents.findIndex(c => c.id === userComponentId);
+    const masterComponentId = createComponentId(masterCompData);
+    if (!masterComponentId) continue;
 
-        if (componentIndex === -1) {
-            throw new Error("Component to update not found in user's equipment.");
-        }
+    // Create/update master component
+    const masterComponentRef = doc(db, 'masterComponents', masterComponentId);
+    batch.set(masterComponentRef, masterCompData, { merge: true });
 
-        const componentToUpdate = { ...currentComponents[componentIndex] };
-        
-        // Iterate over the keys in updatedData and update the componentToUpdate object.
-        // If the value is null or empty, delete the key from our temporary object.
-        for (const key in updatedData) {
-            const typedKey = key as keyof typeof updatedData;
-            const value = updatedData[typedKey];
-            if (value === null || value === '') {
-                delete (componentToUpdate as any)[typedKey];
-            } else {
-                (componentToUpdate as any)[typedKey] = value;
-            }
-        }
-        
-        // Replace the old component with the updated one in the array.
-        currentComponents[componentIndex] = componentToUpdate;
-        
-        // Atomically update the entire components array in the equipment map.
-        await updateDoc(userDocRef, {
-            [`equipment.${equipmentId}.components`]: currentComponents,
-        });
+    // Create new user component
+    const newUserComponent: UserComponent = {
+      id: crypto.randomUUID(),
+      masterComponentId,
+      parentUserComponentId,
+      wearPercentage: 0,
+      purchaseDate: new Date(),
+      lastServiceDate: null,
+      notes: `Added on ${new Date().toLocaleDateString()}`,
+    };
+    currentComponents.push(newUserComponent);
+  }
 
-        return { success: true };
+  // Update the entire components array in one go
+  batch.update(userDocRef, {
+    [`equipment.${equipmentId}.components`]: currentComponents,
+  });
 
-    } catch (error) {
-        console.error("Error in updateUserComponentAction:", error);
-        // Re-throw the error to be caught by the calling function
-        throw error;
-    }
+  await batch.commit();
+  return { success: true };
 }

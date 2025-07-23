@@ -6,36 +6,24 @@ import type { BikeType } from '@/lib/constants';
 export interface MasterComponent {
   id: string;
   name: string;
-  brand: string;
+  brand?: string;
   series?: string;
   model?: string;
   system: string;
   size?: string; // For components with a single size, or as a default/base size.
   sizeVariants?: { [frameSize: string]: string }; // For components with size tied to frame, e.g. { "S": "170mm", "M": "172.5mm" }
-  // Drivetrain specific
-  chainring1?: string;
-  chainring2?: string;
-  chainring3?: string;
 }
 
 // Data specific to a user's instance of a component
 export interface UserComponent {
   id: string; // Unique ID for this specific instance
   masterComponentId: string; // Reference to the MasterComponent
+  parentUserComponentId?: string | null; // ID of the parent UserComponent, if this is a sub-component
   wearPercentage: number;
   lastServiceDate: Date | null;
   purchaseDate: Date;
   notes?: string;
   size?: string; // The specific size for this user's instance, resolved from size or sizeVariants.
-  chainring1?: string; // User-specific override
-  chainring1_brand?: string;
-  chainring1_model?: string;
-  chainring2?: string; // User-specific override
-  chainring2_brand?: string;
-  chainring2_model?: string;
-  chainring3?: string; // User-specific override
-  chainring3_brand?: string;
-  chainring3_model?: string;
 }
 
 // The combined object we'll use in the app UI

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChevronLeft, Pencil } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -17,52 +17,92 @@ import { toDate, toNullableDate } from '@/lib/date-utils';
 import type { Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { ReplaceComponentDialog } from '@/components/replace-component-dialog';
-import { EditComponentDialog, type FormValues as EditComponentFormValues } from '@/components/edit-component-dialog';
-import { updateUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
+import { EditComponentDialog } from '@/components/edit-component-dialog';
+
 
 export default function ComponentDetailPage() {
   const params = useParams<{ id: string; system: string; componentId: string }>();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [component, setComponent] = useState<Component | undefined>();
+  const [subComponents, setSubComponents] = useState<Component[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchComponent = useCallback(async (uid: string, equipmentId: string, userComponentId: string) => {
+  const fetchComponentData = useCallback(async (uid: string, equipmentId: string, userComponentId: string) => {
     setIsLoading(true);
     try {
       const userDocRef = doc(db, 'users', uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        const equipmentData = userData.equipment?.[equipmentId];
+      if (!userDocSnap.exists()) {
+        toast({ variant: 'destructive', title: 'User not found' });
+        return;
+      }
 
-        if (equipmentData) {
-          const userComp = (equipmentData.components as UserComponent[]).find(c => c.id === userComponentId);
+      const userData = userDocSnap.data();
+      const equipmentData = userData.equipment?.[equipmentId];
+      if (!equipmentData) {
+        toast({ variant: 'destructive', title: 'Equipment not found' });
+        return;
+      }
+      
+      const allUserComponents = (equipmentData.components || []) as UserComponent[];
 
-          if (userComp) {
-            const masterCompRef = doc(db, 'masterComponents', userComp.masterComponentId);
-            const masterCompSnap = await getDoc(masterCompRef);
+      // Find the main component
+      const mainUserComp = allUserComponents.find(c => c.id === userComponentId);
+      if (!mainUserComp) {
+        toast({ variant: 'destructive', title: 'Component not found' });
+        return;
+      }
 
-            if (masterCompSnap.exists()) {
-              const masterComp = { id: masterCompSnap.id, ...masterCompSnap.data() } as MasterComponent;
-              setComponent({
-                ...masterComp,
-                ...userComp, // This will overwrite master fields with user-specific ones if they exist
-                userComponentId: userComp.id,
-                purchaseDate: toDate(userComp.purchaseDate),
-                lastServiceDate: toNullableDate(userComp.lastServiceDate),
-              });
-            } else {
-              toast({ variant: "destructive", title: "Master Component not found" });
-            }
-          } else {
-            toast({ variant: "destructive", title: "Component not found" });
-          }
-        } else {
-           toast({ variant: "destructive", title: "Equipment not found" });
+      // Find sub-components
+      const subUserComps = allUserComponents.filter(c => c.parentUserComponentId === userComponentId);
+
+      // Gather all required master component IDs
+      const masterIdsToFetch = [
+        mainUserComp.masterComponentId,
+        ...subUserComps.map(sc => sc.masterComponentId)
+      ];
+      const uniqueMasterIds = [...new Set(masterIdsToFetch)];
+
+      // Fetch all required master components
+      const masterCompsMap = new Map<string, MasterComponent>();
+      for (let i = 0; i < uniqueMasterIds.length; i += 30) {
+        const batchIds = uniqueMasterIds.slice(i, i + 30);
+        if (batchIds.length > 0) {
+            const masterCompsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
+            const querySnapshot = await getDocs(masterCompsQuery);
+            querySnapshot.forEach(doc => masterCompsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent));
         }
       }
+
+      // Combine main component data
+      const mainMasterComp = masterCompsMap.get(mainUserComp.masterComponentId);
+      if (mainMasterComp) {
+        setComponent({
+          ...mainMasterComp,
+          ...mainUserComp,
+          userComponentId: mainUserComp.id,
+          purchaseDate: toDate(mainUserComp.purchaseDate),
+          lastServiceDate: toNullableDate(mainUserComp.lastServiceDate),
+        });
+      }
+
+      // Combine sub-component data
+      const combinedSubComponents = subUserComps.map(subUserComp => {
+        const masterComp = masterCompsMap.get(subUserComp.masterComponentId);
+        if (!masterComp) return null;
+        return {
+          ...masterComp,
+          ...subUserComp,
+          userComponentId: subUserComp.id,
+          purchaseDate: toDate(subUserComp.purchaseDate),
+          lastServiceDate: toNullableDate(subUserComp.lastServiceDate),
+        };
+      }).filter((c): c is Component => c !== null);
+
+      setSubComponents(combinedSubComponents);
+
     } catch (error) {
       console.error("Error fetching component details: ", error);
       toast({ variant: "destructive", title: "Error", description: "Could not load component details." });
@@ -70,49 +110,18 @@ export default function ComponentDetailPage() {
       setIsLoading(false);
     }
   }, [toast]);
-  
+
   useEffect(() => {
     if (user && params.id && params.componentId) {
-      fetchComponent(user.uid, params.id as string, params.componentId as string);
+      fetchComponentData(user.uid, params.id as string, params.componentId as string);
     } else if (!authLoading) {
       setIsLoading(false);
     }
-  }, [user, params.id, params.componentId, authLoading, toast, fetchComponent]);
+  }, [user, params.id, params.componentId, authLoading, toast, fetchComponentData]);
 
-  const handleEditSuccess = async (data: EditComponentFormValues) => {
-      if (!user || !component) {
-        toast({ variant: "destructive", title: "Error", description: "Not authorized or component not found." });
-        return;
-      }
-      try {
-        await updateUserComponentAction({
-          userId: user.uid,
-          equipmentId: params.id as string,
-          userComponentId: component.userComponentId,
-          updatedData: {
-            chainring1: data.chainring1 || null,
-            chainring1_brand: data.chainring1_brand || null,
-            chainring1_model: data.chainring1_model || null,
-            chainring2: data.chainring2 || null,
-            chainring2_brand: data.chainring2_brand || null,
-            chainring2_model: data.chainring2_model || null,
-            chainring3: data.chainring3 || null,
-            chainring3_brand: data.chainring3_brand || null,
-            chainring3_model: data.chainring3_model || null,
-          },
-        });
-        toast({ title: 'Component Updated!', description: 'Your changes have been saved.' });
-        // Refetch data to show the update
-        await fetchComponent(user.uid, params.id as string, params.componentId as string);
-      } catch (error: any) {
-        console.error('Update failed:', error);
-        toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
-      }
-  }
-
-  const handleReplaceSuccess = () => {
+  const handleSuccess = () => {
       if (user && params.id && params.componentId) {
-        fetchComponent(user.uid, params.id as string, params.componentId as string);
+        fetchComponentData(user.uid, params.id as string, params.componentId as string);
     }
   }
 
@@ -137,25 +146,6 @@ export default function ComponentDetailPage() {
   }
   
   const isCrankset = component.name.toLowerCase().includes('crankset');
-
-  const renderChainringDetail = (ringNum: 1 | 2 | 3) => {
-      const teethKey = `chainring${ringNum}` as keyof Component;
-      const brandKey = `chainring${ringNum}_brand` as keyof Component;
-      const modelKey = `chainring${ringNum}_model` as keyof Component;
-
-      const teeth = component[teethKey];
-      const brand = component[brandKey];
-      const model = component[modelKey];
-      
-      if (!teeth) return null;
-
-      return (
-        <div>
-            <p className="text-muted-foreground">Chainring {ringNum}</p>
-            <p className="font-medium">{teeth}{brand ? ` by ${brand}` : ''}{model ? ` (${model})` : ''}</p>
-        </div>
-      )
-  }
 
   return (
      <>
@@ -182,9 +172,6 @@ export default function ComponentDetailPage() {
                     <p className="font-medium capitalize">{component.system}</p>
                 </div>
                  {component.size && <div><p className="text-muted-foreground">Size</p><p className="font-medium">{component.size}</p></div>}
-                 {renderChainringDetail(1)}
-                 {renderChainringDetail(2)}
-                 {renderChainringDetail(3)}
                 <div>
                     <p className="text-muted-foreground">Purchase Date</p>
                     <p className="font-medium">{component.purchaseDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
@@ -194,6 +181,24 @@ export default function ComponentDetailPage() {
                     <p className="font-medium">{component.lastServiceDate ? component.lastServiceDate.toLocaleDateString('en-US', { timeZone: 'UTC' }) : 'N/A'}</p>
                 </div>
             </div>
+
+            {subComponents.length > 0 && (
+                 <div className="mt-6 border-t pt-6">
+                    <h4 className="font-semibold mb-2">Attached Components</h4>
+                    <div className="space-y-4">
+                       {subComponents.map(sub => (
+                         <Card key={sub.userComponentId} className="p-4 bg-muted/50">
+                            <h5 className="font-medium">{sub.name}</h5>
+                            <p className="text-sm text-muted-foreground">{sub.brand} {sub.model}</p>
+                            <div className="mt-2">
+                                <ComponentStatusList components={[sub]} />
+                            </div>
+                         </Card>
+                       ))}
+                    </div>
+                </div>
+            )}
+
              <div className="mt-6 border-t pt-6">
                 <h4 className="font-semibold mb-2">Actions</h4>
                 <div className="flex gap-2">
@@ -201,16 +206,19 @@ export default function ComponentDetailPage() {
                         userId={user?.uid} 
                         equipmentId={params.id as string} 
                         componentToReplace={component}
-                        onSuccess={handleReplaceSuccess}
+                        onSuccess={handleSuccess}
                     />
                     {isCrankset && user && (
                        <EditComponentDialog 
-                           component={component}
-                           onSave={handleEditSuccess}
+                           userId={user.uid}
+                           equipmentId={params.id as string}
+                           parentComponent={component}
+                           existingSubComponents={subComponents}
+                           onSuccess={handleSuccess}
                        >
                          <Button variant="secondary">
                             <Pencil className="mr-2 h-4 w-4"/>
-                            Edit
+                            Edit Sub-Components
                         </Button>
                        </EditComponentDialog>
                     )}
@@ -222,3 +230,4 @@ export default function ComponentDetailPage() {
      </>
   );
 }
+
