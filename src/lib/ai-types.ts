@@ -4,6 +4,7 @@
  * @fileOverview Centralized type and schema definitions for AI flows.
  */
 import { z } from 'zod';
+import type { MasterComponent } from './types';
 
 // === From extract-bike-details-from-url.ts ===
 
@@ -108,4 +109,4 @@ export const ExtractComponentDetailsInputSchema = z.object({
 export type ExtractComponentDetailsInput = z.infer<typeof ExtractComponentDetailsInputSchema>;
 
 export const ExtractComponentDetailsOutputSchema = ExtractedSingleComponentSchema;
-export type ExtractComponentDetailsOutput = z.infer<typeof ExtractComponentDetailsOutputSchema>;
+export type ExtractComponentDetailsOutput = z.infer<typeof

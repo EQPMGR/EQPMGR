@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -43,6 +42,21 @@ export default function AdminPage() {
                         <Button asChild size="sm" variant="outline">
                             <Link href="/admin/add-bike-model">
                                 Go to Form <ArrowUpRight className="h-4 w-4 ml-2" />
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Vector DB Admin</CardTitle>
+                            <CardDescription className="text-sm">
+                                Manage the component vector database index.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/vector-admin">
+                                <DatabaseZap className="h-4 w-4 mr-2" /> Manage Index
                             </Link>
                         </Button>
                     </CardHeader>

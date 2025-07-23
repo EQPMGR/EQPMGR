@@ -45,6 +45,7 @@ export default function ImportFromUrlPage() {
                  return;
             }
 
+            // The flow now handles fetching similar components internally.
             const result = await extractBikeDetailsFromUrlContent({ 
                 textContent: contentToProcess,
             });
@@ -58,6 +59,9 @@ export default function ImportFromUrlPage() {
             let description = error.message || 'An unexpected error occurred.';
             if (error.message && (error.message.includes('API_KEY_SERVICE_BLOCKED') || error.message.includes('SERVICE_DISABLED'))) {
                 description = "The AI service is blocked. Please ensure the 'Generative Language API' is enabled for your project AND added to your API key's restrictions in the Google Cloud Console.";
+            }
+             if (error.message && error.message.includes('PineconeClient: Error')) {
+                description = "Could not connect to the vector database. Please ensure your Pinecone API key is correct and the index is running.";
             }
             toast({
                 variant: 'destructive',
@@ -74,7 +78,7 @@ export default function ImportFromUrlPage() {
             <CardHeader>
                 <CardTitle>Import Bike Model from URL or Text</CardTitle>
                 <CardDescription>
-                    Let AI read a bike's specification page and extract its details to pre-fill the form.
+                    Let AI read a bike's specification page and extract its details to pre-fill the form. It will use the existing component database to improve accuracy.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -144,7 +148,3 @@ export default function ImportFromUrlPage() {
                         Provide a URL or paste raw text. The AI will read the content and attempt to structure the bike's specs. Pasting text is often more reliable than using a URL, as some websites block automated fetching.
                     </AlertDescription>
                 </Alert>
-            </CardContent>
-        </Card>
-    )
-}
