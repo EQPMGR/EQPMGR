@@ -1,3 +1,4 @@
+
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
@@ -13,7 +14,7 @@ import {
   Loader2,
   Zap,
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -193,8 +194,18 @@ export default function EquipmentDetailPage() {
     }
     setIsDeleting(true);
     try {
+      const batch = writeBatch(db);
+      
+      // Delete all component sub-documents
+      const componentsRef = collection(db, 'users', user.uid, 'equipment', equipment.id, 'components');
+      const componentsSnap = await getDocs(componentsRef);
+      componentsSnap.forEach(doc => batch.delete(doc.ref));
+
+      // Delete the main equipment document
       const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
-      await deleteDoc(equipmentDocRef);
+      batch.delete(equipmentDocRef);
+
+      await batch.commit();
 
       toast({
         title: "Success!",
@@ -227,7 +238,7 @@ export default function EquipmentDetailPage() {
   }
 
   const systemsToDisplay = useMemo(() => {
-    if (!equipment) return [];
+    if (!equipment?.components) return [];
     
     const systems = new Set<string>();
     equipment.components.forEach(c => systems.add(c.system));

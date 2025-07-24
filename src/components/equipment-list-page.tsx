@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -55,16 +56,7 @@ export function EquipmentListPage() {
             const masterComp = masterComponentsMap.get(userComp.masterComponentId);
              if (!masterComp) {
                 console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
-                return {
-                    id: userComp.masterComponentId,
-                    userComponentId: userComp.id,
-                    name: 'Unknown Component',
-                    brand: 'Unknown',
-                    system: 'Unknown',
-                    ...userComp,
-                    purchaseDate: toDate(userComp.purchaseDate),
-                    lastServiceDate: toNullableDate(userComp.lastServiceDate)
-                } as Component;
+                return null;
             }
             return {
                 ...masterComp,
@@ -88,7 +80,7 @@ export function EquipmentListPage() {
       });
 
       const equipmentList = await Promise.all(equipmentPromises);
-      setData(equipmentList);
+      setData(equipmentList.filter(e => e !== null) as Equipment[]);
 
     } catch (error) {
       console.error("Error fetching equipment: ", error);
@@ -161,11 +153,16 @@ export function EquipmentListPage() {
 
     // Now, fetch master components and create the user components in the subcollection
     const masterComponentPaths = bikeFromDb.components as string[];
-    const masterComponentIds = masterComponentPaths.map(p => p.split('/').pop()!);
+    const masterComponentIds = masterComponentPaths.map(p => p.split('/').pop()!).filter(Boolean);
+    
+    if (masterComponentIds.length === 0) {
+        await fetchEquipment(user.uid);
+        return;
+    }
+    
     const masterComponentsMap = new Map<string, MasterComponent>();
 
-    if (masterComponentIds.length > 0) {
-      for (let i = 0; i < masterComponentIds.length; i += 30) {
+    for (let i = 0; i < masterComponentIds.length; i += 30) {
         const batchIds = masterComponentIds.slice(i, i + 30);
         if (batchIds.length > 0) {
           const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
@@ -174,13 +171,16 @@ export function EquipmentListPage() {
             masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
           });
         }
-      }
     }
       
     const componentsBatch = writeBatch(db);
-    masterComponentPaths.forEach((masterComponentPath: string) => {
-        const masterComponentId = masterComponentPath.split('/').pop()!;
+    masterComponentIds.forEach((masterComponentId) => {
         const masterComp = masterComponentsMap.get(masterComponentId);
+        if (!masterComp) {
+            console.warn(`Master component ${masterComponentId} not found when adding equipment.`);
+            return;
+        }
+
         let specificSize = masterComp?.size;
 
         if (formData.frameSize && masterComp?.sizeVariants) {

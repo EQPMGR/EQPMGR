@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -30,15 +31,6 @@ export default function ComponentDetailPage() {
   const fetchComponentData = useCallback(async (uid: string, equipmentId: string, userComponentId: string) => {
     setIsLoading(true);
     try {
-      const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
-      const equipmentDocSnap = await getDoc(equipmentDocRef);
-
-      if (!equipmentDocSnap.exists()) {
-        toast({ variant: 'destructive', title: 'Equipment not found' });
-        setIsLoading(false);
-        return;
-      }
-      
       const componentsCollectionRef = collection(db, 'users', uid, 'equipment', equipmentId, 'components');
       
       // Find the main component
