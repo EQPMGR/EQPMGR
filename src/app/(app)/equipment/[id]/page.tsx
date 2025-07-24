@@ -430,5 +430,3 @@ export default function EquipmentDetailPage() {
     </>
   );
 }
-
-    
