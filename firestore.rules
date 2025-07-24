@@ -1,35 +1,32 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Public collections
-    match /bikeModels/{modelId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId; // Allow users to update their own profile
+
+      // Allow access to the equipment subcollection for the logged-in user
+      match /equipment/{equipmentId} {
+        allow get, list, create, update, delete: if request.auth.uid == userId;
+
+        // Allow access to the components sub-subcollection
+        match /components/{componentId} {
+            allow get, list, create, update, delete: if request.auth.uid == userId;
+        }
+      }
+    }
+
+    // Rules for public/shared data
+    match /bikeModels/{bikeModelId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null; // For admin functions
     }
 
     match /masterComponents/{componentId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // User-specific data
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
-
-      // Rules for the equipment subcollection
-      match /equipment/{equipmentId} {
-        // A user can list their own equipment, and get/write/delete a specific equipment document.
-        allow read, write, delete: if request.auth.uid == userId;
-
-        // Components sub-subcollection
-        match /components/{componentId} {
-          // Grant full access to components within one's own equipment
-          allow read, write, delete: if request.auth.uid == userId;
-        }
-      }
+        allow read: if request.auth != null;
+        allow write: if request.auth != null; // For admin/server functions
     }
   }
 }
