@@ -161,11 +161,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
         });
         handleOpenChange(false);
     } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "Failed to Add Equipment",
-            description: "There was an issue adding the equipment. Please try again.",
-        });
+        // The error toast is handled in the onAddEquipment function itself
     } finally {
         setIsSubmitting(false);
     }
