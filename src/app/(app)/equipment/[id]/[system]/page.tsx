@@ -22,6 +22,7 @@ export default function SystemDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [equipment, setEquipment] = useState<Equipment | undefined>();
+  const [components, setComponents] = useState<Component[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const systemName = useMemo(() => {
@@ -29,64 +30,64 @@ export default function SystemDetailPage() {
     return params.system.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }, [params.system]);
 
-  const fetchEquipment = useCallback(async (uid: string, equipmentId: string) => {
+  const fetchEquipmentAndComponents = useCallback(async (uid: string, equipmentId: string) => {
     setIsLoading(true);
     try {
       const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
       const equipmentDocSnap = await getDoc(equipmentDocRef);
 
-        if (equipmentDocSnap.exists()) {
-            const equipmentData = equipmentDocSnap.data();
-            
-            const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
-                ...c,
-                purchaseDate: toDate(c.purchaseDate),
-                lastServiceDate: toNullableDate(c.lastServiceDate),
-            }));
+      if (equipmentDocSnap.exists()) {
+        const equipmentData = equipmentDocSnap.data();
+        setEquipment({
+          ...equipmentData,
+          id: equipmentId,
+          purchaseDate: toDate(equipmentData.purchaseDate),
+          components: [], // Components are now fetched separately
+          maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+              ...l,
+              date: toDate(l.date),
+          })),
+        } as Equipment);
+      } else {
+         toast({ variant: "destructive", title: "Not Found", description: "Could not find the requested equipment." });
+         setEquipment(undefined);
+      }
 
-            const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
-            
-            const masterComponentsMap = new Map<string, MasterComponent>();
-            if (masterComponentIds.length > 0) {
-                 for (let i = 0; i < masterComponentIds.length; i += 30) {
-                    const batchIds = masterComponentIds.slice(i, i + 30);
-                     if (batchIds.length > 0) {
-                        const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
-                        const querySnapshot = await getDocs(masterComponentsQuery);
-                        querySnapshot.forEach(doc => {
-                            masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
-                        });
-                    }
-                }
-            }
+      // Fetch components from the subcollection
+      const componentsQuery = query(collection(db, 'users', uid, 'equipment', equipmentId, 'components'));
+      const componentsSnapshot = await getDocs(componentsQuery);
+      const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
 
-            const combinedComponents: Component[] = userComponents.map(userComp => {
-                const masterComp = masterComponentsMap.get(userComp.masterComponentId);
-                if (!masterComp) return null;
-                return {
-                    ...masterComp,
-                    userComponentId: userComp.id,
-                    wearPercentage: userComp.wearPercentage,
-                    purchaseDate: userComp.purchaseDate,
-                    lastServiceDate: userComp.lastServiceDate,
-                    notes: userComp.notes,
-                };
-            }).filter((c): c is Component => c !== null);
+      const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
+      const masterComponentsMap = new Map<string, MasterComponent>();
 
-            setEquipment({
-                ...equipmentData,
-                id: equipmentId,
-                purchaseDate: toDate(equipmentData.purchaseDate),
-                components: combinedComponents,
-                maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
-                    ...l,
-                    date: toDate(l.date),
-                })),
-            } as Equipment);
-        } else {
-           toast({ variant: "destructive", title: "Not Found", description: "Could not find the requested equipment." });
-           setEquipment(undefined);
-        }
+      if (masterComponentIds.length > 0) {
+           for (let i = 0; i < masterComponentIds.length; i += 30) {
+              const batchIds = masterComponentIds.slice(i, i + 30);
+               if (batchIds.length > 0) {
+                  const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
+                  const querySnapshot = await getDocs(masterComponentsQuery);
+                  querySnapshot.forEach(doc => {
+                      masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                  });
+              }
+          }
+      }
+
+      const combinedComponents: Component[] = userComponents.map(userComp => {
+          const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+          if (!masterComp) return null;
+          return {
+              ...masterComp,
+              ...userComp,
+              userComponentId: userComp.id,
+              purchaseDate: toDate(userComp.purchaseDate),
+              lastServiceDate: toNullableDate(userComp.lastServiceDate),
+          };
+      }).filter((c): c is Component => c !== null);
+      
+      setComponents(combinedComponents);
+
     } catch (error) {
       console.error("Error fetching equipment details: ", error);
       toast({ variant: "destructive", title: "Error", description: "Could not load equipment details." });
@@ -97,18 +98,18 @@ export default function SystemDetailPage() {
   
   useEffect(() => {
     if (user && params.id) {
-        fetchEquipment(user.uid, params.id as string);
+        fetchEquipmentAndComponents(user.uid, params.id as string);
     } else if (!authLoading) {
         setIsLoading(false);
     }
-  }, [user, params.id, authLoading, fetchEquipment]);
+  }, [user, params.id, authLoading, fetchEquipmentAndComponents]);
 
   const systemComponents = useMemo(() => {
-    if (!equipment) return [];
+    if (!components) return [];
     const systemSlug = params.system.replace(/-/g, ' ').toLowerCase();
     // Filter out sub-components from this main list view
-    return equipment.components.filter(c => c.system.toLowerCase() === systemSlug && !c.parentUserComponentId);
-  }, [equipment, params.system]);
+    return components.filter(c => c.system.toLowerCase() === systemSlug && !c.parentUserComponentId);
+  }, [components, params.system]);
   
   if (isLoading || authLoading) {
       return (

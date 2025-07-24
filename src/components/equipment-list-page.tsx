@@ -3,10 +3,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Activity } from 'lucide-react';
-import { doc, getDocs, updateDoc, collection, query, where, writeBatch, setDoc } from 'firebase/firestore';
+import { doc, getDocs, updateDoc, collection, query, where, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import type { Equipment, MasterComponent, UserComponent, Component, MaintenanceLog } from '@/lib/types';
+import type { Equipment, MasterComponent, UserComponent, Component } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
 import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -26,26 +26,22 @@ export function EquipmentListPage() {
     try {
       const equipmentQuery = query(collection(db, 'users', uid, 'equipment'));
       const equipmentSnapshot = await getDocs(equipmentQuery);
-      const equipmentList: Equipment[] = [];
       
-      const allMasterComponentIds = new Set<string>();
-      
-      equipmentSnapshot.forEach(doc => {
-          const equipmentData = doc.data();
-           if (Array.isArray(equipmentData.components)) {
-                equipmentData.components.forEach((c: any) => {
-                    if (c.masterComponentId) {
-                        allMasterComponentIds.add(c.masterComponentId);
-                    }
-                });
-            }
-      });
-      
-      const masterComponentsMap = new Map<string, MasterComponent>();
-        if (allMasterComponentIds.size > 0) {
-            const masterComponentIdsArray = Array.from(allMasterComponentIds);
-            for (let i = 0; i < masterComponentIdsArray.length; i += 30) {
-                const batchIds = masterComponentIdsArray.slice(i, i + 30);
+      const equipmentPromises = equipmentSnapshot.docs.map(async (equipmentDoc) => {
+        const equipmentData = equipmentDoc.data();
+        
+        // Fetch components subcollection for each equipment
+        const componentsQuery = query(collection(db, 'users', uid, 'equipment', equipmentDoc.id, 'components'));
+        const componentsSnapshot = await getDocs(componentsQuery);
+        const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
+
+        // Gather all unique master component IDs from this equipment's components
+        const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
+        
+        const masterComponentsMap = new Map<string, MasterComponent>();
+        if (masterComponentIds.length > 0) {
+             for (let i = 0; i < masterComponentIds.length; i += 30) {
+                const batchIds = masterComponentIds.slice(i, i + 30);
                  if (batchIds.length > 0) {
                     const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
                     const querySnapshot = await getDocs(masterComponentsQuery);
@@ -56,40 +52,32 @@ export function EquipmentListPage() {
             }
         }
 
-      equipmentSnapshot.forEach(doc => {
-        const equipmentData = doc.data();
-        const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
-                ...c,
-                purchaseDate: toDate(c.purchaseDate),
-                lastServiceDate: toNullableDate(c.lastServiceDate),
-            }));
-        
         const combinedComponents: Component[] = userComponents.map(userComp => {
-                const masterComp = masterComponentsMap.get(userComp.masterComponentId);
-                if (!masterComp) {
-                    console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
-                    return {
-                        id: userComp.masterComponentId,
-                        userComponentId: userComp.id,
-                        name: 'Unknown Component',
-                        brand: 'Unknown',
-                        system: 'Unknown',
-                        ...userComp,
-                    } as Component;
-                }
+            const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+             if (!masterComp) {
+                console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
                 return {
-                    ...masterComp,
+                    id: userComp.masterComponentId,
                     userComponentId: userComp.id,
-                    wearPercentage: userComp.wearPercentage,
-                    purchaseDate: userComp.purchaseDate,
-                    lastServiceDate: userComp.lastServiceDate,
-                    notes: userComp.notes,
-                    size: userComp.size, 
-                };
-            }).filter((c): c is Component => c !== null);
-        
-        equipmentList.push({
-          id: doc.id,
+                    name: 'Unknown Component',
+                    brand: 'Unknown',
+                    system: 'Unknown',
+                    ...userComp,
+                    purchaseDate: toDate(userComp.purchaseDate),
+                    lastServiceDate: toNullableDate(userComp.lastServiceDate)
+                } as Component;
+            }
+            return {
+                ...masterComp,
+                ...userComp, // User-specific data overrides master data
+                userComponentId: userComp.id,
+                purchaseDate: toDate(userComp.purchaseDate),
+                lastServiceDate: toNullableDate(userComp.lastServiceDate),
+            };
+        }).filter((c): c is Component => c !== null);
+
+        return {
+          id: equipmentDoc.id,
           ...equipmentData,
           purchaseDate: toDate(equipmentData.purchaseDate),
           components: combinedComponents,
@@ -97,9 +85,10 @@ export function EquipmentListPage() {
               ...l,
               date: toDate(l.date),
           })),
-        } as Equipment);
+        } as Equipment;
       });
-      
+
+      const equipmentList = await Promise.all(equipmentPromises);
       setData(equipmentList);
 
     } catch (error) {
@@ -150,7 +139,28 @@ export function EquipmentListPage() {
     }
     const bikeFromDb = bikeModelSnap.data();
 
-    // Fetch master components to resolve size variants
+    // Create the main equipment document first
+    const newEquipmentDocRef = doc(collection(db, 'users', user.uid, 'equipment'));
+    const newEquipmentData: Omit<Equipment, 'id' | 'components'> = {
+        name: formData.name,
+        type: bikeFromDb.type,
+        brand: bikeFromDb.brand,
+        model: bikeFromDb.model,
+        modelYear: bikeFromDb.modelYear,
+        purchaseDate: formData.purchaseDate,
+        purchasePrice: formData.purchasePrice,
+        purchaseCondition: formData.purchaseCondition,
+        imageUrl: bikeFromDb.imageUrl,
+        totalDistance: 0,
+        totalHours: 0,
+        maintenanceLog: [],
+        serialNumber: formData.serialNumber,
+        frameSize: formData.frameSize,
+    };
+    await setDoc(newEquipmentDocRef, newEquipmentData);
+
+
+    // Now, fetch master components and create the user components in the subcollection
     const masterComponentPaths = bikeFromDb.components as string[];
     const masterComponentIds = masterComponentPaths.map(p => p.split('/').pop()!);
     const masterComponentsMap = new Map<string, MasterComponent>();
@@ -167,17 +177,14 @@ export function EquipmentListPage() {
         }
       }
     }
-
-    const newEquipmentId = crypto.randomUUID();
       
-    const userComponents: UserComponent[] = masterComponentPaths.map((masterComponentPath: string) => {
+    const componentsBatch = writeBatch(db);
+    masterComponentPaths.forEach((masterComponentPath: string) => {
         const masterComponentId = masterComponentPath.split('/').pop()!;
         const masterComp = masterComponentsMap.get(masterComponentId);
         let specificSize = masterComp?.size;
 
-        // If a frame size is selected and the component has size variants, find the correct one.
         if (formData.frameSize && masterComp?.sizeVariants) {
-            // Find a case-insensitive key match
             const frameSizeKey = Object.keys(masterComp.sizeVariants).find(
               (key) => key.toLowerCase() === formData.frameSize!.toLowerCase()
             );
@@ -185,39 +192,21 @@ export function EquipmentListPage() {
                 specificSize = masterComp.sizeVariants[frameSizeKey];
             }
         }
-
-        return {
-            id: crypto.randomUUID(),
+        
+        const newComponentDocRef = doc(collection(db, 'users', user.uid, 'equipment', newEquipmentDocRef.id, 'components'));
+        const userComponent: UserComponent = {
+            id: newComponentDocRef.id,
             masterComponentId: masterComponentId,
             wearPercentage: 0,
             purchaseDate: formData.purchaseDate,
             lastServiceDate: null,
             notes: '',
-            size: specificSize, // Save the resolved size
+            size: specificSize,
         }
+        componentsBatch.set(newComponentDocRef, userComponent);
     });
 
-    const newEquipmentData: Omit<Equipment, 'id' | 'components'> & { components: UserComponent[] } = {
-        name: formData.name,
-        type: bikeFromDb.type,
-        brand: bikeFromDb.brand,
-        model: bikeFromDb.model,
-        modelYear: bikeFromDb.modelYear,
-        purchaseDate: formData.purchaseDate,
-        purchasePrice: formData.purchasePrice,
-        purchaseCondition: formData.purchaseCondition,
-        imageUrl: bikeFromDb.imageUrl,
-        totalDistance: 0,
-        totalHours: 0,
-        maintenanceLog: [],
-        components: userComponents,
-        serialNumber: formData.serialNumber,
-        frameSize: formData.frameSize,
-    };
-    
-    const newEquipmentDocRef = doc(db, 'users', user.uid, 'equipment', newEquipmentId);
-    
-    await setDoc(newEquipmentDocRef, newEquipmentData);
+    await componentsBatch.commit();
     await fetchEquipment(user.uid);
   }
 

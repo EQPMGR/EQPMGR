@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, updateDoc, collection, addDoc, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserComponent, MasterComponent } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
@@ -36,7 +36,7 @@ export async function replaceUserComponentAction({
         throw new Error("Missing required parameters for component replacement.");
     }
     
-    const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
+    const batch = writeBatch(db);
 
     // 1. Create or get the new master component
     const newMasterComponentId = createComponentId(newComponentData);
@@ -44,41 +44,18 @@ export async function replaceUserComponentAction({
         throw new Error("Could not generate a valid ID for the new component.");
     }
     const newMasterComponentRef = doc(db, 'masterComponents', newMasterComponentId);
-
-    const batch = writeBatch(db);
     batch.set(newMasterComponentRef, newComponentData, { merge: true });
+
+    // 2. Update the user's component document
+    const userComponentDocRef = doc(db, 'users', userId, 'equipment', equipmentId, 'components', userComponentIdToReplace);
     
-    // 2. Update the user's equipment data
-    const equipmentDocSnap = await getDoc(equipmentDocRef);
-    if (!equipmentDocSnap.exists()) {
-        throw new Error("Equipment document not found.");
-    }
-
-    const equipmentData = equipmentDocSnap.data();
-    const currentComponents: UserComponent[] = equipmentData.components || [];
-    const componentIndex = currentComponents.findIndex(c => c.id === userComponentIdToReplace);
-
-    if (componentIndex === -1) {
-        throw new Error("Component to replace not found in user's equipment.");
-    }
-    
-    const originalComponent = currentComponents[componentIndex];
-
-    // Create a new component object with the updated details
-    const updatedComponent = {
-        ...originalComponent,
+    batch.update(userComponentDocRef, {
         masterComponentId: newMasterComponentId,
         wearPercentage: 0,
         purchaseDate: new Date(),
         lastServiceDate: null,
         notes: `Replaced on ${new Date().toLocaleDateString()}`,
-    };
-
-    // Replace the old component with the new one in the array
-    currentComponents[componentIndex] = updatedComponent;
-
-    // Update the entire components array
-    batch.update(equipmentDocRef, { components: currentComponents });
+    });
 
     await batch.commit();
 
@@ -101,65 +78,60 @@ export async function updateSubComponentsAction({
     model?: string;
   }[];
 }) {
-  if (!userId || !equipmentId || !parentUserComponentId) {
-    throw new Error('Missing required parameters for sub-component update.');
-  }
+    if (!userId || !equipmentId || !parentUserComponentId) {
+        throw new Error('Missing required parameters for sub-component update.');
+    }
 
-  const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
+    const masterComponentBatch = writeBatch(db);
+    const newMasterComponentRefs: { masterComponentId: string, data: Omit<MasterComponent, 'id'> }[] = [];
 
-  // --- Step 1: Create master components ---
-  const masterComponentBatch = writeBatch(db);
-  const newSubUserComponents: UserComponent[] = [];
+    // --- Step 1: Prepare master components ---
+    for (const subCompData of subComponentsData) {
+        if (!subCompData.name || !subCompData.name.trim()) continue;
 
-  for (const subCompData of subComponentsData) {
-    if (!subCompData.name || !subCompData.name.trim()) continue;
+        const masterCompData: Omit<MasterComponent, 'id'> = {
+        name: subCompData.name.trim(),
+        brand: subCompData.brand?.trim(),
+        model: subCompData.model?.trim(),
+        system: 'Drivetrain', // Sub-components like chainrings are always Drivetrain
+        };
+        
+        const masterComponentId = createComponentId(masterCompData);
+        if (!masterComponentId) continue;
 
-    const masterCompData: Omit<MasterComponent, 'id'> = {
-      name: subCompData.name.trim(),
-      brand: subCompData.brand?.trim(),
-      model: subCompData.model?.trim(),
-      system: 'Drivetrain',
-    };
+        const masterComponentRef = doc(db, 'masterComponents', masterComponentId);
+        masterComponentBatch.set(masterComponentRef, masterCompData, { merge: true });
+        newMasterComponentRefs.push({ masterComponentId, data: masterCompData });
+    }
+    await masterComponentBatch.commit();
+
+    // --- Step 2: Clear old sub-components ---
+    const componentsCollectionRef = collection(db, 'users', userId, 'equipment', equipmentId, 'components');
+    const q = query(componentsCollectionRef, where('parentUserComponentId', '==', parentUserComponentId));
+    const oldSubComponentsSnap = await getDocs(q);
     
-    const masterComponentId = createComponentId(masterCompData);
-    if (!masterComponentId) continue;
-
-    const masterComponentRef = doc(db, 'masterComponents', masterComponentId);
-    masterComponentBatch.set(masterComponentRef, masterCompData, { merge: true });
-
-    newSubUserComponents.push({
-      id: crypto.randomUUID(),
-      masterComponentId,
-      parentUserComponentId,
-      wearPercentage: 0,
-      purchaseDate: new Date(),
-      lastServiceDate: null,
-      notes: `Added on ${new Date().toLocaleDateString()}`,
+    const deleteBatch = writeBatch(db);
+    oldSubComponentsSnap.forEach(doc => {
+        deleteBatch.delete(doc.ref);
     });
-  }
-  await masterComponentBatch.commit();
-  
-  // --- Step 2: Manually rebuild the components array ---
-  const equipmentDocSnap = await getDoc(equipmentDocRef);
-  if (!equipmentDocSnap.exists()) {
-    throw new Error('Equipment document not found.');
-  }
-  const equipmentData = equipmentDocSnap.data();
-  const existingComponents: UserComponent[] = equipmentData.components || [];
+    await deleteBatch.commit();
+    
+    // --- Step 3: Add new sub-components ---
+    const addBatch = writeBatch(db);
+    for (const { masterComponentId } of newMasterComponentRefs) {
+        const newUserComponentRef = doc(componentsCollectionRef); // Auto-generate ID
+        const newUserComponent: UserComponent = {
+            id: newUserComponentRef.id,
+            masterComponentId,
+            parentUserComponentId,
+            wearPercentage: 0,
+            purchaseDate: new Date(),
+            lastServiceDate: null,
+            notes: `Added on ${new Date().toLocaleDateString()}`,
+        };
+        addBatch.set(newUserComponentRef, newUserComponent);
+    }
+    await addBatch.commit();
 
-  // Keep all components that are NOT sub-components of the one we're editing
-  const finalComponents = existingComponents.filter(
-    (c) => c.parentUserComponentId !== parentUserComponentId
-  );
-
-  // Add the newly created sub-components to the list
-  finalComponents.push(...newSubUserComponents);
-
-  // --- Step 3: Perform a single, clean update of the entire components array ---
-  await updateDoc(equipmentDocRef, {
-      components: finalComponents,
-  });
-
-
-  return { success: true };
+    return { success: true };
 }

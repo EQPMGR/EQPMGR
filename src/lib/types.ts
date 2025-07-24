@@ -16,7 +16,7 @@ export interface MasterComponent {
 
 // Data specific to a user's instance of a component
 export interface UserComponent {
-  id: string; // Unique ID for this specific instance
+  id: string; // Unique ID for this specific instance (document ID in the subcollection)
   masterComponentId: string; // Reference to the MasterComponent
   parentUserComponentId?: string | null; // ID of the parent UserComponent, if this is a sub-component
   wearPercentage: number;
@@ -62,6 +62,6 @@ export interface Equipment {
   totalDistance: number;
   totalHours: number;
   imageUrl: string;
-  components: Component[];
+  components: Component[]; // This will be populated at runtime, not stored in Firestore
   maintenanceLog: MaintenanceLog[];
 }

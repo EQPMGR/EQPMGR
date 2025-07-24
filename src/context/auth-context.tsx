@@ -11,7 +11,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs, query } from 'firebase/firestore';
 import { auth, storage, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -74,6 +74,49 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
   };
 };
 
+const migrateEquipmentData = async (uid: string) => {
+    const userDocRef = doc(db, 'users', uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        // Check if the old map-based equipment field exists
+        if (data.equipment && !Array.isArray(data.equipment)) {
+            console.log("Old equipment data model found. Migrating...");
+            const equipmentMap = data.equipment;
+            const batch = writeBatch(db);
+
+            for (const equipmentId in equipmentMap) {
+                const equipmentData = equipmentMap[equipmentId];
+                const { components, ...mainEquipmentData } = equipmentData;
+                
+                // Create a new document for the equipment
+                const newEquipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
+                batch.set(newEquipmentDocRef, mainEquipmentData);
+                
+                // Create documents for each component in the subcollection
+                if (Array.isArray(components)) {
+                    for (const component of components) {
+                        const newComponentRef = doc(collection(db, 'users', uid, 'equipment', equipmentId, 'components'), component.id);
+                        batch.set(newComponentRef, component);
+                    }
+                }
+            }
+
+            // Remove the old map field
+            batch.update(userDocRef, { equipment: deleteField() });
+
+            try {
+                await batch.commit();
+                console.log("Migration complete.");
+            } catch (error) {
+                console.error("Error during equipment data migration:", error);
+            }
+        }
+    }
+};
+
+
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,31 +138,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (authUser) {
         const userDocRef = doc(db, 'users', authUser.uid);
         try {
+          await migrateEquipmentData(authUser.uid); // Run migration check on login
           const userDocSnap = await getDoc(userDocRef);
           let userDocData: UserDocument;
           
           if (userDocSnap.exists()) {
-            const data = userDocSnap.data() as UserDocument;
-             // Check if the old equipment map exists and migrate it
-            if (data.hasOwnProperty('equipment')) {
-              console.log("Old equipment data model found. Migrating...");
-              const equipmentMap = (data as any).equipment;
-              const batch = writeBatch(db);
-              for (const equipmentId in equipmentMap) {
-                const equipmentData = equipmentMap[equipmentId];
-                const newEquipmentDocRef = doc(db, 'users', authUser.uid, 'equipment', equipmentId);
-                batch.set(newEquipmentDocRef, equipmentData);
-              }
-              // Remove the old map field
-              batch.update(userDocRef, { equipment: deleteField() });
-              await batch.commit();
-              console.log("Migration complete.");
-            }
-
-            // Standard login / profile update
             await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
             userDocData = userDocSnap.data() as UserDocument;
-
           } else {
             // New user: Create a complete profile document with defaults
             userDocData = {

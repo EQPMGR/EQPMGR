@@ -110,13 +110,12 @@ export default function EquipmentDetailPage() {
 
       if (equipmentDocSnap.exists()) {
         const equipmentData = equipmentDocSnap.data();
-        
-        const userComponents: UserComponent[] = (equipmentData.components || []).map((c: any) => ({
-            ...c,
-            purchaseDate: toDate(c.purchaseDate),
-            lastServiceDate: toNullableDate(c.lastServiceDate),
-        }));
 
+        // Fetch components from the subcollection
+        const componentsQuery = query(collection(db, 'users', uid, 'equipment', equipmentId, 'components'));
+        const componentsSnapshot = await getDocs(componentsQuery);
+        const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
+        
         const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
         
         const masterComponentsMap = new Map<string, MasterComponent>();
@@ -138,11 +137,10 @@ export default function EquipmentDetailPage() {
             if (!masterComp) return null; // Gracefully skip if master component is missing
             return {
                 ...masterComp,
+                ...userComp,
                 userComponentId: userComp.id,
-                wearPercentage: userComp.wearPercentage,
-                purchaseDate: userComp.purchaseDate,
-                lastServiceDate: userComp.lastServiceDate,
-                notes: userComp.notes,
+                purchaseDate: toDate(userComp.purchaseDate),
+                lastServiceDate: toNullableDate(userComp.lastServiceDate),
             };
         }).filter((c): c is Component => c !== null);
 
