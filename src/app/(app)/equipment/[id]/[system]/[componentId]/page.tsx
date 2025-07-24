@@ -61,6 +61,7 @@ export default function ComponentDetailPage() {
       // Fetch all required master components
       const masterCompsMap = new Map<string, MasterComponent>();
       if (uniqueMasterIds.length > 0) {
+          // Batch fetch master components
           for (let i = 0; i < uniqueMasterIds.length; i += 30) {
             const batchIds = uniqueMasterIds.slice(i, i + 30);
             if (batchIds.length > 0) {

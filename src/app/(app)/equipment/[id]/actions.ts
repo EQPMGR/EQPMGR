@@ -46,7 +46,7 @@ export async function replaceUserComponentAction({
     const newMasterComponentRef = doc(db, 'masterComponents', newMasterComponentId);
     batch.set(newMasterComponentRef, newComponentData, { merge: true });
 
-    // 2. Update the user's component document
+    // 2. Update the user's component document in the subcollection
     const userComponentDocRef = doc(db, 'users', userId, 'equipment', equipmentId, 'components', userComponentIdToReplace);
     
     batch.update(userComponentDocRef, {

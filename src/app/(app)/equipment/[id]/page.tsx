@@ -249,7 +249,7 @@ export default function EquipmentDetailPage() {
     ];
 
     return preferredOrder.filter(system => systems.has(system));
-  }, [equipment]);
+  }, [equipment?.components]);
 
   if (isLoading || authLoading) {
       return <div><Skeleton className="h-96 w-full" /></div>

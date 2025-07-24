@@ -42,7 +42,7 @@ export default function SystemDetailPage() {
           ...equipmentData,
           id: equipmentId,
           purchaseDate: toDate(equipmentData.purchaseDate),
-          components: [], // Components are now fetched separately
+          components: [], // Components are fetched separately
           maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
               ...l,
               date: toDate(l.date),

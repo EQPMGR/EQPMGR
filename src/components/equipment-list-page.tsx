@@ -40,6 +40,7 @@ export function EquipmentListPage() {
         
         const masterComponentsMap = new Map<string, MasterComponent>();
         if (masterComponentIds.length > 0) {
+             // Firestore 'in' queries are limited to 30 values, so we batch them.
              for (let i = 0; i < masterComponentIds.length; i += 30) {
                 const batchIds = masterComponentIds.slice(i, i + 30);
                  if (batchIds.length > 0) {
@@ -112,7 +113,7 @@ export function EquipmentListPage() {
             title: 'Not Authenticated',
             description: 'You must be logged in to add equipment.'
         });
-        return;
+        throw new Error("User not authenticated");
     }
 
     const bikeModelId = formData.bikeIdentifier;
@@ -127,7 +128,7 @@ export function EquipmentListPage() {
         }
         const bikeFromDb = bikeModelSnap.data();
 
-        // 1. Create the main equipment document
+        // 1. Create the main equipment document in its subcollection
         const newEquipmentDocRef = doc(collection(db, 'users', user.uid, 'equipment'));
         const newEquipmentData: Omit<Equipment, 'id' | 'components'> = {
             name: formData.name,
@@ -142,14 +143,14 @@ export function EquipmentListPage() {
             totalDistance: 0,
             totalHours: 0,
             maintenanceLog: [],
-            serialNumber: formData.serialNumber,
-            frameSize: formData.frameSize,
+            serialNumber: formData.serialNumber || '',
+            frameSize: formData.frameSize || '',
         };
         batch.set(newEquipmentDocRef, newEquipmentData);
 
 
-        // 2. Fetch master components and create user components in the subcollection
-        const masterComponentPaths = bikeFromDb.components as string[];
+        // 2. Fetch master components and create user components in the new components subcollection
+        const masterComponentPaths = (bikeFromDb.components as string[]) || [];
         const masterComponentIds = masterComponentPaths.map(p => p.split('/').pop()!).filter(Boolean);
         
         if (masterComponentIds.length > 0) {
@@ -170,7 +171,7 @@ export function EquipmentListPage() {
               const masterComp = masterComponentsMap.get(masterComponentId);
               if (!masterComp) {
                   console.warn(`Master component ${masterComponentId} not found when adding equipment.`);
-                  return;
+                  return; // Skip this component if master is not found
               }
 
               let specificSize = masterComp?.size;
