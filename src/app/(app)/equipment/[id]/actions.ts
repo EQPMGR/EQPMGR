@@ -78,16 +78,51 @@ export async function updateSubComponentsAction({
     model?: string;
   }[];
 }) {
-    // THIS IS A TEMPORARY DEBUGGING STEP
-    // All database logic has been removed to isolate the permission error.
-    // This function will now appear to succeed without actually saving any data.
-    console.log("--- DEBUG: updateSubComponentsAction Called ---");
-    console.log("UserID:", userId);
-    console.log("EquipmentID:", equipmentId);
-    console.log("ParentComponentID:", parentUserComponentId);
-    console.log("Sub-components to save:", JSON.stringify(subComponentsData, null, 2));
-    console.log("--- DEBUG: Bypassing database write and returning success ---");
-    
-    // Pretend the operation was successful.
-    return { success: true };
+  if (!userId || !equipmentId || !parentUserComponentId) {
+    throw new Error('Missing required parameters to update sub-components.');
+  }
+
+  const batch = writeBatch(db);
+  const componentsCollectionRef = collection(db, 'users', userId, 'equipment', equipmentId, 'components');
+
+  // 1. Find and delete all existing sub-components for this parent
+  const q = query(componentsCollectionRef, where('parentUserComponentId', '==', parentUserComponentId));
+  const existingSubDocs = await getDocs(q);
+  existingSubDocs.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+
+  // 2. Create new master and user components for the new data
+  for (const subCompData of subComponentsData) {
+    if (!subCompData.name) continue;
+
+    // 2a. Create master component
+    const masterCompId = createComponentId(subCompData as Omit<MasterComponent, 'id'>);
+    if (masterCompId) {
+      const masterCompRef = doc(db, 'masterComponents', masterCompId);
+      batch.set(masterCompRef, {
+        name: subCompData.name,
+        brand: subCompData.brand,
+        model: subCompData.model,
+        system: 'Drivetrain', // All sub-components are currently chainrings
+      }, { merge: true });
+
+      // 2b. Create new user component document in the subcollection
+      const newUserCompRef = doc(componentsCollectionRef);
+      const newUserComp: UserComponent = {
+        id: newUserCompRef.id,
+        masterComponentId: masterCompId,
+        parentUserComponentId: parentUserComponentId,
+        wearPercentage: 0,
+        purchaseDate: new Date(),
+        lastServiceDate: null,
+      };
+      batch.set(newUserCompRef, newUserComp);
+    }
+  }
+
+  // 3. Commit all changes
+  await batch.commit();
+
+  return { success: true };
 }

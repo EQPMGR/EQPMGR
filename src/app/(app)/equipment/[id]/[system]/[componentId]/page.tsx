@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -40,19 +39,24 @@ export default function ComponentDetailPage() {
         return;
       }
       
-      const equipmentData = equipmentDocSnap.data();
-      const allUserComponents = (equipmentData.components || []) as UserComponent[];
-
+      const componentsCollectionRef = collection(db, 'users', uid, 'equipment', equipmentId, 'components');
+      
       // Find the main component
-      const mainUserComp = allUserComponents.find(c => c.id === userComponentId);
-      if (!mainUserComp) {
-        toast({ variant: 'destructive', title: 'Component not found' });
-        setIsLoading(false);
-        return;
+      const mainComponentDocRef = doc(componentsCollectionRef, userComponentId);
+      const mainComponentDocSnap = await getDoc(mainComponentDocRef);
+
+      if (!mainComponentDocSnap.exists()) {
+          toast({ variant: 'destructive', title: 'Component not found' });
+          setIsLoading(false);
+          return;
       }
 
+      const mainUserComp = { id: mainComponentDocSnap.id, ...mainComponentDocSnap.data() } as UserComponent;
+
       // Find sub-components
-      const subUserComps = allUserComponents.filter(c => c.parentUserComponentId === userComponentId);
+      const subComponentsQuery = query(componentsCollectionRef, where('parentUserComponentId', '==', userComponentId));
+      const subComponentsSnap = await getDocs(subComponentsQuery);
+      const subUserComps = subComponentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
 
       // Gather all required master component IDs
       const masterIdsToFetch = [
