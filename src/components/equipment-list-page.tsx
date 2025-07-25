@@ -83,12 +83,16 @@ export function EquipmentListPage() {
       const equipmentList = await Promise.all(equipmentPromises);
       setData(equipmentList.filter(e => e !== null) as Equipment[]);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching equipment: ", error);
+      let description = "Could not load your equipment from the database.";
+      if (error.code === 'permission-denied') {
+          description = "You don't have permission to view this gear. Check Firestore rules."
+      }
       toast({
         variant: "destructive",
         title: "Error fetching gear",
-        description: "Could not load your equipment from the database.",
+        description: description,
       });
     } finally {
       setIsLoading(false);
@@ -186,15 +190,21 @@ export function EquipmentListPage() {
               }
               
               const newComponentDocRef = doc(collection(db, 'users', user.uid, 'equipment', newEquipmentDocRef.id, 'components'));
-              const userComponent: UserComponent = {
+              
+              const userComponent: Partial<UserComponent> = {
                   id: newComponentDocRef.id,
                   masterComponentId: masterComponentId,
                   wearPercentage: 0,
                   purchaseDate: formData.purchaseDate,
                   lastServiceDate: null,
                   notes: '',
-                  size: specificSize,
+              };
+
+              // Only add size to the object if it's not undefined.
+              if (specificSize !== undefined) {
+                  userComponent.size = specificSize;
               }
+
               batch.set(newComponentDocRef, userComponent);
           });
         }
