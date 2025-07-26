@@ -148,3 +148,7 @@ export default function ImportFromUrlPage() {
                         Provide a URL or paste raw text. The AI will read the content and attempt to structure the bike's specs. Pasting text is often more reliable than using a URL, as some websites block automated fetching.
                     </AlertDescription>
                 </Alert>
+            </CardContent>
+        </Card>
+    );
+}

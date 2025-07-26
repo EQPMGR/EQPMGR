@@ -68,3 +68,8 @@ export const indexComponentFlow = ai.defineFlow(
           series: component.series || '',
           model: component.model || '',
           system: component.system,
+        },
+      },
+    ]);
+  }
+);
