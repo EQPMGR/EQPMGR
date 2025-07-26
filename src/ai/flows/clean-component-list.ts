@@ -37,6 +37,8 @@ Your output must start with the following header row:
 Shimano	105	CS-HG700  	Cassette	11 speed	11-34t
 Shimano	SLX	CS-M7000 Cassette 11 speed
 Shimano	BBR60 Bottom Bracket BSA English 68mm
+Shimano	Di2 BT-DN110 Internal Battery
+Shimano	GRX	ST-RX400 / BR-RX400
 \`\`\`
 
 **Correct Output CSV:**
@@ -45,10 +47,12 @@ Brand,Series,Model,Name,Descriptor1,Descriptor2
 Shimano,105,CS-HG700,Cassette,11 speed,11-34t
 Shimano,SLX,CS-M7000,Cassette,11 speed,
 Shimano,,BBR60,Bottom Bracket,BSA English,68mm
+Shimano,Di2,BT-DN110,Internal Battery,,
+Shimano,GRX,"ST-RX400 / BR-RX400",Shift/Brake Lever,,
 \`\`\`
 
 **Instructions:**
-1.  **Analyze the examples above.** Notice how even incomplete lines are parsed into the correct columns.
+1.  **Analyze the examples above.** Notice how even incomplete or combined lines are parsed into the correct columns. Your goal is to preserve the information.
 2.  **Apply this logic to the entire list below.**
 3.  **Crucially, you must process EVERY single line from the input.** Do not skip or discard any entries. Your only job is to reformat, not to filter or curate.
 
