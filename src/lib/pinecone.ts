@@ -15,4 +15,11 @@ const pinecone = new Pinecone({
 
 // The name of the index in your Pinecone project.
 // IMPORTANT: You must create an index with this name in the Pinecone console.
-// The index should have a dimension of 768 for Google's text-
+// The index should have a dimension of 768 for Google's text-embedding-004 model.
+const indexName = 'eqpmgr-components';
+
+if (!indexName) {
+  throw new Error('PINECONE_INDEX environment variable is not set.');
+}
+
+export const pineconeIndex = pinecone.index(indexName);
