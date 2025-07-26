@@ -25,38 +25,32 @@ const componentCleanerPrompt = ai.definePrompt({
   config: {
     temperature: 0.1,
   },
-  prompt: `You are an expert data cleaner specializing in bike components. Your task is to take the provided raw text and structure it into a CSV format with a header row.
+  prompt: `You are an expert data cleaner specializing in bike components. Your task is to take the provided raw text and structure it into a CSV format.
 
-Follow these rules with extreme precision:
-
-1.  **PROCESS EVERY LINE:** You MUST process every single line of the input data. Do not skip or discard any entries, even if they seem incomplete or don't fit a perfect pattern. Your only job is to reformat, not to filter or curate.
-2.  **Header Row:** The first line of your output MUST be the following header: \`Brand,Series,Model,Name,Descriptor1,Descriptor2\`
-3.  **Brand:** The brand of the component (e.g., "Shimano").
-4.  **Series:** The product family (e.g., "105", "Dura-Ace", "GRX"). If a component doesn't belong to a clear series, leave this blank.
-5.  **Model:** The specific model or part number (e.g., "CS-R7000", "RD-M6100").
-6.  **Name:** The generic name or function of the component (e.g., "Cassette", "Brake Caliper", "Chain").
-7.  **Descriptors:** Use the descriptor columns for additional attributes like speed, size, or other features (e.g., "11 speed", "11-34t", "GS").
+Your output must start with the following header row:
+\`Brand,Series,Model,Name,Descriptor1,Descriptor2\`
 
 **EXAMPLE of how to process the data:**
 
 **Input Text:**
 \`\`\`
-Shimano	105	CS 5700  	Cassette	10 speed	
-Shimano	105	BR-R7000	Brake Caliper	DUAL-PIVOT BRAKE CALIPER	
 Shimano	105	CS-HG700  	Cassette	11 speed	11-34t
 Shimano	SLX	CS-M7000 Cassette 11 speed
+Shimano	BBR60 Bottom Bracket BSA English 68mm
 \`\`\`
 
 **Correct Output CSV:**
 \`\`\`csv
 Brand,Series,Model,Name,Descriptor1,Descriptor2
-Shimano,105,CS 5700,Cassette,10 speed,
-Shimano,105,BR-R7000,Brake Caliper,DUAL-PIVOT BRAKE CALIPER,
 Shimano,105,CS-HG700,Cassette,11 speed,11-34t
 Shimano,SLX,CS-M7000,Cassette,11 speed,
+Shimano,,BBR60,Bottom Bracket,BSA English,68mm
 \`\`\`
 
-Now, process the following complete list. Do not include the example in your final output. Remember to process EVERY SINGLE LINE. Return ONLY the CSV data.
+**Instructions:**
+1.  **Analyze the examples above.** Notice how even incomplete lines are parsed into the correct columns.
+2.  **Apply this logic to the entire list below.**
+3.  **Crucially, you must process EVERY single line from the input.** Do not skip or discard any entries. Your only job is to reformat, not to filter or curate.
 
 RAW DATA TO PROCESS:
 {{{input}}}
