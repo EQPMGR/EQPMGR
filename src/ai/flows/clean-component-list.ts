@@ -29,12 +29,13 @@ const componentCleanerPrompt = ai.definePrompt({
 
 Follow these rules with extreme precision:
 
-1.  **Header Row:** The first line of your output MUST be the following header: \`Brand,Series,Model,Name,Descriptor1,Descriptor2\`
-2.  **Brand:** The brand of the component (e.g., "Shimano").
-3.  **Series:** The product family (e.g., "105", "Dura-Ace", "GRX"). If a component doesn't belong to a clear series, leave this blank.
-4.  **Model:** The specific model or part number (e.g., "CS-R7000", "RD-M6100").
-5.  **Name:** The generic name or function of the component (e.g., "Cassette", "Brake Caliper", "Chain").
-6.  **Descriptors:** Use the descriptor columns for additional attributes like speed, size, or other features (e.g., "11 speed", "11-34t", "GS").
+1.  **PROCESS EVERY LINE:** You MUST process every single line of the input data. Do not skip or discard any entries, even if they seem incomplete or don't fit a perfect pattern. Your only job is to reformat, not to filter or curate.
+2.  **Header Row:** The first line of your output MUST be the following header: \`Brand,Series,Model,Name,Descriptor1,Descriptor2\`
+3.  **Brand:** The brand of the component (e.g., "Shimano").
+4.  **Series:** The product family (e.g., "105", "Dura-Ace", "GRX"). If a component doesn't belong to a clear series, leave this blank.
+5.  **Model:** The specific model or part number (e.g., "CS-R7000", "RD-M6100").
+6.  **Name:** The generic name or function of the component (e.g., "Cassette", "Brake Caliper", "Chain").
+7.  **Descriptors:** Use the descriptor columns for additional attributes like speed, size, or other features (e.g., "11 speed", "11-34t", "GS").
 
 **EXAMPLE of how to process the data:**
 
@@ -55,7 +56,7 @@ Shimano,105,CS-HG700,Cassette,11 speed,11-34t
 Shimano,SLX,CS-M7000,Cassette,11 speed,
 \`\`\`
 
-Now, process the following complete list. Do not include the example in your final output. Return ONLY the CSV data.
+Now, process the following complete list. Do not include the example in your final output. Remember to process EVERY SINGLE LINE. Return ONLY the CSV data.
 
 RAW DATA TO PROCESS:
 {{{input}}}
