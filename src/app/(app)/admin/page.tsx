@@ -1,8 +1,9 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, Link as LinkIcon, DatabaseZap } from 'lucide-react';
+import { ArrowUpRight, Link as LinkIcon, DatabaseZap, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -59,6 +60,21 @@ export default function AdminPage() {
                                 <DatabaseZap className="h-4 w-4 mr-2" /> Manage Index
                             </Link>
                         </Button>
+                    </CardHeader>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <div>
+                                <CardTitle className="text-base font-semibold">Component Cleaner (AI)</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Use AI to structure and format raw component lists.
+                                </CardDescription>
+                            </div>
+                            <Button asChild size="sm" variant="outline">
+                                <Link href="/admin/component-cleaner">
+                                    <Sparkles className="h-4 w-4 mr-2" /> Clean Data
+                                </Link>
+                            </Button>
                     </CardHeader>
                 </Card>
             </CardContent>
