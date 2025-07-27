@@ -41,10 +41,6 @@ const nextConfig: NextConfig = {
     });
     return config;
   },
-  env: {
-    PINECONE_API_KEY: process.env.PINECONE_API_KEY,
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  }
 };
 
 export default nextConfig;
