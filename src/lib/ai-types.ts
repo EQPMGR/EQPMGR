@@ -15,6 +15,7 @@ const ExtractedComponentSchema = z.object({
   model: z.string().optional().describe('The specific model or part number of the component (e.g., "RD-5701", "ST-5700L", "CS-4600").'),
   system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", "E-Bike", or "Accessories".'),
   size: z.string().optional().describe('The default or single size of the component (e.g., "27.2mm", "172.5mm", "42cm").'),
+  sizeVariants: z.record(z.string()).optional().describe('An object mapping frame sizes to component sizes (e.g., {"S": "170mm", "M": "172.5mm"}).'),
   chainring1: z.string().optional().describe("For cranksets with multiple rings, the tooth count of the largest chainring."),
   chainring2: z.string().optional().describe("The tooth count of the second chainring."),
   chainring3: z.string().optional().describe("The tooth count of the third chainring."),

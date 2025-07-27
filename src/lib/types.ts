@@ -12,6 +12,9 @@ export interface MasterComponent {
   system: string;
   size?: string; // For components with a single size, or as a default/base size.
   sizeVariants?: { [frameSize: string]: string }; // For components with size tied to frame, e.g. { "S": "170mm", "M": "172.5mm" }
+  chainring1?: string;
+  chainring2?: string;
+  chainring3?: string;
 }
 
 // Data specific to a user's instance of a component
