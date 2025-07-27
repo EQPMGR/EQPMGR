@@ -40,12 +40,13 @@ Follow these steps:
 2.  Extract every individual component listed in the text. For each, identify its name, brand, series, and model.
 3.  For each extracted component, look for a match in the provided 'existingComponentsJson'. If you find a component with the same name and brand, use the 'series' and 'model' from the existing component to fill in any missing information in your extraction. This is crucial for data consistency.
 4.  Assign every component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
-5.  If multiple sizes are listed based on frame size (e.g., "Handlebar... XS:40cm, S:40cm"), extract only the most common or first listed size into the main 'size' field.
-6.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
-7.  **Critical Naming Rules**:
+5.  **Size Rule**: If multiple sizes are listed based on frame size (e.g., "Handlebar... XS:40cm, S:40cm"), extract the most common or first listed size into the main 'size' field.
+6.  **Size Variants Rule**: For components with multiple sizes based on frame size, create a JSON string in the 'sizeVariants' field. Example: for a handlebar with sizes for S, M, L, the 'sizeVariants' field should be '{"S": "40cm", "M": "42cm", "L": "44cm"}'.
+7.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
+8.  **Critical Naming Rules**:
     - Standardize "Seat Post" to "Seatpost".
     - If you see "Sram", "sram", or "SRAM", ALWAYS standardize the brand to "SRAM".
-8.  **Crankset/Chainring Rule**: If you see a tooth count for a crankset or chainrings (e.g., 40t, 50/34t), you MUST extract the number(s) into the 'chainring1' and 'chainring2' fields in the component object.
+9.  **Crankset/Chainring Rule**: If you see a tooth count for a crankset or chainrings (e.g., 40t, 50/34t), you MUST extract the number(s) into the 'chainring1' and 'chainring2' fields in the component object.
 
 Return ONLY the structured JSON object. Do not include any other text or explanations.
 
