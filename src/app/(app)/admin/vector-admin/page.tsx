@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, DatabaseZap, Info } from 'lucide-react';
+import { Loader2, DatabaseZap, Info, Terminal } from 'lucide-react';
 import { fetchAllMasterComponents } from '@/services/components';
 import { indexComponentFlow } from '@/ai/flows/index-components';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -34,24 +34,27 @@ export default function VectorAdminPage() {
         const batch = components.slice(i, i + batchSize);
         await Promise.all(
           batch.map(async (component) => {
-            await indexComponentFlow(component);
-            indexedCount++;
+            // Only index components that don't already have an embedding
+            if (!component.embedding) {
+               await indexComponentFlow(component);
+               indexedCount++;
+            }
           })
         );
-         setResult(`Indexing in progress... ${indexedCount} of ${components.length} components indexed.`);
+         setResult(`Indexing in progress... ${indexedCount} new components indexed.`);
       }
 
-      const finalMessage = `Successfully indexed ${indexedCount} components into the vector database.`;
+      const finalMessage = `Successfully indexed ${indexedCount} new components into the Firestore database.`;
       setResult(finalMessage);
       toast({
         title: 'Indexing Complete!',
-        description: `Processed ${indexedCount} components.`,
+        description: `Processed ${indexedCount} new components.`,
       });
 
     } catch (error: any) {
         let description = error.message || 'An unexpected error occurred.';
-        if (error.message && error.message.includes('PineconeClient: Error')) {
-            description = "Could not connect to the vector database. Please ensure your Pinecone API key is correct in the .env file and the index is running.";
+         if (error.code === 'failed-precondition' || (error.message && error.message.includes('vector index'))) {
+            description = "Firestore vector index not found or not configured. Please create a vector index on the 'masterComponents' collection for the 'embedding' field via the gcloud or Firebase CLI.";
         }
       console.error("Indexing failed:", error);
       setResult(`Indexing failed: ${description}`);
@@ -68,17 +71,24 @@ export default function VectorAdminPage() {
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Vector Database Administration</CardTitle>
+        <CardTitle>Firestore Vector Indexing</CardTitle>
         <CardDescription>
-          Tools to create and manage the vector index for component search.
+          Tools to create vector embeddings for component search.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>What is this?</AlertTitle>
+          <AlertTitle>How This Works</AlertTitle>
           <AlertDescription>
-            This tool converts your master component list into vector embeddings, enabling powerful semantic search for the AI. Run this once to initialize the database, or anytime you want to re-index all components.
+            This tool generates vector embeddings for each component in your `masterComponents` collection and saves them back to the component document. This enables powerful semantic search for the AI. Run this after adding new components to the database.
+          </AlertDescription>
+        </Alert>
+         <Alert>
+          <Terminal className="h-4 w-4" />
+          <AlertTitle>Important: Index Setup</AlertTitle>
+          <AlertDescription>
+           For this feature to work, you must first create a vector index in your Firestore database using the Firebase or gCloud CLI. The AI will not be able to find similar components without it.
           </AlertDescription>
         </Alert>
         <Button onClick={handleIndexComponents} disabled={isLoading}>
@@ -87,7 +97,7 @@ export default function VectorAdminPage() {
           ) : (
             <DatabaseZap className="mr-2 h-4 w-4" />
           )}
-          {isLoading ? 'Indexing...' : 'Start Indexing All Components'}
+          {isLoading ? 'Indexing...' : 'Generate Embeddings for New Components'}
         </Button>
       </CardContent>
       {result && (

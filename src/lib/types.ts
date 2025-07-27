@@ -15,6 +15,7 @@ export interface MasterComponent {
   chainring1?: string;
   chainring2?: string;
   chainring3?: string;
+  embedding?: number[]; // To store the vector embedding
 }
 
 // Data specific to a user's instance of a component

@@ -1,10 +1,11 @@
 
 'use server';
 /**
- * @fileOverview A flow for indexing component data into a vector database.
+ * @fileOverview A flow for indexing component data into Firestore.
  */
 import { ai } from '@/ai/genkit';
-import { getPineconeIndex } from '@/lib/pinecone';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import type { MasterComponent } from '@/lib/types';
 import { z } from 'zod';
 import { textEmbedding004 } from '@genkit-ai/googleai';
@@ -25,7 +26,7 @@ const ComponentIndexSchema = z.object({
  * @param component The master component object.
  * @returns A descriptive string.
  */
-const createComponentVectorDocument = (component: Omit<MasterComponent, 'id'>): string => {
+const createComponentVectorDocument = (component: Omit<MasterComponent, 'id' | 'embedding'>): string => {
   const fields = [
     `Name: ${component.name}`,
     `Brand: ${component.brand}`,
@@ -39,7 +40,7 @@ const createComponentVectorDocument = (component: Omit<MasterComponent, 'id'>): 
 
 /**
  * A Genkit flow that takes a master component, generates a vector embedding
- * from its details, and upserts it into the Pinecone index.
+ * from its details, and updates the document in Firestore with the embedding.
  */
 export const indexComponentFlow = ai.defineFlow(
   {
@@ -57,20 +58,8 @@ export const indexComponentFlow = ai.defineFlow(
         content: vectorDocument,
     });
     
-    // 3. Get the Pinecone index and upsert the vector.
-    const pineconeIndex = getPineconeIndex();
-    await pineconeIndex.upsert([
-      {
-        id: component.id,
-        values: embedding,
-        metadata: {
-          name: component.name,
-          brand: component.brand,
-          series: component.series || '',
-          model: component.model || '',
-          system: component.system,
-        },
-      },
-    ]);
+    // 3. Update the Firestore document with the new embedding.
+    const componentDocRef = doc(db, 'masterComponents', component.id);
+    await updateDoc(componentDocRef, { embedding });
   }
 );

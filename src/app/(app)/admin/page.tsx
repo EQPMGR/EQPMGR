@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, Link as LinkIcon, DatabaseZap, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Link as LinkIcon, DatabaseZap } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -50,14 +50,14 @@ export default function AdminPage() {
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
-                            <CardTitle className="text-base font-semibold">Vector DB Admin</CardTitle>
+                            <CardTitle className="text-base font-semibold">Firestore Vector Indexing</CardTitle>
                             <CardDescription className="text-sm">
-                                Manage the component vector database index.
+                                Generate embeddings for component search.
                             </CardDescription>
                         </div>
                         <Button asChild size="sm" variant="outline">
                             <Link href="/admin/vector-admin">
-                                <DatabaseZap className="h-4 w-4 mr-2" /> Manage Index
+                                <DatabaseZap className="h-4 w-4 mr-2" /> Manage Embeddings
                             </Link>
                         </Button>
                     </CardHeader>
