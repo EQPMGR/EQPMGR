@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -177,17 +178,6 @@ export function EquipmentListPage() {
                   console.warn(`Master component ${masterComponentId} not found when adding equipment.`);
                   return; // Skip this component if master is not found
               }
-
-              let specificSize = masterComp?.size;
-              // Check if size varies by frame and resolve it
-              if (formData.frameSize && masterComp?.sizeVariants) {
-                  const frameSizeKey = Object.keys(masterComp.sizeVariants).find(
-                    (key) => key.toLowerCase() === formData.frameSize!.toLowerCase()
-                  );
-                  if (frameSizeKey) {
-                      specificSize = masterComp.sizeVariants[frameSizeKey];
-                  }
-              }
               
               const newComponentDocRef = doc(collection(db, 'users', user.uid, 'equipment', newEquipmentDocRef.id, 'components'));
               
@@ -199,10 +189,10 @@ export function EquipmentListPage() {
                   lastServiceDate: null,
                   notes: '',
               };
-
+              
               // Only add size to the object if it's not undefined.
-              if (specificSize !== undefined) {
-                  userComponent.size = specificSize;
+              if (masterComp.size !== undefined) {
+                  userComponent.size = masterComp.size;
               }
 
               batch.set(newComponentDocRef, userComponent);
