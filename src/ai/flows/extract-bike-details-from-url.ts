@@ -40,7 +40,7 @@ Follow these steps:
 2.  Extract every individual component listed in the text. For each, identify its name, brand, series, and model.
 3.  For each extracted component, look for a match in the provided 'existingComponentsJson'. If you find a component with the same name and brand, use the 'series' and 'model' from the existing component to fill in any missing information in your extraction. This is crucial for data consistency.
 4.  Assign every component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
-5.  **SIZE EXTRACTION RULE**: If a component's size depends on the frame size (e.g., "Handlebar... XS:40cm, S:40cm, M:42cm" or "Crankset... S:170mm, M:172.5mm"), you MUST extract these into the 'sizeVariants' object. The frame size (e.g., "S") is the key, and the component size (e.g., "170mm") is the value.
+5.  If multiple sizes are listed based on frame size (e.g., "Handlebar... XS:40cm, S:40cm"), extract only the most common or first listed size into the main 'size' field.
 6.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
 7.  **Critical Naming Rules**:
     - Standardize "Seat Post" to "Seatpost".
