@@ -5,7 +5,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { pineconeIndex } from '@/lib/pinecone';
+import { getPineconeIndex } from '@/lib/pinecone';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 import type { MasterComponent } from '@/lib/types';
 import type { ScoredPineconeRecord } from '@pinecone-database/pinecone';
@@ -36,7 +36,8 @@ export async function findSimilarComponents(text: string, topK: number = 5): Pro
       content: text,
     });
 
-    // 2. Query the Pinecone index with the generated embedding.
+    // 2. Get the Pinecone index and query with the generated embedding.
+    const pineconeIndex = getPineconeIndex();
     const queryResponse = await pineconeIndex.query({
       vector: embedding,
       topK,

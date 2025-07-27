@@ -4,7 +4,7 @@
  * @fileOverview A flow for indexing component data into a vector database.
  */
 import { ai } from '@/ai/genkit';
-import { pineconeIndex } from '@/lib/pinecone';
+import { getPineconeIndex } from '@/lib/pinecone';
 import type { MasterComponent } from '@/lib/types';
 import { z } from 'zod';
 import { textEmbedding004 } from '@genkit-ai/googleai';
@@ -56,8 +56,9 @@ export const indexComponentFlow = ai.defineFlow(
         embedder: textEmbedding004,
         content: vectorDocument,
     });
-
-    // 3. Upsert the vector into the Pinecone index.
+    
+    // 3. Get the Pinecone index and upsert the vector.
+    const pineconeIndex = getPineconeIndex();
     await pineconeIndex.upsert([
       {
         id: component.id,
