@@ -2,31 +2,20 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    match /users/{userId} {
-      allow read: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId; // Allow users to update their own profile
-
-      // Allow access to the equipment subcollection for the logged-in user
-      match /equipment/{equipmentId} {
-        allow get, list, create, update, delete: if request.auth.uid == userId;
-
-        // Allow access to the components sub-subcollection
-        match /components/{componentId} {
-            allow get, list, create, update, delete: if request.auth.uid == userId;
-        }
-      }
+    // Users can only read and write their own data.
+    match /users/{userId}/{documents=**} {
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Rules for public/shared data
-    match /bikeModels/{bikeModelId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null; // For admin functions
-    }
-
+    // Allow authenticated users to read and write to masterComponents.
+    // This is needed for the admin seeding and component creation.
     match /masterComponents/{componentId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null; // For admin/server functions
+      allow read, write: if request.auth != null;
+    }
+
+    // Allow authenticated users to write to aiTrainingData
+    match /aiTrainingData/{dataId} {
+        allow write: if request.auth != null;
     }
   }
 }
