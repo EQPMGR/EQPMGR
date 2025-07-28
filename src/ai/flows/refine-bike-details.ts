@@ -68,6 +68,8 @@ Component to Refine:
 `
 });
 
+// Helper function to introduce a delay
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * A Genkit flow that takes an initial extraction and refines each component.
@@ -92,6 +94,9 @@ export const refineExtractedBikeDetails = ai.defineFlow(
         if (result.output) {
             refinedComponents.push(result.output);
         }
+
+        // Add a delay to respect API rate limits (e.g., 2000ms for 2 seconds)
+        await sleep(2000);
     }
 
     // Return the final, refined structure.
@@ -103,3 +108,5 @@ export const refineExtractedBikeDetails = ai.defineFlow(
     };
   }
 );
+
+    
