@@ -1,40 +1,43 @@
 
 'use server';
 /**
- * @fileOverview An AI agent that extracts structured bike data from raw text content.
- * This flow now handles the entire extraction process in a single, robust pass.
+ * @fileOverview An AI agent that performs an initial, rough extraction of bike components from raw text.
+ * This flow is designed to be fast and simple, focusing only on identifying component text blocks.
+ * A secondary, more detailed flow will handle the fine-grained structuring.
  */
 
 import { ai } from '@/ai/genkit';
-import {
-    ExtractBikeDetailsInput,
-    ExtractBikeDetailsInputSchema,
-    ExtractBikeDetailsOutput,
-    ExtractBikeDetailsOutputSchema
-} from '@/lib/ai-types';
+import { z } from 'zod';
 
-export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetailsInput): Promise<ExtractBikeDetailsOutput> {
-  return extractBikeDetailsFlow(input);
-}
+const RoughComponentSchema = z.object({
+  name: z.string().describe("The best-guess name of the component from the raw text (e.g., 'Rear Derailleur', 'Fork')."),
+  description: z.string().describe("The full line or block of text associated with this component."),
+});
 
-const bikeExtractorPrompt = ai.definePrompt({
-  name: 'bikeExtractorPrompt',
+export const ExtractBikeDetailsInputSchema = z.object({
+  textContent: z.string().describe("The raw text content from a bike's product webpage."),
+});
+export type ExtractBikeDetailsInput = z.infer<typeof ExtractBikeDetailsInputSchema>;
+
+export const ExtractBikeDetailsOutputSchema = z.object({
+  brand: z.string().optional().describe('The brand of the bike (e.g., "Specialized").'),
+  model: z.string().optional().describe('The model name of the bike (e.g., "Tarmac SL7").'),
+  modelYear: z.coerce.number().optional().describe('The model year of the bike (e.g., 2023).'),
+  components: z.array(RoughComponentSchema).describe('An array of all identified bike components with their raw descriptions.'),
+});
+export type ExtractBikeDetailsOutput = z.infer<typeof ExtractBikeDetailsOutputSchema>;
+
+
+const roughExtractorPrompt = ai.definePrompt({
+  name: 'roughBikeExtractorPrompt',
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
   config: {
-    temperature: 0.1,
+    temperature: 0.0,
   },
-  prompt: `You are a precision data extraction agent for bicycles. From the text provided, extract the bike's overall brand, model, and modelYear. Then, identify every individual component.
-
-**CRITICAL RULES FOR EACH COMPONENT:**
-1.  **Extract Details**: For each component, you MUST extract its name, brand, series, and model.
-2.  **Model is Part Number**: The \`model\` field is ONLY for the specific part number (e.g., U6020, SL-U6000-11R, RD-RX822).
-3.  **Series is Family Name**: The \`series\` field is for the product family (e.g., CUES, GRX, 105).
-4.  **Crankset/Chainring**: For cranksets or chainrings, if you see a tooth count (e.g., 40t, 50/34t), you MUST extract the number(s) into the \`chainring1\` and \`chainring2\` fields.
-5.  **Size Variants**: For components with frame-size dependent sizes (like handlebars), create a JSON string in \`sizeVariants\`. Example: '{"S": "40cm", "M": "42cm"}'.
-6.  **No Guesses**: If a value for a field (like model or series) is not present in the text, omit the field. Do not invent data.
-7.  **Standardize**: Standardize "Seat Post" to "Seatpost" and "Sram" to "SRAM".
-8.  **System Assignment**: Assign each component to a system from this list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
+  prompt: `You are a simple data extraction tool. From the provided text, identify the bike's brand, model, and modelYear.
+Then, extract every single component listed. For each component, provide a best-guess 'name' and the full 'description' text for that line item.
+Do not try to structure the component details yet. Just extract the raw text for each part.
 
 Return ONLY the structured JSON object.
 
@@ -50,10 +53,15 @@ const extractBikeDetailsFlow = ai.defineFlow(
     outputSchema: ExtractBikeDetailsOutputSchema,
   },
   async (input) => {
-    const { output } = await bikeExtractorPrompt(input);
+    const { output } = await roughExtractorPrompt(input);
     if (!output) {
-      throw new Error('Could not extract bike details from the provided text.');
+      throw new Error('Could not perform the initial extraction of bike components from the provided text.');
     }
     return output;
   }
 );
+
+
+export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetailsInput): Promise<ExtractBikeDetailsOutput> {
+  return extractBikeDetailsFlow(input);
+}

@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bot, Loader2, PartyPopper } from 'lucide-react';
-import { extractBikeDetailsFromUrlContent } from '@/ai/flows/extract-bike-details-from-url';
+import { extractBikeDetailsFromUrlContent, type ExtractBikeDetailsOutput as RoughExtractOutput } from '@/ai/flows/extract-bike-details-from-url';
+import { cleanComponentListFlow, type CleanComponentListOutput } from '@/ai/flows/clean-component-list';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ export default function ComponentCleanerPage() {
     const [rawText, setRawText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isDone, setIsDone] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('');
     const [extractedJson, setExtractedJson] = useState('');
     const { toast } = useToast();
     const router = useRouter();
@@ -36,10 +38,30 @@ export default function ComponentCleanerPage() {
         setIsLoading(true);
         setExtractedJson('');
         try {
-            const result = await extractBikeDetailsFromUrlContent({ textContent: rawText });
-            const resultJson = JSON.stringify(result, null, 2);
+            // Step 1: Perform the initial rough extraction
+            setStatusMessage('Step 1: Performing initial component extraction...');
+            const roughResult: RoughExtractOutput = await extractBikeDetailsFromUrlContent({ textContent: rawText });
+
+            if (!roughResult || !roughResult.components || roughResult.components.length === 0) {
+                 throw new Error("Initial extraction failed to find any components.");
+            }
+            
+            // Step 2: Clean the extracted component list
+            setStatusMessage(`Step 2: Cleaning and structuring ${roughResult.components.length} components... (This may take a minute)`);
+            const finalResult = await cleanComponentListFlow({ components: roughResult.components });
+
+            // Combine the results into the final format expected by the form
+            const finalOutput: ExtractBikeDetailsOutput = {
+                brand: roughResult.brand,
+                model: roughResult.model,
+                modelYear: roughResult.modelYear,
+                components: finalResult.components,
+            };
+
+            const resultJson = JSON.stringify(finalOutput, null, 2);
             setExtractedJson(resultJson);
             sessionStorage.setItem('importedBikeData', resultJson);
+            
             toast({ title: 'Success!', description: 'Components have been structured.' });
             setIsDone(true);
         } catch (error: any) {
@@ -47,6 +69,7 @@ export default function ComponentCleanerPage() {
             toast({ variant: 'destructive', title: 'Structuring Failed', description: error.message });
         } finally {
             setIsLoading(false);
+            setStatusMessage('');
         }
     };
 
@@ -69,6 +92,12 @@ export default function ComponentCleanerPage() {
                         className="font-mono text-xs"
                     />
                 </div>
+                 {isLoading && statusMessage && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <p>{statusMessage}</p>
+                    </div>
+                )}
                 {extractedJson && (
                     <div className="space-y-2">
                         <Label htmlFor="json-output">AI Extracted JSON</Label>
