@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { writeBatch, doc, collection, getDocs } from 'firebase/firestore';
+import { writeBatch, doc, collection, getDocs, addDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -95,7 +95,7 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
             brand: c.brand || '',
             series: c.series || '',
             model: c.model || '',
-            size: '', 
+            size: c.size || '', // Use AI extracted size
             system: c.system,
             chainring1: c.chainring1,
             chainring2: c.chainring2,
@@ -164,6 +164,8 @@ function AddBikeModelFormComponent() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+    const [initialAiData, setInitialAiData] = useState<any>(null);
+
 
     const form = useForm<AddBikeModelFormValues>({
         resolver: zodResolver(addBikeModelSchema),
@@ -220,6 +222,16 @@ function AddBikeModelFormComponent() {
 
     useEffect(() => {
         const importedData = sessionStorage.getItem('importedBikeData');
+        const rlhfData = sessionStorage.getItem('aiInitialExtraction');
+
+        if (rlhfData) {
+            try {
+                setInitialAiData(JSON.parse(rlhfData));
+            } catch (e) {
+                console.error("Failed to parse initial AI data", e);
+            }
+        }
+
         if (importedData) {
             try {
                 const parsedData: ExtractBikeDetailsOutput = JSON.parse(importedData);
@@ -254,6 +266,18 @@ function AddBikeModelFormComponent() {
             const batch = writeBatch(db);
             const masterComponentsRef = collection(db, 'masterComponents');
             const bikeModelsRef = collection(db, 'bikeModels');
+            const aiTrainingDataRef = collection(db, 'aiTrainingData');
+
+            // Save training data if it exists from an AI import
+            if (initialAiData) {
+                const trainingDoc = {
+                    prompt: initialAiData.prompt,
+                    initialCompletion: initialAiData.completion,
+                    correctedCompletion: values,
+                    createdAt: new Date(),
+                };
+                batch.set(doc(aiTrainingDataRef), trainingDoc);
+            }
 
             const componentReferences: string[] = [];
 
@@ -312,6 +336,10 @@ function AddBikeModelFormComponent() {
                 title: 'Bike Model Saved!',
                 description: `${values.brand} ${values.model} (${values.modelYear}) has been added to the database.`,
             });
+            
+            // Clear session storage for AI data after successful submission
+            sessionStorage.removeItem('aiInitialExtraction');
+            setInitialAiData(null);
             
             form.reset();
 

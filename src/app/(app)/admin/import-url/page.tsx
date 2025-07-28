@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { extractBikeDetailsFromUrlContent } from '@/ai/flows/extract-bike-details-from-url';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ export default function ImportFromUrlPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [extractedData, setExtractedData] = useState<ExtractBikeDetailsOutput | null>(null);
     const { toast } = useToast();
+    const router = useRouter();
 
     const handleExtract = async () => {
         setIsLoading(true);
@@ -45,12 +46,17 @@ export default function ImportFromUrlPage() {
                  return;
             }
 
-            // The flow now handles fetching similar components internally.
             const result = await extractBikeDetailsFromUrlContent({ 
                 textContent: contentToProcess,
             });
 
             setExtractedData(result);
+            // Save initial AI output for RLHF data collection
+            sessionStorage.setItem('aiInitialExtraction', JSON.stringify({
+                prompt: contentToProcess,
+                completion: result,
+            }));
+            // Save data to pre-fill the form
             sessionStorage.setItem('importedBikeData', JSON.stringify(result));
             toast({ title: 'Extraction Successful!' });
 
@@ -71,6 +77,10 @@ export default function ImportFromUrlPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleProceed = () => {
+        router.push('/admin/add-bike-model');
     };
     
     return (
@@ -134,10 +144,8 @@ export default function ImportFromUrlPage() {
                            <pre className="whitespace-pre-wrap font-mono text-xs bg-slate-950 p-4 rounded-md text-white max-h-64 overflow-auto">{JSON.stringify(extractedData, null, 2)}</pre>
                         </CardContent>
                         <CardFooter>
-                            <Button asChild>
-                                <Link href={`/admin/add-bike-model`}>
-                                    Proceed to Form
-                                </Link>
+                            <Button onClick={handleProceed}>
+                                Proceed to Form
                             </Button>
                         </CardFooter>
                      </Card>
