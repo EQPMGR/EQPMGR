@@ -60,8 +60,8 @@ export default function ImportFromUrlPage() {
             if (error.message && (error.message.includes('API_KEY_SERVICE_BLOCKED') || error.message.includes('SERVICE_DISABLED'))) {
                 description = "The AI service is blocked. Please ensure the 'Generative Language API' is enabled for your project AND added to your API key's restrictions in the Google Cloud Console.";
             }
-             if (error.message && error.message.includes('PineconeClient: Error')) {
-                description = "Could not connect to the vector database. Please ensure your Pinecone API key is correct and the index is running.";
+             if (error.message && error.message.includes('vector index')) {
+                description = "Could not connect to the vector database. Please ensure your Firestore vector index is created and active.";
             }
             toast({
                 variant: 'destructive',
