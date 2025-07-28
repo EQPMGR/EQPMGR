@@ -8,15 +8,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Link, Loader2 } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import { getUrlTextContent } from './actions';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function ImportFromUrlPage() {
     const [url, setUrl] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [extractedText, setExtractedText] = useState<string | null>(null);
+    const [textContent, setTextContent] = useState('');
     const { toast } = useToast();
     const router = useRouter();
 
@@ -27,7 +26,7 @@ export default function ImportFromUrlPage() {
         }
 
         setIsLoading(true);
-        setExtractedText(null);
+        setTextContent('');
         
         try {
             const content = await getUrlTextContent(url.trim());
@@ -37,8 +36,7 @@ export default function ImportFromUrlPage() {
                  return;
             }
 
-            setExtractedText(content);
-            sessionStorage.setItem('rawBikeData', content);
+            setTextContent(content);
             toast({ title: 'Content Fetched!', description: 'You can now proceed to the component cleaner.' });
 
         } catch (error: any) {
@@ -52,18 +50,27 @@ export default function ImportFromUrlPage() {
             setIsLoading(false);
         }
     };
+
+    const handleProceed = () => {
+        if (!textContent.trim()) {
+            toast({ variant: 'destructive', title: 'No Content', description: 'Please paste or fetch some text before proceeding.' });
+            return;
+        }
+        sessionStorage.setItem('rawBikeData', textContent);
+        router.push('/admin/component-cleaner');
+    }
     
     return (
         <Card className="max-w-2xl mx-auto">
             <CardHeader>
-                <CardTitle>Step 1: Fetch Text from URL</CardTitle>
+                <CardTitle>Step 1: Get Component Text</CardTitle>
                 <CardDescription>
-                    Enter a URL for a bike's specification page to fetch its text content.
+                    Enter a URL to fetch specs automatically, or paste the text directly into the text area below.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                  <div className="space-y-2">
-                    <Label htmlFor="url">Bike Specification URL</Label>
+                    <Label htmlFor="url">Bike Specification URL (Optional)</Label>
                     <div className="flex gap-2">
                         <Input
                             id="url"
@@ -72,30 +79,30 @@ export default function ImportFromUrlPage() {
                             onChange={(e) => setUrl(e.target.value)}
                             disabled={isLoading}
                         />
-                        <Button onClick={handleFetchText} disabled={isLoading}>
-                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link className="h-4 w-4" />}
-                            <span className="ml-2 hidden sm:inline">Fetch Text</span>
+                        <Button onClick={handleFetchText} disabled={isLoading || !url.trim()}>
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
+                            <span className="ml-2 hidden sm:inline">Fetch</span>
                         </Button>
                     </div>
                 </div>
 
-                 {extractedText && (
-                     <Card className="bg-muted/50">
-                        <CardHeader>
-                            <CardTitle className="text-xl">Fetched Content</CardTitle>
-                            <CardDescription>Review the raw text below. You will clean and structure this on the next page.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                           <Textarea readOnly value={extractedText} rows={10} className="font-mono text-xs" />
-                        </CardContent>
-                        <CardFooter>
-                            <Button onClick={() => router.push('/admin/component-cleaner')}>
-                                Proceed to Component Cleaner
-                            </Button>
-                        </CardFooter>
-                     </Card>
-                 )}
+                 <div className="space-y-2">
+                    <Label htmlFor="raw-text">Component Specification Text</Label>
+                    <Textarea 
+                        id="raw-text"
+                        value={textContent} 
+                        onChange={(e) => setTextContent(e.target.value)} 
+                        rows={15} 
+                        className="font-mono text-xs"
+                        placeholder="Paste bike specifications here..."
+                    />
+                </div>
             </CardContent>
+             <CardFooter className="flex-col items-stretch gap-4">
+                <Button onClick={handleProceed} disabled={!textContent.trim()}>
+                    Proceed to Component Cleaner
+                </Button>
+            </CardFooter>
         </Card>
     );
 }
