@@ -2,11 +2,11 @@
 'use server';
 /**
  * @fileOverview A flow for indexing component data into Firestore.
+ * This flow now handles both creating the embedding and saving the component data.
  */
 import { ai } from '@/ai/genkit';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
-import type { MasterComponent } from '@/lib/types';
+import { doc, setDoc } from 'firebase/firestore';
 import { z } from 'zod';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 
@@ -14,22 +14,34 @@ import { textEmbedding004 } from '@genkit-ai/googleai';
 const ComponentIndexSchema = z.object({
   id: z.string(),
   name: z.string(),
-  brand: z.string(),
+  brand: z.string().optional(),
   series: z.string().optional(),
   model: z.string().optional(),
   system: z.string(),
+  size: z.string().optional(),
+  sizeVariants: z.string().optional(),
+  chainring1: z.string().optional(),
+  chainring2: z.string().optional(),
+  chainring3: z.string().optional(),
+  pads: z.string().optional(),
+  links: z.string().optional(),
+  tensioner: z.string().optional(),
+  power: z.string().optional(),
+  capacity: z.string().optional(),
 });
+
+type ComponentDataToIndex = z.infer<typeof ComponentIndexSchema>;
 
 /**
  * Creates a descriptive string from a component object.
  * This string will be used to generate the vector embedding.
- * @param component The master component object.
+ * @param component The component data.
  * @returns A descriptive string.
  */
-const createComponentVectorDocument = (component: Omit<MasterComponent, 'id' | 'embedding'>): string => {
+const createComponentVectorDocument = (component: ComponentDataToIndex): string => {
   const fields = [
     `Name: ${component.name}`,
-    `Brand: ${component.brand}`,
+    `Brand: ${component.brand || 'Unknown'}`,
     `System: ${component.system}`,
   ];
   if (component.series) fields.push(`Series: ${component.series}`);
@@ -39,8 +51,8 @@ const createComponentVectorDocument = (component: Omit<MasterComponent, 'id' | '
 };
 
 /**
- * A Genkit flow that takes a master component, generates a vector embedding
- * from its details, and updates the document in Firestore with the embedding.
+ * A Genkit flow that takes component data, generates a vector embedding,
+ * and saves the full component document (with embedding) to Firestore.
  */
 export const indexComponentFlow = ai.defineFlow(
   {
@@ -58,8 +70,14 @@ export const indexComponentFlow = ai.defineFlow(
         content: vectorDocument,
     });
     
-    // 3. Update the Firestore document with the new embedding.
+    // 3. Prepare the full document to save to Firestore.
+    const docToSave = {
+      ...component,
+      embedding,
+    };
+    
+    // 4. Save the document to Firestore.
     const componentDocRef = doc(db, 'masterComponents', component.id);
-    await updateDoc(componentDocRef, { embedding });
+    await setDoc(componentDocRef, docToSave, { merge: true });
   }
 );

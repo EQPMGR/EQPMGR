@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { writeBatch, doc, collection, getDocs, addDoc } from 'firebase/firestore';
+import { writeBatch, doc, collection, getDocs, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import { db } from '@/lib/firebase';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
+import { indexComponentFlow } from '@/ai/flows/index-components';
 
 const componentSchema = z.object({
   id: z.string().optional(), // Used to track fields in the array
@@ -32,6 +33,7 @@ const componentSchema = z.object({
   series: z.string().optional(),
   model: z.string().optional(),
   size: z.string().optional(),
+  sizeVariants: z.string().optional(), // Now storing as a string
   system: z.string().min(1, 'System is required.'),
   chainring1: z.string().optional(),
   chainring2: z.string().optional(),
@@ -95,7 +97,8 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
             brand: c.brand || '',
             series: c.series || '',
             model: c.model || '',
-            size: c.size || '', // Use AI extracted size
+            size: c.size || '',
+            sizeVariants: c.sizeVariants,
             system: c.system,
             chainring1: c.chainring1,
             chainring2: c.chainring2,
@@ -191,7 +194,6 @@ function AddBikeModelFormComponent() {
                 const parsedData: ExtractBikeDetailsOutput = JSON.parse(importedData);
                 const formValues = mapAiDataToFormValues(parsedData);
                 
-                // Merge AI data with base components
                 const mergedComponents = BASE_COMPONENTS.map(baseComp => {
                     const foundComp = formValues.components.find(aiComp => aiComp.name.toLowerCase() === baseComp.name.toLowerCase());
                     return foundComp ? { ...baseComp, ...foundComp } : baseComp;
@@ -217,21 +219,19 @@ function AddBikeModelFormComponent() {
         setIsSubmitting(true);
         
         try {
-            const batch = writeBatch(db);
-            const masterComponentsRef = collection(db, 'masterComponents');
-            const bikeModelsRef = collection(db, 'bikeModels');
-            
+            // Save training data if it exists
             if (initialAiData) {
-                const aiTrainingDataRef = collection(db, 'aiTrainingData');
+                const aiTrainingDataRef = doc(collection(db, 'aiTrainingData'));
                 const trainingDoc = {
                     prompt: initialAiData.prompt,
                     initialCompletion: initialAiData.completion,
                     correctedCompletion: values,
                     createdAt: new Date(),
                 };
-                batch.set(doc(aiTrainingDataRef), trainingDoc);
+                await setDoc(aiTrainingDataRef, trainingDoc);
             }
 
+            const componentProcessingPromises: Promise<void>[] = [];
             const componentReferences: string[] = [];
 
             for (const originalComponent of values.components) {
@@ -244,9 +244,8 @@ function AddBikeModelFormComponent() {
                     }
                 });
                 
-                if (Object.keys(componentToSave).length <= 2) continue; // Skip empty components (name, system)
+                if (Object.keys(componentToSave).length <= 2) continue;
                 if (!componentToSave.brand && !componentToSave.series && !componentToSave.model) continue;
-
 
                 if (componentToSave.brand && componentToSave.brand.toLowerCase() === 'sram') {
                     componentToSave.brand = 'SRAM';
@@ -254,14 +253,20 @@ function AddBikeModelFormComponent() {
 
                 const componentId = createComponentId(componentToSave as Partial<z.infer<typeof componentSchema>>);
                 if (!componentId) continue;
+                
+                componentToSave.id = componentId;
 
-                const masterComponentDocRef = doc(masterComponentsRef, componentId);
-                batch.set(masterComponentDocRef, componentToSave, { merge: true });
-                componentReferences.push(masterComponentDocRef.path);
+                // Call the indexComponentFlow for each component
+                componentProcessingPromises.push(indexComponentFlow(componentToSave));
+                componentReferences.push(`masterComponents/${componentId}`);
             }
 
+            // Wait for all component indexing to complete
+            await Promise.all(componentProcessingPromises);
+
+            // Now, save the bike model document
             const bikeModelId = createBikeModelId(values);
-            const bikeModelDocRef = doc(bikeModelsRef, bikeModelId);
+            const bikeModelDocRef = doc(db, 'bikeModels', bikeModelId);
             
             const { components, ...bikeModelData } = values;
             const bikeModelDataToSave: { [key: string]: any } = {};
@@ -277,20 +282,17 @@ function AddBikeModelFormComponent() {
                 bikeModelDataToSave.brand = 'SRAM';
             }
 
-            batch.set(bikeModelDocRef, {
+            await setDoc(bikeModelDocRef, {
                 ...bikeModelDataToSave,
                 components: componentReferences,
                 imageUrl: `https://placehold.co/600x400.png`
             });
             
-            await batch.commit();
-
             toast({
                 title: 'Bike Model Saved!',
                 description: `${values.brand} ${values.model} (${values.modelYear}) has been added to the database.`,
             });
             
-            // Clear session storage for AI data after successful submission
             sessionStorage.removeItem('aiInitialExtraction');
             setInitialAiData(null);
             
@@ -589,5 +591,3 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
-
-    

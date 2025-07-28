@@ -27,7 +27,6 @@ export default function VectorAdminPage() {
         return;
       }
       
-      // Correctly filter for components that are missing an embedding
       const componentsToIndex = allComponents.filter(c => !c.embedding);
 
       if (componentsToIndex.length === 0) {
@@ -91,7 +90,7 @@ export default function VectorAdminPage() {
           <Info className="h-4 w-4" />
           <AlertTitle>How This Works</AlertTitle>
           <AlertDescription>
-            This tool generates vector embeddings for each component in your `masterComponents` collection and saves them back to the component document. This enables powerful semantic search for the AI. Run this after adding new components to the database.
+            This tool is for backfilling embeddings for any components added before automatic indexing was implemented. New components added via the "Add Bike Model" form are now indexed automatically.
           </AlertDescription>
         </Alert>
          <Alert>
