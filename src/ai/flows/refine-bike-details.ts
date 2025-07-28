@@ -80,18 +80,19 @@ export const refineExtractedBikeDetails = ai.defineFlow(
   },
   async ({ textContent, initialExtraction }) => {
     
-    // Process each component in parallel to refine its details.
-    const refinedComponentsPromises = initialExtraction.components.map(component => 
-        componentRefinerPrompt({
+    const refinedComponents: z.infer<typeof RefinedComponentSchema>[] = [];
+
+    // Process each component sequentially to avoid rate limiting.
+    for (const component of initialExtraction.components) {
+        const result = await componentRefinerPrompt({
             textContent,
             componentJson: JSON.stringify(component)
-        }).then(result => result.output)
-    );
-
-    const resolvedComponents = await Promise.all(refinedComponentsPromises);
-    
-    // Filter out any null results from failed refinements
-    const refinedComponents = resolvedComponents.filter((c): c is z.infer<typeof RefinedComponentSchema> => c !== null && c !== undefined);
+        });
+        
+        if (result.output) {
+            refinedComponents.push(result.output);
+        }
+    }
 
     // Return the final, refined structure.
     return {
