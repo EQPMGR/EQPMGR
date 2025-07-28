@@ -1,97 +1,71 @@
 
 'use server';
 /**
- * @fileOverview An AI agent that extracts structured bike data from raw text content,
- * typically from a manufacturer's product page. It uses vector search to find similar
- * existing components to enrich the extracted data.
+ * @fileOverview An AI agent that extracts structured bike data from raw text content.
+ * This is the first pass in a two-stage process. It performs a rough extraction,
+ * which is then refined by the refineExtractedBikeDetails flow.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
 import {
     ExtractBikeDetailsInput,
     ExtractBikeDetailsInputSchema,
     ExtractBikeDetailsOutput,
     ExtractBikeDetailsOutputSchema
 } from '@/lib/ai-types';
-import { findSimilarComponents } from '@/services/vector-search';
-import type { MasterComponent } from '@/lib/types';
+import { refineExtractedBikeDetails } from './refine-bike-details';
 
 
 export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetailsInput): Promise<ExtractBikeDetailsOutput> {
-  return extractBikeDetailsFlow(input);
+  // First, get the rough extraction.
+  const initialExtraction = await initialExtractBikeDetailsFlow(input);
+
+  if (!initialExtraction) {
+    throw new Error('Initial extraction failed to produce a result.');
+  }
+
+  // Then, pass the rough extraction and original text to the refiner flow.
+  const refinedExtraction = await refineExtractedBikeDetails({
+    textContent: input.textContent,
+    initialExtraction,
+  });
+
+  return refinedExtraction;
 }
 
-// A more direct prompt to improve reliability and consistency.
-const bikeExtractorPrompt = ai.definePrompt({
-  name: 'bikeExtractorPrompt',
-  input: { schema: z.object({
-      textContent: z.string(),
-      existingComponentsJson: z.string(), // Pass as JSON string
-  })},
+
+// This prompt is intentionally simple. Its goal is to get a list of components
+// without being perfect. The refinement flow will handle the details.
+const initialBikeExtractorPrompt = ai.definePrompt({
+  name: 'initialBikeExtractorPrompt',
+  input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
   config: {
     temperature: 0.1,
   },
-  prompt: `You are an expert bike mechanic. Your task is to analyze the provided text and extract bike details with extreme precision.
+  prompt: `You are a bike component extractor. From the text provided, list all the bike components you can find.
+For each component, provide its name, brand if available, and assign it to a system from this list:
+"Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
+Also extract the bike's overall brand, model, and modelYear.
 
-Follow these steps:
-1.  Analyze the provided text to determine the bike's overall brand, model, and model year.
-2.  Extract every individual component listed in the text. For each, you MUST identify its name, brand, series, and model.
-3.  For each extracted component, look for a match in the provided 'existingComponentsJson'. If you find a component with the same name and brand, use the 'series' and 'model' from the existing component to fill in any missing information in your extraction. This is crucial for data consistency.
-4.  Assign every component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
-5.  **Critical Model Rule**: The \`model\` field is for the specific part number (e.g., U6020, SL-U6000-11R). For 'Shimano CUES U6020 crank', \`series\` is 'CUES' and \`model\` is 'U6020'. DO NOT put model numbers in the 'size' or 'sizeVariants' fields.
-6.  **Crankset/Chainring Rule**: If you see a tooth count for a crankset or chainrings (e.g., 40t, 50/34t), you MUST extract the number(s) into the 'chainring1' and 'chainring2' fields. DO NOT place this in the 'size' field.
-7.  **Size Rule**: If multiple sizes are listed based on frame size (e.g., "Handlebar... XS:40cm, S:40cm"), extract the most common or first listed size into the main 'size' field.
-8.  **Size Variants Rule**: For components with multiple sizes based on frame size, create a JSON string in the 'sizeVariants' field. Example: for a handlebar with sizes for S, M, L, the 'sizeVariants' field should be '{"S": "40cm", "M": "42cm", "L": "44cm"}'. Do not include model numbers here.
-9.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
-10. **Critical Naming Rules**:
-    - Standardize "Seat Post" to "Seatpost".
-    - If you see "Sram", "sram", or "SRAM", ALWAYS standardize the brand to "SRAM".
+Return ONLY the structured JSON object.
 
-Return ONLY the structured JSON object. Do not include any other text or explanations.
-
-Existing Components Reference:
-{{{existingComponentsJson}}}
-
-Page Content to Analyze:
+Page Content:
 {{{textContent}}}
   `,
 });
 
-const extractBikeDetailsFlow = ai.defineFlow(
+const initialExtractBikeDetailsFlow = ai.defineFlow(
   {
-    name: 'extractBikeDetailsFlow',
+    name: 'initialExtractBikeDetailsFlow',
     inputSchema: ExtractBikeDetailsInputSchema,
     outputSchema: ExtractBikeDetailsOutputSchema,
   },
-  async ({ textContent }) => {
-    // 1. Find similar components using vector search first
-    const similarComponents = await findSimilarComponents(textContent);
-
-    // 2. Pass the text and the similar components to the extractor prompt
-    const { output } = await bikeExtractorPrompt({
-      textContent,
-      existingComponentsJson: JSON.stringify(similarComponents.map(c => ({
-        name: c.metadata?.name,
-        brand: c.metadata?.brand,
-        series: c.metadata?.series,
-        model: c.metadata?.model,
-      }))),
-    });
-    
+  async (input) => {
+    const { output } = await initialBikeExtractorPrompt(input);
     if (!output) {
       throw new Error('Could not extract bike details from the provided text.');
     }
-    // Final programmatic check to ensure brand is capitalized correctly
-    if (output.brand && output.brand.toLowerCase() === 'sram') {
-      output.brand = 'SRAM';
-    }
-    output.components.forEach(c => {
-        if (c.brand && c.brand.toLowerCase() === 'sram') {
-            c.brand = 'SRAM';
-        }
-    })
     return output;
   }
 );
