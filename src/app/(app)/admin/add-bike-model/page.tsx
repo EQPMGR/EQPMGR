@@ -21,7 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { BIKE_TYPES, DROP_BAR_BIKE_TYPES } from '@/lib/constants';
+import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 
@@ -112,52 +112,6 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
         wheelsetSetup: 'tubes',
     };
 };
-
-const ALL_SYSTEMS = ['Frameset', 'Drivetrain', 'Brakes', 'Suspension', 'Wheelset', 'Cockpit', 'E-Bike', 'Accessories'];
-const BASE_COMPONENTS: Omit<z.infer<typeof componentSchema>, 'id'>[] = [
-    // Frameset
-    { name: 'Frame', system: 'Frameset', brand: '', series: '', model: ''},
-    // Drivetrain
-    { name: 'Crankset', system: 'Drivetrain', brand: '', series: '', model: ''},
-    { name: 'Bottom Bracket', system: 'Drivetrain', brand: '', series: '', model: '' },
-    { name: 'Front Derailleur', system: 'Drivetrain', brand: '', series: '', model: '' },
-    { name: 'Rear Derailleur', system: 'Drivetrain', brand: '', series: '', model: '' },
-    { name: 'Cassette', system: 'Drivetrain', brand: '', series: '', model: '' },
-    { name: 'Front Shifter', system: 'Drivetrain', brand: '', series: '', model: '' },
-    { name: 'Rear Shifter', system: 'Drivetrain', brand: '', series: '', model: '' },
-    { name: 'Chain', system: 'Drivetrain', brand: '', series: '', model: '', links: '', tensioner: '' },
-    // Brakes
-    { name: 'Front Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
-    { name: 'Rear Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
-    { name: 'Front Rotor', system: 'Brakes', brand: '', series: '', model: '' },
-    { name: 'Rear Rotor', system: 'Brakes', brand: '', series: '', model: '' },
-    // Suspension
-    { name: 'Fork', system: 'Suspension', brand: '', series: '', model: '' },
-    { name: 'Rear Shock', system: 'Suspension', brand: '', series: '', model: '' },
-    // Wheelset
-    { name: 'Front Hub', system: 'Wheelset', brand: '', series: '', model: '' },
-    { name: 'Rear Hub', system: 'Wheelset', brand: '', series: '', model: '' },
-    { name: 'Front Rim', system: 'Wheelset', brand: '', series: '', model: '' },
-    { name: 'Rear Rim', system: 'Wheelset', brand: '', series: '', model: '' },
-    { name: 'Front Tire', system: 'Wheelset', brand: '', series: '', model: '' },
-    { name: 'Rear Tire', system: 'Wheelset', brand: '', series: '', model: '' },
-    { name: 'Front Skewer', system: 'Wheelset', brand: '', series: '', model: '' },
-    { name: 'Rear Skewer', system: 'Wheelset', brand: '', series: '', model: '' },
-    { name: 'Valves', system: 'Wheelset', brand: '', series: '', model: '' },
-    // Cockpit
-    { name: 'Handlebar', system: 'Cockpit', brand: '', series: '', model: '' },
-    { name: 'Stem', system: 'Cockpit', brand: '', series: '', model: '' },
-    { name: 'Seatpost', system: 'Cockpit', brand: '', series: '', model: '' },
-    { name: 'Headset', system: 'Cockpit', brand: '', series: '', model: '' },
-    { name: 'Saddle', system: 'Cockpit', brand: '', series: '', model: '' },
-    { name: 'Grips', system: 'Cockpit', brand: '', series: '', model: '' },
-    { name: 'Seatpost Clamp', system: 'Cockpit', brand: '', series: '', model: '' },
-    // E-Bike
-    { name: 'Motor', system: 'E-Bike', brand: '', model: '', power: '' },
-    { name: 'Battery', system: 'E-Bike', brand: '', model: '', capacity: '' },
-    { name: 'Display', system: 'E-Bike', brand: '', model: '' },
-];
-
 
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
@@ -266,10 +220,9 @@ function AddBikeModelFormComponent() {
             const batch = writeBatch(db);
             const masterComponentsRef = collection(db, 'masterComponents');
             const bikeModelsRef = collection(db, 'bikeModels');
-            const aiTrainingDataRef = collection(db, 'aiTrainingData');
-
-            // Save training data if it exists from an AI import
+            
             if (initialAiData) {
+                const aiTrainingDataRef = collection(db, 'aiTrainingData');
                 const trainingDoc = {
                     prompt: initialAiData.prompt,
                     initialCompletion: initialAiData.completion,

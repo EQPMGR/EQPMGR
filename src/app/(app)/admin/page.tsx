@@ -3,9 +3,10 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, Link as LinkIcon, DatabaseZap } from 'lucide-react';
+import { ArrowUpRight, Link as LinkIcon, DatabaseZap, DatabaseSeed } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { AdminSeeder } from './seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -47,6 +48,7 @@ export default function AdminPage() {
                         </Button>
                     </CardHeader>
                 </Card>
+                <AdminSeeder />
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
