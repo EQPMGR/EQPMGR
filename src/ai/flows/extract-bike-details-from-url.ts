@@ -40,13 +40,14 @@ Follow these steps:
 2.  Extract every individual component listed in the text. For each, you MUST identify its name, brand, series, and model.
 3.  For each extracted component, look for a match in the provided 'existingComponentsJson'. If you find a component with the same name and brand, use the 'series' and 'model' from the existing component to fill in any missing information in your extraction. This is crucial for data consistency.
 4.  Assign every component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
-5.  **Size Rule**: If multiple sizes are listed based on frame size (e.g., "Handlebar... XS:40cm, S:40cm"), extract the most common or first listed size into the main 'size' field.
-6.  **Size Variants Rule**: For components with multiple sizes based on frame size, create a JSON string in the 'sizeVariants' field. Example: for a handlebar with sizes for S, M, L, the 'sizeVariants' field should be '{"S": "40cm", "M": "42cm", "L": "44cm"}'.
-7.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
-8.  **Critical Naming Rules**:
+5.  **Critical Model Rule**: The \`model\` field is for the specific part number (e.g., U6020, SL-U6000-11R). For 'Shimano CUES U6020 crank', \`series\` is 'CUES' and \`model\` is 'U6020'. DO NOT put model numbers in the 'size' or 'sizeVariants' fields.
+6.  **Crankset/Chainring Rule**: If you see a tooth count for a crankset or chainrings (e.g., 40t, 50/34t), you MUST extract the number(s) into the 'chainring1' and 'chainring2' fields. DO NOT place this in the 'size' field.
+7.  **Size Rule**: If multiple sizes are listed based on frame size (e.g., "Handlebar... XS:40cm, S:40cm"), extract the most common or first listed size into the main 'size' field.
+8.  **Size Variants Rule**: For components with multiple sizes based on frame size, create a JSON string in the 'sizeVariants' field. Example: for a handlebar with sizes for S, M, L, the 'sizeVariants' field should be '{"S": "40cm", "M": "42cm", "L": "44cm"}'. Do not include model numbers here.
+9.  If a value isn't available for a field (like model or series), omit that field. Do not invent or guess values.
+10. **Critical Naming Rules**:
     - Standardize "Seat Post" to "Seatpost".
     - If you see "Sram", "sram", or "SRAM", ALWAYS standardize the brand to "SRAM".
-9.  **Crankset/Chainring Rule**: If you see a tooth count for a crankset or chainrings (e.g., 40t, 50/34t), you MUST extract the number(s) into the 'chainring1' and 'chainring2' fields in the component object.
 
 Return ONLY the structured JSON object. Do not include any other text or explanations.
 
