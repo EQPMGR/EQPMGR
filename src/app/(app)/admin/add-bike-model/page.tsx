@@ -121,8 +121,6 @@ function AddBikeModelFormComponent() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
-    const [initialAiData, setInitialAiData] = useState<any>(null);
-
 
     const form = useForm<AddBikeModelFormValues>({
         resolver: zodResolver(addBikeModelSchema),
@@ -179,15 +177,6 @@ function AddBikeModelFormComponent() {
 
     useEffect(() => {
         const importedData = sessionStorage.getItem('importedBikeData');
-        const rlhfData = sessionStorage.getItem('aiInitialExtraction');
-
-        if (rlhfData) {
-            try {
-                setInitialAiData(JSON.parse(rlhfData));
-            } catch (e) {
-                console.error("Failed to parse initial AI data", e);
-            }
-        }
 
         if (importedData) {
             try {
@@ -209,6 +198,7 @@ function AddBikeModelFormComponent() {
                 toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read the data from the import page.' });
             } finally {
                 sessionStorage.removeItem('importedBikeData');
+                sessionStorage.removeItem('rawBikeData'); // Clean up raw text too
             }
         }
     }, [form, toast]);
@@ -219,18 +209,6 @@ function AddBikeModelFormComponent() {
         setIsSubmitting(true);
         
         try {
-            // Save training data if it exists
-            if (initialAiData) {
-                const aiTrainingDataRef = doc(collection(db, 'aiTrainingData'));
-                const trainingDoc = {
-                    prompt: initialAiData.prompt,
-                    initialCompletion: initialAiData.completion,
-                    correctedCompletion: values,
-                    createdAt: new Date(),
-                };
-                await setDoc(aiTrainingDataRef, trainingDoc);
-            }
-
             const componentProcessingPromises: Promise<void>[] = [];
             const componentReferences: string[] = [];
 
@@ -292,9 +270,6 @@ function AddBikeModelFormComponent() {
                 title: 'Bike Model Saved!',
                 description: `${values.brand} ${values.model} (${values.modelYear}) has been added to the database.`,
             });
-            
-            sessionStorage.removeItem('aiInitialExtraction');
-            setInitialAiData(null);
             
             form.reset();
 

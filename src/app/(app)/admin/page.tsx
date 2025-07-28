@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, Link as LinkIcon, DatabaseZap } from 'lucide-react';
+import { ArrowUpRight, Link as LinkIcon, DatabaseZap, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { AdminSeeder } from './seeder';
@@ -23,12 +23,27 @@ export default function AdminPage() {
                          <div>
                             <CardTitle className="text-base font-semibold">Import from URL (AI)</CardTitle>
                             <CardDescription className="text-sm">
-                                Use AI to extract bike specs from a webpage.
+                                Fetch text from a webpage to begin the import process.
                             </CardDescription>
                         </div>
                         <Button asChild size="sm" variant="outline">
                             <Link href="/admin/import-url">
                                 <LinkIcon className="h-4 w-4 mr-2" /> Go to Importer
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Component Cleaner (AI)</CardTitle>
+                            <CardDescription className="text-sm">
+                                Clean and structure component text for import.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/component-cleaner">
+                                <Sparkles className="h-4 w-4 mr-2" /> Go to Cleaner
                             </Link>
                         </Button>
                     </CardHeader>
