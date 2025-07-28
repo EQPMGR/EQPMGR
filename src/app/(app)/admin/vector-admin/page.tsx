@@ -20,35 +20,45 @@ export default function VectorAdminPage() {
     setResult(null);
 
     try {
-      const components = await fetchAllMasterComponents();
-      if (components.length === 0) {
+      const allComponents = await fetchAllMasterComponents();
+      if (allComponents.length === 0) {
         setResult("No master components found in the database to index.");
         setIsLoading(false);
         return;
       }
+      
+      // Correctly filter for components that are missing an embedding
+      const componentsToIndex = allComponents.filter(c => !c.embedding);
 
-      let indexedCount = 0;
-      // Process in parallel with a limit to avoid overwhelming services
-      const batchSize = 10;
-      for (let i = 0; i < components.length; i += batchSize) {
-        const batch = components.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async (component) => {
-            // Only index components that don't already have an embedding
-            if (!component.embedding) {
-               await indexComponentFlow(component);
-               indexedCount++;
-            }
-          })
-        );
-         setResult(`Indexing in progress... ${indexedCount} new components indexed.`);
+      if (componentsToIndex.length === 0) {
+        setResult("All existing components are already indexed.");
+        setIsLoading(false);
+        toast({
+          title: 'All Set!',
+          description: 'No new components to index.',
+        });
+        return;
       }
 
-      const finalMessage = `Successfully indexed ${indexedCount} new components into the Firestore database.`;
+      setResult(`Found ${componentsToIndex.length} new components to index. Starting process...`);
+
+      // Process in parallel with a limit to avoid overwhelming services
+      const batchSize = 10;
+      for (let i = 0; i < componentsToIndex.length; i += batchSize) {
+        const batch = componentsToIndex.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (component) => {
+             await indexComponentFlow(component);
+          })
+        );
+         setResult(`Indexing in progress... ${i + batch.length} of ${componentsToIndex.length} components indexed.`);
+      }
+
+      const finalMessage = `Successfully indexed ${componentsToIndex.length} new components.`;
       setResult(finalMessage);
       toast({
         title: 'Indexing Complete!',
-        description: `Processed ${indexedCount} new components.`,
+        description: finalMessage,
       });
 
     } catch (error: any) {
