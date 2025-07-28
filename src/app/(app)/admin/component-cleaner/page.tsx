@@ -17,6 +17,7 @@ export default function ComponentCleanerPage() {
     const [rawText, setRawText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isDone, setIsDone] = useState(false);
+    const [extractedJson, setExtractedJson] = useState('');
     const { toast } = useToast();
     const router = useRouter();
 
@@ -33,9 +34,12 @@ export default function ComponentCleanerPage() {
             return;
         }
         setIsLoading(true);
+        setExtractedJson('');
         try {
             const result = await extractBikeDetailsFromUrlContent({ textContent: rawText });
-            sessionStorage.setItem('importedBikeData', JSON.stringify(result));
+            const resultJson = JSON.stringify(result, null, 2);
+            setExtractedJson(resultJson);
+            sessionStorage.setItem('importedBikeData', resultJson);
             toast({ title: 'Success!', description: 'Components have been structured.' });
             setIsDone(true);
         } catch (error: any) {
@@ -61,10 +65,22 @@ export default function ComponentCleanerPage() {
                         id="raw-text"
                         value={rawText}
                         onChange={(e) => setRawText(e.target.value)}
-                        rows={15}
+                        rows={10}
                         className="font-mono text-xs"
                     />
                 </div>
+                {extractedJson && (
+                    <div className="space-y-2">
+                        <Label htmlFor="json-output">AI Extracted JSON</Label>
+                        <Textarea
+                            id="json-output"
+                            readOnly
+                            value={extractedJson}
+                            rows={15}
+                            className="font-mono text-xs bg-muted/50"
+                        />
+                    </div>
+                )}
             </CardContent>
             <CardFooter className="flex-col items-stretch gap-4">
                 {!isDone ? (
@@ -75,8 +91,8 @@ export default function ComponentCleanerPage() {
                 ) : (
                     <div className="p-4 border rounded-lg text-center bg-green-50 dark:bg-green-950">
                         <PartyPopper className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
-                        <h3 className="font-semibold">All Done!</h3>
-                        <p className="text-sm text-muted-foreground mb-4">The structured data is ready.</p>
+                        <h3 className="font-semibold">Extraction Complete!</h3>
+                        <p className="text-sm text-muted-foreground mb-4">The structured data is ready to be used in the form.</p>
                         <Button onClick={() => router.push('/admin/add-bike-model')}>
                             Proceed to Form
                         </Button>
