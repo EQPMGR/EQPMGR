@@ -37,7 +37,7 @@ const bikeExtractorPrompt = ai.definePrompt({
 
 Follow these steps:
 1.  Analyze the provided text to determine the bike's overall brand, model, and model year.
-2.  Extract every individual component listed in the text. For each, identify its name, brand, series, and model.
+2.  Extract every individual component listed in the text. For each, you MUST identify its name, brand, series, and model.
 3.  For each extracted component, look for a match in the provided 'existingComponentsJson'. If you find a component with the same name and brand, use the 'series' and 'model' from the existing component to fill in any missing information in your extraction. This is crucial for data consistency.
 4.  Assign every component to a 'system' from the following list: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", "Accessories".
 5.  **Size Rule**: If multiple sizes are listed based on frame size (e.g., "Handlebar... XS:40cm, S:40cm"), extract the most common or first listed size into the main 'size' field.
