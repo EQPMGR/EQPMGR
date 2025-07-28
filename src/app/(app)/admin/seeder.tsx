@@ -12,10 +12,17 @@ import { db } from '@/lib/firebase';
 import { BASE_COMPONENTS } from '@/lib/constants';
 
 const createComponentId = (component: any) => {
+    // A more robust ID based on Brand, Name, and Model.
+    // Base components might only have a name.
     const idString = [component.brand, component.name, component.model]
-        .filter(Boolean)
+        .filter(Boolean) // Remove empty strings
         .join('-');
     
+    // If we only have a name (like 'Frame'), use that.
+    if (!idString && component.name) {
+        return component.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    }
+
     if (!idString) return null;
 
     return idString
@@ -30,22 +37,21 @@ async function seedMasterComponents() {
     let count = 0;
 
     for (const component of BASE_COMPONENTS) {
-        // Skip components with only a name (e.g., "Grips") as they are too generic
-        // to be useful as a master component without more detail.
-        if (!component.brand && !component.series && !component.model) {
-            continue;
-        }
-
+        // We want to seed all base components, even if they only have a name and system.
+        // The check was too restrictive before.
         const masterId = createComponentId(component);
         if (masterId) {
             const docRef = doc(masterComponentsRef, masterId);
-            // Ensure we don't overwrite with empty fields if a more detailed version exists
-            const componentToSave = { ...component }; 
-            Object.keys(componentToSave).forEach(key => {
-                if ((componentToSave as any)[key] === '') {
-                    delete (componentToSave as any)[key];
+            const componentToSave: { [key: string]: any } = {};
+            
+            // Only add fields that have a non-empty value
+            Object.keys(component).forEach((key) => {
+                const typedKey = key as keyof typeof component;
+                if (component[typedKey]) {
+                    componentToSave[key] = component[typedKey];
                 }
-            })
+            });
+
             batch.set(docRef, componentToSave, { merge: true });
             count++;
         }
