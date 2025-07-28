@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DatabaseSeed, Loader2 } from 'lucide-react';
+import { Database, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -52,7 +52,7 @@ export function AdminSeeder() {
                     {isSeeding ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                        <DatabaseSeed className="h-4 w-4 mr-2" />
+                        <Database className="h-4 w-4 mr-2" />
                     )}
                     Seed Components
                 </Button>
