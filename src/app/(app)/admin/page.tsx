@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { AdminSeeder } from './seeder';
 import { ShimanoSeeder } from './shimano-seeder';
 import { SramSeeder } from './sram-seeder';
+import { CampagnoloSeeder } from './campagnolo-seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -37,6 +39,7 @@ export default function AdminPage() {
                 <AdminSeeder />
                 <ShimanoSeeder />
                 <SramSeeder />
+                <CampagnoloSeeder />
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
