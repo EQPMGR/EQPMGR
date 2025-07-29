@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, DatabaseZap, SearchCheck } from 'lucide-react';
+import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { AdminSeeder } from './seeder';
@@ -34,6 +34,21 @@ export default function AdminPage() {
                         <Button asChild size="sm" variant="outline">
                             <Link href="/admin/add-bike-model">
                                 Go to Form <ArrowUpRight className="h-4 w-4 ml-2" />
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Import from URL</CardTitle>
+                            <CardDescription className="text-sm">
+                                Use AI to import a bike's specs from a webpage.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/import-url">
+                                <FileInput className="h-4 w-4 mr-2" /> Import
                             </Link>
                         </Button>
                     </CardHeader>
