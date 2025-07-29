@@ -1,21 +1,33 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read and write their own data.
-    match /users/{userId}/{documents=**} {
-      allow read, write: if request.auth.uid == userId;
+
+    // Allow logged-in users to read the master list of bike models and components.
+    match /bikeModels/{bikeId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Should only be written from an admin process
     }
 
-    // Allow authenticated users to read and write to masterComponents.
-    // This is needed for the admin seeding and component creation.
     match /masterComponents/{componentId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if false; // Should only be written from an admin process
     }
 
-    // Allow authenticated users to write to aiTrainingData
-    match /aiTrainingData/{dataId} {
-        allow write: if request.auth != null;
+    // Users can only read and write their own data.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Rules for the 'equipment' subcollection
+      match /equipment/{equipmentId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+
+        // Rules for the 'components' sub-subcollection
+        match /components/{componentId} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
     }
   }
 }
