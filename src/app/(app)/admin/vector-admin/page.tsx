@@ -17,7 +17,7 @@ export default function VectorAdminPage() {
 
   const handleIndexComponents = async () => {
     setIsLoading(true);
-    setResult(null);
+    setResult("Fetching all master components from the database...");
 
     try {
       const allComponents = await fetchAllMasterComponents();
@@ -27,10 +27,12 @@ export default function VectorAdminPage() {
         return;
       }
       
-      const componentsToIndex = allComponents.filter(c => !c.embedding);
+      // A more robust check to find components that need indexing.
+      // It checks if the embedding field is missing, null, or an empty array.
+      const componentsToIndex = allComponents.filter(c => !c.embedding || c.embedding.length === 0);
 
       if (componentsToIndex.length === 0) {
-        setResult("All existing components are already indexed.");
+        setResult(`All ${allComponents.length} components are already indexed. Nothing to do.`);
         setIsLoading(false);
         toast({
           title: 'All Set!',
@@ -39,7 +41,7 @@ export default function VectorAdminPage() {
         return;
       }
 
-      setResult(`Found ${componentsToIndex.length} new components to index. Starting process...`);
+      setResult(`Found ${componentsToIndex.length} of ${allComponents.length} components to index. Starting process...`);
 
       // Process in parallel with a limit to avoid overwhelming services
       const batchSize = 10;
