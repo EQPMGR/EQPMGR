@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2, Trash2, Info } from 'lucide-react';
 import Link from 'next/link';
-import { writeBatch, doc, collection, getDocs, setDoc } from 'firebase/firestore';
+import { writeBatch, doc, collection, getDocs, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 import { indexComponentFlow } from '@/ai/flows/index-components';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/hooks/use-auth';
 
 const componentSchema = z.object({
   id: z.string().optional(), // Used to track fields in the array
@@ -119,6 +120,7 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
 
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
+    const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
@@ -199,10 +201,6 @@ function AddBikeModelFormComponent() {
             } catch (e) {
                 console.error("Failed to parse imported data", e);
                 toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read the data from the import page.' });
-            } finally {
-                // Don't remove here, let the user decide when they are done with it
-                // sessionStorage.removeItem('importedBikeData');
-                // sessionStorage.removeItem('rawBikeData'); // Clean up raw text too
             }
         }
     }, [form, toast]);
@@ -213,9 +211,26 @@ function AddBikeModelFormComponent() {
         setIsSubmitting(true);
         
         try {
-            const componentProcessingPromises: Promise<void>[] = [];
-            const componentReferences: string[] = [];
+            const batch = writeBatch(db);
 
+            // Save training data for RLHF
+            const originalAiOutput = sessionStorage.getItem('importedBikeData');
+            const rawText = sessionStorage.getItem('rawBikeData');
+            
+            if (originalAiOutput) {
+                const trainingDataRef = collection(db, 'trainingData');
+                await addDoc(trainingDataRef, {
+                    rawText: rawText || '',
+                    originalAiOutput: JSON.parse(originalAiOutput),
+                    userCorrectedOutput: values,
+                    createdAt: serverTimestamp(),
+                    userId: user?.uid || null
+                });
+            }
+
+
+            // --- Process and save components ---
+            const componentReferences: string[] = [];
             for (const originalComponent of values.components) {
                 const componentToSave: { [key: string]: any } = {};
                 Object.keys(originalComponent).forEach((key: any) => {
@@ -237,14 +252,15 @@ function AddBikeModelFormComponent() {
                 if (!componentId) continue;
                 
                 componentToSave.id = componentId;
+                
+                // Use the batch to set the component document
+                const masterComponentRef = doc(db, 'masterComponents', componentId);
+                batch.set(masterComponentRef, componentToSave, { merge: true });
+                // We'll also index it with the embedding flow separately
+                indexComponentFlow(componentToSave).catch(e => console.error("Indexing failed for", componentId, e));
 
-                // Call the indexComponentFlow for each component
-                componentProcessingPromises.push(indexComponentFlow(componentToSave));
                 componentReferences.push(`masterComponents/${componentId}`);
             }
-
-            // Wait for all component indexing to complete
-            await Promise.all(componentProcessingPromises);
 
             // Now, save the bike model document
             const bikeModelId = createBikeModelId(values);
@@ -264,11 +280,14 @@ function AddBikeModelFormComponent() {
                 bikeModelDataToSave.brand = 'SRAM';
             }
 
-            await setDoc(bikeModelDocRef, {
+            batch.set(bikeModelDocRef, {
                 ...bikeModelDataToSave,
                 components: componentReferences,
                 imageUrl: `https://placehold.co/600x400.png`
             });
+            
+            // Commit all batched writes
+            await batch.commit();
             
             toast({
                 title: 'Bike Model Saved!',
@@ -582,3 +601,5 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
+
+    
