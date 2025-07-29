@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bot, Loader2, PartyPopper } from 'lucide-react';
+import { Bot, Loader2, PartyPopper, Info } from 'lucide-react';
 import { extractBikeDetailsFromUrlContent } from '@/ai/flows/extract-bike-details-from-url';
 import { cleanComponentListFlow } from '@/ai/flows/clean-component-list';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function ComponentCleanerPage() {
     const [rawText, setRawText] = useState('');
@@ -60,7 +61,6 @@ export default function ComponentCleanerPage() {
 
             const resultJson = JSON.stringify(finalOutput, null, 2);
             setExtractedJson(resultJson);
-            sessionStorage.setItem('importedBikeData', resultJson);
             
             toast({ title: 'Success!', description: 'Components have been structured.' });
             setIsDone(true);
@@ -72,6 +72,11 @@ export default function ComponentCleanerPage() {
             setStatusMessage('');
         }
     };
+    
+    const handleProceed = () => {
+        sessionStorage.setItem('importedBikeData', extractedJson);
+        router.push('/admin/add-bike-model');
+    }
 
     return (
         <Card className="max-w-2xl mx-auto">
@@ -99,7 +104,14 @@ export default function ComponentCleanerPage() {
                     </div>
                 )}
                 {extractedJson && (
-                    <div className="space-y-2">
+                    <div className="space-y-4">
+                        <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Next Steps</AlertTitle>
+                            <AlertDescription>
+                                Copy the JSON below. On the next page, you will be able to manually paste this into your browser's developer tools to pre-fill the form. This allows us to inspect the AI output and provides a clear path for future tuning.
+                            </AlertDescription>
+                        </Alert>
                         <Label htmlFor="json-output">AI Extracted JSON</Label>
                         <Textarea
                             id="json-output"
@@ -121,8 +133,8 @@ export default function ComponentCleanerPage() {
                     <div className="p-4 border rounded-lg text-center bg-green-50 dark:bg-green-950">
                         <PartyPopper className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
                         <h3 className="font-semibold">Extraction Complete!</h3>
-                        <p className="text-sm text-muted-foreground mb-4">The structured data is ready to be used in the form.</p>
-                        <Button onClick={() => router.push('/admin/add-bike-model')}>
+                        <p className="text-sm text-muted-foreground mb-4">You can now proceed to the form to finalize the bike model.</p>
+                        <Button onClick={handleProceed}>
                             Proceed to Form
                         </Button>
                     </div>

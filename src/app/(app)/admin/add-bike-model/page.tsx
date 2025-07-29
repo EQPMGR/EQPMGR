@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useEffect } from 'react';
-import { Check, ChevronsUpDown, Loader2, Trash2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Trash2, Info } from 'lucide-react';
 import Link from 'next/link';
 import { writeBatch, doc, collection, getDocs, setDoc } from 'firebase/firestore';
 
@@ -25,6 +25,7 @@ import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constant
 import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 import { indexComponentFlow } from '@/ai/flows/index-components';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const componentSchema = z.object({
   id: z.string().optional(), // Used to track fields in the array
@@ -121,6 +122,7 @@ function AddBikeModelFormComponent() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+    const [hasImportedData, setHasImportedData] = useState(false);
 
     const form = useForm<AddBikeModelFormValues>({
         resolver: zodResolver(addBikeModelSchema),
@@ -179,6 +181,7 @@ function AddBikeModelFormComponent() {
         const importedData = sessionStorage.getItem('importedBikeData');
 
         if (importedData) {
+            setHasImportedData(true);
             try {
                 const parsedData: ExtractBikeDetailsOutput = JSON.parse(importedData);
                 const formValues = mapAiDataToFormValues(parsedData);
@@ -197,8 +200,9 @@ function AddBikeModelFormComponent() {
                 console.error("Failed to parse imported data", e);
                 toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read the data from the import page.' });
             } finally {
-                sessionStorage.removeItem('importedBikeData');
-                sessionStorage.removeItem('rawBikeData'); // Clean up raw text too
+                // Don't remove here, let the user decide when they are done with it
+                // sessionStorage.removeItem('importedBikeData');
+                // sessionStorage.removeItem('rawBikeData'); // Clean up raw text too
             }
         }
     }, [form, toast]);
@@ -271,6 +275,9 @@ function AddBikeModelFormComponent() {
                 description: `${values.brand} ${values.model} (${values.modelYear}) has been added to the database.`,
             });
             
+            sessionStorage.removeItem('importedBikeData');
+            sessionStorage.removeItem('rawBikeData');
+            setHasImportedData(false);
             form.reset();
 
         } catch (error: any) {
@@ -338,6 +345,15 @@ function AddBikeModelFormComponent() {
                     <CardHeader>
                         <CardTitle>Add a New Bike Model</CardTitle>
                         <CardDescription>Fill out the form below to add a new bike to the central database. Use the accordions to navigate between component systems.</CardDescription>
+                         {hasImportedData && (
+                            <Alert className="mt-4">
+                                <Info className="h-4 w-4" />
+                                <AlertTitle>Data Imported</AlertTitle>
+                                <AlertDescription>
+                                This form has been pre-filled with data from the AI component cleaner. Please review all fields for accuracy before saving.
+                                </AlertDescription>
+                            </Alert>
+                        )}
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="p-4 border rounded-lg space-y-6">
