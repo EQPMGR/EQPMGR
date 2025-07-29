@@ -15,6 +15,58 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+// Client-side cleanup function to merge duplicate components
+const mergeDuplicateComponents = (data: ExtractBikeDetailsOutput): ExtractBikeDetailsOutput => {
+    if (!data.components) return data;
+
+    const componentMap = new Map<string, any>();
+
+    data.components.forEach(component => {
+        const key = `${component.name?.toLowerCase()}-${component.brand?.toLowerCase()}-${component.series?.toLowerCase()}`;
+        
+        if (componentMap.has(key)) {
+            const existing = componentMap.get(key);
+            
+            // Merge size variants
+            let existingVariants = {};
+            try {
+                if (existing.sizeVariants) {
+                    existingVariants = JSON.parse(existing.sizeVariants);
+                }
+            } catch(e) { /* Ignore parsing errors */ }
+            
+            let newVariants = {};
+             try {
+                if (component.sizeVariants) {
+                    newVariants = JSON.parse(component.sizeVariants);
+                }
+            } catch(e) { /* Ignore parsing errors */ }
+
+            const mergedVariants = { ...existingVariants, ...newVariants };
+            existing.sizeVariants = JSON.stringify(mergedVariants, null, 2);
+
+            // Also merge individual sizes into the variants if they exist
+            if (component.size && !Object.values(mergedVariants).includes(component.size)) {
+                 // This logic might need refinement based on how sizes are represented
+                 // For now, we'll just add it if it doesn't exist
+                 const sizeKey = `Size_${Object.keys(mergedVariants).length + 1}`;
+                 mergedVariants[sizeKey] = component.size;
+                 existing.sizeVariants = JSON.stringify(mergedVariants, null, 2);
+            }
+
+            componentMap.set(key, existing);
+        } else {
+            componentMap.set(key, { ...component });
+        }
+    });
+
+    return {
+        ...data,
+        components: Array.from(componentMap.values()),
+    };
+}
+
+
 export default function ComponentCleanerPage() {
     const [rawText, setRawText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -53,12 +105,16 @@ export default function ComponentCleanerPage() {
             const finalResult = await cleanComponentListFlow({ components: roughResult.components });
 
             // Combine the results into the final format expected by the form
-            const finalOutput: ExtractBikeDetailsOutput = {
+            let finalOutput: ExtractBikeDetailsOutput = {
                 brand: roughResult.brand,
                 model: roughResult.model,
                 modelYear: roughResult.modelYear,
                 components: finalResult.components,
             };
+            
+            // Step 3: Run client-side cleanup
+            setStatusMessage('Step 3: Merging duplicate components...');
+            finalOutput = mergeDuplicateComponents(finalOutput);
 
             const resultJson = JSON.stringify(finalOutput, null, 2);
             setExtractedJson(resultJson);

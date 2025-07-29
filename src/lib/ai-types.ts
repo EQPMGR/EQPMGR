@@ -1,4 +1,5 @@
 
+
 /**
  * @fileOverview Centralized type and schema definitions for AI flows.
  */
@@ -24,7 +25,7 @@ export const ExtractBikeDetailsOutputSchema = z.object({
   brand: z.string().optional().describe('The brand of the bike (e.g., "Specialized").'),
   model: z.string().optional().describe('The model name of the bike (e.g., "Tarmac SL7").'),
   modelYear: z.coerce.number().optional().describe('The model year of the bike (e.g., 2023).'),
-  components: z.array(RoughComponentSchema).describe('An array of all identified bike components with their raw descriptions.'),
+  components: z.array(z.any()).describe('An array of all identified bike components with their raw descriptions.'),
 });
 
 
