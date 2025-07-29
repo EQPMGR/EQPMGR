@@ -12,27 +12,36 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function VectorAdminPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [logMessages, setLogMessages] = useState<string[]>([]);
   const { toast } = useToast();
+  
+  const addLog = (message: string) => {
+    setLogMessages(prev => [...prev, message]);
+  }
 
   const handleIndexComponents = async () => {
     setIsLoading(true);
-    setResult("Fetching all master components from the database...");
+    setLogMessages([]);
+    addLog("Starting indexing process...");
 
     try {
+      addLog("Fetching all master components from the database...");
       const allComponents = await fetchAllMasterComponents();
+      
       if (allComponents.length === 0) {
-        setResult("No master components found in the database to index.");
+        addLog("No master components found in the database to index.");
         setIsLoading(false);
         return;
       }
+      addLog(`Found ${allComponents.length} total components in the database.`);
       
-      // A more robust check to find components that need indexing.
-      // It checks if the embedding field is missing, null, or an empty array.
-      const componentsToIndex = allComponents.filter(c => !c.embedding || c.embedding.length === 0);
+      const componentsToIndex = allComponents.filter(c => !c.embedding || !Array.isArray(c.embedding) || c.embedding.length === 0);
+      const alreadyIndexedCount = allComponents.length - componentsToIndex.length;
 
+      addLog(`${alreadyIndexedCount} components are already indexed and will be skipped.`);
+      
       if (componentsToIndex.length === 0) {
-        setResult(`All ${allComponents.length} components are already indexed. Nothing to do.`);
+        addLog(`All ${allComponents.length} components are already indexed. Nothing to do.`);
         setIsLoading(false);
         toast({
           title: 'All Set!',
@@ -41,9 +50,8 @@ export default function VectorAdminPage() {
         return;
       }
 
-      setResult(`Found ${componentsToIndex.length} of ${allComponents.length} components to index. Starting process...`);
+      addLog(`Found ${componentsToIndex.length} components that need indexing. Starting process...`);
 
-      // Process in parallel with a limit to avoid overwhelming services
       const batchSize = 10;
       for (let i = 0; i < componentsToIndex.length; i += batchSize) {
         const batch = componentsToIndex.slice(i, i + batchSize);
@@ -52,11 +60,11 @@ export default function VectorAdminPage() {
              await indexComponentFlow(component);
           })
         );
-         setResult(`Indexing in progress... ${i + batch.length} of ${componentsToIndex.length} components indexed.`);
+         addLog(`Indexing in progress... ${i + batch.length} of ${componentsToIndex.length} components indexed.`);
       }
 
       const finalMessage = `Successfully indexed ${componentsToIndex.length} new components.`;
-      setResult(finalMessage);
+      addLog(finalMessage);
       toast({
         title: 'Indexing Complete!',
         description: finalMessage,
@@ -68,7 +76,7 @@ export default function VectorAdminPage() {
             description = "Firestore vector index not found or not configured. Please create a vector index on the 'masterComponents' collection for the 'embedding' field via the gcloud or Firebase CLI.";
         }
       console.error("Indexing failed:", error);
-      setResult(`Indexing failed: ${description}`);
+      addLog(`Indexing failed: ${description}`);
       toast({
         variant: 'destructive',
         title: 'Indexing Failed',
@@ -111,9 +119,13 @@ export default function VectorAdminPage() {
           {isLoading ? 'Indexing...' : 'Generate Embeddings for New Components'}
         </Button>
       </CardContent>
-      {result && (
+      {logMessages.length > 0 && (
         <CardFooter>
-          <p className="text-sm text-muted-foreground">{result}</p>
+            <div className="w-full bg-muted p-4 rounded-md text-xs font-mono max-h-64 overflow-y-auto">
+                {logMessages.map((msg, i) => (
+                    <p key={i} className="whitespace-pre-wrap">{`> ${msg}`}</p>
+                ))}
+            </div>
         </CardFooter>
       )}
     </Card>
