@@ -25,7 +25,7 @@ export const ExtractBikeDetailsOutputSchema = z.object({
   brand: z.string().optional().describe('The brand of the bike (e.g., "Specialized").'),
   model: z.string().optional().describe('The model name of the bike (e.g., "Tarmac SL7").'),
   modelYear: z.coerce.number().optional().describe('The model year of the bike (e.g., 2023).'),
-  components: z.array(z.any()).describe('An array of all identified bike components with their raw descriptions.'),
+  components: z.array(RoughComponentSchema).describe('An array of all identified bike components with their raw descriptions.'),
 });
 
 
@@ -49,6 +49,7 @@ export const StructuredComponentSchema = z.object({
   sizeVariants: z.string().optional().describe('A JSON string mapping frame sizes to component sizes. E.g., \'{"S": "40cm", "M": "42cm"}\'.'),
   chainring1: z.string().optional().describe("Tooth count for the first chainring (e.g., '42t')."),
   chainring2: z.string().optional().describe("Tooth count for the second chainring."),
+  chainring3: z.string().optional().describe("Tooth count for the third chainring."),
 });
 
 export const CleanComponentListOutputSchema = z.object({
