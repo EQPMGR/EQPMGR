@@ -1,17 +1,16 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useEffect } from 'react';
-import { Check, ChevronsUpDown, Loader2, Trash2, Info } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { writeBatch, doc, collection, getDocs, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { writeBatch, doc, collection, getDocs, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -23,10 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
-import { indexComponentFlow } from '@/ai/flows/index-components';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useAuth } from '@/hooks/use-auth';
+
 
 const componentSchema = z.object({
   id: z.string().optional(), // Used to track fields in the array
@@ -35,7 +31,6 @@ const componentSchema = z.object({
   series: z.string().optional(),
   model: z.string().optional(),
   size: z.string().optional(),
-  sizeVariants: z.string().optional(),
   system: z.string().min(1, 'System is required.'),
   chainring1: z.string().optional(),
   chainring2: z.string().optional(),
@@ -52,9 +47,8 @@ const addBikeModelSchema = z.object({
   brand: z.string().min(1, { message: 'Brand is required.' }),
   model: z.string().min(1, { message: 'Model is required.' }),
   modelYear: z.coerce.number().min(1980, 'Year must be after 1980.').max(new Date().getFullYear() + 1, 'Year cannot be in the future.'),
-  frameSize: z.string().optional(), // Added for size variant logic
   isEbike: z.boolean().default(false),
-  components: z.array(componentSchema).default([]),
+  components: z.array(componentSchema),
   frontMech: z.enum(['1x', '2x', '3x']).optional(),
   rearMech: z.enum(['9', '10', '11', '12']).optional(),
   shifterSetType: z.enum(['matched', 'unmatched']).default('matched'),
@@ -88,45 +82,11 @@ const createBikeModelId = (bike: AddBikeModelFormValues) => {
         .replace(/(^-|-$)/g, '');
 }
 
-const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelFormValues => {
-    const aiComponents = data.components || [];
-    return {
-        brand: data.brand || '',
-        model: data.model || '',
-        modelYear: data.modelYear || new Date().getFullYear(),
-        type: '',
-        frameSize: '', 
-        isEbike: !!aiComponents.find(c => c.system === 'E-Bike'),
-        components: aiComponents.map(c => ({
-            name: c.name,
-            brand: c.brand || '',
-            series: c.series || '',
-            model: c.model || '',
-            size: c.size || '',
-            sizeVariants: c.sizeVariants,
-            system: c.system,
-            chainring1: c.chainring1,
-            chainring2: c.chainring2,
-        })),
-        frontMech: undefined,
-        rearMech: undefined,
-        shifterSetType: 'matched',
-        brakeSetType: 'matched',
-        rotorSetType: 'matched',
-        suspensionType: 'none',
-        rimSetType: 'matched',
-        tireSetType: 'matched',
-        wheelsetSetup: 'tubes',
-    };
-};
-
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
-    const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
-    const [hasImportedData, setHasImportedData] = useState(false);
 
     const form = useForm<AddBikeModelFormValues>({
         resolver: zodResolver(addBikeModelSchema),
@@ -135,7 +95,6 @@ function AddBikeModelFormComponent() {
             brand: '',
             model: '',
             modelYear: new Date().getFullYear(),
-            frameSize: '',
             isEbike: false,
             components: BASE_COMPONENTS,
             shifterSetType: 'matched',
@@ -148,7 +107,7 @@ function AddBikeModelFormComponent() {
         },
     });
     
-    const { fields, update } = useFieldArray({
+    const { fields } = useFieldArray({
       control: form.control,
       name: "components"
     });
@@ -163,26 +122,6 @@ function AddBikeModelFormComponent() {
     const tireSetType = form.watch('tireSetType');
     const wheelsetSetup = form.watch('wheelsetSetup');
     const bikeType = form.watch('type');
-    const frameSize = form.watch('frameSize');
-
-    // Effect to resolve component sizes when frameSize changes
-    useEffect(() => {
-        if (!frameSize) return;
-
-        fields.forEach((field, index) => {
-            if (field.sizeVariants) {
-                try {
-                    const variants = JSON.parse(field.sizeVariants);
-                    const matchedSize = variants[frameSize.toUpperCase()] || variants[frameSize.toLowerCase()] || variants[frameSize];
-                    if (matchedSize) {
-                        form.setValue(`components.${index}.size`, matchedSize);
-                    }
-                } catch (e) {
-                    console.warn(`Could not parse sizeVariants for ${field.name}:`, e);
-                }
-            }
-        });
-    }, [frameSize, fields, form]);
 
     useEffect(() => {
       async function fetchBrands() {
@@ -202,60 +141,14 @@ function AddBikeModelFormComponent() {
       fetchBrands();
     }, [toast]);
 
-    useEffect(() => {
-        const importedData = sessionStorage.getItem('importedBikeData');
-
-        if (importedData) {
-            setHasImportedData(true);
-            try {
-                const parsedData: ExtractBikeDetailsOutput = JSON.parse(importedData);
-                const formValues = mapAiDataToFormValues(parsedData);
-                
-                 const mergedComponents = BASE_COMPONENTS.map(baseComp => {
-                    const foundComp = formValues.components.find(aiComp => aiComp.name.toLowerCase() === baseComp.name.toLowerCase());
-                    return foundComp ? { ...baseComp, ...foundComp } : baseComp;
-                });
-
-                form.reset({
-                  ...formValues,
-                  components: mergedComponents,
-                });
-                toast({ title: "Data Imported!", description: "The form has been pre-filled with the extracted data." });
-            } catch (e) {
-                console.error("Failed to parse imported data", e);
-                toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read the data from the import page.' });
-            }
-        }
-    }, [form, toast]);
-
     const getComponentIndex = (name: string) => fields.findIndex(f => f.name === name);
 
     async function onSubmit(values: AddBikeModelFormValues) {
         setIsSubmitting(true);
-        
+        const batch = writeBatch(db);
+
         try {
-            const batch = writeBatch(db);
-
-            // Save training data for RLHF
-            const originalAiOutput = sessionStorage.getItem('importedBikeData');
-            const rawText = sessionStorage.getItem('rawBikeData');
-            
-            if (originalAiOutput && rawText && user) {
-                const trainingDataRef = collection(db, 'trainingData');
-                const cleanedFinalData = JSON.parse(JSON.stringify(values, (key, value) => {
-                    return value === undefined ? null : value;
-                }));
-
-                await addDoc(trainingDataRef, {
-                    rawText: rawText,
-                    originalAiOutput: JSON.parse(originalAiOutput),
-                    userCorrectedOutput: cleanedFinalData,
-                    createdAt: serverTimestamp(),
-                    userId: user.uid
-                });
-            }
-
-            // --- Process and save components ---
+            // Process and save components
             const componentReferences: string[] = [];
             for (const originalComponent of values.components) {
                 const componentToSave: { [key: string]: any } = {};
@@ -270,41 +163,21 @@ function AddBikeModelFormComponent() {
                 if (Object.keys(componentToSave).length <= 2) continue;
                 if (!componentToSave.brand && !componentToSave.series && !componentToSave.model) continue;
 
-                if (componentToSave.brand && componentToSave.brand.toLowerCase() === 'sram') {
-                    componentToSave.brand = 'SRAM';
-                }
-
                 const componentId = createComponentId(componentToSave as Partial<z.infer<typeof componentSchema>>);
                 if (!componentId) continue;
                 
-                componentToSave.id = componentId;
-                
                 const masterComponentRef = doc(db, 'masterComponents', componentId);
                 batch.set(masterComponentRef, componentToSave, { merge: true });
-                indexComponentFlow(componentToSave).catch(e => console.error("Indexing failed for", componentId, e));
-
                 componentReferences.push(`masterComponents/${componentId}`);
             }
-
+            
             const bikeModelId = createBikeModelId(values);
             const bikeModelDocRef = doc(db, 'bikeModels', bikeModelId);
             
             const { components, ...bikeModelData } = values;
-            const bikeModelDataToSave: { [key: string]: any } = {};
-             Object.keys(bikeModelData).forEach((key: any) => {
-                const typedKey = key as keyof typeof bikeModelData;
-                const value = bikeModelData[typedKey];
-                if (value !== undefined && value !== null && value !== '') {
-                    bikeModelDataToSave[key] = value;
-                }
-            });
-
-            if (bikeModelDataToSave.brand && bikeModelDataToSave.brand.toLowerCase() === 'sram') {
-                bikeModelDataToSave.brand = 'SRAM';
-            }
-
+            
             batch.set(bikeModelDocRef, {
-                ...bikeModelDataToSave,
+                ...bikeModelData,
                 components: componentReferences,
                 imageUrl: `https://placehold.co/600x400.png`
             });
@@ -315,10 +188,7 @@ function AddBikeModelFormComponent() {
                 title: 'Bike Model Saved!',
                 description: `${values.brand} ${values.model} (${values.modelYear}) has been added to the database.`,
             });
-            
-            sessionStorage.removeItem('importedBikeData');
-            sessionStorage.removeItem('rawBikeData');
-            setHasImportedData(false);
+
             form.reset();
 
         } catch (error: any) {
@@ -352,35 +222,28 @@ function AddBikeModelFormComponent() {
         ));
     };
 
-    const renderComponentFields = (name: string, fieldsToRender: ('brand' | 'series' | 'model' | 'size' | 'sizeVariants' | 'pads' | 'links' | 'tensioner' | 'power' | 'capacity')[]) => {
+    const renderComponentFields = (name: string, fieldsToRender: ('brand' | 'series' | 'model' | 'size' | 'pads' | 'links' | 'tensioner' | 'power' | 'capacity')[]) => {
         const index = getComponentIndex(name);
         if (index === -1) return null;
-        
-        const validFields = ['Frame', 'Handlebar', 'Stem', 'Crankset'];
-        const showSizeVariants = fieldsToRender.includes('sizeVariants') && validFields.includes(name);
 
         return (
             <Card>
                 <CardHeader><CardTitle className="text-lg">{name}</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {fieldsToRender.map(fieldName => {
-                        if (fieldName === 'sizeVariants' && !showSizeVariants) return null;
-                        
-                        return (
-                            <FormField
-                                key={`${name}-${fieldName}`}
-                                control={form.control}
-                                name={`components.${index}.${fieldName}` as any}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="capitalize">{fieldName.replace(/([A-Z])/g, ' $1')}</FormLabel>
-                                        <FormControl><Input placeholder={`Enter ${fieldName}`} {...field} value={field.value || ''} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        )
-                    })}
+                    {fieldsToRender.map(fieldName => (
+                        <FormField
+                            key={`${name}-${fieldName}`}
+                            control={form.control}
+                            name={`components.${index}.${fieldName}` as any}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="capitalize">{fieldName.replace(/([A-Z])/g, ' $1')}</FormLabel>
+                                    <FormControl><Input placeholder={`Enter ${fieldName}`} {...field} value={field.value || ''} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    ))}
                 </CardContent>
             </Card>
         );
@@ -393,15 +256,6 @@ function AddBikeModelFormComponent() {
                     <CardHeader>
                         <CardTitle>Add a New Bike Model</CardTitle>
                         <CardDescription>Fill out the form below to add a new bike to the central database. Use the accordions to navigate between component systems.</CardDescription>
-                         {hasImportedData && (
-                            <Alert className="mt-4">
-                                <Info className="h-4 w-4" />
-                                <AlertTitle>Data Imported</AlertTitle>
-                                <AlertDescription>
-                                This form has been pre-filled with data from the AI component cleaner. Please review all fields for accuracy before saving.
-                                </AlertDescription>
-                            </Alert>
-                        )}
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="p-4 border rounded-lg space-y-6">
@@ -412,7 +266,6 @@ function AddBikeModelFormComponent() {
                                 <FormField control={form.control} name="model" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Tarmac SL7" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="modelYear" render={({ field }) => (<FormItem><FormLabel>Model Year</FormLabel><FormControl><Input type="number" placeholder="e.g., 2023" {...field} /></FormControl><FormMessage /></FormItem>)} />
                              </div>
-                              <FormField control={form.control} name="frameSize" render={({ field }) => (<FormItem><FormLabel>Frame Size</FormLabel><FormControl><Input placeholder="e.g., 56 or L" {...field} /></FormControl><FormDescription>Enter your specific frame size to automatically select correct component sizes (e.g., handlebar width).</FormDescription><FormMessage /></FormItem>)} />
                              <FormField control={form.control} name="isEbike" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>E-Bike</FormLabel><FormDescription>Does this model have a motor and battery?</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>)}/>
                         </div>
                         
@@ -421,7 +274,7 @@ function AddBikeModelFormComponent() {
                             <AccordionItem value="frameset" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Frameset</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
-                                    {renderComponentFields('Frame', ['brand', 'series', 'model', 'size', 'sizeVariants'])}
+                                    {renderComponentFields('Frame', ['brand', 'series', 'model', 'size'])}
                                 </AccordionContent>
                             </AccordionItem>
                             
@@ -588,8 +441,8 @@ function AddBikeModelFormComponent() {
                             <AccordionItem value="cockpit" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Cockpit</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
-                                    {renderComponentFields('Handlebar', ['brand', 'series', 'model', 'size', 'sizeVariants'])}
-                                    {renderComponentFields('Stem', ['brand', 'series', 'model', 'size', 'sizeVariants'])}
+                                    {renderComponentFields('Handlebar', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Stem', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Seatpost', ['brand', 'model', 'size'])}
                                     {renderComponentFields('Headset', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Saddle', ['brand', 'series', 'model', 'size'])}
@@ -626,11 +479,9 @@ function AddBikeModelFormComponent() {
     );
 }
 
-
 export default function AddBikeModelPage() {
+    // This page component can be simpler as the logic is in the form component
     return (
         <AddBikeModelFormComponent />
     )
 }
-
-    
