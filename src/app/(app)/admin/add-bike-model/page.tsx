@@ -35,7 +35,7 @@ const componentSchema = z.object({
   series: z.string().optional(),
   model: z.string().optional(),
   size: z.string().optional(),
-  sizeVariants: z.string().optional(), // Now storing as a string
+  sizeVariants: z.string().optional(),
   system: z.string().min(1, 'System is required.'),
   chainring1: z.string().optional(),
   chainring2: z.string().optional(),
@@ -52,6 +52,7 @@ const addBikeModelSchema = z.object({
   brand: z.string().min(1, { message: 'Brand is required.' }),
   model: z.string().min(1, { message: 'Model is required.' }),
   modelYear: z.coerce.number().min(1980, 'Year must be after 1980.').max(new Date().getFullYear() + 1, 'Year cannot be in the future.'),
+  frameSize: z.string().optional(), // Added for size variant logic
   isEbike: z.boolean().default(false),
   components: z.array(componentSchema).default([]),
   frontMech: z.enum(['1x', '2x', '3x']).optional(),
@@ -93,7 +94,8 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
         brand: data.brand || '',
         model: data.model || '',
         modelYear: data.modelYear || new Date().getFullYear(),
-        type: '', 
+        type: '',
+        frameSize: '', 
         isEbike: !!aiComponents.find(c => c.system === 'E-Bike'),
         components: aiComponents.map(c => ({
             name: c.name,
@@ -133,6 +135,7 @@ function AddBikeModelFormComponent() {
             brand: '',
             model: '',
             modelYear: new Date().getFullYear(),
+            frameSize: '',
             isEbike: false,
             components: BASE_COMPONENTS,
             shifterSetType: 'matched',
@@ -160,6 +163,26 @@ function AddBikeModelFormComponent() {
     const tireSetType = form.watch('tireSetType');
     const wheelsetSetup = form.watch('wheelsetSetup');
     const bikeType = form.watch('type');
+    const frameSize = form.watch('frameSize');
+
+    // Effect to resolve component sizes when frameSize changes
+    useEffect(() => {
+        if (!frameSize) return;
+
+        fields.forEach((field, index) => {
+            if (field.sizeVariants) {
+                try {
+                    const variants = JSON.parse(field.sizeVariants);
+                    const matchedSize = variants[frameSize.toUpperCase()] || variants[frameSize.toLowerCase()] || variants[frameSize];
+                    if (matchedSize) {
+                        form.setValue(`components.${index}.size`, matchedSize);
+                    }
+                } catch (e) {
+                    console.warn(`Could not parse sizeVariants for ${field.name}:`, e);
+                }
+            }
+        });
+    }, [frameSize, fields, form]);
 
     useEffect(() => {
       async function fetchBrands() {
@@ -188,7 +211,7 @@ function AddBikeModelFormComponent() {
                 const parsedData: ExtractBikeDetailsOutput = JSON.parse(importedData);
                 const formValues = mapAiDataToFormValues(parsedData);
                 
-                const mergedComponents = BASE_COMPONENTS.map(baseComp => {
+                 const mergedComponents = BASE_COMPONENTS.map(baseComp => {
                     const foundComp = formValues.components.find(aiComp => aiComp.name.toLowerCase() === baseComp.name.toLowerCase());
                     return foundComp ? { ...baseComp, ...foundComp } : baseComp;
                 });
@@ -217,7 +240,7 @@ function AddBikeModelFormComponent() {
             const originalAiOutput = sessionStorage.getItem('importedBikeData');
             const rawText = sessionStorage.getItem('rawBikeData');
             
-            if (originalAiOutput && rawText) {
+            if (originalAiOutput && rawText && user) {
                 const trainingDataRef = collection(db, 'trainingData');
                 const cleanedFinalData = JSON.parse(JSON.stringify(values, (key, value) => {
                     return value === undefined ? null : value;
@@ -228,10 +251,9 @@ function AddBikeModelFormComponent() {
                     originalAiOutput: JSON.parse(originalAiOutput),
                     userCorrectedOutput: cleanedFinalData,
                     createdAt: serverTimestamp(),
-                    userId: user?.uid || null
+                    userId: user.uid
                 });
             }
-
 
             // --- Process and save components ---
             const componentReferences: string[] = [];
@@ -257,16 +279,13 @@ function AddBikeModelFormComponent() {
                 
                 componentToSave.id = componentId;
                 
-                // Use the batch to set the component document
                 const masterComponentRef = doc(db, 'masterComponents', componentId);
                 batch.set(masterComponentRef, componentToSave, { merge: true });
-                // We'll also index it with the embedding flow separately
                 indexComponentFlow(componentToSave).catch(e => console.error("Indexing failed for", componentId, e));
 
                 componentReferences.push(`masterComponents/${componentId}`);
             }
 
-            // Now, save the bike model document
             const bikeModelId = createBikeModelId(values);
             const bikeModelDocRef = doc(db, 'bikeModels', bikeModelId);
             
@@ -290,7 +309,6 @@ function AddBikeModelFormComponent() {
                 imageUrl: `https://placehold.co/600x400.png`
             });
             
-            // Commit all batched writes
             await batch.commit();
             
             toast({
@@ -337,25 +355,32 @@ function AddBikeModelFormComponent() {
     const renderComponentFields = (name: string, fieldsToRender: ('brand' | 'series' | 'model' | 'size' | 'sizeVariants' | 'pads' | 'links' | 'tensioner' | 'power' | 'capacity')[]) => {
         const index = getComponentIndex(name);
         if (index === -1) return null;
+        
+        const validFields = ['Frame', 'Handlebar', 'Stem', 'Crankset'];
+        const showSizeVariants = fieldsToRender.includes('sizeVariants') && validFields.includes(name);
 
         return (
             <Card>
                 <CardHeader><CardTitle className="text-lg">{name}</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {fieldsToRender.map(fieldName => (
-                        <FormField
-                            key={`${name}-${fieldName}`}
-                            control={form.control}
-                            name={`components.${index}.${fieldName}` as any}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="capitalize">{fieldName}</FormLabel>
-                                    <FormControl><Input placeholder={`e.g., ${fieldName === 'brand' ? 'SRAM' : ''}`} {...field} value={field.value || ''} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    ))}
+                    {fieldsToRender.map(fieldName => {
+                        if (fieldName === 'sizeVariants' && !showSizeVariants) return null;
+                        
+                        return (
+                            <FormField
+                                key={`${name}-${fieldName}`}
+                                control={form.control}
+                                name={`components.${index}.${fieldName}` as any}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="capitalize">{fieldName.replace(/([A-Z])/g, ' $1')}</FormLabel>
+                                        <FormControl><Input placeholder={`Enter ${fieldName}`} {...field} value={field.value || ''} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )
+                    })}
                 </CardContent>
             </Card>
         );
@@ -381,12 +406,13 @@ function AddBikeModelFormComponent() {
                     <CardContent className="space-y-6">
                         <div className="p-4 border rounded-lg space-y-6">
                             <h3 className="text-lg font-semibold">Primary Bike Details</h3>
-                             <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Bike Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a bike type" /></SelectTrigger></FormControl><SelectContent>{BIKE_TYPES.map((type) => (<SelectItem key={type} value={type}>{type}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                             <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Bike Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a bike type" /></SelectTrigger></FormControl><SelectContent>{BIKE_TYPES.map((type) => (<SelectItem key={type} value={type}>{type}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem className="flex flex-col justify-end"><FormLabel>Brand</FormLabel><Popover open={brandPopoverOpen} onOpenChange={setBrandPopoverOpen}><PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className={cn("w-full justify-between",!field.value && "text-muted-foreground")}>{field.value || "Select or create brand"}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent side="bottom" align="start" className="w-[--radix-popover-trigger-width] p-0" avoidCollisions={false}><Command><CommandInput placeholder="Search brand..." /><CommandEmpty>No brand found.</CommandEmpty><CommandList><CommandGroup>{availableBrands.map((brand) => (<CommandItem value={brand} key={brand} onSelect={() => {form.setValue("brand", brand); setBrandPopoverOpen(false);}}><Check className={cn("mr-2 h-4 w-4", brand === field.value ? "opacity-100" : "opacity-0")}/>{brand}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="model" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Tarmac SL7" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="modelYear" render={({ field }) => (<FormItem><FormLabel>Model Year</FormLabel><FormControl><Input type="number" placeholder="e.g., 2023" {...field} /></FormControl><FormMessage /></FormItem>)} />
                              </div>
+                              <FormField control={form.control} name="frameSize" render={({ field }) => (<FormItem><FormLabel>Frame Size</FormLabel><FormControl><Input placeholder="e.g., 56 or L" {...field} /></FormControl><FormDescription>Enter your specific frame size to automatically select correct component sizes (e.g., handlebar width).</FormDescription><FormMessage /></FormItem>)} />
                              <FormField control={form.control} name="isEbike" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>E-Bike</FormLabel><FormDescription>Does this model have a motor and battery?</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>)}/>
                         </div>
                         
@@ -395,7 +421,7 @@ function AddBikeModelFormComponent() {
                             <AccordionItem value="frameset" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Frameset</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
-                                    {renderComponentFields('Frame', ['brand', 'series', 'model', 'sizeVariants'])}
+                                    {renderComponentFields('Frame', ['brand', 'series', 'model', 'size', 'sizeVariants'])}
                                 </AccordionContent>
                             </AccordionItem>
                             
@@ -407,16 +433,17 @@ function AddBikeModelFormComponent() {
                                         <FormField control={form.control} name="frontMech" render={({ field }) => ( <FormItem className="space-y-3"><FormLabel>Front Mech</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="1x" /></FormControl><FormLabel className="font-normal">1x</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="2x" /></FormControl><FormLabel className="font-normal">2x</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="3x" /></FormControl><FormLabel className="font-normal">3x</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                                         <FormField control={form.control} name="rearMech" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Rear Mech</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="9" /></FormControl><FormLabel className="font-normal">9</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="10" /></FormControl><FormLabel className="font-normal">10</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="11" /></FormControl><FormLabel className="font-normal">11</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="12" /></FormControl><FormLabel className="font-normal">12</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                                     </div></Card>
-                                    <Card><CardHeader><CardTitle className="text-lg">Crankset</CardTitle></CardHeader><CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                    <Card><CardHeader><CardTitle className="text-lg">Crankset</CardTitle></CardHeader><CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         <FormField name={`components.${getComponentIndex('Crankset')}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField name={`components.${getComponentIndex('Crankset')}.series`} render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., RED AXS" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField name={`components.${getComponentIndex('Crankset')}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField name={`components.${getComponentIndex('Crankset')}.size`} render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="e.g., 175mm" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                         {renderChainringInputs(getComponentIndex('Crankset'))}
                                     </CardContent></Card>
-                                    {renderComponentFields('Bottom Bracket', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {renderComponentFields('Front Derailleur', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {renderComponentFields('Rear Derailleur', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {renderComponentFields('Cassette', ['brand', 'series', 'model', 'sizeVariants'])}
+                                    {renderComponentFields('Bottom Bracket', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Front Derailleur', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Rear Derailleur', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Cassette', ['brand', 'series', 'model', 'size'])}
                                     <Card><CardHeader><CardTitle className="text-lg">Shifters</CardTitle></CardHeader><CardContent className="space-y-4"><FormField control={form.control} name="shifterSetType" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Configuration</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="matched" /></FormControl><FormLabel className="font-normal">Matched Set</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="unmatched" /></FormControl><FormLabel className="font-normal">Unmatched Set</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                                         {shifterSetType === 'matched' && (<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <FormField control={form.control} name={`components.${getComponentIndex('Front Shifter')}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} value={field.value || ''} onChange={(e) => { field.onChange(e); form.setValue(`components.${getComponentIndex('Rear Shifter')}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)}/>
@@ -433,7 +460,7 @@ function AddBikeModelFormComponent() {
                                             <FormField name={`components.${getComponentIndex('Rear Shifter')}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="Optional" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                         </div></div>)}
                                     </CardContent></Card>
-                                    {renderComponentFields('Chain', ['brand', 'series', 'model', 'links', 'tensioner', 'sizeVariants'])}
+                                    {renderComponentFields('Chain', ['brand', 'series', 'model', 'links', 'tensioner'])}
                                 </AccordionContent>
                             </AccordionItem>
 
@@ -492,8 +519,8 @@ function AddBikeModelFormComponent() {
                                 <AccordionContent className="space-y-6 pt-4">
                                     <Card className="p-4"><FormField control={form.control} name="suspensionType" render={({ field }) => ( <FormItem className="space-y-3"><FormLabel>Suspension Configuration</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="none" /></FormControl><FormLabel className="font-normal">No Suspension</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="front" /></FormControl><FormLabel className="font-normal">Front Suspension</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="full" /></FormControl><FormLabel className="font-normal">Full Suspension</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                                     </Card>
-                                    {(suspensionType === 'front' || suspensionType === 'full') && renderComponentFields('Fork', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {suspensionType === 'full' && renderComponentFields('Rear Shock', ['brand', 'series', 'model', 'sizeVariants'])}
+                                    {(suspensionType === 'front' || suspensionType === 'full') && renderComponentFields('Fork', ['brand', 'series', 'model', 'size'])}
+                                    {suspensionType === 'full' && renderComponentFields('Rear Shock', ['brand', 'series', 'model', 'size'])}
                                 </AccordionContent>
                             </AccordionItem>
 
@@ -561,13 +588,13 @@ function AddBikeModelFormComponent() {
                             <AccordionItem value="cockpit" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Cockpit</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
-                                    {renderComponentFields('Handlebar', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {renderComponentFields('Stem', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {renderComponentFields('Seatpost', ['brand', 'model', 'size', 'sizeVariants'])}
-                                    {renderComponentFields('Headset', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {renderComponentFields('Saddle', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {renderComponentFields('Grips', ['brand', 'series', 'model', 'sizeVariants'])}
-                                    {renderComponentFields('Seatpost Clamp', ['brand', 'series', 'model', 'sizeVariants'])}
+                                    {renderComponentFields('Handlebar', ['brand', 'series', 'model', 'size', 'sizeVariants'])}
+                                    {renderComponentFields('Stem', ['brand', 'series', 'model', 'size', 'sizeVariants'])}
+                                    {renderComponentFields('Seatpost', ['brand', 'model', 'size'])}
+                                    {renderComponentFields('Headset', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Saddle', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Grips', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Seatpost Clamp', ['brand', 'series', 'model', 'size'])}
                                 </AccordionContent>
                             </AccordionItem>
                             
@@ -605,3 +632,5 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
+
+    
