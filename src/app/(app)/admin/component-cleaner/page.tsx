@@ -4,8 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bot, Loader2, PartyPopper } from 'lucide-react';
-import { extractBikeDetailsFromUrlContent, type InitialExtractOutput } from '@/ai/flows/extract-bike-details-from-url';
-import { cleanComponentListFlow, type CleanComponentListOutput } from '@/ai/flows/clean-component-list';
+import { extractBikeDetailsFromUrlContent } from '@/ai/flows/extract-bike-details-from-url';
+import { cleanComponentListFlow } from '@/ai/flows/clean-component-list';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ export default function ComponentCleanerPage() {
         try {
             // Step 1: Perform the initial rough extraction
             setStatusMessage('Step 1: Performing initial component extraction...');
-            const roughResult: InitialExtractOutput = await extractBikeDetailsFromUrlContent({ textContent: rawText });
+            const roughResult = await extractBikeDetailsFromUrlContent({ textContent: rawText });
 
             if (!roughResult || !roughResult.components || roughResult.components.length === 0) {
                  throw new Error("Initial extraction failed to find any components.");

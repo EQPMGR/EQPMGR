@@ -37,9 +37,9 @@ const chainringSchema = z.object({
 });
 
 const formSchema = z.object({
-  chainring1: chainringSchema,
-  chainring2: chainringSchema,
-  chainring3: chainringSchema,
+  chainring1: chainringSchema.optional(),
+  chainring2: chainringSchema.optional(),
+  chainring3: chainringSchema.optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -76,21 +76,21 @@ export function EditComponentDialog({
       const ring3 = existingSubComponents.find(sc => sc.name.includes('Chainring 3'));
 
       form.reset({
-        chainring1: {
-          name: ring1?.name.split(' ')[0] || '',
-          brand: ring1?.brand || '',
-          model: ring1?.model || '',
-        },
-        chainring2: {
-          name: ring2?.name.split(' ')[0] || '',
-          brand: ring2?.brand || '',
-          model: ring2?.model || '',
-        },
-        chainring3: {
-          name: ring3?.name.split(' ')[0] || '',
-          brand: ring3?.brand || '',
-          model: ring3?.model || '',
-        },
+        chainring1: ring1 ? {
+          name: ring1.name.split(' ')[0] || '',
+          brand: ring1.brand || '',
+          model: ring1.model || '',
+        } : undefined,
+        chainring2: ring2 ? {
+          name: ring2.name.split(' ')[0] || '',
+          brand: ring2.brand || '',
+          model: ring2.model || '',
+        } : undefined,
+        chainring3: ring3 ? {
+          name: ring3.name.split(' ')[0] || '',
+          brand: ring3.brand || '',
+          model: ring3.model || '',
+        } : undefined,
       });
     }
   }, [open, existingSubComponents, form]);
@@ -103,10 +103,10 @@ export function EditComponentDialog({
     setIsSaving(true);
     try {
       const subComponentsData = [
-        { name: data.chainring1.name ? `${data.chainring1.name} Chainring 1` : '', brand: data.chainring1.brand, model: data.chainring1.model },
-        { name: data.chainring2.name ? `${data.chainring2.name} Chainring 2` : '', brand: data.chainring2.brand, model: data.chainring2.model },
-        { name: data.chainring3.name ? `${data.chainring3.name} Chainring 3` : '', brand: data.chainring3.brand, model: data.chainring3.model },
-      ].filter(sc => sc.name);
+        data.chainring1 ? { name: `${data.chainring1.name} Chainring 1`, brand: data.chainring1.brand, model: data.chainring1.model } : null,
+        data.chainring2 ? { name: `${data.chainring2.name} Chainring 2`, brand: data.chainring2.brand, model: data.chainring2.model } : null,
+        data.chainring3 ? { name: `${data.chainring3.name} Chainring 3`, brand: data.chainring3.brand, model: data.chainring3.model } : null,
+      ].filter((sc): sc is { name: string; brand?: string; model?: string; } => sc !== null && !!sc.name);
 
       await updateSubComponentsAction({
         userId,
@@ -130,10 +130,10 @@ export function EditComponentDialog({
     return (
        <div className="space-y-4">
           <h4 className="font-semibold text-md">Chainring {index}</h4>
-          <FormField control={form.control} name={`chainring${index}.name`} render={({ field }) => (<FormItem><FormLabel>Teeth</FormLabel><FormControl><Input placeholder="e.g., 52t" {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <FormField control={form.control} name={`chainring${index}.name`} render={({ field }) => (<FormItem><FormLabel>Teeth</FormLabel><FormControl><Input placeholder="e.g., 52t" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
           <div className="grid grid-cols-2 gap-4">
-            <FormField control={form.control} name={`chainring${index}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name={`chainring${index}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., X-Sync 2" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name={`chainring${index}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., SRAM" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name={`chainring${index}.model`} render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., X-Sync 2" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
           </div>
         </div>
     )
