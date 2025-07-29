@@ -6,9 +6,31 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, DatabaseZap, Info, Terminal } from 'lucide-react';
-import { fetchAllMasterComponents } from '@/services/components';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { indexComponentFlow } from '@/ai/flows/index-components';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import type { MasterComponent } from '@/lib/types';
+
+/**
+ * Fetches all documents from the masterComponents collection directly.
+ * @returns A promise that resolves to an array of master components.
+ */
+async function fetchAllMasterComponentsClient(): Promise<MasterComponent[]> {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'masterComponents'));
+    const components: MasterComponent[] = [];
+    querySnapshot.forEach((doc) => {
+      components.push({ id: doc.id, ...doc.data() } as MasterComponent);
+    });
+    return components;
+  } catch (error) {
+    console.error("Error fetching master components from client:", error);
+    // Re-throw the error to be handled by the calling function
+    throw error;
+  }
+}
+
 
 export default function VectorAdminPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -26,11 +48,16 @@ export default function VectorAdminPage() {
 
     try {
       addLog("Fetching all master components from the database...");
-      const allComponents = await fetchAllMasterComponents();
+      const allComponents = await fetchAllMasterComponentsClient();
       
       if (allComponents.length === 0) {
         addLog("No master components found in the database to index.");
         setIsLoading(false);
+        toast({
+            variant: 'destructive',
+            title: 'No Components Found',
+            description: 'Could not find any components in the `masterComponents` collection. Ensure data has been seeded.'
+        });
         return;
       }
       addLog(`Found ${allComponents.length} total components in the database.`);
@@ -61,6 +88,8 @@ export default function VectorAdminPage() {
           })
         );
          addLog(`Indexing in progress... ${i + batch.length} of ${componentsToIndex.length} components indexed.`);
+         // Optional: add a small delay between batches if needed for rate limiting
+         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       const finalMessage = `Successfully indexed ${componentsToIndex.length} new components.`;
@@ -74,7 +103,10 @@ export default function VectorAdminPage() {
         let description = error.message || 'An unexpected error occurred.';
          if (error.code === 'failed-precondition' || (error.message && error.message.includes('vector index'))) {
             description = "Firestore vector index not found or not configured. Please create a vector index on the 'masterComponents' collection for the 'embedding' field via the gcloud or Firebase CLI.";
+        } else if (error.code === 'permission-denied') {
+            description = "Permission denied. Please check your Firestore security rules to ensure you have read access to the 'masterComponents' collection.";
         }
+
       console.error("Indexing failed:", error);
       addLog(`Indexing failed: ${description}`);
       toast({

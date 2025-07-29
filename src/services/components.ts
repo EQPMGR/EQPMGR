@@ -7,6 +7,7 @@ import type { MasterComponent } from '@/lib/types';
 
 /**
  * Fetches all documents from the masterComponents collection.
+ * This is a server-side function.
  * @returns A promise that resolves to an array of master components.
  */
 export async function fetchAllMasterComponents(): Promise<MasterComponent[]> {
@@ -21,6 +22,6 @@ export async function fetchAllMasterComponents(): Promise<MasterComponent[]> {
     console.error("Error fetching master components:", error);
     // Depending on the use case, you might want to throw the error
     // or return an empty array.
-    return [];
+    throw error;
   }
 }

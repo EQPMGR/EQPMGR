@@ -23,6 +23,9 @@ if (typeof window !== 'undefined') {
       authDomain: firebaseConfig.authDomain,
       projectId: firebaseConfig.projectId,
   });
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+      console.error("Firebase config is missing or incomplete. Please check your .env files.");
+  }
 }
 
 
