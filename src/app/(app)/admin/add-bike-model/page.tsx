@@ -217,10 +217,10 @@ function AddBikeModelFormComponent() {
             const originalAiOutput = sessionStorage.getItem('importedBikeData');
             const rawText = sessionStorage.getItem('rawBikeData');
             
-            if (originalAiOutput) {
+            if (originalAiOutput && rawText) {
                 const trainingDataRef = collection(db, 'trainingData');
                 await addDoc(trainingDataRef, {
-                    rawText: rawText || '',
+                    rawText: rawText,
                     originalAiOutput: JSON.parse(originalAiOutput),
                     userCorrectedOutput: values,
                     createdAt: serverTimestamp(),
@@ -601,5 +601,3 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
-
-    
