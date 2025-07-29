@@ -86,13 +86,14 @@ const createBikeModelId = (bike: AddBikeModelFormValues) => {
 }
 
 const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelFormValues => {
+    const aiComponents = data.components || [];
     return {
         brand: data.brand || '',
         model: data.model || '',
         modelYear: data.modelYear || new Date().getFullYear(),
         type: '', 
-        isEbike: !!data.components.find(c => c.system === 'E-Bike'),
-        components: data.components.map(c => ({
+        isEbike: !!aiComponents.find(c => c.system === 'E-Bike'),
+        components: aiComponents.map(c => ({
             name: c.name,
             brand: c.brand || '',
             series: c.series || '',
@@ -102,7 +103,6 @@ const mapAiDataToFormValues = (data: ExtractBikeDetailsOutput): AddBikeModelForm
             system: c.system,
             chainring1: c.chainring1,
             chainring2: c.chainring2,
-            chainring3: c.chainring3,
         })),
         frontMech: undefined,
         rearMech: undefined,

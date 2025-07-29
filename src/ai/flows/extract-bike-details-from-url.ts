@@ -8,24 +8,13 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-
-const RoughComponentSchema = z.object({
-  name: z.string().describe("The best-guess name of the component from the raw text (e.g., 'Rear Derailleur', 'Fork')."),
-  description: z.string().describe("The full line or block of text associated with this component."),
-});
-
-export const ExtractBikeDetailsInputSchema = z.object({
-  textContent: z.string().describe("The raw text content from a bike's product webpage."),
-});
-export type ExtractBikeDetailsInput = z.infer<typeof ExtractBikeDetailsInputSchema>;
-
-export const ExtractBikeDetailsOutputSchema = z.object({
-  brand: z.string().optional().describe('The brand of the bike (e.g., "Specialized").'),
-  model: z.string().optional().describe('The model name of the bike (e.g., "Tarmac SL7").'),
-  modelYear: z.coerce.number().optional().describe('The model year of the bike (e.g., 2023).'),
-  components: z.array(RoughComponentSchema).describe('An array of all identified bike components with their raw descriptions.'),
-});
-export type ExtractBikeDetailsOutput = z.infer<typeof ExtractBikeDetailsOutputSchema>;
+import {
+    ExtractBikeDetailsInputSchema,
+    ExtractBikeDetailsOutputSchema,
+    type ExtractBikeDetailsInput,
+    type ExtractBikeDetailsOutput,
+    RoughComponentSchema
+} from '@/lib/ai-types';
 
 
 const roughExtractorPrompt = ai.definePrompt({
