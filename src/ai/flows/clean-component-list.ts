@@ -24,12 +24,13 @@ const componentCleanerPrompt = ai.definePrompt({
 Analyze the provided text description for ONE component.
 
 **CRITICAL RULES:**
-1.  From the description, you MUST extract the component's official name, brand, series, and model.
-2.  **MODEL**: The 'model' field is ONLY for the specific part number (e.g., RD-M8100-SGS).
-3.  **SERIES**: The 'series' is the product family (e.g., 'Deore XT').
-4.  **CHAINRING**: If the component is a crankset and you see a tooth count (e.g., 32T), extract it to the 'chainring1' field.
-5.  **SYSTEM**: Assign the component to a system: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", or "Accessories".
-6.  **NO GUESSING**: If a value is not in the text, omit the field. Do not invent data.
+1.  First, identify the component's official name (e.g., "Rear Derailleur", "Crankset", "Cassette"). This is the most important step.
+2.  From the rest of the description, you MUST extract the component's brand, series, and model.
+3.  **MODEL**: The 'model' field is ONLY for the specific part number (e.g., RD-M8100-SGS).
+4.  **SERIES**: The 'series' is the product family (e.g., 'Deore XT', 'CUES').
+5.  **CHAINRING**: If the component is a crankset and you see a tooth count (e.g., 32T), extract it to the 'chainring1' field.
+6.  **SYSTEM**: Assign the component to a system: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", or "Accessories".
+7.  **NO GUESSING**: If a value is not in the text, omit the field. Do not invent data.
 
 Return ONLY the structured JSON object for this single component.
 
