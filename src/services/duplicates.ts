@@ -1,0 +1,51 @@
+'use server';
+
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { MasterComponent } from '@/lib/types';
+
+export interface DuplicateGroup {
+  key: string;
+  components: MasterComponent[];
+}
+
+/**
+ * Finds potential duplicate components in the masterComponents collection.
+ * Duplicates are determined by having the same name, brand, and series.
+ * @returns A promise that resolves to an array of groups of duplicate components.
+ */
+export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]> {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'masterComponents'));
+    const components: MasterComponent[] = [];
+    querySnapshot.forEach((doc) => {
+      components.push({ id: doc.id, ...doc.data() } as MasterComponent);
+    });
+
+    // Group components by a composite key of name, brand, and series
+    const groups: { [key: string]: MasterComponent[] } = {};
+    for (const component of components) {
+      // Don't consider components without a brand and series as potential duplicates
+      if (!component.brand || !component.series) {
+        continue;
+      }
+      
+      const key = `${component.name}|${component.brand}|${component.series}`;
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(component);
+    }
+
+    // Filter out groups that don't have duplicates
+    const duplicateGroups: DuplicateGroup[] = Object.entries(groups)
+      .filter(([key, componentList]) => componentList.length > 1)
+      .map(([key, componentList]) => ({ key, components: componentList }));
+      
+    return duplicateGroups;
+
+  } catch (error) {
+    console.error("Error finding duplicate components:", error);
+    throw new Error("Failed to scan for duplicate components.");
+  }
+}

@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, DatabaseZap } from 'lucide-react';
+import { ArrowUpRight, DatabaseZap, SearchCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { AdminSeeder } from './seeder';
@@ -48,6 +48,21 @@ export default function AdminPage() {
                         <Button asChild size="sm" variant="outline">
                             <Link href="/admin/vector-admin">
                                 <DatabaseZap className="h-4 w-4 mr-2" /> Manage Embeddings
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Data Quality Tools</CardTitle>
+                            <CardDescription className="text-sm">
+                                Find and reconcile potential duplicate components.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/find-duplicates">
+                                <SearchCheck className="h-4 w-4 mr-2" /> Review Duplicates
                             </Link>
                         </Button>
                     </CardHeader>
