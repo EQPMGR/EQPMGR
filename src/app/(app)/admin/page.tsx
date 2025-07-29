@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { AdminSeeder } from './seeder';
 import { ShimanoSeeder } from './shimano-seeder';
+import { SramSeeder } from './sram-seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -35,6 +36,7 @@ export default function AdminPage() {
                 </Card>
                 <AdminSeeder />
                 <ShimanoSeeder />
+                <SramSeeder />
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
