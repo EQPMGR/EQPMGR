@@ -10,6 +10,7 @@ import { AdminSeeder } from './seeder';
 import { ShimanoSeeder } from './shimano-seeder';
 import { SramSeeder } from './sram-seeder';
 import { CampagnoloSeeder } from './campagnolo-seeder';
+import { TiresSeeder } from './tires-seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -40,6 +41,7 @@ export default function AdminPage() {
                 <ShimanoSeeder />
                 <SramSeeder />
                 <CampagnoloSeeder />
+                <TiresSeeder />
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
