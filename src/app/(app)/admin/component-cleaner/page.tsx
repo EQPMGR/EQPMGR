@@ -109,7 +109,7 @@ export default function ComponentCleanerPage() {
                 )}
                 {extractedJson && (
                     <div className="space-y-2">
-                        <Label htmlFor="json-output">AI Extracted JSON</Label>
+                        <Label htmlFor="json-output">AI Extracted JSON (for your review)</Label>
                         <Textarea
                             id="json-output"
                             readOnly
