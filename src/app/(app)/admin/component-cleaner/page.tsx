@@ -37,6 +37,7 @@ export default function ComponentCleanerPage() {
             return;
         }
         setIsLoading(true);
+        setIsDone(false);
         setExtractedJson('');
         try {
             // Step 1: Perform the initial rough extraction
@@ -62,6 +63,9 @@ export default function ComponentCleanerPage() {
             const resultJson = JSON.stringify(finalOutput, null, 2);
             setExtractedJson(resultJson);
             
+            // Store the final structured data in sessionStorage
+            sessionStorage.setItem('importedBikeData', resultJson);
+
             toast({ title: 'Success!', description: 'Components have been structured.' });
             setIsDone(true);
         } catch (error: any) {
@@ -74,7 +78,7 @@ export default function ComponentCleanerPage() {
     };
     
     const handleProceed = () => {
-        sessionStorage.setItem('importedBikeData', extractedJson);
+        // Data is already in session storage from the extraction step.
         router.push('/admin/add-bike-model');
     }
 
@@ -104,14 +108,7 @@ export default function ComponentCleanerPage() {
                     </div>
                 )}
                 {extractedJson && (
-                    <div className="space-y-4">
-                        <Alert>
-                            <Info className="h-4 w-4" />
-                            <AlertTitle>Next Steps</AlertTitle>
-                            <AlertDescription>
-                                Copy the JSON below. On the next page, you will be able to manually paste this into your browser's developer tools to pre-fill the form. This allows us to inspect the AI output and provides a clear path for future tuning.
-                            </AlertDescription>
-                        </Alert>
+                    <div className="space-y-2">
                         <Label htmlFor="json-output">AI Extracted JSON</Label>
                         <Textarea
                             id="json-output"
@@ -133,7 +130,7 @@ export default function ComponentCleanerPage() {
                     <div className="p-4 border rounded-lg text-center bg-green-50 dark:bg-green-950">
                         <PartyPopper className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
                         <h3 className="font-semibold">Extraction Complete!</h3>
-                        <p className="text-sm text-muted-foreground mb-4">You can now proceed to the form to finalize the bike model.</p>
+                        <p className="text-sm text-muted-foreground mb-4">The data has been saved and is ready to be loaded into the form.</p>
                         <Button onClick={handleProceed}>
                             Proceed to Form
                         </Button>
