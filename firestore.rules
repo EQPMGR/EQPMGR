@@ -2,16 +2,31 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow any authenticated user to read/write the central bike and component databases.
-    // This is safe because this data is not user-specific.
-    match /(bikeModels|masterComponents)/{docId} {
-      allow read, write: if request.auth != null;
+    
+    // Lock down the users collection so that only the authenticated user can read/write their own documents
+    match /users/{userId} {
+      allow read, update, delete: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
+      
+      // Also allow the user to read/write to subcollections of their own user document
+       match /{allPaths=**} {
+        allow read, write: if request.auth.uid == userId;
+      }
     }
 
-    // Users can only read/write their own data within the users collection.
-    // This is a critical security rule to protect user privacy.
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // masterComponents can be read/written by any authenticated user for seeding/admin purposes.
+    match /masterComponents/{docId} {
+        allow read, write: if request.auth != null;
+    }
+    
+    // bikeModels can be read/written by any authenticated user for admin purposes.
+    match /bikeModels/{docId} {
+        allow read, write: if request.auth != null;
+    }
+    
+    // trainingData can be written by any authenticated user for RLHF data collection.
+    match /trainingData/{docId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
