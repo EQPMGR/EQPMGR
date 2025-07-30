@@ -1,32 +1,24 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Lock down the users collection so that only the authenticated user can read/write their own documents
-    match /users/{userId} {
-      allow read, update, delete: if request.auth.uid == userId;
-      allow create: if request.auth.uid != null;
-      
-      // Also allow the user to read/write to subcollections of their own user document
-       match /{allPaths=**} {
-        allow read, write: if request.auth.uid == userId;
-      }
+    // Master components are public and can be read by anyone.
+    // Writes should still be restricted, but for now this allows the seeder to work.
+    match /masterComponents/{componentId} {
+      allow read: if true;
+      allow write: if request.auth != null; // Keep writes restricted for now
+    }
+    
+    // User-specific data can only be read/written by the authenticated user.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // masterComponents can be read/written by any authenticated user for seeding/admin purposes.
-    match /masterComponents/{docId} {
-        allow read, write: if request.auth != null;
-    }
-    
-    // bikeModels can be read/written by any authenticated user for admin purposes.
-    match /bikeModels/{docId} {
-        allow read, write: if request.auth != null;
-    }
-    
-    // trainingData can be written by any authenticated user for RLHF data collection.
-    match /trainingData/{docId} {
-      allow read, write: if request.auth != null;
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
