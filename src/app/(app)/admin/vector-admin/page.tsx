@@ -11,6 +11,7 @@ import { db } from '@/lib/firebase';
 import { indexComponentFlow } from '@/ai/flows/index-components';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { MasterComponent } from '@/lib/types';
+import { runVectorIndexing } from './actions';
 
 /**
  * Fetches all documents from the masterComponents collection directly.
@@ -47,58 +48,12 @@ export default function VectorAdminPage() {
     addLog("Starting indexing process...");
 
     try {
-      addLog("Fetching all master components from the database...");
-      const allComponents = await fetchAllMasterComponentsClient();
-      
-      if (allComponents.length === 0) {
-        addLog("No master components found in the database to index.");
-        setIsLoading(false);
-        toast({
-            variant: 'destructive',
-            title: 'No Components Found',
-            description: 'Could not find any components in the `masterComponents` collection. Ensure data has been seeded.'
-        });
-        return;
-      }
-      addLog(`Found ${allComponents.length} total components in the database.`);
-      
-      const componentsToIndex = allComponents.filter(c => !c.embedding || !Array.isArray(c.embedding) || c.embedding.length === 0);
-      const alreadyIndexedCount = allComponents.length - componentsToIndex.length;
-
-      addLog(`${alreadyIndexedCount} components are already indexed and will be skipped.`);
-      
-      if (componentsToIndex.length === 0) {
-        addLog(`All ${allComponents.length} components are already indexed. Nothing to do.`);
-        setIsLoading(false);
-        toast({
-          title: 'All Set!',
-          description: 'No new components to index.',
-        });
-        return;
-      }
-
-      addLog(`Found ${componentsToIndex.length} components that need indexing. Starting process...`);
-
-      const batchSize = 10;
-      for (let i = 0; i < componentsToIndex.length; i += batchSize) {
-        const batch = componentsToIndex.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async (component) => {
-             await indexComponentFlow(component);
-          })
-        );
-         addLog(`Indexing in progress... ${i + batch.length} of ${componentsToIndex.length} components indexed.`);
-         // Optional: add a small delay between batches if needed for rate limiting
-         await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      const finalMessage = `Successfully indexed ${componentsToIndex.length} new components.`;
-      addLog(finalMessage);
+      const result = await runVectorIndexing();
+      addLog(result.message);
       toast({
         title: 'Indexing Complete!',
-        description: finalMessage,
+        description: result.message,
       });
-
     } catch (error: any) {
         let description = error.message || 'An unexpected error occurred.';
          if (error.code === 'failed-precondition' || (error.message && error.message.includes('vector index'))) {
@@ -112,7 +67,8 @@ export default function VectorAdminPage() {
       toast({
         variant: 'destructive',
         title: 'Indexing Failed',
-        description,
+        description: description,
+        duration: 9000,
       });
     } finally {
       setIsLoading(false);
