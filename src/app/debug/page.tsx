@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -18,20 +17,27 @@ import {
 } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { getComponentForDebug } from './actions';
 
 export default function DebugPage() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [isLoadingTestWrite, setIsLoadingTestWrite] = useState(false);
+  const [testWriteResult, setTestWriteResult] = useState<string | null>(null);
+
+  const [isLoadingComponent, setIsLoadingComponent] = useState(false);
+  const [componentId, setComponentId] = useState('');
+  const [componentResult, setComponentResult] = useState<string | null>(null);
 
   const handleTestWrite = async () => {
     if (!user) {
       toast({ variant: 'destructive', title: 'Not Logged In', description: 'Cannot run test without a user.' });
       return;
     }
-    setIsLoading(true);
-    setResult(null);
+    setIsLoadingTestWrite(true);
+    setTestWriteResult(null);
     try {
       const userDocRef = doc(db, 'users', user.uid);
       
@@ -40,7 +46,7 @@ export default function DebugPage() {
       });
       
       const message = `Successfully wrote a test field to your user profile document in Firestore. Path: users/${user.uid}`;
-      setResult(message);
+      setTestWriteResult(message);
       toast({
         title: 'Success!',
         description: message,
@@ -48,21 +54,68 @@ export default function DebugPage() {
     } catch (error: any) {
       console.error("Test write failed:", error);
       const errorMessage = error.message || "An unknown error occurred.";
-      setResult(`Test write failed: ${errorMessage}`);
+      setTestWriteResult(`Test write failed: ${errorMessage}`);
       toast({
         variant: 'destructive',
         title: 'Test Write Failed',
         description: errorMessage,
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingTestWrite(false);
     }
   };
 
-  const isButtonDisabled = isLoading || authLoading || !user;
+  const handleFetchComponent = async () => {
+    if (!componentId) {
+        toast({ variant: 'destructive', title: 'Component ID required' });
+        return;
+    }
+    setIsLoadingComponent(true);
+    setComponentResult(null);
+    try {
+        const result = await getComponentForDebug(componentId);
+        setComponentResult(result);
+    } catch (error: any) {
+        setComponentResult(`Failed to fetch: ${error.message}`);
+        toast({ variant: 'destructive', title: 'Fetch Failed', description: error.message });
+    } finally {
+        setIsLoadingComponent(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
+      <Card className="max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>Component Inspector</CardTitle>
+          <CardDescription>
+            Enter a `masterComponent` ID to inspect its raw data from Firestore.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="componentId">Component ID</Label>
+            <Input 
+                id="componentId"
+                value={componentId}
+                onChange={(e) => setComponentId(e.target.value)}
+                placeholder="e.g., alexrims-front-rim-atd490-disc"
+            />
+          </div>
+          <Button onClick={handleFetchComponent} disabled={isLoadingComponent || !componentId}>
+            {isLoadingComponent && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Fetch Component Data
+          </Button>
+        </CardContent>
+        {componentResult && (
+          <CardFooter>
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-all w-full bg-muted p-2 rounded-md">
+                {componentResult}
+            </pre>
+          </CardFooter>
+        )}
+      </Card>
+
       <Card className="max-w-md mx-auto">
         <CardHeader>
           <CardTitle>Firestore Write Test</CardTitle>
@@ -71,14 +124,14 @@ export default function DebugPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleTestWrite} disabled={isButtonDisabled}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleTestWrite} disabled={isLoadingTestWrite || authLoading || !user}>
+            {isLoadingTestWrite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Run Write Test
           </Button>
         </CardContent>
-        {result && (
+        {testWriteResult && (
           <CardFooter>
-            <p className="text-sm text-muted-foreground break-all">{result}</p>
+            <p className="text-sm text-muted-foreground break-all">{testWriteResult}</p>
           </CardFooter>
         )}
       </Card>
