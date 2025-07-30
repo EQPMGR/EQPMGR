@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, DatabaseZap, Info, Terminal } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { indexComponentFlow } from '@/ai/flows/index-components';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -32,6 +32,10 @@ async function fetchAllMasterComponentsClient(): Promise<MasterComponent[]> {
   }
 }
 
+const isValidEmbedding = (embedding: any): embedding is number[] => {
+    return Array.isArray(embedding) && embedding.length > 0 && typeof embedding[0] === 'number';
+}
+
 
 export default function VectorAdminPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -48,12 +52,43 @@ export default function VectorAdminPage() {
     addLog("Starting indexing process...");
 
     try {
-      const result = await runVectorIndexing();
-      addLog(result.message);
+      addLog("Fetching all master components from the database...");
+      const allComponents = await fetchAllMasterComponentsClient();
+      addLog(`Found ${allComponents.length} total components.`);
+
+      const componentsToIndex = allComponents.filter(c => !isValidEmbedding(c.embedding));
+      
+      if (componentsToIndex.length === 0) {
+        addLog("All components appear to be indexed. Nothing to do.");
+        toast({ title: "Up to date!", description: "All components are already indexed." });
+        setIsLoading(false);
+        return;
+      }
+      
+      addLog(`Found ${componentsToIndex.length} components that need indexing.`);
+
+      let successCount = 0;
+      for (let i = 0; i < componentsToIndex.length; i++) {
+        const component = componentsToIndex[i];
+        try {
+          addLog(`[${i + 1}/${componentsToIndex.length}] Indexing: ${component.brand || ''} ${component.name}...`);
+          await indexComponentFlow(component);
+          successCount++;
+        } catch (e: any) {
+          const errorMsg = `Failed to index component ${component.id}: ${e.message}`;
+          addLog(errorMsg);
+          console.error(errorMsg, e);
+          // Don't stop the whole process, just log the error and continue
+        }
+      }
+
+      const finalMessage = `Indexing complete. Successfully indexed ${successCount} of ${componentsToIndex.length} components.`;
+      addLog(finalMessage);
       toast({
         title: 'Indexing Complete!',
-        description: result.message,
+        description: finalMessage,
       });
+
     } catch (error: any) {
         let description = error.message || 'An unexpected error occurred.';
          if (error.code === 'failed-precondition' || (error.message && error.message.includes('vector index'))) {
@@ -63,7 +98,7 @@ export default function VectorAdminPage() {
         }
 
       console.error("Indexing failed:", error);
-      addLog(`Indexing failed: ${description}`);
+      addLog(`A critical error occurred: ${description}`);
       toast({
         variant: 'destructive',
         title: 'Indexing Failed',
@@ -88,7 +123,7 @@ export default function VectorAdminPage() {
           <Info className="h-4 w-4" />
           <AlertTitle>How This Works</AlertTitle>
           <AlertDescription>
-            This tool is for backfilling embeddings for any components added before automatic indexing was implemented. New components added via the "Add Bike Model" form are now indexed automatically.
+            This tool fetches all components and processes them one-by-one to generate embeddings for search. If a component fails, it will be skipped and the process will continue.
           </AlertDescription>
         </Alert>
          <Alert>

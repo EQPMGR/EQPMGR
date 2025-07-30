@@ -2,11 +2,13 @@
 'use server';
 /**
  * @fileOverview A flow for indexing component data into Firestore.
- * This flow now handles both creating the embedding and saving the component data.
+ * This file now contains two flows:
+ * - `indexAllComponentsFlow`: A server-side batch processor (currently unused but kept for reference).
+ * - `indexComponentFlow`: A new flow to process a single component, called from the client.
  */
 import { ai } from '@/ai/genkit';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { z } from 'zod';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 import type { MasterComponent } from '@/lib/types';
@@ -35,8 +37,9 @@ const isValidEmbedding = (embedding: any): embedding is number[] => {
 }
 
 /**
- * A Genkit flow that takes all master components, generates vector embeddings for those
- * that need it, and saves them back to Firestore.
+ * DEPRECATED: A Genkit flow that takes all master components, generates vector embeddings for those
+ * that need it, and saves them back to Firestore. This has proven to be unstable for large datasets.
+ * It is replaced by the client-side orchestration calling `indexComponentFlow`.
  */
 export const indexAllComponentsFlow = ai.defineFlow(
   {
@@ -48,84 +51,9 @@ export const indexAllComponentsFlow = ai.defineFlow(
     }),
   },
   async () => {
-    let allComponents: MasterComponent[];
-    // 1. Fetch all master components from Firestore.
-    try {
-        const componentsSnapshot = await getDocs(collection(db, 'masterComponents'));
-        allComponents = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterComponent));
-    } catch (e: any) {
-        if (e.code === 'permission-denied') {
-            throw new Error("PERMISSION_DENIED: Failed to read from the 'masterComponents' collection in Firestore. Please check your Firestore security rules.");
-        }
-        throw new Error(`Firestore read failed: ${e.message}`);
-    }
-    
-    // 2. Filter for components that need indexing with a more robust check.
-    const componentsToIndex = allComponents.filter(c => !isValidEmbedding(c.embedding));
-    
-    if (componentsToIndex.length === 0) {
-        return { message: "All components are already indexed.", indexedCount: 0 };
-    }
-
-    // 3. Process components in batches to generate embeddings and write to Firestore.
-    // This is now a more sequential process to avoid overwhelming APIs.
-    const batchSize = 10;
-    let indexedCount = 0;
-    
-    try {
-        let batch = writeBatch(db);
-        let currentBatchSize = 0;
-
-        for (const component of componentsToIndex) {
-            try {
-                // Generate embedding for the single component
-                const vectorDocument = createComponentVectorDocument(component);
-                const embedding = await ai.embed({
-                    embedder: textEmbedding004,
-                    content: vectorDocument,
-                });
-
-                // Add the update to the current batch
-                const docRef = doc(db, 'masterComponents', component.id);
-                batch.update(docRef, { embedding: embedding });
-                indexedCount++;
-                currentBatchSize++;
-                
-                // If the batch is full, commit it and start a new one.
-                if (currentBatchSize === batchSize) {
-                    await batch.commit();
-                    batch = writeBatch(db); // Start a new batch
-                    currentBatchSize = 0;
-                }
-                 // Add a delay between each API call to avoid rate-limiting issues.
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-            } catch (e: any) {
-                console.error(`Skipping component ${component.id} due to an embedding or write error:`, e.message);
-                // If a single component fails, log it and continue with the rest.
-            }
-        }
-
-        // Commit any remaining operations in the last batch.
-        if (currentBatchSize > 0) {
-            await batch.commit();
-        }
-
-    } catch (e: any) {
-         if (e.message?.includes('permission-denied') || e.code === 7 || e.code === 'PERMISSION_DENIED') {
-            throw new Error("PERMISSION_DENIED: The AI service rejected the request. Ensure the Vertex AI API is enabled and your API key has the correct permissions.");
-        }
-        if (e.message?.includes('batch can no longer be used')) {
-            throw new Error("A write batch was incorrectly used after being committed. Please try again.");
-        }
-        throw new Error(`Embedding or Firestore write failed: ${e.message}`);
-    }
-
-
-    return {
-      message: `Successfully indexed ${indexedCount} new components.`,
-      indexedCount,
-    };
+    // This flow is deprecated and should not be used.
+    // The logic has been moved to the client for better stability.
+    throw new Error("This server-side batch indexing flow is deprecated. Please use the client-side implementation.");
   }
 );
 
@@ -133,6 +61,7 @@ export const indexAllComponentsFlow = ai.defineFlow(
 /**
  * A Genkit flow that takes a single component data, generates a vector embedding,
  * and saves the full component document (with embedding) to Firestore.
+ * This flow is designed to be called individually for each component from the client.
  */
 export const indexComponentFlow = ai.defineFlow(
   {
@@ -141,23 +70,31 @@ export const indexComponentFlow = ai.defineFlow(
     outputSchema: z.void(),
   },
   async (component: MasterComponent) => {
-    // 1. Create the string to be embedded.
-    const vectorDocument = createComponentVectorDocument(component);
+    try {
+        // 1. Create the string to be embedded.
+        const vectorDocument = createComponentVectorDocument(component);
 
-    // 2. Generate the embedding.
-    const embedding = await ai.embed({
-        embedder: textEmbedding004,
-        content: vectorDocument,
-    });
-    
-    // 3. Prepare the full document to save to Firestore.
-    const docToSave = {
-      ...component,
-      embedding,
-    };
-    
-    // 4. Save the document to Firestore.
-    const componentDocRef = doc(db, 'masterComponents', component.id);
-    await writeBatch(db).set(componentDocRef, docToSave, { merge: true }).commit();
+        // 2. Generate the embedding.
+        const embedding = await ai.embed({
+            embedder: textEmbedding004,
+            content: vectorDocument,
+        });
+        
+        // 3. Prepare the full document to save to Firestore.
+        const docToSave = {
+            embedding: embedding,
+        };
+        
+        // 4. Save/update the document in Firestore.
+        const componentDocRef = doc(db, 'masterComponents', component.id);
+        // Use update instead of set with merge to avoid overwriting existing fields if component object is partial
+        await updateDoc(componentDocRef, docToSave);
+
+    } catch (e: any) {
+        if (e.message?.includes('permission-denied') || e.code === 7 || e.code === 'PERMISSION_DENIED') {
+            throw new Error(`PERMISSION_DENIED while processing ${component.id}. The AI service rejected the request. Ensure the Vertex AI API is enabled and your API key has the correct permissions.`);
+        }
+        throw new Error(`Failed to process component ${component.id}: ${e.message}`);
+    }
   }
 );
