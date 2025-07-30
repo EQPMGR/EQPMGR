@@ -64,6 +64,9 @@ function StravaCallback() {
           }
         }, { merge: true });
 
+        // Set the session cookie after successful token exchange
+        await fetch('/api/auth/session', { method: 'POST' });
+
         toast({
           title: 'Strava Connected!',
           description: 'Your account has been successfully linked.',
@@ -112,7 +115,6 @@ function StravaCallback() {
 }
 
 export default function StravaCallbackPage() {
-    // Suspense is required for pages that use useSearchParams()
     return (
         <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
             <StravaCallback />

@@ -6,17 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, DatabaseZap, Info, Terminal } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { indexComponentFlow } from '@/ai/flows/index-components';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { MasterComponent } from '@/lib/types';
-import { runVectorIndexing } from './actions';
 
-/**
- * Fetches all documents from the masterComponents collection directly.
- * @returns A promise that resolves to an array of master components.
- */
+
 async function fetchAllMasterComponentsClient(): Promise<MasterComponent[]> {
   try {
     const querySnapshot = await getDocs(collection(db, 'masterComponents'));
@@ -27,7 +23,6 @@ async function fetchAllMasterComponentsClient(): Promise<MasterComponent[]> {
     return components;
   } catch (error) {
     console.error("Error fetching master components from client:", error);
-    // Re-throw the error to be handled by the calling function
     throw error;
   }
 }
@@ -78,7 +73,6 @@ export default function VectorAdminPage() {
           const errorMsg = `Failed to index component ${component.id}: ${e.message}`;
           addLog(errorMsg);
           console.error(errorMsg, e);
-          // Don't stop the whole process, just log the error and continue
         }
       }
 

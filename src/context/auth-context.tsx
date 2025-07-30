@@ -56,7 +56,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// This function ensures that the profile object used in the app is always valid.
 const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>): UserProfile => {
   const data = docData || {};
   return {
@@ -73,6 +72,20 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     age: data.age,
   };
 };
+
+const setSessionCookie = async (user: User) => {
+    const idToken = await user.getIdToken();
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      body: idToken,
+    });
+};
+
+const clearSessionCookie = async () => {
+    await fetch('/api/auth/session', {
+      method: 'DELETE',
+    });
+}
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -95,6 +108,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (authUser) {
         const userDocRef = doc(db, 'users', authUser.uid);
         try {
+          await setSessionCookie(authUser);
           const userDocSnap = await getDoc(userDocRef);
           let userDocData: UserDocument;
           
@@ -102,7 +116,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
             userDocData = userDocSnap.data() as UserDocument;
           } else {
-            // New user: Create a complete profile document with defaults
             userDocData = {
               displayName: authUser.displayName || '',
               photoURL: authUser.photoURL || '',
@@ -124,6 +137,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }
       } else {
         setUser(null);
+        await clearSessionCookie();
       }
       setLoading(false);
     });
@@ -140,7 +154,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
      try {
-      await signUpWithEmailAndPassword(auth, email, password);
+      await signUpWithEmailPassword(auth, email, password);
     } catch (error) {
       handleAuthError(error, 'Sign Up Failed');
     }
@@ -242,7 +256,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {children}
-    </AuthContext.Provider>
+    </Auth-Context.Provider>
   );
 };
 
