@@ -6,7 +6,7 @@
  */
 import { ai } from '@/ai/genkit';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { z } from 'zod';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 import type { MasterComponent } from '@/lib/types';
@@ -68,7 +68,7 @@ export const indexAllComponentsFlow = ai.defineFlow(
     let indexedCount = 0;
     
     try {
-        const batch = writeBatch(db);
+        let batch = writeBatch(db);
 
         for (let i = 0; i < componentsToIndex.length; i++) {
             const component = componentsToIndex[i];
@@ -88,6 +88,10 @@ export const indexAllComponentsFlow = ai.defineFlow(
             // Commit the batch every batchSize components or on the last component
             if ((i + 1) % batchSize === 0 || i === componentsToIndex.length - 1) {
                 await batch.commit();
+                // After committing, create a new batch for the next set of operations.
+                if (i < componentsToIndex.length - 1) {
+                  batch = writeBatch(db);
+                }
             }
         }
     } catch (e: any) {
@@ -134,6 +138,6 @@ export const indexComponentFlow = ai.defineFlow(
     
     // 4. Save the document to Firestore.
     const componentDocRef = doc(db, 'masterComponents', component.id);
-    await setDoc(componentDocRef, docToSave, { merge: true });
+    await writeBatch(db).set(componentDocRef, docToSave, { merge: true }).commit();
   }
 );
