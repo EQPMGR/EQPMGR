@@ -8,7 +8,7 @@
  */
 import { ai } from '@/ai/genkit';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { z } from 'zod';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 import type { MasterComponent } from '@/lib/types';
@@ -57,6 +57,16 @@ export const indexAllComponentsFlow = ai.defineFlow(
   }
 );
 
+// Define a strict schema for the component data passed to the flow.
+const IndexComponentInputSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    brand: z.string().optional(),
+    series: z.string().optional(),
+    model: z.string().optional(),
+    system: z.string(),
+    // Allow other fields to exist but we don't need them for the embedding.
+}).passthrough();
 
 /**
  * A Genkit flow that takes a single component data, generates a vector embedding,
@@ -66,13 +76,13 @@ export const indexAllComponentsFlow = ai.defineFlow(
 export const indexComponentFlow = ai.defineFlow(
   {
     name: 'indexComponentFlow',
-    inputSchema: z.any(), // Accepts a MasterComponent-like object
+    inputSchema: IndexComponentInputSchema,
     outputSchema: z.void(),
   },
-  async (component: MasterComponent) => {
+  async (component) => {
     try {
         // 1. Create the string to be embedded.
-        const vectorDocument = createComponentVectorDocument(component);
+        const vectorDocument = createComponentVectorDocument(component as MasterComponent);
 
         // 2. Generate the embedding.
         const embedding = await ai.embed({
@@ -87,7 +97,6 @@ export const indexComponentFlow = ai.defineFlow(
         
         // 4. Save/update the document in Firestore.
         const componentDocRef = doc(db, 'masterComponents', component.id);
-        // Use update instead of set with merge to avoid overwriting existing fields if component object is partial
         await updateDoc(componentDocRef, docToSave);
 
     } catch (e: any) {
@@ -98,4 +107,3 @@ export const indexComponentFlow = ai.defineFlow(
     }
   }
 );
-
