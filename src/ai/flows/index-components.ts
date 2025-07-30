@@ -97,6 +97,9 @@ export const indexAllComponentsFlow = ai.defineFlow(
                     batch = writeBatch(db); // Start a new batch
                     currentBatchSize = 0;
                 }
+                 // Add a delay between each API call to avoid rate-limiting issues.
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
             } catch (e: any) {
                 console.error(`Skipping component ${component.id} due to an embedding or write error:`, e.message);
                 // If a single component fails, log it and continue with the rest.
