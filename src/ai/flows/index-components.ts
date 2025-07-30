@@ -60,7 +60,7 @@ export const indexAllComponentsFlow = ai.defineFlow(
         throw new Error(`Firestore read failed: ${e.message}`);
     }
     
-    // 2. Filter for components that need indexing with more robust check.
+    // 2. Filter for components that need indexing with a more robust check.
     const componentsToIndex = allComponents.filter(c => !isValidEmbedding(c.embedding));
     
     if (componentsToIndex.length === 0) {
@@ -68,45 +68,46 @@ export const indexAllComponentsFlow = ai.defineFlow(
     }
 
     // 3. Process components in batches to generate embeddings and write to Firestore.
-    const batchSize = 20; // Process in batches to avoid overwhelming the API
+    // This is now a more sequential process to avoid overwhelming APIs.
+    const batchSize = 10;
     let indexedCount = 0;
     
     try {
         let batch = writeBatch(db);
-        let batchItemCount = 0;
+        let currentBatchSize = 0;
 
-        for (let i = 0; i < componentsToIndex.length; i++) {
-            const component = componentsToIndex[i];
-            
+        for (const component of componentsToIndex) {
             try {
-                // Generate embedding for the component
+                // Generate embedding for the single component
                 const vectorDocument = createComponentVectorDocument(component);
                 const embedding = await ai.embed({
                     embedder: textEmbedding004,
                     content: vectorDocument,
                 });
 
-                // Add the update to the batch
+                // Add the update to the current batch
                 const docRef = doc(db, 'masterComponents', component.id);
                 batch.update(docRef, { embedding: embedding });
                 indexedCount++;
-                batchItemCount++;
-            } catch (e: any) {
-                console.error(`Skipping component ${component.id} due to embedding error:`, e.message);
-                // If a single component fails, we log it and continue with the rest of the batch.
-            }
-
-
-            // Commit the batch every batchSize components or on the last component
-            if (batchItemCount > 0 && ((i + 1) % batchSize === 0 || i === componentsToIndex.length - 1)) {
-                await batch.commit();
-                // After committing, create a new batch for the next set of operations.
-                if (i < componentsToIndex.length - 1) {
-                  batch = writeBatch(db);
-                  batchItemCount = 0;
+                currentBatchSize++;
+                
+                // If the batch is full, commit it and start a new one.
+                if (currentBatchSize === batchSize) {
+                    await batch.commit();
+                    batch = writeBatch(db); // Start a new batch
+                    currentBatchSize = 0;
                 }
+            } catch (e: any) {
+                console.error(`Skipping component ${component.id} due to an embedding or write error:`, e.message);
+                // If a single component fails, log it and continue with the rest.
             }
         }
+
+        // Commit any remaining operations in the last batch.
+        if (currentBatchSize > 0) {
+            await batch.commit();
+        }
+
     } catch (e: any) {
          if (e.message?.includes('permission-denied') || e.code === 7 || e.code === 'PERMISSION_DENIED') {
             throw new Error("PERMISSION_DENIED: The AI service rejected the request. Ensure the Vertex AI API is enabled and your API key has the correct permissions.");
