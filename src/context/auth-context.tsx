@@ -154,7 +154,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
      try {
-      await signUpWithEmailPassword(auth, email, password);
+      await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
       handleAuthError(error, 'Sign Up Failed');
     }
@@ -256,7 +256,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {children}
-    </Auth-Context.Provider>
+    </AuthContext.Provider>
   );
 };
 
