@@ -29,8 +29,8 @@ async function fetchAllMasterComponentsClient(): Promise<MasterComponent[]> {
 
 const isValidEmbedding = (embedding: any): embedding is number[] => {
     // This is a more robust check. Firestore can sometimes return proxy objects.
-    // We check if it's an array, has a length, and contains numbers.
-    return embedding && Array.isArray(embedding) && embedding.length > 0 && typeof embedding[0] === 'number';
+    // We check if it has a length property and that the first element is a number.
+    return embedding && typeof embedding.length === 'number' && embedding.length > 0 && typeof embedding[0] === 'number';
 }
 
 
