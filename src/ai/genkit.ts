@@ -1,10 +1,14 @@
 import {genkit} from 'genkit';
-import {googleAI, textEmbedding004} from '@genkit-ai/googleai';
+import {googleAI} from '@genkit-ai/googleai';
+
+// This is a placeholder key. You will need to replace it with a valid key
+// from the Google Cloud Console that has the "Vertex AI API" enabled.
+const GEMINI_API_KEY = "REPLACE_WITH_YOUR_VERTEX_AI_ENABLED_API_KEY";
 
 export const ai = genkit({
-  plugins: [
-    googleAI(),
-  ],
+  plugins: [googleAI({
+    apiKey: GEMINI_API_KEY
+  })],
   model: 'googleai/gemini-pro',
   embedder: 'googleai/text-embedding-004',
 });
