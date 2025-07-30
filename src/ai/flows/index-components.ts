@@ -30,6 +30,10 @@ const createComponentVectorDocument = (component: MasterComponent): string => {
   return fields.join(', ');
 };
 
+const isValidEmbedding = (embedding: any): embedding is number[] => {
+    return Array.isArray(embedding) && embedding.length > 0 && typeof embedding[0] === 'number';
+}
+
 /**
  * A Genkit flow that takes all master components, generates vector embeddings for those
  * that need it, and saves them back to Firestore.
@@ -56,8 +60,8 @@ export const indexAllComponentsFlow = ai.defineFlow(
         throw new Error(`Firestore read failed: ${e.message}`);
     }
     
-    // 2. Filter for components that need indexing.
-    const componentsToIndex = allComponents.filter(c => !c.embedding || !Array.isArray(c.embedding) || c.embedding.length === 0);
+    // 2. Filter for components that need indexing with more robust check.
+    const componentsToIndex = allComponents.filter(c => !isValidEmbedding(c.embedding));
     
     if (componentsToIndex.length === 0) {
         return { message: "All components are already indexed.", indexedCount: 0 };
@@ -106,6 +110,9 @@ export const indexAllComponentsFlow = ai.defineFlow(
     } catch (e: any) {
          if (e.message?.includes('permission-denied') || e.code === 7 || e.code === 'PERMISSION_DENIED') {
             throw new Error("PERMISSION_DENIED: The AI service rejected the request. Ensure the Vertex AI API is enabled and your API key has the correct permissions.");
+        }
+        if (e.message?.includes('batch can no longer be used')) {
+            throw new Error("A write batch was incorrectly used after being committed. Please try again.");
         }
         throw new Error(`Embedding or Firestore write failed: ${e.message}`);
     }
