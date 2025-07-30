@@ -8,7 +8,7 @@
  */
 import { ai } from '@/ai/genkit';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch, setDoc, updateDoc } from 'firebase/firestore';
 import { z } from 'zod';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 import type { MasterComponent } from '@/lib/types';
@@ -98,3 +98,4 @@ export const indexComponentFlow = ai.defineFlow(
     }
   }
 );
+
