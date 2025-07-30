@@ -69,28 +69,37 @@ export const indexAllComponentsFlow = ai.defineFlow(
     
     try {
         let batch = writeBatch(db);
+        let batchItemCount = 0;
 
         for (let i = 0; i < componentsToIndex.length; i++) {
             const component = componentsToIndex[i];
             
-            // Generate embedding for the component
-            const vectorDocument = createComponentVectorDocument(component);
-            const embedding = await ai.embed({
-                embedder: textEmbedding004,
-                content: vectorDocument,
-            });
+            try {
+                // Generate embedding for the component
+                const vectorDocument = createComponentVectorDocument(component);
+                const embedding = await ai.embed({
+                    embedder: textEmbedding004,
+                    content: vectorDocument,
+                });
 
-            // Add the update to the batch
-            const docRef = doc(db, 'masterComponents', component.id);
-            batch.update(docRef, { embedding: embedding });
-            indexedCount++;
+                // Add the update to the batch
+                const docRef = doc(db, 'masterComponents', component.id);
+                batch.update(docRef, { embedding: embedding });
+                indexedCount++;
+                batchItemCount++;
+            } catch (e: any) {
+                console.error(`Skipping component ${component.id} due to embedding error:`, e.message);
+                // If a single component fails, we log it and continue with the rest of the batch.
+            }
+
 
             // Commit the batch every batchSize components or on the last component
-            if ((i + 1) % batchSize === 0 || i === componentsToIndex.length - 1) {
+            if (batchItemCount > 0 && ((i + 1) % batchSize === 0 || i === componentsToIndex.length - 1)) {
                 await batch.commit();
                 // After committing, create a new batch for the next set of operations.
                 if (i < componentsToIndex.length - 1) {
                   batch = writeBatch(db);
+                  batchItemCount = 0;
                 }
             }
         }
