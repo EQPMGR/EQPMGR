@@ -35,6 +35,13 @@ export interface Component extends MasterComponent, Omit<UserComponent, 'id' | '
   userComponentId: string;
 }
 
+// Represents a component that has been replaced.
+export interface ArchivedComponent extends Component {
+    replacedOn: Date;
+    finalMileage: number;
+    replacementReason: 'failure' | 'modification' | 'upgrade';
+}
+
 
 export interface MaintenanceLog {
   id: string;
@@ -68,4 +75,5 @@ export interface Equipment {
   imageUrl: string;
   components: Component[]; // This will be populated at runtime, not stored in Firestore
   maintenanceLog: MaintenanceLog[];
+  archivedComponents?: ArchivedComponent[];
 }

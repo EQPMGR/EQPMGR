@@ -42,6 +42,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 
 const formSchema = z.object({
@@ -51,13 +52,16 @@ const formSchema = z.object({
   size: z.string().optional(),
   series: z.string().optional(),
   model: z.string().optional(),
+  replacementReason: z.enum(['failure', 'modification', 'upgrade'], {
+    required_error: "Please select a reason for replacement."
+  }),
   // Fields for manual entry
   manualBrand: z.string(),
   manualSeries: z.string(),
   manualModel: z.string(),
   manualSize: z.string(),
 }).superRefine((data, ctx) => {
-    if (!data.selectedComponentId && !data.manualBrand) {
+    if (!data.model && !data.manualBrand) {
         // This validation is a bit tricky since it's conditional.
         // We'll rely on button disabled state primarily.
     }
@@ -99,7 +103,7 @@ export function ReplaceComponentDialog({
     }
   });
   
-  const { brand, size, series, model: selectedModel, manualBrand } = form.watch();
+  const { brand, size, series, model: selectedModel, manualBrand, replacementReason } = form.watch();
 
   useEffect(() => {
     if (open) {
@@ -123,7 +127,7 @@ export function ReplaceComponentDialog({
   }, [open, toast]);
 
   // Memoized lists for dropdowns
-  const brands = useMemo(() => componentOptions.map(c => c.brand).filter((v, i, a) => a.indexOf(v) === i).sort(), [componentOptions]);
+  const brands = useMemo(() => componentOptions.map(c => c.brand).filter((v, i, a) => v && a.indexOf(v) === i).sort(), [componentOptions]);
   const speeds = useMemo(() => componentOptions.map(c => c.size).filter((v, i, a) => v && a.indexOf(v) === i).sort(), [componentOptions]);
   
   const filteredSeries = useMemo(() => {
@@ -151,7 +155,7 @@ export function ReplaceComponentDialog({
     }
   };
 
-  const onSubmit = async (data: Partial<FormValues>) => {
+  const onSubmit = async (data: FormValues) => {
     if (!userId) {
       toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
       return;
@@ -186,7 +190,8 @@ export function ReplaceComponentDialog({
           equipmentId,
           userComponentIdToReplace: componentToReplace.userComponentId,
           masterComponentId,
-          newComponentData
+          newComponentData,
+          replacementReason: data.replacementReason,
       });
       toast({ title: 'Component Replaced!', description: `Your ${componentToReplace.name} has been updated.` });
       onSuccess();
@@ -223,10 +228,41 @@ export function ReplaceComponentDialog({
                     <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('model', ''); }} value={field.value} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                     <FormField control={form.control} name="model" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="replacementReason"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Reason for Replacement</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex items-center space-x-4"
+                        >
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl><RadioGroupItem value="failure" /></FormControl>
+                            <FormLabel className="font-normal">Failure</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl><RadioGroupItem value="modification" /></FormControl>
+                            <FormLabel className="font-normal">Modification</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl><RadioGroupItem value="upgrade" /></FormControl>
+                            <FormLabel className="font-normal">Upgrade</FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
-                <Button type="submit" disabled={isSaving || !selectedModel} className="w-full">
+                <Button type="submit" disabled={isSaving || !selectedModel || !replacementReason} className="w-full">
                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Replace Component
+                    Replace from Database
                 </Button>
 
                 <Accordion type="single" collapsible className="w-full">
@@ -239,7 +275,7 @@ export function ReplaceComponentDialog({
                                 <FormField control={form.control} name="manualSeries" render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Tiagra" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="manualModel" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., CS-HG500-10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                            </div>
-                           <Button type="submit" disabled={isSaving || !manualBrand} className="w-full">
+                           <Button type="submit" disabled={isSaving || !manualBrand || !replacementReason} className="w-full">
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                                 Save and Replace Manually
                            </Button>

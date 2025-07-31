@@ -1,9 +1,9 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, updateDoc, collection, addDoc, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, updateDoc, collection, addDoc, query, where, getDocs, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { UserComponent, MasterComponent } from '@/lib/types';
+import type { UserComponent, MasterComponent, Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 
 // Helper to create a slug from a component's details
@@ -26,15 +26,17 @@ export async function replaceUserComponentAction({
     equipmentId,
     userComponentIdToReplace,
     masterComponentId,
-    newComponentData
+    newComponentData,
+    replacementReason,
 }: {
     userId: string;
     equipmentId: string;
     userComponentIdToReplace: string;
     masterComponentId: string | null; // ID of existing master component
     newComponentData: Omit<MasterComponent, 'id'> | null; // Data for a new master component
+    replacementReason: 'failure' | 'modification' | 'upgrade';
 }) {
-    if (!userId || !equipmentId || !userComponentIdToReplace) {
+    if (!userId || !equipmentId || !userComponentIdToReplace || !replacementReason) {
         throw new Error("Missing required parameters for component replacement.");
     }
     
@@ -43,9 +45,10 @@ export async function replaceUserComponentAction({
     }
 
     const batch = writeBatch(db);
-    let finalMasterComponentId = masterComponentId;
+    const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
 
     // 1. If newComponentData is provided, create a new master component
+    let finalMasterComponentId = masterComponentId;
     if (newComponentData) {
         const generatedId = createComponentId(newComponentData);
         if (!generatedId) {
@@ -60,18 +63,49 @@ export async function replaceUserComponentAction({
         throw new Error("Could not determine master component ID.");
     }
 
+    // 2. Get the current equipment data to perform the swap
+    const equipmentSnap = await getDoc(equipmentDocRef);
+    if (!equipmentSnap.exists()) {
+        throw new Error("Equipment document not found.");
+    }
+    const equipment = equipmentSnap.data() as Equipment;
+    const components = equipment.components || [];
+    const archivedComponents = equipment.archivedComponents || [];
 
-    // 2. Update the user's component document in the subcollection
-    const userComponentDocRef = doc(db, 'users', userId, 'equipment', equipmentId, 'components', userComponentIdToReplace);
-    
-    batch.update(userComponentDocRef, {
+    const componentIndexToReplace = components.findIndex(c => c.userComponentId === userComponentIdToReplace);
+    if (componentIndexToReplace === -1) {
+        throw new Error("Component to replace not found in the equipment's component list.");
+    }
+
+    // 3. Archive the old component with added metadata
+    const oldComponent = components[componentIndexToReplace];
+    const archivedComponent = {
+        ...oldComponent,
+        replacedOn: new Date(),
+        finalMileage: equipment.totalDistance,
+        replacementReason: replacementReason
+    };
+    archivedComponents.push(archivedComponent);
+
+    // 4. Create the new component to take its place
+    const newComponent: Component = {
+        ...(await getDoc(doc(db, 'masterComponents', finalMasterComponentId))).data() as MasterComponent,
+        userComponentId: userComponentIdToReplace, // Reuse the same userComponentId to maintain its position/identity in the UI logic if needed
         masterComponentId: finalMasterComponentId,
         wearPercentage: 0,
         purchaseDate: new Date(),
         lastServiceDate: null,
-        notes: `Replaced on ${new Date().toLocaleDateString()}`,
-    });
+    };
+    
+    // 5. Update the main components array
+    components[componentIndexToReplace] = newComponent;
 
+    // 6. Update the equipment document in the batch
+    batch.update(equipmentDocRef, {
+        components: components,
+        archivedComponents: archivedComponents,
+    });
+    
     await batch.commit();
 
     return { success: true, newMasterComponentId: finalMasterComponentId };
