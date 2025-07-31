@@ -110,6 +110,7 @@ export function ReplaceComponentDialog({
       async function loadComponents() {
         setIsLoading(true);
         try {
+          // Temporarily fetching all cassettes for the demo
           const options = await fetchMasterComponentsByType('Cassette');
           setComponentOptions(options);
         } catch (error: any) {
@@ -170,7 +171,7 @@ export function ReplaceComponentDialog({
         newComponentData = null; // We are using an existing component
     } else if (data.manualBrand) {
         newComponentData = {
-            name: 'Cassette', // Hardcoded for now
+            name: componentToReplace.name,
             brand: data.manualBrand,
             series: data.manualSeries,
             model: data.manualModel,
@@ -216,7 +217,7 @@ export function ReplaceComponentDialog({
         <DialogHeader>
           <DialogTitle>Replace: {componentToReplace.name}</DialogTitle>
           <DialogDescription>
-            Select the new Cassette from the list or add it manually.
+            Select the new replacement part from the list or add it manually.
           </DialogDescription>
         </DialogHeader>
 
@@ -260,10 +261,12 @@ export function ReplaceComponentDialog({
                   )}
                 />
                 
-                <Button type="submit" disabled={isSaving || !selectedModel || !replacementReason} className="w-full">
-                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Replace from Database
-                </Button>
+                 <DialogFooter>
+                    <Button type="submit" disabled={isSaving || !selectedModel || !replacementReason} className="w-full">
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Replace from Database
+                    </Button>
+                </DialogFooter>
 
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="manual-add">
