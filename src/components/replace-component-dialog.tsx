@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useState } from 'react';
-import { Bot, Loader2, Replace } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Loader2, Replace, ChevronsUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getUrlTextContent } from '@/app/(app)/admin/import-url/actions';
-import { extractComponentDetails } from '@/ai/flows/extract-component-details';
-import type { ExtractComponentDetailsOutput } from '@/ai/flows/extract-component-details';
 import { replaceUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
+import { fetchMasterComponentsByType, type MasterComponentWithOptions } from '@/services/components';
 import type { Component } from '@/lib/types';
 import {
   Dialog,
@@ -21,8 +22,49 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Separator } from './ui/separator';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+
+
+const formSchema = z.object({
+  // Fields for dropdown selection
+  selectedComponentId: z.string().optional(),
+  brand: z.string().optional(),
+  size: z.string().optional(),
+  series: z.string().optional(),
+  model: z.string().optional(),
+  // Fields for manual entry
+  manualBrand: z.string(),
+  manualSeries: z.string(),
+  manualModel: z.string(),
+  manualSize: z.string(),
+}).superRefine((data, ctx) => {
+    if (!data.selectedComponentId && !data.manualBrand) {
+        // This validation is a bit tricky since it's conditional.
+        // We'll rely on button disabled state primarily.
+    }
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface ReplaceComponentDialogProps {
   userId?: string;
@@ -38,89 +80,128 @@ export function ReplaceComponentDialog({
   onSuccess,
 }: ReplaceComponentDialogProps) {
   const [open, setOpen] = useState(false);
-  const [url, setUrl] = useState('');
-  const [textContent, setTextContent] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [extractedData, setExtractedData] = useState<ExtractComponentDetailsOutput | null>(null);
-  const [isReplacing, setIsReplacing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [componentOptions, setComponentOptions] = useState<MasterComponentWithOptions[]>([]);
   const { toast } = useToast();
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      selectedComponentId: '',
+      brand: '',
+      size: '',
+      series: '',
+      model: '',
+      manualBrand: '',
+      manualSeries: '',
+      manualModel: '',
+      manualSize: '',
+    }
+  });
+  
+  const { brand, size, series } = form.watch();
+
+  useEffect(() => {
+    if (open) {
+      async function loadComponents() {
+        setIsLoading(true);
+        try {
+          // For now, we only support replacing cassettes.
+          const options = await fetchMasterComponentsByType('Cassette');
+          setComponentOptions(options);
+        } catch (error) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Could not load components.' });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      loadComponents();
+    }
+  }, [open, toast]);
+
+  // Memoized lists for dropdowns
+  const brands = useMemo(() => componentOptions.map(c => c.brand).filter((v, i, a) => a.indexOf(v) === i).sort(), [componentOptions]);
+  const speeds = useMemo(() => componentOptions.map(c => c.size).filter((v, i, a) => v && a.indexOf(v) === i).sort(), [componentOptions]);
+  
+  const filteredSeries = useMemo(() => {
+      let filtered = componentOptions;
+      if (brand) filtered = filtered.filter(c => c.brand === brand);
+      if (size) filtered = filtered.filter(c => c.size === size);
+      return filtered.map(c => c.series).filter((v, i, a) => v && a.indexOf(v) === i).sort();
+  }, [componentOptions, brand, size]);
+
+  const filteredModels = useMemo(() => {
+      let filtered = componentOptions;
+      if (brand) filtered = filtered.filter(c => c.brand === brand);
+      if (size) filtered = filtered.filter(c => c.size === size);
+      if (series) filtered = filtered.filter(c => c.series === series);
+      return filtered.filter(c => c.model).sort((a,b) => a.model!.localeCompare(b.model!));
+  }, [componentOptions, brand, size, series]);
+
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      // Reset state on close
-      setUrl('');
-      setTextContent('');
-      setIsLoading(false);
-      setIsReplacing(false);
-      setExtractedData(null);
+      form.reset();
+      setIsSaving(false);
+      setIsLoading(true);
     }
   };
 
-  const handleExtract = async () => {
-    setIsLoading(true);
-    setExtractedData(null);
+  const handleSelectAndFinalize = (componentId: string) => {
+      form.setValue('selectedComponentId', componentId);
+      // We can directly call the submission logic here
+      onSubmit({ selectedComponentId: componentId });
+  }
 
-    try {
-      let contentToProcess = '';
-      if (textContent.trim()) {
-        contentToProcess = textContent.trim();
-      } else if (url.trim()) {
-        contentToProcess = await getUrlTextContent(url.trim());
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Input required',
-          description: 'Please provide a URL or paste text content.',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (!contentToProcess) {
-        toast({
-          variant: 'destructive',
-          title: 'No Content',
-          description: 'Could not retrieve any text from the provided source. Try pasting text.',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const result = await extractComponentDetails({ textContent: contentToProcess, originalSystem: componentToReplace.system });
-      setExtractedData(result);
-      toast({ title: 'Extraction Successful!' });
-    } catch (error: any) {
-      console.error('Extraction failed:', error);
-      toast({ variant: 'destructive', title: 'Extraction Failed', description: error.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleConfirmReplacement = async () => {
-    if (!userId || !extractedData) {
-      toast({ variant: 'destructive', title: 'Error', description: 'User or component data is missing.' });
+  const onSubmit = async (data: Partial<FormValues>) => {
+    if (!userId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
       return;
     }
-    setIsReplacing(true);
+    setIsSaving(true);
+    
+    let newComponentData;
+    let masterComponentId;
+
+    if (data.selectedComponentId) {
+        masterComponentId = data.selectedComponentId;
+        newComponentData = null; // We are using an existing component
+    } else if (data.manualBrand) {
+        newComponentData = {
+            name: 'Cassette', // Hardcoded for now
+            brand: data.manualBrand,
+            series: data.manualSeries,
+            model: data.manualModel,
+            size: data.manualSize,
+            system: componentToReplace.system, // Keep original system
+        };
+        masterComponentId = null; // A new one will be created
+    } else {
+        toast({variant: 'destructive', title: 'Error', description: 'No component selected or entered.'});
+        setIsSaving(false);
+        return;
+    }
+
     try {
       await replaceUserComponentAction({
           userId,
           equipmentId,
           userComponentIdToReplace: componentToReplace.userComponentId,
-          newComponentData: extractedData
+          masterComponentId,
+          newComponentData
       });
-      toast({ title: 'Component Replaced!', description: `${componentToReplace.name} has been replaced with ${extractedData.name}.` });
-      onSuccess(); // Callback to re-fetch data on the parent page
+      toast({ title: 'Component Replaced!', description: `Your ${componentToReplace.name} has been updated.` });
+      onSuccess();
       handleOpenChange(false);
     } catch (error: any) {
        console.error('Replacement failed:', error);
        toast({ variant: 'destructive', title: 'Replacement Failed', description: error.message });
     } finally {
-        setIsReplacing(false);
+        setIsSaving(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -130,74 +211,42 @@ export function ReplaceComponentDialog({
           Replace Part
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Replace: {componentToReplace.name}</DialogTitle>
           <DialogDescription>
-            Use AI to extract info for the new component from a URL or text.
+            Select the new Cassette from the list or add it manually.
           </DialogDescription>
         </DialogHeader>
 
-        {!extractedData ? (
-            <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-                <div className="space-y-2">
-                    <Label htmlFor="url">New Component URL</Label>
-                    <Input
-                        id="url"
-                        placeholder="https://www.some-store.com/parts/new-part"
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                        disabled={isLoading}
-                    />
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="size" render={({ field }) => ( <FormItem><FormLabel>Speeds</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Speeds" /></SelectTrigger></FormControl><SelectContent>{speeds.map(s => <SelectItem key={s!} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('model', ''); }} value={field.value} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map(s => <SelectItem key={s!} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="model" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={(value) => handleSelectAndFinalize(value)} value={field.value} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model to Replace" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                    <Separator className="flex-1" />
-                    <span className="text-xs text-muted-foreground">OR</span>
-                    <Separator className="flex-1" />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="text-content">Paste Raw Text</Label>
-                    <Textarea
-                        id="text-content"
-                        placeholder="Paste the component's specs here..."
-                        value={textContent}
-                        onChange={(e) => setTextContent(e.target.value)}
-                        disabled={isLoading}
-                        rows={6}
-                    />
-                </div>
-            </div>
-        ) : (
-            <div className="space-y-2 py-4">
-                <h4 className="font-semibold">Confirm Extracted Data</h4>
-                <div className="p-3 border rounded-md bg-muted/50">
-                    <pre className="whitespace-pre-wrap font-mono text-xs max-h-60 overflow-auto">{JSON.stringify(extractedData, null, 2)}</pre>
-                </div>
-                 <p className="text-sm text-muted-foreground pt-2">Does this look correct? If so, confirm to finalize the replacement.</p>
-            </div>
-        )}
-        
-
-        <DialogFooter>
-          {!extractedData ? (
-             <Button onClick={handleExtract} disabled={isLoading} className="w-full">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
-                <span className="ml-2">Extract Details</span>
-            </Button>
-          ) : (
-            <>
-                <Button variant="outline" onClick={() => setExtractedData(null)} disabled={isReplacing}>
-                    Back
-                </Button>
-                <Button onClick={handleConfirmReplacement} disabled={isReplacing}>
-                    {isReplacing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Confirm Replacement
-                </Button>
-            </>
-          )}
-        </DialogFooter>
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="manual-add">
+                        <AccordionTrigger>Can't find your part? Add it manually.</AccordionTrigger>
+                        <AccordionContent className="space-y-4 pt-4">
+                           <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="manualBrand" render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="manualSize" render={({ field }) => (<FormItem><FormLabel>Speeds</FormLabel><FormControl><Input placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="manualSeries" render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Tiagra" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="manualModel" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., CS-HG500-10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                           </div>
+                           <Button type="submit" disabled={isSaving || !form.watch('manualBrand')} className="w-full">
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                Save and Replace Manually
+                           </Button>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

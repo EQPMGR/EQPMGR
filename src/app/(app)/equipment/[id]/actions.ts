@@ -7,7 +7,7 @@ import type { UserComponent, MasterComponent } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 
 // Helper to create a slug from a component's details
-const createComponentId = (component: Omit<MasterComponent, 'id'>) => {
+const createComponentId = (component: Partial<Omit<MasterComponent, 'id'>>) => {
     const idString = [component.brand, component.name, component.model, component.size]
         .filter(Boolean)
         .join('-');
@@ -25,32 +25,47 @@ export async function replaceUserComponentAction({
     userId,
     equipmentId,
     userComponentIdToReplace,
+    masterComponentId,
     newComponentData
 }: {
     userId: string;
     equipmentId: string;
     userComponentIdToReplace: string;
-    newComponentData: Omit<MasterComponent, 'id'>;
+    masterComponentId: string | null; // ID of existing master component
+    newComponentData: Omit<MasterComponent, 'id'> | null; // Data for a new master component
 }) {
-    if (!userId || !equipmentId || !userComponentIdToReplace || !newComponentData) {
+    if (!userId || !equipmentId || !userComponentIdToReplace) {
         throw new Error("Missing required parameters for component replacement.");
     }
     
-    const batch = writeBatch(db);
-
-    // 1. Create or get the new master component
-    const newMasterComponentId = createComponentId(newComponentData);
-    if (!newMasterComponentId) {
-        throw new Error("Could not generate a valid ID for the new component.");
+    if (!masterComponentId && !newComponentData) {
+        throw new Error("Must provide either an existing component ID or data for a new one.");
     }
-    const newMasterComponentRef = doc(db, 'masterComponents', newMasterComponentId);
-    batch.set(newMasterComponentRef, newComponentData, { merge: true });
+
+    const batch = writeBatch(db);
+    let finalMasterComponentId = masterComponentId;
+
+    // 1. If newComponentData is provided, create a new master component
+    if (newComponentData) {
+        const generatedId = createComponentId(newComponentData);
+        if (!generatedId) {
+            throw new Error("Could not generate a valid ID for the new component.");
+        }
+        finalMasterComponentId = generatedId;
+        const newMasterComponentRef = doc(db, 'masterComponents', finalMasterComponentId);
+        batch.set(newMasterComponentRef, newComponentData, { merge: true });
+    }
+    
+    if (!finalMasterComponentId) {
+        throw new Error("Could not determine master component ID.");
+    }
+
 
     // 2. Update the user's component document in the subcollection
     const userComponentDocRef = doc(db, 'users', userId, 'equipment', equipmentId, 'components', userComponentIdToReplace);
     
     batch.update(userComponentDocRef, {
-        masterComponentId: newMasterComponentId,
+        masterComponentId: finalMasterComponentId,
         wearPercentage: 0,
         purchaseDate: new Date(),
         lastServiceDate: null,
@@ -59,7 +74,7 @@ export async function replaceUserComponentAction({
 
     await batch.commit();
 
-    return { success: true, newMasterComponentId };
+    return { success: true, newMasterComponentId: finalMasterComponentId };
 }
 
 
