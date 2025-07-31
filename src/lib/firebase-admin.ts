@@ -1,23 +1,39 @@
 
 import * as admin from 'firebase-admin';
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  : null;
+// Re-structure to provide clearer error handling and logging.
+let adminApp: admin.app.App;
 
 if (!admin.apps.length) {
-  if (serviceAccount) {
-    admin.initializeApp({
+  try {
+    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!serviceAccountString) {
+      throw new Error(
+        'FIREBASE_SERVICE_ACCOUNT environment variable is not set. This is required for the Admin SDK to authenticate.'
+      );
+    }
+
+    const serviceAccount = JSON.parse(serviceAccountString);
+    
+    adminApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
-  } else {
-    // Initialize without credentials in environments where they are automatically provided
-    // (like some Google Cloud environments).
-    console.warn("Initializing Firebase Admin SDK without explicit credentials. This is expected in some environments, but may fail otherwise.");
-    admin.initializeApp();
+    console.log("Firebase Admin SDK initialized successfully with service account.");
+
+  } catch (error: any) {
+    console.error("Firebase Admin SDK initialization failed:", error.message);
+    console.error("Please ensure that the FIREBASE_SERVICE_ACCOUNT environment variable is a valid JSON string and the service account has the necessary permissions in your Google Cloud project.");
+    // In case of failure, we still need to export the objects, but they will not be functional.
+    // The app will throw errors when trying to use them, which is the expected behavior.
+    if (!admin.apps.length) {
+        admin.initializeApp();
+    }
+    adminApp = admin.apps[0]!;
   }
+} else {
+  adminApp = admin.apps[0]!;
 }
 
-export const adminApp = admin.apps[0]!;
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
+export const adminAuth = admin.auth(adminApp);
+export const adminDb = admin.firestore(adminApp);
+export { adminApp };
