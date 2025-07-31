@@ -37,7 +37,7 @@ const db = getFirestore(app);
 
 // Initialize Performance and Analytics only on the client side and if keys are present
 if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
-  getPerformance(app);
+  // getPerformance(app); // Disabled to prevent client-side errors with long class names
   isSupported().then(supported => {
     if (supported) {
       getAnalytics(app);

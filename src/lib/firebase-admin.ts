@@ -1,5 +1,6 @@
 
 import * as admin from 'firebase-admin';
+import 'dotenv/config'; // Directly load environment variables here.
 
 // Re-structure to provide clearer error handling and logging.
 let adminApp: admin.app.App;
