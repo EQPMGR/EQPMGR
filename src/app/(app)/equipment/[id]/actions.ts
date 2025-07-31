@@ -2,7 +2,8 @@
 'use server';
 
 import { doc, getDoc, writeBatch, updateDoc, collection, addDoc, query, where, getDocs, deleteDoc, arrayUnion } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin'; // Use Admin SDK
+import { db } from '@/lib/firebase'; // Keep for client-side types if needed, but actions use admin
 import type { UserComponent, MasterComponent, Equipment, ArchivedComponent } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 
@@ -44,10 +45,10 @@ export async function replaceUserComponentAction({
         throw new Error("Must provide either an existing component ID or data for a new one.");
     }
 
-    const batch = writeBatch(db);
-    const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
-    const componentsCollectionRef = collection(db, 'users', userId, 'equipment', equipmentId, 'components');
-    const componentToReplaceRef = doc(componentsCollectionRef, userComponentIdToReplace);
+    const batch = adminDb.batch(); // Use admin batch
+    const equipmentDocRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
+    const componentsCollectionRef = adminDb.collection(`users/${userId}/equipment/${equipmentId}/components`);
+    const componentToReplaceRef = componentsCollectionRef.doc(userComponentIdToReplace);
 
     try {
         // 1. If newComponentData is provided, create a new master component
@@ -58,7 +59,7 @@ export async function replaceUserComponentAction({
                 throw new Error("Could not generate a valid ID for the new component.");
             }
             finalMasterComponentId = generatedId;
-            const newMasterComponentRef = doc(db, 'masterComponents', finalMasterComponentId);
+            const newMasterComponentRef = adminDb.doc(`masterComponents/${finalMasterComponentId}`);
             batch.set(newMasterComponentRef, newComponentData, { merge: true });
         }
         
@@ -67,41 +68,44 @@ export async function replaceUserComponentAction({
         }
 
         // 2. Get the component to be replaced and the equipment data
-        const [equipmentSnap, componentToReplaceSnap, newMasterComponentSnap] = await Promise.all([
-            getDoc(equipmentDocRef),
-            getDoc(componentToReplaceRef),
-            getDoc(doc(db, 'masterComponents', finalMasterComponentId))
+        const [equipmentSnap, componentToReplaceSnap] = await Promise.all([
+            equipmentDocRef.get(),
+            componentToReplaceRef.get(),
         ]);
         
-        if (!equipmentSnap.exists()) throw new Error("Equipment document not found.");
-        if (!componentToReplaceSnap.exists()) throw new Error("Component to replace not found.");
-        if (!newMasterComponentSnap.exists()) throw new Error("New master component not found.");
+        if (!equipmentSnap.exists) throw new Error("Equipment document not found.");
+        if (!componentToReplaceSnap.exists) throw new Error("Component to replace not found.");
+        
+        const newMasterComponentSnap = await adminDb.doc(`masterComponents/${finalMasterComponentId}`).get();
+        if (!newMasterComponentSnap.exists) throw new Error("New master component not found.");
 
         const equipment = equipmentSnap.data() as Equipment;
         const userComponentToReplace = componentToReplaceSnap.data() as UserComponent;
-        const masterComponentToReplaceSnap = await getDoc(doc(db, 'masterComponents', userComponentToReplace.masterComponentId));
-        if (!masterComponentToReplaceSnap.exists()) throw new Error("Old master component not found.");
+        
+        const masterComponentToReplaceSnap = await adminDb.doc(`masterComponents/${userComponentToReplace.masterComponentId}`).get();
+        if (!masterComponentToReplaceSnap.exists) throw new Error("Old master component not found.");
 
 
         // 3. Archive the old component with added metadata
         const archivedComponent: ArchivedComponent = {
-            ...masterComponentToReplaceSnap.data() as MasterComponent,
+            ...(masterComponentToReplaceSnap.data() as MasterComponent),
             ...userComponentToReplace,
+            id: masterComponentToReplaceSnap.id, // Use master component ID for archived data
             userComponentId: userComponentToReplace.id,
             replacedOn: new Date(),
             finalMileage: equipment.totalDistance || 0,
             replacementReason: replacementReason,
             purchaseDate: toDate(userComponentToReplace.purchaseDate),
-            lastServiceDate: null,
+            lastServiceDate: null, // This is now an archived component
         };
 
-        // Add to archivedComponents array on main equipment doc
+        // Add to archivedComponents array on main equipment doc using Admin SDK's arrayUnion
         batch.update(equipmentDocRef, {
-            archivedComponents: arrayUnion(archivedComponent)
+            archivedComponents: admin.firestore.FieldValue.arrayUnion(archivedComponent)
         });
 
         // 4. Create the new component to take its place
-        const newUserComponentRef = doc(componentsCollectionRef); // Create a new doc for the new component
+        const newUserComponentRef = componentsCollectionRef.doc(); // Create a new doc for the new component
         const newUserComponent: UserComponent = {
             id: newUserComponentRef.id,
             masterComponentId: finalMasterComponentId,
@@ -121,7 +125,7 @@ export async function replaceUserComponentAction({
     
     } catch (error) {
         console.error("Error in replaceUserComponentAction: ", error);
-        throw error;
+        throw error; // Re-throw to be caught by the client
     }
 }
 
@@ -145,12 +149,13 @@ export async function updateSubComponentsAction({
     throw new Error('Missing required parameters to update sub-components.');
   }
 
-  const batch = writeBatch(db);
-  const componentsCollectionRef = collection(db, 'users', userId, 'equipment', equipmentId, 'components');
+  const batch = adminDb.batch();
+  const componentsCollectionRef = adminDb.collection(`users/${userId}/equipment/${equipmentId}/components`);
 
   // 1. Find and delete all existing sub-components for this parent
-  const q = query(componentsCollectionRef, where('parentUserComponentId', '==', parentUserComponentId));
-  const existingSubDocs = await getDocs(q);
+  const q = componentsCollectionRef.where('parentUserComponentId', '==', parentUserComponentId);
+  const existingSubDocs = await q.get();
+
   existingSubDocs.forEach(doc => {
     batch.delete(doc.ref);
   });
@@ -162,7 +167,7 @@ export async function updateSubComponentsAction({
     // 2a. Create master component
     const masterCompId = createComponentId(subCompData as Omit<MasterComponent, 'id'>);
     if (masterCompId) {
-      const masterCompRef = doc(db, 'masterComponents', masterCompId);
+      const masterCompRef = adminDb.doc(`masterComponents/${masterCompId}`);
       batch.set(masterCompRef, {
         name: subCompData.name,
         brand: subCompData.brand,
@@ -171,7 +176,7 @@ export async function updateSubComponentsAction({
       }, { merge: true });
 
       // 2b. Create new user component document in the subcollection
-      const newUserCompRef = doc(componentsCollectionRef);
+      const newUserCompRef = componentsCollectionRef.doc();
       const newUserComp: UserComponent = {
         id: newUserCompRef.id,
         masterComponentId: masterCompId,
