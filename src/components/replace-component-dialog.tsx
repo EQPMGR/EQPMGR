@@ -159,26 +159,28 @@ export function ReplaceComponentDialog({
     }
     setIsSaving(true);
     
-    let newComponentData: Omit<MasterComponent, 'id'> | null = null;
+    let newComponent: { brand?: string; series?: string; model?: string; size?: string; } | null = null;
     
     if (data.model) {
         const selectedComp = componentOptions.find(c => c.id === data.model);
         if(selectedComp) {
-            const { id, embedding, ...rest } = selectedComp;
-            newComponentData = rest;
+            newComponent = {
+                brand: selectedComp.brand,
+                series: selectedComp.series,
+                model: selectedComp.model,
+                size: selectedComp.size,
+            };
         }
     } else if (data.manualBrand) {
-        newComponentData = {
-            name: componentToReplace.name,
+        newComponent = {
             brand: data.manualBrand,
             series: data.manualSeries,
             model: data.manualModel,
             size: data.manualSize,
-            system: componentToReplace.system,
         };
     }
 
-    if (!newComponentData) {
+    if (!newComponent) {
         toast({variant: 'destructive', title: 'Error', description: 'No component selected or entered.'});
         setIsSaving(false);
         return;
@@ -189,7 +191,7 @@ export function ReplaceComponentDialog({
             userId,
             equipmentId,
             userComponentIdToReplace: componentToReplace.userComponentId,
-            newComponentData,
+            newComponent,
             replacementReason: data.replacementReason,
         });
 

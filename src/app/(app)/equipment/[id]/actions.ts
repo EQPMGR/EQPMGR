@@ -23,16 +23,21 @@ export async function replaceUserComponentAction({
     userId,
     equipmentId,
     userComponentIdToReplace,
-    newComponentData,
+    newComponent,
     replacementReason,
 }: {
     userId: string;
     equipmentId: string;
     userComponentIdToReplace: string;
-    newComponentData: Omit<MasterComponent, 'id'>;
+    newComponent: {
+        brand?: string;
+        series?: string;
+        model?: string;
+        size?: string;
+    };
     replacementReason: 'failure' | 'modification' | 'upgrade';
 }) {
-    if (!userId || !equipmentId || !userComponentIdToReplace || !newComponentData || !replacementReason) {
+    if (!userId || !equipmentId || !userComponentIdToReplace || !newComponent || !replacementReason) {
         throw new Error("Missing required parameters for component replacement.");
     }
     
@@ -70,23 +75,40 @@ export async function replaceUserComponentAction({
             lastServiceDate: toNullableDate(userComponentToReplace.lastServiceDate),
         }
 
-        // 2. Create or get the new master component
-        const newMasterComponentId = createComponentId(newComponentData);
+        // 2. Create or get the new master component from the primitive data
+        const newMasterData: Omit<MasterComponent, 'id' | 'embedding'> = {
+            name: componentToReplace.name,
+            brand: newComponent.brand,
+            series: newComponent.series,
+            model: newComponent.model,
+            size: newComponent.size,
+            system: componentToReplace.system,
+        };
+
+        const newMasterComponentId = createComponentId(newMasterData);
         if (!newMasterComponentId) {
             throw new Error("Could not generate a valid ID for the new component.");
         }
         const newMasterComponentRef = doc(adminDb, 'masterComponents', newMasterComponentId);
-        batch.set(newMasterComponentRef, newComponentData, { merge: true });
+        batch.set(newMasterComponentRef, newMasterData, { merge: true });
 
         // 3. Archive the old component using server-fetched data
-        const archivedComponent: Omit<ArchivedComponent, 'id' | 'maintenanceLog'> = {
-            ...componentToReplace,
+        // Make sure to use only primitive values for the archived object
+        const archivedComponent: Omit<ArchivedComponent, 'id' | 'maintenanceLog' | 'components' | 'userComponentId'> = {
+            name: componentToReplace.name,
+            brand: componentToReplace.brand,
+            series: componentToReplace.series,
+            model: componentToReplace.model,
+            system: componentToReplace.system,
+            size: componentToReplace.size,
+            wearPercentage: componentToReplace.wearPercentage,
+            purchaseDate: toDate(componentToReplace.purchaseDate), // convert to JS Date
+            lastServiceDate: componentToReplace.lastServiceDate ? toDate(componentToReplace.lastServiceDate) : null,
             replacedOn: new Date(),
             finalMileage: equipmentData.totalDistance || 0,
             replacementReason: replacementReason,
-            purchaseDate: toDate(componentToReplace.purchaseDate),
-            lastServiceDate: componentToReplace.lastServiceDate ? toDate(componentToReplace.lastServiceDate) : null,
         };
+
         batch.update(equipmentDocRef, {
             archivedComponents: arrayUnion(archivedComponent)
         });
@@ -103,7 +125,7 @@ export async function replaceUserComponentAction({
             purchaseDate: new Date(),
             lastServiceDate: null,
             notes: `Replaced on ${new Date().toLocaleDateString()}`,
-            size: newComponentData.size
+            size: newComponent.size
         };
         batch.set(newUserCompRef, newUserComponent);
 
@@ -118,11 +140,4 @@ export async function replaceUserComponentAction({
         }
         throw new Error((error as Error).message || 'An unexpected error occurred.');
     }
-}
-
-export async function updateSubComponentsAction() {
-    // This action is currently not in use and is a placeholder.
-    // The logic has been handled client-side for simplicity.
-    console.log("updateSubComponentsAction called, but is not implemented.");
-    return { success: true };
 }
