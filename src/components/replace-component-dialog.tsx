@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { Loader2, Replace } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchMasterComponentsByType, type MasterComponentWithOptions } from '@/services/components';
-import type { Component, MasterComponent } from '@/lib/types';
+import type { Component } from '@/lib/types';
 import { replaceUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
 import {
   Dialog,
@@ -44,13 +44,11 @@ import {
 } from '@/components/ui/accordion';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
-
 const formSchema = z.object({
-  selectedComponentId: z.string().optional(),
   brand: z.string().optional(),
   size: z.string().optional(),
   series: z.string().optional(),
-  model: z.string().optional(),
+  model: z.string().optional(), // This will hold the new master component ID
   replacementReason: z.enum(['failure', 'modification', 'upgrade'], {
     required_error: "Please select a reason for replacement."
   }),
@@ -59,10 +57,8 @@ const formSchema = z.object({
   manualModel: z.string(),
   manualSize: z.string(),
 }).superRefine((data, ctx) => {
-    if (!data.model && !data.manualBrand) {
-        // This validation is a bit tricky since it's conditional.
-        // We'll rely on button disabled state primarily.
-    }
+    // This validation is tricky because one of the two sections must be filled.
+    // We will handle the logic via the button's disabled state.
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -82,14 +78,13 @@ export function ReplaceComponentDialog({
 }: ReplaceComponentDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [componentOptions, setComponentOptions] = useState<MasterComponentWithOptions[]>([]);
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      selectedComponentId: '',
       brand: '',
       size: '',
       series: '',
@@ -101,12 +96,12 @@ export function ReplaceComponentDialog({
     }
   });
   
-  const { brand, size, series, model: selectedModel, manualBrand, replacementReason } = form.watch();
+  const { brand, size, series, model: selectedModelId, manualBrand, replacementReason } = form.watch();
 
   useEffect(() => {
     if (open) {
       async function loadComponents() {
-        setIsLoading(true);
+        setIsLoadingOptions(true);
         try {
           const options = await fetchMasterComponentsByType(componentToReplace.name);
           setComponentOptions(options);
@@ -117,7 +112,7 @@ export function ReplaceComponentDialog({
             }
             toast({ variant: 'destructive', title: 'Error', description });
         } finally {
-          setIsLoading(false);
+          setIsLoadingOptions(false);
         }
       }
       loadComponents();
@@ -148,63 +143,42 @@ export function ReplaceComponentDialog({
     if (!isOpen) {
       form.reset();
       setIsSaving(false);
-      setIsLoading(true);
+      setIsLoadingOptions(true);
     }
   };
 
-  const onSubmit = async (data: FormValues) => {
-    if (!userId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
-      return;
-    }
-    setIsSaving(true);
-    
-    let newComponent: { brand?: string; series?: string; model?: string; size?: string; } | null = null;
-    
-    if (data.model) {
-        const selectedComp = componentOptions.find(c => c.id === data.model);
-        if(selectedComp) {
-            newComponent = {
-                brand: selectedComp.brand,
-                series: selectedComp.series,
-                model: selectedComp.model,
-                size: selectedComp.size,
-            };
-        }
-    } else if (data.manualBrand) {
-        newComponent = {
-            brand: data.manualBrand,
-            series: data.manualSeries,
-            model: data.manualModel,
-            size: data.manualSize,
-        };
-    }
-
-    if (!newComponent) {
-        toast({variant: 'destructive', title: 'Error', description: 'No component selected or entered.'});
-        setIsSaving(false);
+  const callServerAction = async (data: FormValues) => {
+      if (!userId) {
+        toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
         return;
-    }
-    
-    try {
-        await replaceUserComponentAction({
+      }
+      setIsSaving(true);
+      
+      try {
+        const result = await replaceUserComponentAction({
             userId,
             equipmentId,
             userComponentIdToReplace: componentToReplace.userComponentId,
-            newComponent,
             replacementReason: data.replacementReason,
+            newMasterComponentId: data.model || null,
+            manualNewComponentData: data.manualBrand ? {
+                brand: data.manualBrand,
+                series: data.manualSeries,
+                model: data.manualModel,
+                size: data.manualSize,
+            } : null,
         });
 
-        toast({ title: 'Component Replaced!', description: `Your ${componentToReplace.name} has been updated.` });
+        toast({ title: 'Stage 1 Complete!', description: result.message });
         onSuccess();
         handleOpenChange(false);
-    } catch (error: any) {
+      } catch (error: any) {
         console.error('Replacement failed:', error);
-        toast({ variant: 'destructive', title: 'Replacement Failed', description: error.message });
-    } finally {
+        toast({ variant: 'destructive', title: 'Replacement Failed', description: error.message, duration: 9000 });
+      } finally {
         setIsSaving(false);
-    }
-  };
+      }
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -223,19 +197,37 @@ export function ReplaceComponentDialog({
         </DialogHeader>
 
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-                <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                    <FormField control={form.control} name="size" render={({ field }) => ( <FormItem><FormLabel>Size / Speeds</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Size" /></SelectTrigger></FormControl><SelectContent>{sizes.map((s) => <SelectItem key={s} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                    <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('model', ''); }} value={field.value} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map((s) => <SelectItem key={s} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                    <FormField control={form.control} name="model" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                </div>
-
+            <form onSubmit={form.handleSubmit(callServerAction)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+                <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+                    <AccordionItem value="item-1">
+                        <AccordionTrigger>Replace from Database</AccordionTrigger>
+                        <AccordionContent className="space-y-4 pt-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="size" render={({ field }) => ( <FormItem><FormLabel>Size / Speeds</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Size" /></SelectTrigger></FormControl><SelectContent>{sizes.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('model', ''); }} value={field.value} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="model" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="item-2">
+                        <AccordionTrigger>Can't find your part? Add it manually.</AccordionTrigger>
+                        <AccordionContent className="space-y-4 pt-4">
+                           <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="manualBrand" render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="manualSize" render={({ field }) => (<FormItem><FormLabel>Size / Speeds</FormLabel><FormControl><Input placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="manualSeries" render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Tiagra" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="manualModel" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., CS-HG500-10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                           </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+                
                 <FormField
                   control={form.control}
                   name="replacementReason"
                   render={({ field }) => (
-                    <FormItem className="space-y-3">
+                    <FormItem className="space-y-3 !mt-6 border-t pt-6">
                       <FormLabel>Reason for Replacement</FormLabel>
                       <FormControl>
                         <RadioGroup
@@ -261,31 +253,13 @@ export function ReplaceComponentDialog({
                     </FormItem>
                   )}
                 />
-                
-                 <DialogFooter>
-                    <Button type="submit" disabled={isSaving || !selectedModel || !replacementReason} className="w-full">
+
+                <DialogFooter>
+                    <Button type="submit" disabled={isSaving || !replacementReason || (!selectedModelId && !manualBrand)}>
                         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Replace from Database
+                        Replace Component
                     </Button>
                 </DialogFooter>
-
-                <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="manual-add">
-                        <AccordionTrigger>Can't find your part? Add it manually.</AccordionTrigger>
-                        <AccordionContent className="space-y-4 pt-4">
-                           <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="manualBrand" render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="manualSize" render={({ field }) => (<FormItem><FormLabel>Size / Speeds</FormLabel><FormControl><Input placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="manualSeries" render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Tiagra" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="manualModel" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., CS-HG500-10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                           </div>
-                           <Button type="submit" disabled={isSaving || !manualBrand || !replacementReason} className="w-full">
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                                Save and Replace Manually
-                           </Button>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
             </form>
         </Form>
       </DialogContent>
