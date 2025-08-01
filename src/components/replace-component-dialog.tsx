@@ -185,16 +185,10 @@ export function ReplaceComponentDialog({
     }
     
     try {
-        const { purchaseDate, lastServiceDate, ...restOfComponent } = componentToReplace;
-        
         await replaceUserComponentAction({
             userId,
             equipmentId,
-            componentToReplace: {
-                ...restOfComponent,
-                purchaseDate: purchaseDate.toISOString(),
-                lastServiceDate: lastServiceDate ? lastServiceDate.toISOString() : null,
-            },
+            userComponentIdToReplace: componentToReplace.userComponentId,
             newComponentData,
             replacementReason: data.replacementReason,
         });

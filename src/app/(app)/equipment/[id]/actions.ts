@@ -22,17 +22,17 @@ const createComponentId = (component: Partial<Omit<MasterComponent, 'id'>>) => {
 export async function replaceUserComponentAction({
     userId,
     equipmentId,
-    componentToReplace, // Pass the entire component object
+    userComponentIdToReplace,
     newComponentData,
     replacementReason,
 }: {
     userId: string;
     equipmentId: string;
-    componentToReplace: Omit<Component, 'purchaseDate' | 'lastServiceDate'> & { purchaseDate: string, lastServiceDate: string | null };
+    userComponentIdToReplace: string;
     newComponentData: Omit<MasterComponent, 'id'>;
     replacementReason: 'failure' | 'modification' | 'upgrade';
 }) {
-    if (!userId || !equipmentId || !componentToReplace || !newComponentData || !replacementReason) {
+    if (!userId || !equipmentId || !userComponentIdToReplace || !newComponentData || !replacementReason) {
         throw new Error("Missing required parameters for component replacement.");
     }
     
@@ -40,7 +40,37 @@ export async function replaceUserComponentAction({
         const batch = writeBatch(adminDb);
         const equipmentDocRef = doc(adminDb, 'users', userId, 'equipment', equipmentId);
 
-        // 1. Create or get the new master component
+        // 1. Fetch the entire equipment document from the server. This is the source of truth.
+        const equipmentSnap = await getDoc(equipmentDocRef);
+        if (!equipmentSnap.exists()) {
+            throw new Error("Equipment document not found.");
+        }
+        const equipmentData = equipmentSnap.data() as Equipment;
+        
+        // Find the component to replace from the subcollection data within the equipment doc.
+        const componentsCollectionRef = collection(adminDb, 'users', userId, 'equipment', equipmentId, 'components');
+        const componentToReplaceSnap = await getDoc(doc(componentsCollectionRef, userComponentIdToReplace));
+        
+        if (!componentToReplaceSnap.exists()) {
+             throw new Error(`Component with ID ${userComponentIdToReplace} not found in equipment.`);
+        }
+        const userComponentToReplace = { id: componentToReplaceSnap.id, ...componentToReplaceSnap.data() } as UserComponent;
+
+        const masterComponentSnap = await getDoc(doc(adminDb, 'masterComponents', userComponentToReplace.masterComponentId));
+        if (!masterComponentSnap.exists()) {
+            throw new Error(`Master component ${userComponentToReplace.masterComponentId} not found.`);
+        }
+        const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data() } as MasterComponent;
+        
+        const componentToReplace: Component = {
+            ...masterComponentToReplace,
+            ...userComponentToReplace,
+            userComponentId: userComponentToReplace.id,
+            purchaseDate: toDate(userComponentToReplace.purchaseDate),
+            lastServiceDate: toNullableDate(userComponentToReplace.lastServiceDate),
+        }
+
+        // 2. Create or get the new master component
         const newMasterComponentId = createComponentId(newComponentData);
         if (!newMasterComponentId) {
             throw new Error("Could not generate a valid ID for the new component.");
@@ -48,14 +78,7 @@ export async function replaceUserComponentAction({
         const newMasterComponentRef = doc(adminDb, 'masterComponents', newMasterComponentId);
         batch.set(newMasterComponentRef, newComponentData, { merge: true });
 
-        // 2. Fetch equipment to get total distance
-        const equipmentSnap = await getDoc(equipmentDocRef);
-        if (!equipmentSnap.exists()) {
-            throw new Error("Equipment document not found.");
-        }
-        const equipmentData = equipmentSnap.data() as Equipment;
-
-        // 3. Archive the old component
+        // 3. Archive the old component using server-fetched data
         const archivedComponent: Omit<ArchivedComponent, 'id' | 'maintenanceLog'> = {
             ...componentToReplace,
             replacedOn: new Date(),
@@ -69,7 +92,7 @@ export async function replaceUserComponentAction({
         });
 
         // 4. Delete the old user component document from the subcollection
-        const oldUserCompRef = doc(adminDb, 'users', userId, 'equipment', equipmentId, 'components', componentToReplace.userComponentId);
+        const oldUserCompRef = doc(adminDb, 'users', userId, 'equipment', equipmentId, 'components', userComponentIdToReplace);
         batch.delete(oldUserCompRef);
 
         // 5. Add the new user component document to the subcollection
@@ -90,8 +113,7 @@ export async function replaceUserComponentAction({
 
     } catch (error) {
         console.error("Server Action Error in replaceUserComponentAction:", error);
-        // This is where the custom error message is thrown.
-        if ((error as any).code === 'PERMISSION_DENIED' || (error as any).code === 7) {
+        if ((error as any).code === 'PERMISSION_DENIED' || (error as any).code === 7 || (error as any).message?.includes('access token')) {
              throw new Error('Server authentication failed. Check your service account credentials and environment variables.');
         }
         throw new Error((error as Error).message || 'An unexpected error occurred.');
