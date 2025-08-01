@@ -3,7 +3,7 @@
 
 import { doc, getDoc, writeBatch, updateDoc, collection, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { adminDb } from '@/lib/firebase-admin';
-import type { UserComponent, MasterComponent, ArchivedComponent, Equipment } from '@/lib/types';
+import type { UserComponent, MasterComponent, ArchivedComponent, Equipment, Component } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 
 const createComponentId = (component: Partial<Omit<MasterComponent, 'id'>>) => {
@@ -28,7 +28,7 @@ export async function replaceUserComponentAction({
 }: {
     userId: string;
     equipmentId: string;
-    componentToReplace: Component;
+    componentToReplace: Omit<Component, 'purchaseDate' | 'lastServiceDate'> & { purchaseDate: string, lastServiceDate: string | null };
     newComponentData: Omit<MasterComponent, 'id'>;
     replacementReason: 'failure' | 'modification' | 'upgrade';
 }) {
@@ -56,13 +56,13 @@ export async function replaceUserComponentAction({
         const equipmentData = equipmentSnap.data() as Equipment;
 
         // 3. Archive the old component
-        const archivedComponent: ArchivedComponent = {
+        const archivedComponent: Omit<ArchivedComponent, 'id' | 'maintenanceLog'> = {
             ...componentToReplace,
             replacedOn: new Date(),
             finalMileage: equipmentData.totalDistance || 0,
             replacementReason: replacementReason,
-            purchaseDate: toDate(componentToReplace.purchaseDate), // Ensure it's a JS Date before converting back
-            lastServiceDate: null, 
+            purchaseDate: toDate(componentToReplace.purchaseDate),
+            lastServiceDate: componentToReplace.lastServiceDate ? toDate(componentToReplace.lastServiceDate) : null,
         };
         batch.update(equipmentDocRef, {
             archivedComponents: arrayUnion(archivedComponent)
@@ -80,6 +80,7 @@ export async function replaceUserComponentAction({
             purchaseDate: new Date(),
             lastServiceDate: null,
             notes: `Replaced on ${new Date().toLocaleDateString()}`,
+            size: newComponentData.size
         };
         batch.set(newUserCompRef, newUserComponent);
 
@@ -97,8 +98,9 @@ export async function replaceUserComponentAction({
     }
 }
 
-// This action is no longer needed as the logic is handled by the client-side dialog
-// and the more robust replaceUserComponentAction.
 export async function updateSubComponentsAction() {
-    // No-op
+    // This action is currently not in use and is a placeholder.
+    // The logic has been handled client-side for simplicity.
+    console.log("updateSubComponentsAction called, but is not implemented.");
+    return { success: true };
 }
