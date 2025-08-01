@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -34,6 +35,9 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
  * @returns A promise that resolves to an array of matching master components.
  */
 export async function fetchMasterComponentsByType(type: string): Promise<MasterComponentWithOptions[]> {
+    if (!type) {
+        return [];
+    }
     try {
         const q = query(collection(db, 'masterComponents'), where('name', '==', type));
         const querySnapshot = await getDocs(q);

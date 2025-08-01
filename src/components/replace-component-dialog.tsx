@@ -7,9 +7,10 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2, Replace } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { replaceUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
 import { fetchMasterComponentsByType, type MasterComponentWithOptions } from '@/services/components';
-import type { Component } from '@/lib/types';
+import type { Component, MasterComponent, UserComponent, ArchivedComponent, Equipment } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { doc, writeBatch, getDoc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { toDate } from '@/lib/date-utils';
 
 
 const formSchema = z.object({
@@ -110,8 +112,7 @@ export function ReplaceComponentDialog({
       async function loadComponents() {
         setIsLoading(true);
         try {
-          // Temporarily fetching all cassettes for the demo
-          const options = await fetchMasterComponentsByType('Cassette');
+          const options = await fetchMasterComponentsByType(componentToReplace.name);
           setComponentOptions(options);
         } catch (error: any) {
             let description = 'Could not load components.';
@@ -125,7 +126,7 @@ export function ReplaceComponentDialog({
       }
       loadComponents();
     }
-  }, [open, toast]);
+  }, [open, toast, componentToReplace.name]);
 
   // Memoized lists for dropdowns
   const brands = useMemo(() => componentOptions.map(c => c.brand).filter((v, i, a) => v && a.indexOf(v) === i).sort(), [componentOptions]);
@@ -156,6 +157,19 @@ export function ReplaceComponentDialog({
     }
   };
 
+  const createComponentId = (component: Partial<Omit<MasterComponent, 'id'>>) => {
+    const idString = [component.brand, component.name, component.model, component.size]
+        .filter(Boolean)
+        .join('-');
+    
+    if (!idString) return null;
+
+    return idString
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+  };
+
   const onSubmit = async (data: FormValues) => {
     if (!userId) {
       toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
@@ -163,40 +177,83 @@ export function ReplaceComponentDialog({
     }
     setIsSaving(true);
     
-    let newComponentData;
-    let masterComponentId;
+    let newComponentMasterData: Omit<MasterComponent, 'id'> | null = null;
+    let newMasterComponentId: string | null = null;
 
     if (data.model) {
-        masterComponentId = data.model; // The model dropdown now holds the component ID
-        newComponentData = null; // We are using an existing component
+        newMasterComponentId = data.model; // The model dropdown now holds the component ID
     } else if (data.manualBrand) {
-        newComponentData = {
+        newComponentMasterData = {
             name: componentToReplace.name,
             brand: data.manualBrand,
             series: data.manualSeries,
             model: data.manualModel,
             size: data.manualSize,
-            system: componentToReplace.system, // Keep original system
+            system: componentToReplace.system,
         };
-        masterComponentId = null; // A new one will be created
+        newMasterComponentId = createComponentId(newComponentMasterData);
     } else {
         toast({variant: 'destructive', title: 'Error', description: 'No component selected or entered.'});
         setIsSaving(false);
         return;
     }
 
+    if (!newMasterComponentId) {
+        toast({variant: 'destructive', title: 'Error', description: 'Could not determine new component ID.'});
+        setIsSaving(false);
+        return;
+    }
+
     try {
-      await replaceUserComponentAction({
-          userId,
-          equipmentId,
-          userComponentIdToReplace: componentToReplace.userComponentId,
-          masterComponentId,
-          newComponentData,
-          replacementReason: data.replacementReason,
-      });
-      toast({ title: 'Component Replaced!', description: `Your ${componentToReplace.name} has been updated.` });
-      onSuccess();
-      handleOpenChange(false);
+        const batch = writeBatch(db);
+        const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
+
+        // If it's a manually entered component, ensure it exists in masterComponents
+        if (newComponentMasterData) {
+            const masterComponentRef = doc(db, 'masterComponents', newMasterComponentId);
+            batch.set(masterComponentRef, newComponentMasterData, { merge: true });
+        }
+        
+        // Fetch equipment to get total distance
+        const equipmentSnap = await getDoc(equipmentDocRef);
+        if (!equipmentSnap.exists()) throw new Error("Equipment document not found.");
+        const equipmentData = equipmentSnap.data() as Equipment;
+
+        // Archive the old component
+        const archivedComponent: ArchivedComponent = {
+            ...componentToReplace,
+            replacedOn: new Date(),
+            finalMileage: equipmentData.totalDistance || 0,
+            replacementReason: data.replacementReason,
+            purchaseDate: toDate(componentToReplace.purchaseDate),
+            lastServiceDate: null, 
+        };
+        const existingArchived = equipmentData.archivedComponents || [];
+        batch.update(equipmentDocRef, {
+            archivedComponents: [...existingArchived, archivedComponent]
+        });
+
+        // Delete the old user component document
+        const oldUserCompRef = doc(db, 'users', userId, 'equipment', equipmentId, 'components', componentToReplace.userComponentId);
+        batch.delete(oldUserCompRef);
+
+        // Add the new user component document
+        const newUserCompRef = doc(collection(db, 'users', userId, 'equipment', equipmentId, 'components'));
+        const newUserComponent: UserComponent = {
+            id: newUserCompRef.id,
+            masterComponentId: newMasterComponentId,
+            wearPercentage: 0,
+            purchaseDate: new Date(),
+            lastServiceDate: null,
+        };
+        batch.set(newUserCompRef, newUserComponent);
+
+        await batch.commit();
+
+        toast({ title: 'Component Replaced!', description: `Your ${componentToReplace.name} has been updated.` });
+        onSuccess();
+        handleOpenChange(false);
+
     } catch (error: any) {
        console.error('Replacement failed:', error);
        toast({ variant: 'destructive', title: 'Replacement Failed', description: error.message });
