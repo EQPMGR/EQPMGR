@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fetchMasterComponentsByType, type MasterComponentWithOptions } from '@/services/components';
 import type { Component, MasterComponent, UserComponent, ArchivedComponent, Equipment } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { doc, writeBatch, getDoc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
+import { doc, writeBatch, getDoc, updateDoc, collection, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import {
   Dialog,
   DialogContent,
@@ -228,23 +228,22 @@ export function ReplaceComponentDialog({
             purchaseDate: toDate(componentToReplace.purchaseDate),
             lastServiceDate: null, 
         };
-        const existingArchived = equipmentData.archivedComponents || [];
         batch.update(equipmentDocRef, {
-            archivedComponents: [...existingArchived, archivedComponent]
+            archivedComponents: arrayUnion(archivedComponent)
         });
 
-        // Delete the old user component document
+        // Delete the old user component document from the subcollection
         const oldUserCompRef = doc(db, 'users', userId, 'equipment', equipmentId, 'components', componentToReplace.userComponentId);
         batch.delete(oldUserCompRef);
 
-        // Add the new user component document
+        // Add the new user component document to the subcollection
         const newUserCompRef = doc(collection(db, 'users', userId, 'equipment', equipmentId, 'components'));
-        const newUserComponent: UserComponent = {
-            id: newUserCompRef.id,
+        const newUserComponent: Omit<UserComponent, 'id'> = {
             masterComponentId: newMasterComponentId,
             wearPercentage: 0,
             purchaseDate: new Date(),
             lastServiceDate: null,
+            notes: `Replaced on ${new Date().toLocaleDateString()}`,
         };
         batch.set(newUserCompRef, newUserComponent);
 
