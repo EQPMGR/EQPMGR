@@ -33,7 +33,6 @@ export default function ComponentDetailPage() {
     try {
       const componentsCollectionRef = collection(db, 'users', uid, 'equipment', equipmentId, 'components');
       
-      // Find the main component
       const mainComponentDocRef = doc(componentsCollectionRef, userComponentId);
       const mainComponentDocSnap = await getDoc(mainComponentDocRef);
 
@@ -45,23 +44,19 @@ export default function ComponentDetailPage() {
 
       const mainUserComp = { id: mainComponentDocSnap.id, ...mainComponentDocSnap.data() } as UserComponent;
 
-      // Find sub-components
       const subComponentsQuery = query(componentsCollectionRef, where('parentUserComponentId', '==', userComponentId));
       const subComponentsSnap = await getDocs(subComponentsQuery);
       const subUserComps = subComponentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
 
-      // Gather all required master component IDs
       const masterIdsToFetch = [
         mainUserComp.masterComponentId,
         ...subUserComps.map(sc => sc.masterComponentId)
-      ].filter(Boolean); // Filter out any undefined/null IDs
+      ].filter(Boolean);
 
       const uniqueMasterIds = [...new Set(masterIdsToFetch)];
 
-      // Fetch all required master components
       const masterCompsMap = new Map<string, MasterComponent>();
       if (uniqueMasterIds.length > 0) {
-          // Batch fetch master components
           for (let i = 0; i < uniqueMasterIds.length; i += 30) {
             const batchIds = uniqueMasterIds.slice(i, i + 30);
             if (batchIds.length > 0) {
@@ -72,7 +67,6 @@ export default function ComponentDetailPage() {
           }
       }
 
-      // Combine main component data
       const mainMasterComp = masterCompsMap.get(mainUserComp.masterComponentId);
       if (mainMasterComp) {
         setComponent({
@@ -84,7 +78,6 @@ export default function ComponentDetailPage() {
         });
       }
 
-      // Combine sub-component data
       const combinedSubComponents = subUserComps.map(subUserComp => {
         const masterComp = masterCompsMap.get(subUserComp.masterComponentId);
         if (!masterComp) return null;

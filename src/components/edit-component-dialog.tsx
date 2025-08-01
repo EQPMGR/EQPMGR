@@ -7,8 +7,9 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { updateSubComponentsAction } from '@/app/(app)/equipment/[id]/actions';
+import { doc, writeBatch } from 'firebase/firestore';
 import type { Component } from '@/lib/types';
+import { db } from '@/lib/firebase';
 import {
   Dialog,
   DialogContent,
@@ -102,27 +103,44 @@ export function EditComponentDialog({
   const onSubmit = async (data: FormValues) => {
     setIsSaving(true);
     try {
-      const subComponentsData = [
-        data.chainring1 ? { name: `${data.chainring1.name} Chainring 1`, brand: data.chainring1.brand, model: data.chainring1.model } : null,
-        data.chainring2 ? { name: `${data.chainring2.name} Chainring 2`, brand: data.chainring2.brand, model: data.chainring2.model } : null,
-        data.chainring3 ? { name: `${data.chainring3.name} Chainring 3`, brand: data.chainring3.brand, model: data.chainring3.model } : null,
-      ].filter((sc): sc is { name: string; brand?: string; model?: string; } => sc !== null && !!sc.name);
+        const batch = writeBatch(db);
+        const componentsCollectionRef = collection(db, 'users', userId, 'equipment', equipmentId, 'components');
+        
+        // Delete existing sub-components
+        existingSubComponents.forEach(sub => {
+            const subRef = doc(componentsCollectionRef, sub.userComponentId);
+            batch.delete(subRef);
+        });
 
-      await updateSubComponentsAction({
-        userId,
-        equipmentId,
-        parentUserComponentId: parentComponent.userComponentId,
-        subComponentsData,
-      });
+        // Add new/updated sub-components
+        const subComponentsData = [
+            data.chainring1 ? { name: `${data.chainring1.name} Chainring 1`, brand: data.chainring1.brand, model: data.chainring1.model } : null,
+            data.chainring2 ? { name: `${data.chainring2.name} Chainring 2`, brand: data.chainring2.brand, model: data.chainring2.model } : null,
+            data.chainring3 ? { name: `${data.chainring3.name} Chainring 3`, brand: data.chainring3.brand, model: data.chainring3.model } : null,
+        ].filter((sc): sc is { name: string; brand?: string; model?: string; } => sc !== null && !!sc.name);
 
-      toast({ title: 'Component Updated!', description: 'Your changes have been saved.' });
-      onSuccess();
-      handleOpenChange(false);
+        subComponentsData.forEach(subData => {
+            const newSubRef = doc(componentsCollectionRef);
+            const masterId = `${subData.brand}-${subData.name}`.toLowerCase().replace(/ /g, '-');
+            batch.set(newSubRef, {
+                masterComponentId: masterId, // This might need a more robust master component lookup in a real app
+                parentUserComponentId: parentComponent.userComponentId,
+                purchaseDate: new Date(),
+                wearPercentage: 0,
+                lastServiceDate: null,
+            });
+        });
+
+        await batch.commit();
+
+        toast({ title: 'Component Updated!', description: 'Your changes have been saved.' });
+        onSuccess();
+        handleOpenChange(false);
     } catch (error: any) {
-      console.error('Update failed:', error);
-      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+        console.error('Update failed:', error);
+        toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     } finally {
-      setIsSaving(false);
+        setIsSaving(false);
     }
   };
 

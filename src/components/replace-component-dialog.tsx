@@ -8,9 +8,8 @@ import { z } from 'zod';
 import { Loader2, Replace } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchMasterComponentsByType, type MasterComponentWithOptions } from '@/services/components';
-import type { Component, MasterComponent, UserComponent, ArchivedComponent, Equipment } from '@/lib/types';
-import { db } from '@/lib/firebase';
-import { doc, writeBatch, getDoc, updateDoc, collection, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import type { Component, MasterComponent } from '@/lib/types';
+import { replaceUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
 import {
   Dialog,
   DialogContent,
@@ -44,11 +43,9 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { toDate } from '@/lib/date-utils';
 
 
 const formSchema = z.object({
-  // Fields for dropdown selection
   selectedComponentId: z.string().optional(),
   brand: z.string().optional(),
   size: z.string().optional(),
@@ -57,7 +54,6 @@ const formSchema = z.object({
   replacementReason: z.enum(['failure', 'modification', 'upgrade'], {
     required_error: "Please select a reason for replacement."
   }),
-  // Fields for manual entry
   manualBrand: z.string(),
   manualSeries: z.string(),
   manualModel: z.string(),
@@ -128,15 +124,14 @@ export function ReplaceComponentDialog({
     }
   }, [open, toast, componentToReplace.name]);
 
-  // Memoized lists for dropdowns
-  const brands = useMemo(() => componentOptions.map(c => c.brand).filter((v, i, a) => v && a.indexOf(v) === i).sort(), [componentOptions]);
-  const speeds = useMemo(() => componentOptions.map(c => c.size).filter((v, i, a) => v && a.indexOf(v) === i).sort(), [componentOptions]);
+  const brands = useMemo(() => [...new Set(componentOptions.map(c => c.brand).filter(Boolean))].sort(), [componentOptions]);
+  const sizes = useMemo(() => [...new Set(componentOptions.map(c => c.size).filter(Boolean))].sort(), [componentOptions]);
   
   const filteredSeries = useMemo(() => {
       let filtered = componentOptions;
       if (brand) filtered = filtered.filter(c => c.brand === brand);
       if (size) filtered = filtered.filter(c => c.size === size);
-      return filtered.map(c => c.series).filter((v, i, a) => v && a.indexOf(v) === i).sort();
+      return [...new Set(filtered.map(c => c.series).filter(Boolean))].sort();
   }, [componentOptions, brand, size]);
 
   const filteredModels = useMemo(() => {
@@ -157,19 +152,6 @@ export function ReplaceComponentDialog({
     }
   };
 
-  const createComponentId = (component: Partial<Omit<MasterComponent, 'id'>>) => {
-    const idString = [component.brand, component.name, component.model, component.size]
-        .filter(Boolean)
-        .join('-');
-    
-    if (!idString) return null;
-
-    return idString
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-  };
-
   const onSubmit = async (data: FormValues) => {
     if (!userId) {
       toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
@@ -177,13 +159,16 @@ export function ReplaceComponentDialog({
     }
     setIsSaving(true);
     
-    let newComponentMasterData: Omit<MasterComponent, 'id'> | null = null;
-    let newMasterComponentId: string | null = null;
-
+    let newComponentData: Omit<MasterComponent, 'id'> | null = null;
+    
     if (data.model) {
-        newMasterComponentId = data.model; // The model dropdown now holds the component ID
+        const selectedComp = componentOptions.find(c => c.id === data.model);
+        if(selectedComp) {
+            const { id, embedding, ...rest } = selectedComp;
+            newComponentData = rest;
+        }
     } else if (data.manualBrand) {
-        newComponentMasterData = {
+        newComponentData = {
             name: componentToReplace.name,
             brand: data.manualBrand,
             series: data.manualSeries,
@@ -191,71 +176,29 @@ export function ReplaceComponentDialog({
             size: data.manualSize,
             system: componentToReplace.system,
         };
-        newMasterComponentId = createComponentId(newComponentMasterData);
-    } else {
+    }
+
+    if (!newComponentData) {
         toast({variant: 'destructive', title: 'Error', description: 'No component selected or entered.'});
         setIsSaving(false);
         return;
     }
-
-    if (!newMasterComponentId) {
-        toast({variant: 'destructive', title: 'Error', description: 'Could not determine new component ID.'});
-        setIsSaving(false);
-        return;
-    }
-
+    
     try {
-        const batch = writeBatch(db);
-        const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
-
-        // If it's a manually entered component, ensure it exists in masterComponents
-        if (newComponentMasterData) {
-            const masterComponentRef = doc(db, 'masterComponents', newMasterComponentId);
-            batch.set(masterComponentRef, newComponentMasterData, { merge: true });
-        }
-        
-        // Fetch equipment to get total distance
-        const equipmentSnap = await getDoc(equipmentDocRef);
-        if (!equipmentSnap.exists()) throw new Error("Equipment document not found.");
-        const equipmentData = equipmentSnap.data() as Equipment;
-
-        // Archive the old component
-        const archivedComponent: ArchivedComponent = {
-            ...componentToReplace,
-            replacedOn: new Date(),
-            finalMileage: equipmentData.totalDistance || 0,
+        await replaceUserComponentAction({
+            userId,
+            equipmentId,
+            componentToReplace,
+            newComponentData,
             replacementReason: data.replacementReason,
-            purchaseDate: toDate(componentToReplace.purchaseDate),
-            lastServiceDate: null, 
-        };
-        batch.update(equipmentDocRef, {
-            archivedComponents: arrayUnion(archivedComponent)
         });
-
-        // Delete the old user component document from the subcollection
-        const oldUserCompRef = doc(db, 'users', userId, 'equipment', equipmentId, 'components', componentToReplace.userComponentId);
-        batch.delete(oldUserCompRef);
-
-        // Add the new user component document to the subcollection
-        const newUserCompRef = doc(collection(db, 'users', userId, 'equipment', equipmentId, 'components'));
-        const newUserComponent: Omit<UserComponent, 'id'> = {
-            masterComponentId: newMasterComponentId,
-            wearPercentage: 0,
-            purchaseDate: new Date(),
-            lastServiceDate: null,
-            notes: `Replaced on ${new Date().toLocaleDateString()}`,
-        };
-        batch.set(newUserCompRef, newUserComponent);
-
-        await batch.commit();
 
         toast({ title: 'Component Replaced!', description: `Your ${componentToReplace.name} has been updated.` });
         onSuccess();
         handleOpenChange(false);
-
     } catch (error: any) {
-       console.error('Replacement failed:', error);
-       toast({ variant: 'destructive', title: 'Replacement Failed', description: error.message });
+        console.error('Replacement failed:', error);
+        toast({ variant: 'destructive', title: 'Replacement Failed', description: error.message });
     } finally {
         setIsSaving(false);
     }
@@ -280,9 +223,9 @@ export function ReplaceComponentDialog({
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b, i) => <SelectItem key={`${b}-${i}`} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                    <FormField control={form.control} name="size" render={({ field }) => ( <FormItem><FormLabel>Speeds</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Speeds" /></SelectTrigger></FormControl><SelectContent>{speeds.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                    <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('model', ''); }} value={field.value} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="size" render={({ field }) => ( <FormItem><FormLabel>Size / Speeds</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Size" /></SelectTrigger></FormControl><SelectContent>{sizes.map((s) => <SelectItem key={s} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('model', ''); }} value={field.value} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map((s) => <SelectItem key={s} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                     <FormField control={form.control} name="model" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                 </div>
 
@@ -330,7 +273,7 @@ export function ReplaceComponentDialog({
                         <AccordionContent className="space-y-4 pt-4">
                            <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name="manualBrand" render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="manualSize" render={({ field }) => (<FormItem><FormLabel>Speeds</FormLabel><FormControl><Input placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="manualSize" render={({ field }) => (<FormItem><FormLabel>Size / Speeds</FormLabel><FormControl><Input placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="manualSeries" render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Tiagra" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="manualModel" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., CS-HG500-10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                            </div>

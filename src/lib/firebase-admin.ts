@@ -1,8 +1,7 @@
 
 import * as admin from 'firebase-admin';
-import 'dotenv/config'; // Directly load environment variables here.
+import 'dotenv/config';
 
-// Re-structure to provide clearer error handling and logging.
 let adminApp: admin.app.App;
 
 if (!admin.apps.length) {
@@ -17,7 +16,7 @@ if (!admin.apps.length) {
         'FIREBASE_SERVICE_ACCOUNT environment variable is not set. This is required for the Admin SDK to authenticate.'
       );
     } else {
-      console.log("[DEBUG] FIREBASE_SERVICE_ACCOUNT is present.");
+      console.log("[DEBUG] FIREBASE_SERVICE_ACCOUNT is present. Attempting to parse.");
     }
     // --- END DEBUG LOGGING ---
 
@@ -25,8 +24,9 @@ if (!admin.apps.length) {
     
     adminApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      projectId: serviceAccount.project_id, // Explicitly set the project ID
     });
-    console.log("Firebase Admin SDK initialized successfully with service account.");
+    console.log("Firebase Admin SDK initialized successfully for project:", serviceAccount.project_id);
 
   } catch (error: any) {
     console.error("Firebase Admin SDK initialization failed:", error.message);
@@ -34,9 +34,8 @@ if (!admin.apps.length) {
         console.error("[DEBUG] The service account string appears to be malformed. Ensure it's a valid JSON object.");
     }
     console.error("Please ensure that the FIREBASE_SERVICE_ACCOUNT environment variable is a valid JSON string and the service account has the necessary permissions in your Google Cloud project.");
-    // In case of failure, we still need to export the objects, but they will not be functional.
-    // The app will throw errors when trying to use them, which is the expected behavior.
     if (!admin.apps.length) {
+        // Fallback initialization to prevent crashing the entire app if credentials fail
         admin.initializeApp();
     }
     adminApp = admin.apps[0]!;
