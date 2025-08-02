@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, updateDoc, collection, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, updateDoc, arrayUnion } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import type { UserComponent, MasterComponent, ArchivedComponent, Equipment } from '@/lib/types';
 
@@ -59,8 +59,8 @@ export async function replaceUserComponentAction({
         }
         const equipmentData = equipmentSnap.data() as Equipment;
         
-        const componentsCollectionRef = collection(adminDb, 'users', userId, 'equipment', equipmentId, 'components');
-        const componentToReplaceSnap = await getDoc(doc(componentsCollectionRef, userComponentIdToReplace));
+        const componentsCollectionRef = doc(adminDb, 'users', userId, 'equipment', equipmentId, 'components', userComponentIdToReplace);
+        const componentToReplaceSnap = await getDoc(componentsCollectionRef);
         
         if (!componentToReplaceSnap.exists()) {
              throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
