@@ -39,6 +39,10 @@ const nextConfig: NextConfig = {
       include: /node_modules/,
       type: 'javascript/auto',
     });
+    
+    // Fix for ENOENT error with nested node_modules
+    config.resolve.symlinks = false;
+
     return config;
   },
 };
