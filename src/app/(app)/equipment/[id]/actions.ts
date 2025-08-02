@@ -73,8 +73,8 @@ export async function replaceUserComponentAction({
         }
         const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data() } as MasterComponent;
         
-        // 2. Create the archive record using the server-fetched data.
-        const archivedComponent: Omit<ArchivedComponent, 'id' | 'components' | 'userComponentId'> = {
+        // 2. Create the archive record as a plain JSON object.
+        const archivedComponent = {
             name: masterComponentToReplace.name,
             brand: masterComponentToReplace.brand,
             series: masterComponentToReplace.series,
@@ -82,14 +82,14 @@ export async function replaceUserComponentAction({
             system: masterComponentToReplace.system,
             size: userComponentToReplace.size || masterComponentToReplace.size,
             wearPercentage: userComponentToReplace.wearPercentage,
-            purchaseDate: new Date(userComponentToReplace.purchaseDate),
-            lastServiceDate: userComponentToReplace.lastServiceDate ? new Date(userComponentToReplace.lastServiceDate) : null,
-            replacedOn: new Date(),
+            purchaseDate: new Date(userComponentToReplace.purchaseDate).toISOString(),
+            lastServiceDate: userComponentToReplace.lastServiceDate ? new Date(userComponentToReplace.lastServiceDate).toISOString() : null,
+            replacedOn: new Date().toISOString(),
             finalMileage: equipmentData.totalDistance || 0,
             replacementReason: replacementReason,
         };
 
-        // Add the archive record to the equipment document
+        // Add the plain archive record object to the equipment document
         batch.update(equipmentDocRef, {
             archivedComponents: arrayUnion(archivedComponent)
         });
