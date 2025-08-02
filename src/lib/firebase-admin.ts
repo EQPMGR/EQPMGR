@@ -8,40 +8,29 @@ if (!admin.apps.length) {
   try {
     const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
     
-    // --- START DEBUG LOGGING ---
-    console.log("--- Firebase Admin SDK Initialization ---");
     if (!serviceAccountString) {
-      console.error("[DEBUG] FIREBASE_SERVICE_ACCOUNT environment variable is NOT SET.");
       throw new Error(
         'FIREBASE_SERVICE_ACCOUNT environment variable is not set. This is required for the Admin SDK to authenticate.'
       );
-    } else {
-      console.log("[DEBUG] FIREBASE_SERVICE_ACCOUNT is present. Attempting to parse.");
     }
-    // --- END DEBUG LOGGING ---
 
     const serviceAccount = JSON.parse(serviceAccountString);
     
     adminApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      projectId: serviceAccount.project_id, // Explicitly set the project ID
+      projectId: serviceAccount.project_id,
     });
     console.log("Firebase Admin SDK initialized successfully for project:", serviceAccount.project_id);
 
   } catch (error: any) {
-    console.error("Firebase Admin SDK initialization failed:", error.message);
-    if (error.message.includes('JSON.parse')) {
-        console.error("[DEBUG] The service account string appears to be malformed. Ensure it's a valid JSON object.");
-    }
-    console.error("Please ensure that the FIREBASE_SERVICE_ACCOUNT environment variable is a valid JSON string and the service account has the necessary permissions in your Google Cloud project.");
-    if (!admin.apps.length) {
-        // Fallback initialization to prevent crashing the entire app if credentials fail
-        admin.initializeApp();
-    }
-    adminApp = admin.apps[0]!;
+    console.error("CRITICAL: Firebase Admin SDK initialization failed:", error.message);
+    // If initialization fails, we cannot proceed. Throwing the error will stop the server
+    // and provide a clear log in the console, which is better than silent failure.
+    throw error;
   }
 } else {
   adminApp = admin.apps[0]!;
+  console.log("Firebase Admin SDK was already initialized.");
 }
 
 export const adminAuth = admin.auth(adminApp);
