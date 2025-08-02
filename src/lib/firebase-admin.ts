@@ -1,6 +1,5 @@
 
 import * as admin from 'firebase-admin';
-import 'dotenv/config';
 
 let adminApp: admin.app.App;
 
