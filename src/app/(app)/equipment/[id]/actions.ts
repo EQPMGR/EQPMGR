@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, updateDoc, collection, arrayUnion, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import type { UserComponent, MasterComponent, ArchivedComponent, Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
@@ -48,23 +48,22 @@ export async function replaceUserComponentAction({
         throw new Error("Either a selected component or manual component data must be provided.");
     }
     
+    const batch = writeBatch(adminDb);
+    const equipmentDocRef = doc(adminDb, 'users', userId, 'equipment', equipmentId);
+    
     try {
-        const batch = writeBatch(adminDb);
-        const equipmentDocRef = doc(adminDb, 'users', userId, 'equipment', equipmentId);
-
-        // 1. Fetch the entire equipment document from the server. This is the source of truth.
+        // 1. Fetch all necessary documents from Firestore using the Admin SDK.
         const equipmentSnap = await getDoc(equipmentDocRef);
         if (!equipmentSnap.exists()) {
             throw new Error("Equipment document not found.");
         }
         const equipmentData = equipmentSnap.data() as Equipment;
         
-        // Find the component to replace from the subcollection data.
         const componentsCollectionRef = collection(adminDb, 'users', userId, 'equipment', equipmentId, 'components');
         const componentToReplaceSnap = await getDoc(doc(componentsCollectionRef, userComponentIdToReplace));
         
         if (!componentToReplaceSnap.exists()) {
-             throw new Error(`Component with ID ${userComponentIdToReplace} not found in equipment's components subcollection.`);
+             throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
         }
         const userComponentToReplace = { id: componentToReplaceSnap.id, ...componentToReplaceSnap.data() } as UserComponent;
 
@@ -74,42 +73,40 @@ export async function replaceUserComponentAction({
         }
         const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data() } as MasterComponent;
         
-        const componentToReplace: Component = {
-            ...masterComponentToReplace,
-            ...userComponentToReplace,
-            userComponentId: userComponentToReplace.id,
+        // 2. Create the archive record using the server-fetched data.
+        const archivedComponent: Omit<ArchivedComponent, 'id' | 'components' | 'userComponentId'> = {
+            name: masterComponentToReplace.name,
+            brand: masterComponentToReplace.brand,
+            series: masterComponentToReplace.series,
+            model: masterComponentToReplace.model,
+            system: masterComponentToReplace.system,
+            size: userComponentToReplace.size || masterComponentToReplace.size,
+            wearPercentage: userComponentToReplace.wearPercentage,
             purchaseDate: toDate(userComponentToReplace.purchaseDate),
             lastServiceDate: toNullableDate(userComponentToReplace.lastServiceDate),
-        };
-
-        // 2. Create the archive record.
-        const archivedComponent: Omit<ArchivedComponent, 'id' | 'maintenanceLog' | 'components' | 'userComponentId'> = {
-            name: componentToReplace.name,
-            brand: componentToReplace.brand,
-            series: componentToReplace.series,
-            model: componentToReplace.model,
-            system: componentToReplace.system,
-            size: componentToReplace.size,
-            wearPercentage: componentToReplace.wearPercentage,
-            purchaseDate: componentToReplace.purchaseDate,
-            lastServiceDate: componentToReplace.lastServiceDate,
-            replacedOn: new Date(), // Server-generated timestamp
+            replacedOn: new Date(),
             finalMileage: equipmentData.totalDistance || 0,
             replacementReason: replacementReason,
         };
 
+        // Add the archive record to the equipment document
+        batch.update(equipmentDocRef, {
+            archivedComponents: arrayUnion(archivedComponent)
+        });
+
+        // 3. Determine the master ID for the new component (either selected or manually created).
         let finalNewMasterComponentId: string;
 
         if (newMasterIdFromClient) {
             finalNewMasterComponentId = newMasterIdFromClient;
         } else if (manualNewComponentData) {
             const newMasterData: Omit<MasterComponent, 'id' | 'embedding'> = {
-                name: componentToReplace.name, // Inherit name from the replaced component
+                name: masterComponentToReplace.name,
                 brand: manualNewComponentData.brand,
                 series: manualNewComponentData.series,
                 model: manualNewComponentData.model,
                 size: manualNewComponentData.size,
-                system: componentToReplace.system,
+                system: masterComponentToReplace.system,
             };
             const generatedId = createComponentId(newMasterData);
             if (!generatedId) {
@@ -122,31 +119,26 @@ export async function replaceUserComponentAction({
             throw new Error("No new component data provided.");
         }
 
+        // 4. Create the new UserComponent document to replace the old one.
         const newUserComponentData: Omit<UserComponent, 'id'> = {
             masterComponentId: finalNewMasterComponentId,
             wearPercentage: 0,
-            purchaseDate: new Date(), // Server-generated timestamp
+            purchaseDate: new Date(),
             lastServiceDate: null,
             notes: `Replaced on ${new Date().toLocaleDateString()}`,
-            size: manualNewComponentData?.size,
+            size: manualNewComponentData?.size, // Use manual size if provided
         };
         
-        // --- STAGE 1 IMPLEMENTATION ---
-        // Log the prepared data instead of writing it.
-        console.log('--- STAGE 1: Replacement Plan ---');
-        console.log('Archived Component to be Added:', JSON.stringify(archivedComponent, null, 2));
-        console.log('New User Component to be Added:', JSON.stringify(newUserComponentData, null, 2));
-        console.log('Old User Component to be Deleted:', userComponentIdToReplace);
-        console.log('--- END OF STAGE 1 PLAN ---');
+        // This replaces the old component's data with the new component's data.
+        batch.set(componentToReplaceSnap.ref, newUserComponentData);
         
-        // The batch.commit() is commented out for Stage 1.
-        // await batch.commit();
+        await batch.commit();
         
-        return { success: true, message: "Stage 1: Server successfully prepared the archive record. Check server logs." };
+        return { success: true, message: "Component replaced and archived successfully." };
 
     } catch (error) {
         console.error("[SERVER ACTION ERROR] in replaceUserComponentAction:", error);
-        // Ensure we throw the error message so the client can display it.
         throw new Error((error as Error).message || 'An unexpected error occurred.');
     }
 }
+
