@@ -1,10 +1,10 @@
 
 'use server';
 
-import { doc, getDoc, writeBatch, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, updateDoc, collection, arrayUnion } from 'firebase/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import type { UserComponent, MasterComponent, ArchivedComponent, Equipment } from '@/lib/types';
-import { toDate } from '@/lib/date-utils';
+
 
 const createComponentId = (component: Partial<Omit<MasterComponent, 'id' | 'embedding'>>) => {
     const idString = [component.brand, component.name, component.model, component.size]
@@ -82,8 +82,8 @@ export async function replaceUserComponentAction({
             system: masterComponentToReplace.system,
             size: userComponentToReplace.size || masterComponentToReplace.size,
             wearPercentage: userComponentToReplace.wearPercentage,
-            purchaseDate: toDate(userComponentToReplace.purchaseDate),
-            lastServiceDate: toNullableDate(userComponentToReplace.lastServiceDate),
+            purchaseDate: new Date(userComponentToReplace.purchaseDate),
+            lastServiceDate: userComponentToReplace.lastServiceDate ? new Date(userComponentToReplace.lastServiceDate) : null,
             replacedOn: new Date(),
             finalMileage: equipmentData.totalDistance || 0,
             replacementReason: replacementReason,
@@ -141,4 +141,3 @@ export async function replaceUserComponentAction({
         throw new Error((error as Error).message || 'An unexpected error occurred.');
     }
 }
-
