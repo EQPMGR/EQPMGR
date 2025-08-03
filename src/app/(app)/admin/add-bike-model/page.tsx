@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { writeBatch, doc, collection, getDocs, setDoc } from 'firebase/firestore';
+import { writeBatch, doc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import { db } from '@/lib/firebase';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
+import { getAvailableBrands } from './actions';
 
 
 const componentSchema = z.object({
@@ -120,10 +121,36 @@ function AddBikeModelFormComponent() {
                 if (importedData.model) form.setValue('model', importedData.model);
                 if (importedData.modelYear) form.setValue('modelYear', importedData.modelYear);
 
+                const hasFork = importedData.components.some(c => c.name === 'Fork');
+                const hasRearShock = importedData.components.some(c => c.name === 'Rear Shock');
+                if (hasFork && hasRearShock) {
+                    form.setValue('suspensionType', 'full');
+                } else if (hasFork) {
+                    form.setValue('suspensionType', 'front');
+                }
+
+
                 // Populate components
                 const updatedComponents = [...BASE_COMPONENTS];
                 importedData.components.forEach(importedComp => {
-                    const componentIndex = updatedComponents.findIndex(c => c.name === importedComp.name);
+                    let targetName = importedComp.name;
+
+                    if (targetName === 'Wheel' || targetName === 'Tire') {
+                        const frontName = `Front ${targetName}`;
+                        const rearName = `Rear ${targetName}`;
+                        const frontIndex = updatedComponents.findIndex(c => c.name === frontName);
+                        const rearIndex = updatedComponents.findIndex(c => c.name === rearName);
+                        if (frontIndex > -1) {
+                            updatedComponents[frontIndex] = { ...updatedComponents[frontIndex], ...importedComp };
+                        }
+                        if (rearIndex > -1) {
+                           updatedComponents[rearIndex] = { ...updatedComponents[rearIndex], ...importedComp };
+                        }
+                        return;
+                    }
+
+                    const componentIndex = updatedComponents.findIndex(c => c.name === targetName);
+
                     if (componentIndex > -1) {
                         updatedComponents[componentIndex] = {
                             ...updatedComponents[componentIndex],
@@ -181,13 +208,8 @@ function AddBikeModelFormComponent() {
     useEffect(() => {
       async function fetchBrands() {
         try {
-          const querySnapshot = await getDocs(collection(db, "bikeModels"));
-          const brands = new Set<string>();
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            if (data.brand) brands.add(data.brand);
-          });
-          setAvailableBrands(Array.from(brands).sort());
+          const brands = await getAvailableBrands();
+          setAvailableBrands(brands);
         } catch (error) {
           console.error("Error fetching brands: ", error);
           toast({ variant: 'destructive', title: "Error", description: "Could not fetch bike brands." });
