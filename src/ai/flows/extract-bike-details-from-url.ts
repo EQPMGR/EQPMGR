@@ -30,14 +30,19 @@ const bikeExtractorPrompt = ai.definePrompt({
         },
     ]
   },
-  prompt: `You are an expert bike mechanic. Analyze the provided text. Extract the bike's brand, model, and modelYear.
-Identify all components listed. For each component, extract its name, brand, series, and model. Assign it to a 'system'.
+  prompt: `You are an expert bike mechanic. Analyze the provided text to extract bike and component data.
 
-IMPORTANT RULES:
-1.  The 'series' is the product family name (e.g., 'Dura-Ace', '105', 'GX Eagle').
-2.  The 'model' is the specific part number (e.g., 'RD-5701', 'CS-4600'). The model should ONLY contain the part number.
-3.  If a value isn't available for a field, omit that field. Do not make up values.
-4.  Standardize "Seat Post" to "Seatpost".
+Follow these rules precisely:
+1.  Extract the bike's primary 'brand', 'model', and 'modelYear'.
+2.  Identify all components. For each, extract its 'name', 'brand', 'series', and 'model'. Assign it to a 'system'.
+3.  **Standardize Names:**
+    - "Crank" -> "Crankset"
+    - "Shock" -> "Rear Shock"
+    - "Seat Post" -> "Seatpost"
+4.  **Handle Duplicates:** If a component like "Brake Rotor" is listed twice with different sizes, create two entries: one "Front Brake Rotor" and one "Rear Brake Rotor".
+5.  **Clean the 'size' field:** Extract only the core measurement (e.g., "29x2.50\"", "820mm", "165mm length"). Do not include descriptive words like "width" or "length" in the size field itself.
+6.  If a value isn't available for a field (like 'series' or 'model'), omit it. Do not invent values.
+7.  Remember brand relationships: Bontrager is part of Trek. Specialized has Roval.
 
 Return ONLY the structured JSON format.
 
@@ -60,3 +65,4 @@ const extractBikeDetailsFlow = ai.defineFlow(
     return output;
   }
 );
+
