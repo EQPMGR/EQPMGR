@@ -2,11 +2,12 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
-// When no API key is provided, the Google AI plugin will automatically
-// use the service account credentials from the environment, which is the
-// correct and secure way to authenticate on the server.
+// This configuration explicitly uses the GEMINI_API_KEY from your .env file.
+// This is required for Genkit to authenticate with the Google AI services.
 export const ai = genkit({
-  plugins: [googleAI()],
+  plugins: [googleAI({
+    apiKey: process.env.GEMINI_API_KEY
+  })],
   model: 'googleai/gemini-pro',
   embedder: 'googleai/text-embedding-004',
 });
