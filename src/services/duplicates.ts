@@ -16,9 +16,12 @@ export interface DuplicateGroup {
  */
 export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]> {
   try {
-    const querySnapshot = await adminDb.collection('masterComponents').get();
+    const componentsSnapshot = await adminDb.collection('masterComponents').get();
+    const ignoredSnapshot = await adminDb.collection('ignoredDuplicates').get();
+    const ignoredKeys = new Set(ignoredSnapshot.docs.map(doc => doc.id));
+    
     const components: MasterComponent[] = [];
-    querySnapshot.forEach((doc) => {
+    componentsSnapshot.forEach((doc) => {
       components.push({ id: doc.id, ...doc.data() } as MasterComponent);
     });
 
@@ -31,6 +34,12 @@ export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]>
       }
       
       const key = `${component.name}|${component.brand}|${component.series}`;
+      
+      // Skip groups that have been marked as ignored
+      if (ignoredKeys.has(key)) {
+        continue;
+      }
+      
       if (!groups[key]) {
         groups[key] = [];
       }
