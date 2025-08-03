@@ -29,8 +29,8 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
 
 /**
  * Fetches master components of a specific type (e.g., "Cassette") using the Admin SDK.
- * This function now fetches all components and filters them on the server to avoid
- * a persistent query error.
+ * This function fetches all components and filters them on the server to avoid
+ * a persistent query error that occurs when a Firestore index is not present.
  * @param type The component name/type to filter by.
  * @returns A promise that resolves to an array of matching master components.
  */
