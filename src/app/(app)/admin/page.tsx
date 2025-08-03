@@ -35,13 +35,13 @@ export default function AdminPage() {
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
-                            <CardTitle className="text-base font-semibold">Import from URL</CardTitle>
+                            <CardTitle className="text-base font-semibold">Import from Text</CardTitle>
                             <CardDescription className="text-sm">
-                                Use AI to import a bike's specs from a webpage.
+                                Use AI to import a bike's specs from pasted text.
                             </CardDescription>
                         </div>
                         <Button asChild size="sm" variant="outline">
-                            <Link href="/admin/import-url">
+                            <Link href="/admin/import-text">
                                 <FileInput className="h-4 w-4 mr-2" /> Import
                             </Link>
                         </Button>
