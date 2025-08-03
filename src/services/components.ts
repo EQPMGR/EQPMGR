@@ -2,8 +2,7 @@
 
 'use server';
 
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import type { MasterComponent } from '@/lib/types';
 
 
@@ -13,11 +12,11 @@ export interface MasterComponentWithOptions extends MasterComponent {
 
 /**
  * Fetches all documents from the masterComponents collection.
- * This is a server-side function.
+ * This is a server-side function using the Admin SDK.
  */
 export async function fetchAllMasterComponents(): Promise<MasterComponentWithOptions[]> {
   try {
-    const querySnapshot = await getDocs(collection(db, 'masterComponents'));
+    const querySnapshot = await adminDb.collection('masterComponents').get();
     const components: MasterComponentWithOptions[] = [];
     querySnapshot.forEach((doc) => {
       components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
@@ -30,7 +29,7 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
 }
 
 /**
- * Fetches master components of a specific type (e.g., "Cassette").
+ * Fetches master components of a specific type (e.g., "Cassette") using the Admin SDK.
  * @param type The component name/type to filter by.
  * @returns A promise that resolves to an array of matching master components.
  */
@@ -39,8 +38,10 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return [];
     }
     try {
-        const q = query(collection(db, 'masterComponents'), where('name', '==', type));
-        const querySnapshot = await getDocs(q);
+        const componentsCollection = adminDb.collection('masterComponents');
+        const q = componentsCollection.where('name', '==', type);
+        const querySnapshot = await q.get();
+
         const components: MasterComponentWithOptions[] = [];
         querySnapshot.forEach((doc) => {
             components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
@@ -48,6 +49,8 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return components;
     } catch (error) {
         console.error(`Error fetching components of type ${type}:`, error);
-        throw error;
+        // It's better to throw the error so the client can know something went wrong.
+        // We can add more specific error handling if needed.
+        throw new Error(`Failed to fetch components of type ${type}. Please check server logs.`);
     }
 }
