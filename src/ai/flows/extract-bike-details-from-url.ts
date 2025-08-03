@@ -17,7 +17,6 @@ export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetails
   return extractBikeDetailsFlow(input);
 }
 
-// Reverting to a simpler prompt that is more stable and less prone to looping.
 const bikeExtractorPrompt = ai.definePrompt({
   name: 'bikeExtractorPrompt',
   input: { schema: ExtractBikeDetailsInputSchema },
@@ -41,8 +40,9 @@ Follow these rules precisely:
     - "Seat Post" -> "Seatpost"
 4.  **Handle Duplicates:** If a component like "Brake Rotor" is listed twice with different sizes, create two entries: one "Front Brake Rotor" and one "Rear Brake Rotor".
 5.  **Clean the 'size' field:** Extract only the core measurement (e.g., "29x2.50\"", "820mm", "165mm length"). Do not include descriptive words like "width" or "length" in the size field itself.
-6.  If a value isn't available for a field (like 'series' or 'model'), omit it. Do not invent values.
-7.  Remember brand relationships: Bontrager is part of Trek. Specialized has Roval.
+6.  **CRITICAL SIZING RULE:** Pay close attention to frame sizes (like "R1, R2, R3", or "S, M, L"). Do NOT assign these frame sizes to a component's 'size' field unless a component's dimension is explicitly tied to one of those frame sizes. Most components have one size for all frames. Only apply a frame size variant if the text provides a clear mapping, like "Handlebar: S/M 780mm, L/XL 800mm". If a component's size does not vary, do not include any frame size data for it.
+7.  If a value isn't available for a field (like 'series' or 'model'), omit it. Do not invent values.
+8.  Remember brand relationships: Bontrager is part of Trek. Specialized has Roval.
 
 Return ONLY the structured JSON format.
 
@@ -65,4 +65,3 @@ const extractBikeDetailsFlow = ai.defineFlow(
     return output;
   }
 );
-
