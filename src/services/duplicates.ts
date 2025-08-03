@@ -1,7 +1,7 @@
+
 'use server';
 
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import type { MasterComponent } from '@/lib/types';
 
 export interface DuplicateGroup {
@@ -16,7 +16,7 @@ export interface DuplicateGroup {
  */
 export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]> {
   try {
-    const querySnapshot = await getDocs(collection(db, 'masterComponents'));
+    const querySnapshot = await adminDb.collection('masterComponents').get();
     const components: MasterComponent[] = [];
     querySnapshot.forEach((doc) => {
       components.push({ id: doc.id, ...doc.data() } as MasterComponent);
