@@ -37,8 +37,8 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return [];
     }
     try {
-        const componentsCollection = adminDb.collection('masterComponents');
-        const querySnapshot = await componentsCollection.where('name', '==', type).get();
+        // Correctly query the collection using the Admin SDK.
+        const querySnapshot = await adminDb.collection('masterComponents').where('name', '==', type).get();
 
         const components: MasterComponentWithOptions[] = [];
         querySnapshot.forEach((doc) => {
@@ -47,8 +47,7 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return components;
     } catch (error) {
         console.error(`Error fetching components of type ${type}:`, error);
-        // It's better to throw the error so the client can know something went wrong.
-        // We can add more specific error handling if needed.
+        // Re-throw the error to be caught by the client and displayed in a toast.
         throw new Error(`Failed to fetch components of type ${type}. Please check server logs.`);
     }
 }
