@@ -206,21 +206,27 @@ function AddBikeModelFormComponent() {
     
     const renderChainringInputs = (cranksetIndex: number) => {
         if (!frontMechType || cranksetIndex === -1) return null;
+        
         const numRings = parseInt(frontMechType.charAt(0));
-        return Array.from({ length: numRings }, (_, i) => i + 1).map(ringNum => (
-            <FormField
-                key={`chainring${ringNum}`}
-                control={form.control}
-                name={`components.${cranksetIndex}.chainring${ringNum}` as any}
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Ring {ringNum} (teeth)</FormLabel>
-                        <FormControl><Input placeholder="e.g., 50" {...field} value={field.value ?? ''} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-        ));
+        
+        return (
+            <div className="contents">
+                {Array.from({ length: numRings }, (_, i) => i + 1).map(ringNum => (
+                    <FormField
+                        key={`chainring${ringNum}`}
+                        control={form.control}
+                        name={`components.${cranksetIndex}.chainring${ringNum}` as any}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Ring {ringNum} (Teeth)</FormLabel>
+                                <FormControl><Input placeholder="e.g., 50" {...field} value={field.value ?? ''} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                ))}
+            </div>
+        );
     };
 
     const renderComponentFields = (name: string, fieldsToRender: ('brand' | 'series' | 'model' | 'size' | 'pads' | 'links' | 'tensioner' | 'power' | 'capacity')[]) => {
