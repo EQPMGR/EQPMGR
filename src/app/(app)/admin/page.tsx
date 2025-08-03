@@ -12,6 +12,14 @@ import { SramSeeder } from './sram-seeder';
 import { CampagnoloSeeder } from './campagnolo-seeder';
 import { TiresSeeder } from './tires-seeder';
 import { DropperPostSeeder } from './dropper-post-seeder';
+import { SaddleSeeder } from './saddle-seeder';
+import { SeatpostSeeder } from './seatpost-seeder';
+import { HeadsetSeeder } from './headset-seeder';
+import { SuspensionForkSeeder } from './suspension-fork-seeder';
+import { RearShockSeeder } from './rear-shock-seeder';
+import { HandlebarSeeder } from './handlebar-seeder';
+import { BrakeRotorSeeder } from './brake-rotor-seeder';
+import { BottomBracketSeeder } from './bottom-bracket-seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -59,6 +67,14 @@ export default function AdminPage() {
                 <CampagnoloSeeder />
                 <TiresSeeder />
                 <DropperPostSeeder />
+                <SaddleSeeder />
+                <SeatpostSeeder />
+                <HeadsetSeeder />
+                <SuspensionForkSeeder />
+                <RearShockSeeder />
+                <HandlebarSeeder />
+                <BrakeRotorSeeder />
+                <BottomBracketSeeder />
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
