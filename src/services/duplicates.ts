@@ -11,7 +11,7 @@ export interface DuplicateGroup {
 
 /**
  * Finds potential duplicate components in the masterComponents collection.
- * Duplicates are now determined by having the same name, brand, and a similar model number.
+ * Duplicates are determined by having the same name, brand, size, and a similar model number.
  * @returns A promise that resolves to an array of groups of duplicate components.
  */
 export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]> {
@@ -25,7 +25,7 @@ export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]>
       components.push({ id: doc.id, ...doc.data() } as MasterComponent);
     });
 
-    // Group components by a composite key of name, brand, and the "base" of the model number.
+    // Group components by a composite key of name, brand, size, and the "base" of the model number.
     const groups: { [key: string]: MasterComponent[] } = {};
     for (const component of components) {
       // Don't consider components without a brand and model as potential duplicates
@@ -33,10 +33,9 @@ export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]>
         continue;
       }
       
-      // Create a "base model" by removing common suffixes like -SGS, -GS, etc.
-      // This helps group variations of the same core component.
       const baseModel = component.model.replace(/(-gs|-sgs|-long|-medium|-short|\sgs|\sgs)/i, '').trim();
-      const key = `${component.name}|${component.brand}|${baseModel}`;
+      // Add size to the key to differentiate between same model, different sizes
+      const key = `${component.name}|${component.brand}|${baseModel}|${component.size || 'no-size'}`;
       
       // Skip groups that have been marked as ignored
       if (ignoredKeys.has(key)) {
