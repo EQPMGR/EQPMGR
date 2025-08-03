@@ -57,7 +57,6 @@ export async function replaceUserComponentAction({
         if (!componentToReplaceSnap.exists) {
              throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
         }
-        // Firestore Timestamps are automatically converted to Date objects by the SDK when fetched this way.
         const componentData = componentToReplaceSnap.data() as Omit<UserComponent, 'purchaseDate' | 'lastServiceDate'> & { purchaseDate: admin.firestore.Timestamp, lastServiceDate: admin.firestore.Timestamp | null };
         const userComponentToReplace = { 
             ...componentData,
@@ -85,7 +84,7 @@ export async function replaceUserComponentAction({
             series: masterComponentToReplace.series,
             model: masterComponentToReplace.model,
             system: masterComponentToReplace.system,
-            size: userComponentToReplace.size || masterComponentToReplace.size,
+            size: userComponentToReplace.size || masterComponentToReplace.size || null,
             wearPercentage: userComponentToReplace.wearPercentage,
             purchaseDate: userComponentToReplace.purchaseDate.toISOString(),
             lastServiceDate: userComponentToReplace.lastServiceDate ? userComponentToReplace.lastServiceDate.toISOString() : null,
@@ -99,9 +98,14 @@ export async function replaceUserComponentAction({
         });
 
         let finalNewMasterComponentId: string;
+        let newComponentSize: string | undefined;
 
         if (newMasterIdFromClient) {
             finalNewMasterComponentId = newMasterIdFromClient;
+            const newMasterCompDoc = await adminDb.doc(`masterComponents/${finalNewMasterComponentId}`).get();
+            if (newMasterCompDoc.exists) {
+                newComponentSize = (newMasterCompDoc.data() as MasterComponent).size;
+            }
         } else if (manualNewComponentData) {
             const newMasterData: Omit<MasterComponent, 'id' | 'embedding'> = {
                 name: masterComponentToReplace.name,
@@ -116,6 +120,7 @@ export async function replaceUserComponentAction({
                 throw new Error("Could not generate a valid ID for the new manual component.");
             }
             finalNewMasterComponentId = generatedId;
+            newComponentSize = manualNewComponentData.size;
             const newMasterComponentRef = adminDb.doc(`masterComponents/${finalNewMasterComponentId}`);
             batch.set(newMasterComponentRef, newMasterData, { merge: true });
         } else {
@@ -128,8 +133,16 @@ export async function replaceUserComponentAction({
             purchaseDate: new Date(),
             lastServiceDate: null,
             notes: `Replaced on ${new Date().toLocaleDateString()}`,
-            size: manualNewComponentData?.size,
+            size: newComponentSize || undefined,
         };
+        
+        // Remove undefined properties before writing to Firestore
+        Object.keys(newUserComponentData).forEach(key => {
+            const typedKey = key as keyof typeof newUserComponentData;
+            if (newUserComponentData[typedKey] === undefined) {
+                delete newUserComponentData[typedKey];
+            }
+        });
         
         batch.set(componentToReplaceRef, newUserComponentData);
         
