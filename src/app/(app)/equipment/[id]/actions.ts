@@ -57,7 +57,14 @@ export async function replaceUserComponentAction({
         if (!componentToReplaceSnap.exists) {
              throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
         }
-        const userComponentToReplace = { id: componentToReplaceSnap.id, ...componentToReplaceSnap.data() } as UserComponent;
+        // Firestore Timestamps are automatically converted to Date objects by the SDK when fetched this way.
+        const componentData = componentToReplaceSnap.data() as Omit<UserComponent, 'purchaseDate' | 'lastServiceDate'> & { purchaseDate: admin.firestore.Timestamp, lastServiceDate: admin.firestore.Timestamp | null };
+        const userComponentToReplace = { 
+            ...componentData,
+            id: componentToReplaceSnap.id,
+            purchaseDate: componentData.purchaseDate.toDate(),
+            lastServiceDate: componentData.lastServiceDate ? componentData.lastServiceDate.toDate() : null,
+        } as UserComponent;
 
         const masterComponentSnap = await adminDb.doc(`masterComponents/${userComponentToReplace.masterComponentId}`).get();
         if (!masterComponentSnap.exists) {
@@ -67,7 +74,7 @@ export async function replaceUserComponentAction({
         
         const equipmentDocRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
         const equipmentDocSnap = await equipmentDocRef.get();
-        if (!equipmentDocSnap.exists) {
+        if (!equipmentDocSnap.exists()) {
             throw new Error("Equipment not found in user data.");
         }
         const equipmentData = equipmentDocSnap.data();
@@ -80,8 +87,8 @@ export async function replaceUserComponentAction({
             system: masterComponentToReplace.system,
             size: userComponentToReplace.size || masterComponentToReplace.size,
             wearPercentage: userComponentToReplace.wearPercentage,
-            purchaseDate: new Date(userComponentToReplace.purchaseDate).toISOString(),
-            lastServiceDate: userComponentToReplace.lastServiceDate ? new Date(userComponentToReplace.lastServiceDate).toISOString() : null,
+            purchaseDate: userComponentToReplace.purchaseDate.toISOString(),
+            lastServiceDate: userComponentToReplace.lastServiceDate ? userComponentToReplace.lastServiceDate.toISOString() : null,
             replacedOn: new Date().toISOString(),
             finalMileage: equipmentData?.totalDistance || 0,
             replacementReason: replacementReason,
