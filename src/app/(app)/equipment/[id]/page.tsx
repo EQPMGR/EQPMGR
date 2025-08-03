@@ -53,7 +53,7 @@ import { DiscBrakeIcon } from '@/components/icons/disc-brake-icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
-import { toDate, toNullableDate } from '@/lib/date-utils';
+import { toDate, toNullableDate, formatDate } from '@/lib/date-utils';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
@@ -382,7 +382,7 @@ export default function EquipmentDetailPage() {
                     <CardContent className="grid grid-cols-2 text-center pt-6">
                         <div>
                             <p className="text-xl md:text-2xl font-headline pt-2">
-                                {equipment.purchaseDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                                {formatDate(equipment.purchaseDate, user?.dateFormat)}
                             </p>
                             <p className="text-xs text-muted-foreground">Purchased</p>
                         </div>

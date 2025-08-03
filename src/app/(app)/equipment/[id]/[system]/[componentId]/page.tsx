@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { toDate, toNullableDate } from '@/lib/date-utils';
+import { toDate, toNullableDate, formatDate } from '@/lib/date-utils';
 import type { Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { ReplaceComponentDialog } from '@/components/replace-component-dialog';
@@ -194,11 +194,11 @@ export default function ComponentDetailPage() {
                  {component.size && <div><p className="text-muted-foreground">Size</p><p className="font-medium">{component.size}</p></div>}
                 <div>
                     <p className="text-muted-foreground">Purchase Date</p>
-                    <p className="font-medium">{component.purchaseDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
+                    <p className="font-medium">{formatDate(component.purchaseDate, user?.dateFormat)}</p>
                 </div>
                  <div>
                     <p className="text-muted-foreground">Last Service</p>
-                    <p className="font-medium">{component.lastServiceDate ? component.lastServiceDate.toLocaleDateString('en-US', { timeZone: 'UTC' }) : 'N/A'}</p>
+                    <p className="font-medium">{formatDate(component.lastServiceDate, user?.dateFormat)}</p>
                 </div>
             </div>
 

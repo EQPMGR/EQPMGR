@@ -37,3 +37,22 @@ export const toNullableDate = (value: any): Date | null => {
   
   return null;
 };
+
+export const formatDate = (date: Date | null, format: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD' = 'MM/DD/YYYY'): string => {
+    if (!date) return 'N/A';
+
+    // Ensure we work with UTC dates to avoid timezone issues.
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+
+    switch (format) {
+        case 'DD/MM/YYYY':
+            return `${day}/${month}/${year}`;
+        case 'YYYY/MM/DD':
+            return `${year}/${month}/${day}`;
+        case 'MM/DD/YYYY':
+        default:
+            return `${month}/${day}/${year}`;
+    }
+};

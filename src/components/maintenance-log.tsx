@@ -19,6 +19,8 @@ import { PlusCircle } from 'lucide-react';
 import type { MaintenanceLog as MaintenanceLogType } from '@/lib/types';
 import { AddMaintenanceLogDialog } from './add-maintenance-log-dialog';
 import { Badge } from './ui/badge';
+import { useAuth } from '@/hooks/use-auth';
+import { formatDate } from '@/lib/date-utils';
 
 interface MaintenanceLogProps {
   log: MaintenanceLogType[];
@@ -26,6 +28,7 @@ interface MaintenanceLogProps {
 }
 
 export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
+  const { user } = useAuth();
   const getBadgeVariant = (logType: MaintenanceLogType['logType']): 'secondary' | 'default' | 'outline' => {
     switch (logType) {
         case 'repair': return 'secondary';
@@ -62,7 +65,7 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
               log.map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell>
-                    {entry.date.toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                    {formatDate(entry.date, user?.dateFormat)}
                   </TableCell>
                   <TableCell>{entry.description}</TableCell>
                 </TableRow>

@@ -6,6 +6,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { Component } from '@/lib/types';
+import { useAuth } from '@/hooks/use-auth';
+import { formatDate } from '@/lib/date-utils';
 
 interface ComponentStatusListProps {
   components: Component[];
@@ -18,6 +20,8 @@ const getProgressColor = (wear: number) => {
 };
 
 export function ComponentStatusList({ components }: ComponentStatusListProps) {
+  const { user } = useAuth();
+  
   return (
     <TooltipProvider>
       <div className="space-y-3">
@@ -37,8 +41,8 @@ export function ComponentStatusList({ components }: ComponentStatusListProps) {
             <TooltipContent>
               <p className="font-semibold">{component.brand} {component.model}</p>
               <p>{component.wearPercentage}% wear.</p>
-              <p>Purchased: {component.purchaseDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
-              {component.lastServiceDate && <p>Last Service: {component.lastServiceDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>}
+              <p>Purchased: {formatDate(component.purchaseDate, user?.dateFormat)}</p>
+              {component.lastServiceDate && <p>Last Service: {formatDate(component.lastServiceDate, user?.dateFormat)}</p>}
             </TooltipContent>
           </Tooltip>
         ))}

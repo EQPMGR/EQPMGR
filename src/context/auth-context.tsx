@@ -27,6 +27,7 @@ export interface UserProfile {
   measurementSystem: 'metric' | 'imperial';
   shoeSizeSystem: 'us' | 'uk' | 'eu';
   distanceUnit: 'km' | 'miles';
+  dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
 }
 
 interface UserDocument {
@@ -39,6 +40,7 @@ interface UserDocument {
     measurementSystem?: 'metric' | 'imperial';
     shoeSizeSystem?: 'us' | 'uk' | 'eu';
     distanceUnit?: 'km' | 'miles';
+    dateFormat?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
     createdAt?: FieldValue;
     lastLogin?: FieldValue;
 }
@@ -50,7 +52,7 @@ interface AuthContextType {
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => Promise<void>;
-  updateUserPreferences: (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>>) => Promise<void>;
+  updateUserPreferences: (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit' | 'dateFormat'>>) => Promise<void>;
   updateProfilePhoto: (photoDataUrl: string) => Promise<boolean>;
 }
 
@@ -66,6 +68,7 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     measurementSystem: data.measurementSystem || 'imperial',
     shoeSizeSystem: data.shoeSizeSystem || 'us',
     distanceUnit: data.distanceUnit || 'km',
+    dateFormat: data.dateFormat || 'MM/DD/YYYY',
     height: data.height,
     weight: data.weight,
     shoeSize: data.shoeSize,
@@ -122,6 +125,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
               measurementSystem: 'imperial',
               shoeSizeSystem: 'us',
               distanceUnit: 'km',
+              dateFormat: 'MM/DD/YYYY',
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp(),
             };
@@ -204,7 +208,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       }
   }, [toast, handleAuthError]);
 
-  const updateUserPreferencesHandler = useCallback(async (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'>>) => {
+  const updateUserPreferencesHandler = useCallback(async (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit' | 'dateFormat'>>) => {
       const currentUser = auth.currentUser;
       if (!currentUser) {
           throw new Error('Not Authenticated');

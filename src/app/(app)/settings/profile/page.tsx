@@ -56,6 +56,7 @@ const profileFormSchema = z.object({
   measurementSystem: z.enum(['metric', 'imperial']),
   shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
   distanceUnit: z.enum(['km', 'miles']),
+  dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY/MM/DD']),
 })
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
@@ -125,6 +126,7 @@ const mapProfileToForm = (profile: UserProfile): ProfileFormValues => {
         measurementSystem: profile.measurementSystem,
         shoeSizeSystem: profile.shoeSizeSystem,
         distanceUnit: profile.distanceUnit,
+        dateFormat: profile.dateFormat,
         shoeSize: shoeSize,
         height: height,
         feet: feet,
@@ -172,6 +174,7 @@ export default function ProfilePage() {
       measurementSystem: 'imperial',
       shoeSizeSystem: 'us',
       distanceUnit: 'km',
+      dateFormat: 'MM/DD/YYYY',
       name: '',
       age: undefined,
       height: undefined,
@@ -402,6 +405,40 @@ export default function ProfilePage() {
                                 <FormItem className="flex items-center space-x-2 space-y-0">
                                     <FormControl><RadioGroupItem value="miles" /></FormControl>
                                     <FormLabel className="font-normal">Miles (mi)</FormLabel>
+                                </FormItem>
+                            </RadioGroup>
+                        </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dateFormat"
+                  render={({ field }) => (
+                     <FormItem className="space-y-3">
+                      <FormLabel>Date Format</FormLabel>
+                       <FormControl>
+                            <RadioGroup
+                                onValueChange={(value) => {
+                                    field.onChange(value);
+                                    updateUserPreferences({ dateFormat: value as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD' });
+                                }}
+                                value={field.value}
+                                className="flex flex-col space-y-2"
+                            >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="MM/DD/YYYY" /></FormControl>
+                                    <FormLabel className="font-normal">MM/DD/YYYY</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="DD/MM/YYYY" /></FormControl>
+                                    <FormLabel className="font-normal">DD/MM/YYYY</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="YYYY/MM/DD" /></FormControl>
+                                    <FormLabel className="font-normal">YYYY/MM/DD</FormLabel>
                                 </FormItem>
                             </RadioGroup>
                         </FormControl>
