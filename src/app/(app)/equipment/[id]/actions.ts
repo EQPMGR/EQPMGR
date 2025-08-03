@@ -1,12 +1,12 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
-import type { UserComponent, MasterComponent, ArchivedComponent, Equipment } from '@/lib/types';
-import { FieldValue } from 'firebase-admin/firestore';
+import { doc, getDoc, writeBatch, deleteField, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { UserComponent, MasterComponent } from '@/lib/types';
 
-
-const createComponentId = (component: Partial<Omit<MasterComponent, 'id' | 'embedding'>>) => {
+// Helper to create a slug from a component's details
+const createComponentId = (component: Omit<MasterComponent, 'id' | 'embedding'>) => {
     const idString = [component.brand, component.name, component.model, component.size]
         .filter(Boolean)
         .join('-');
@@ -48,26 +48,31 @@ export async function replaceUserComponentAction({
         throw new Error("Either a selected component or manual component data must be provided.");
     }
     
-    const batch = adminDb.batch();
-    const equipmentDocRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
+    const batch = writeBatch(db);
+    const userDocRef = doc(db, 'users', userId);
     
     try {
-        const equipmentSnap = await equipmentDocRef.get();
-        if (!equipmentSnap.exists) {
-            throw new Error("Equipment document not found.");
+        const userDocSnap = await getDoc(userDocRef);
+        if (!userDocSnap.exists()) {
+            throw new Error("User document not found.");
         }
-        const equipmentData = equipmentSnap.data() as Equipment;
+        const userData = userDocSnap.data();
+        const equipmentData = userData.equipment?.[equipmentId];
         
-        const componentsCollectionRef = adminDb.collection(`users/${userId}/equipment/${equipmentId}/components`);
-        const componentToReplaceSnap = await componentsCollectionRef.doc(userComponentIdToReplace).get();
+        if (!equipmentData) {
+            throw new Error("Equipment not found in user data.");
+        }
         
-        if (!componentToReplaceSnap.exists) {
+        const componentsCollectionRef = collection(db, 'users', userId, 'equipment', equipmentId, 'components');
+        const componentToReplaceSnap = await getDoc(doc(componentsCollectionRef, userComponentIdToReplace));
+        
+        if (!componentToReplaceSnap.exists()) {
              throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
         }
         const userComponentToReplace = { id: componentToReplaceSnap.id, ...componentToReplaceSnap.data() } as UserComponent;
 
-        const masterComponentSnap = await adminDb.doc(`masterComponents/${userComponentToReplace.masterComponentId}`).get();
-        if (!masterComponentSnap.exists) {
+        const masterComponentSnap = await getDoc(doc(db, 'masterComponents', userComponentToReplace.masterComponentId));
+        if (!masterComponentSnap.exists()) {
             throw new Error(`Master component ${userComponentToReplace.masterComponentId} not found.`);
         }
         const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data() } as MasterComponent;
@@ -86,6 +91,8 @@ export async function replaceUserComponentAction({
             finalMileage: equipmentData.totalDistance || 0,
             replacementReason: replacementReason,
         };
+        
+        const equipmentDocRef = doc(db, 'users', userId, 'equipment', equipmentId);
 
         const plainArchivedComponent = {
             ...archivedComponent,
@@ -116,7 +123,7 @@ export async function replaceUserComponentAction({
                 throw new Error("Could not generate a valid ID for the new manual component.");
             }
             finalNewMasterComponentId = generatedId;
-            const newMasterComponentRef = adminDb.doc(`masterComponents/${finalNewMasterComponentId}`);
+            const newMasterComponentRef = doc(db, `masterComponents/${finalNewMasterComponentId}`);
             batch.set(newMasterComponentRef, newMasterData, { merge: true });
         } else {
             throw new Error("No new component data provided.");
