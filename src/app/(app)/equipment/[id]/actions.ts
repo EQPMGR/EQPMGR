@@ -74,7 +74,7 @@ export async function replaceUserComponentAction({
         
         const equipmentDocRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
         const equipmentDocSnap = await equipmentDocRef.get();
-        if (!equipmentDocSnap.exists()) {
+        if (!equipmentDocSnap.exists) {
             throw new Error("Equipment not found in user data.");
         }
         const equipmentData = equipmentDocSnap.data();
