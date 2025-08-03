@@ -53,7 +53,7 @@ const extractBikeDetailsFlow = ai.defineFlow(
     outputSchema: ExtractBikeDetailsOutputSchema,
   },
   async (input) => {
-    const { output } = await extractBikeDetailsPrompt(input);
+    const { output } = await bikeExtractorPrompt(input);
     if (!output) {
       throw new Error('Could not extract bike details from the provided text. The AI returned an empty response.');
     }
