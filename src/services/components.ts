@@ -2,8 +2,7 @@
 
 'use server';
 
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import type { MasterComponent } from '@/lib/types';
 
 export interface MasterComponentWithOptions extends MasterComponent {
@@ -17,7 +16,7 @@ export interface MasterComponentWithOptions extends MasterComponent {
  */
 export async function fetchAllMasterComponents(): Promise<MasterComponentWithOptions[]> {
   try {
-    const querySnapshot = await getDocs(collection(db, 'masterComponents'));
+    const querySnapshot = await adminDb.collection('masterComponents').get();
     const components: MasterComponentWithOptions[] = [];
     querySnapshot.forEach((doc) => {
       components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
@@ -39,8 +38,8 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return [];
     }
     try {
-        const q = query(collection(db, 'masterComponents'), where('name', '==', type));
-        const querySnapshot = await getDocs(q);
+        const q = adminDb.collection('masterComponents').where('name', '==', type);
+        const querySnapshot = await q.get();
         const components: MasterComponentWithOptions[] = [];
         querySnapshot.forEach((doc) => {
             components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
