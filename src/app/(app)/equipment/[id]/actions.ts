@@ -4,6 +4,9 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import type { UserComponent, MasterComponent } from '@/lib/types';
+import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 
 // Helper to create a slug from a component's details
 const createComponentId = (component: Omit<MasterComponent, 'id' | 'embedding'>) => {
@@ -25,7 +28,7 @@ export async function replaceUserComponentAction({
     equipmentId,
     userComponentIdToReplace,
     replacementReason,
-    newMasterComponentId: newMasterIdFromClient,
+    newMasterComponentId,
     manualNewComponentData,
 }: {
     userId: string;
@@ -44,7 +47,7 @@ export async function replaceUserComponentAction({
         throw new Error("Missing required parameters for component replacement.");
     }
     
-    if (!newMasterIdFromClient && !manualNewComponentData) {
+    if (!newMasterComponentId && !manualNewComponentData) {
         throw new Error("Either a selected component or manual component data must be provided.");
     }
     
@@ -57,17 +60,11 @@ export async function replaceUserComponentAction({
         if (!componentToReplaceSnap.exists) {
              throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
         }
-        const componentData = componentToReplaceSnap.data() as Omit<UserComponent, 'purchaseDate' | 'lastServiceDate'> & { purchaseDate: admin.firestore.Timestamp, lastServiceDate: admin.firestore.Timestamp | null };
-        const userComponentToReplace = { 
-            ...componentData,
-            id: componentToReplaceSnap.id,
-            purchaseDate: componentData.purchaseDate.toDate(),
-            lastServiceDate: componentData.lastServiceDate ? componentData.lastServiceDate.toDate() : null,
-        } as UserComponent;
+        const componentData = componentToReplaceSnap.data() as UserComponent;
 
-        const masterComponentSnap = await adminDb.doc(`masterComponents/${userComponentToReplace.masterComponentId}`).get();
+        const masterComponentSnap = await adminDb.doc(`masterComponents/${componentData.masterComponentId}`).get();
         if (!masterComponentSnap.exists) {
-            throw new Error(`Master component ${userComponentToReplace.masterComponentId} not found.`);
+            throw new Error(`Master component ${componentData.masterComponentId} not found.`);
         }
         const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data() } as MasterComponent;
         
@@ -84,10 +81,10 @@ export async function replaceUserComponentAction({
             series: masterComponentToReplace.series,
             model: masterComponentToReplace.model,
             system: masterComponentToReplace.system,
-            size: userComponentToReplace.size || masterComponentToReplace.size || null,
-            wearPercentage: userComponentToReplace.wearPercentage,
-            purchaseDate: userComponentToReplace.purchaseDate.toISOString(),
-            lastServiceDate: userComponentToReplace.lastServiceDate ? userComponentToReplace.lastServiceDate.toISOString() : null,
+            size: componentData.size || masterComponentToReplace.size || null,
+            wearPercentage: componentData.wearPercentage,
+            purchaseDate: (componentData.purchaseDate as any).toDate().toISOString(),
+            lastServiceDate: componentData.lastServiceDate ? (componentData.lastServiceDate as any).toDate().toISOString() : null,
             replacedOn: new Date().toISOString(),
             finalMileage: equipmentData?.totalDistance || 0,
             replacementReason: replacementReason,
@@ -100,8 +97,8 @@ export async function replaceUserComponentAction({
         let finalNewMasterComponentId: string;
         let newComponentSize: string | undefined;
 
-        if (newMasterIdFromClient) {
-            finalNewMasterComponentId = newMasterIdFromClient;
+        if (newMasterComponentId) {
+            finalNewMasterComponentId = newMasterComponentId;
             const newMasterCompDoc = await adminDb.doc(`masterComponents/${finalNewMasterComponentId}`).get();
             if (newMasterCompDoc.exists) {
                 newComponentSize = (newMasterCompDoc.data() as MasterComponent).size;
@@ -137,14 +134,9 @@ export async function replaceUserComponentAction({
         };
         
         // Remove undefined properties before writing to Firestore
-        Object.keys(newUserComponentData).forEach(key => {
-            const typedKey = key as keyof typeof newUserComponentData;
-            if (newUserComponentData[typedKey] === undefined) {
-                delete newUserComponentData[typedKey];
-            }
-        });
-        
-        batch.set(componentToReplaceRef, newUserComponentData);
+        const cleanData = Object.fromEntries(Object.entries(newUserComponentData).filter(([_, v]) => v !== undefined));
+
+        batch.set(componentToReplaceRef, cleanData);
         
         await batch.commit();
         
@@ -156,5 +148,78 @@ export async function replaceUserComponentAction({
             throw new Error('A permission error occurred. This may be due to Firestore security rules.');
         }
         throw new Error((error as Error).message || 'An unexpected error occurred.');
+    }
+}
+
+export async function deleteUserComponentAction({
+    userId,
+    equipmentId,
+    userComponentId,
+}: {
+    userId: string;
+    equipmentId: string;
+    userComponentId: string;
+}) {
+    if (!userId || !equipmentId || !userComponentId) {
+        throw new Error("Missing required parameters for component deletion.");
+    }
+    const batch = adminDb.batch();
+    try {
+        const componentRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}/components/${userComponentId}`);
+        batch.delete(componentRef);
+        await batch.commit();
+        return { success: true, message: "Component deleted successfully." };
+
+    } catch(error) {
+        console.error("[SERVER ACTION ERROR] in deleteUserComponentAction:", error);
+        if ((error as any).code === 'permission-denied' || (error as any).code === 7) {
+            throw new Error('A permission error occurred. This may be due to Firestore security rules.');
+        }
+        throw new Error((error as Error).message || 'An unexpected error occurred.');
+    }
+}
+
+
+export async function addUserComponentAction({
+    userId,
+    equipmentId,
+    masterComponentId,
+    system,
+}: {
+    userId: string;
+    equipmentId: string;
+    masterComponentId: string;
+    system: string;
+}) {
+    if (!userId || !equipmentId || !masterComponentId || !system) {
+        throw new Error("Missing required parameters for adding a component.");
+    }
+
+    try {
+        const newComponentRef = doc(collection(db, 'users', userId, 'equipment', equipmentId, 'components'));
+        const masterComponentRef = doc(db, 'masterComponents', masterComponentId);
+        const masterComponentSnap = await getDoc(masterComponentRef);
+
+        if (!masterComponentSnap.exists()) {
+            throw new Error("The selected master component does not exist.");
+        }
+        const masterComponent = masterComponentSnap.data() as MasterComponent;
+
+        const newComponentData: UserComponent = {
+            id: newComponentRef.id,
+            masterComponentId: masterComponentId,
+            wearPercentage: 0,
+            purchaseDate: new Date(),
+            lastServiceDate: null,
+            size: masterComponent.size,
+            notes: `Added on ${new Date().toLocaleDateString()}`,
+        };
+
+        await setDoc(newComponentRef, newComponentData);
+        
+        return { success: true, message: "Component added successfully." };
+    } catch (error) {
+        console.error("[ACTION ERROR] in addUserComponentAction:", error);
+        throw new Error((error as Error).message || "An unexpected error occurred while adding the component.");
     }
 }

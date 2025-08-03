@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ChevronLeft, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, ArrowUpRight, PlusCircle } from 'lucide-react';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { toDate, toNullableDate } from '@/lib/date-utils';
 import type { Equipment, Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
+import { AddComponentDialog } from '@/components/add-component-dialog';
 
 export default function SystemDetailPage() {
   const params = useParams<{ id: string; system: string }>();
@@ -103,6 +104,12 @@ export default function SystemDetailPage() {
         setIsLoading(false);
     }
   }, [user, params.id, authLoading, fetchEquipmentAndComponents]);
+  
+  const handleSuccess = () => {
+    if (user && params.id) {
+        fetchEquipmentAndComponents(user.uid, params.id as string);
+    }
+  }
 
   const systemComponents = useMemo(() => {
     if (!components) return [];
@@ -135,13 +142,26 @@ export default function SystemDetailPage() {
 
   return (
     <>
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center justify-between gap-2 mb-4">
           <Button variant="outline" size="sm" asChild>
               <Link href={`/equipment/${params.id}`}>
                   <ChevronLeft className="h-4 w-4" />
                   Back to {equipment.name}
               </Link>
           </Button>
+           {user && (
+            <AddComponentDialog 
+                userId={user.uid}
+                equipmentId={params.id as string}
+                system={systemName}
+                onSuccess={handleSuccess}
+            >
+                <Button size="sm">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Component
+                </Button>
+            </AddComponentDialog>
+           )}
       </div>
       <Card>
         <CardHeader>
@@ -165,8 +185,15 @@ export default function SystemDetailPage() {
               </Card>
             </Link>
           ))}
+           {systemComponents.length === 0 && (
+                <div className="text-center py-10 border-2 border-dashed rounded-lg col-span-full">
+                    <h3 className="text-lg font-semibold">No Components</h3>
+                    <p className="text-muted-foreground">Add a component to this system using the button above.</p>
+                </div>
+           )}
         </CardContent>
       </Card>
     </>
   );
 }
+

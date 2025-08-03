@@ -3,14 +3,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { ChevronLeft, Pencil } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { ChevronLeft, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { toDate, toNullableDate } from '@/lib/date-utils';
@@ -18,15 +29,18 @@ import type { Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { ReplaceComponentDialog } from '@/components/replace-component-dialog';
 import { EditComponentDialog } from '@/components/edit-component-dialog';
+import { deleteUserComponentAction } from '../../actions';
 
 
 export default function ComponentDetailPage() {
   const params = useParams<{ id: string; system: string; componentId: string }>();
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [component, setComponent] = useState<Component | undefined>();
   const [subComponents, setSubComponents] = useState<Component[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchComponentData = useCallback(async (uid: string, equipmentId: string, userComponentId: string) => {
     setIsLoading(true);
@@ -111,6 +125,23 @@ export default function ComponentDetailPage() {
   const handleSuccess = () => {
       if (user && params.id && params.componentId) {
         fetchComponentData(user.uid, params.id as string, params.componentId as string);
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!user || !component) return;
+    setIsDeleting(true);
+    try {
+        await deleteUserComponentAction({
+            userId: user.uid,
+            equipmentId: params.id as string,
+            userComponentId: component.userComponentId,
+        });
+        toast({ title: "Component Deleted", description: `${component.name} has been removed.` });
+        router.push(`/equipment/${params.id}/${params.system}`);
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Deletion Failed", description: error.message });
+        setIsDeleting(false);
     }
   }
 
@@ -212,6 +243,28 @@ export default function ComponentDetailPage() {
                        </EditComponentDialog>
                     )}
                     <Button variant="secondary">Log Maintenance</Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="icon">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the <strong>{component.name}</strong> from your equipment. If you are swapping this part for another, please use the "Replace" function instead.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+                                {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Yes, delete component
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
              </div>
         </CardContent>
