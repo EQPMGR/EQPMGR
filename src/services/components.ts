@@ -38,8 +38,7 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
     }
     try {
         const componentsCollection = adminDb.collection('masterComponents');
-        const q = componentsCollection.where('name', '==', type);
-        const querySnapshot = await q.get();
+        const querySnapshot = await componentsCollection.where('name', '==', type).get();
 
         const components: MasterComponentWithOptions[] = [];
         querySnapshot.forEach((doc) => {
