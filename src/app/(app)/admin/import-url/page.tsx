@@ -2,7 +2,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Bot, Loader2, Sparkles } from 'lucide-react';
+import { Bot, Loader2, Sparkles, Send } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
 import { useToast } from '@/hooks/use-toast';
 import { extractBikeDetailsFromUrlContent, type ExtractBikeDetailsOutput } from '@/ai/flows/extract-bike-details-from-url';
 
@@ -16,6 +18,7 @@ export default function ImportTextPage() {
     const [isExtracting, setIsExtracting] = useState(false);
     const [structuredResult, setStructuredResult] = useState<ExtractBikeDetailsOutput | null>(null);
     const { toast } = useToast();
+    const router = useRouter();
     
     const handleExtract = async () => {
         if (!textContent) {
@@ -38,6 +41,24 @@ export default function ImportTextPage() {
             setIsExtracting(false);
         }
     }
+    
+    const handleContinueToForm = () => {
+        if (structuredResult) {
+            try {
+                // Use sessionStorage to pass the data to the next page
+                sessionStorage.setItem('importedBikeData', JSON.stringify(structuredResult));
+                router.push('/admin/add-bike-model');
+            } catch (error) {
+                console.error('Failed to save data to sessionStorage:', error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: 'Could not pass data to the form. Please try again.',
+                });
+            }
+        }
+    };
+
 
     return (
         <Card className="max-w-4xl mx-auto">
@@ -75,13 +96,17 @@ export default function ImportTextPage() {
             </CardContent>
             
             {structuredResult && (
-                <CardFooter>
-                    <div className="w-full space-y-2">
-                        <h3 className="font-semibold">Final Structured Data:</h3>
-                        <pre className="p-4 bg-muted rounded-md text-xs overflow-auto max-h-[70vh]">
+                <CardFooter className="flex-col items-start gap-4">
+                     <div className="w-full space-y-2">
+                        <h3 className="font-semibold">Review Extracted Data:</h3>
+                        <pre className="p-4 bg-muted rounded-md text-xs overflow-auto max-h-[50vh]">
                             {JSON.stringify(structuredResult, null, 2)}
                         </pre>
                     </div>
+                    <Button onClick={handleContinueToForm} className="self-end">
+                        <Send className="mr-2 h-4 w-4" />
+                        Continue to Form
+                    </Button>
                 </CardFooter>
             )}
         </Card>

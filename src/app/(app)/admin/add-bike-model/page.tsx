@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 
 
 const componentSchema = z.object({
@@ -108,6 +109,59 @@ function AddBikeModelFormComponent() {
         },
     });
     
+    useEffect(() => {
+        try {
+            const storedData = sessionStorage.getItem('importedBikeData');
+            if (storedData) {
+                const importedData: ExtractBikeDetailsOutput = JSON.parse(storedData);
+                
+                // Populate top-level fields
+                if (importedData.brand) form.setValue('brand', importedData.brand);
+                if (importedData.model) form.setValue('model', importedData.model);
+                if (importedData.modelYear) form.setValue('modelYear', importedData.modelYear);
+
+                // Populate components
+                const updatedComponents = [...BASE_COMPONENTS];
+                importedData.components.forEach(importedComp => {
+                    const componentIndex = updatedComponents.findIndex(c => c.name === importedComp.name);
+                    if (componentIndex > -1) {
+                        updatedComponents[componentIndex] = {
+                            ...updatedComponents[componentIndex],
+                            brand: importedComp.brand || '',
+                            series: importedComp.series || '',
+                            model: importedComp.model || '',
+                            size: importedComp.size || '',
+                            chainring1: importedComp.chainring1 || '',
+                            chainring2: importedComp.chainring2 || '',
+                            chainring3: importedComp.chainring3 || '',
+                        };
+                    } else {
+                        // If component not in BASE_COMPONENTS, add it.
+                        updatedComponents.push({ ...importedComp, id: crypto.randomUUID() });
+                    }
+                });
+
+                form.setValue('components', updatedComponents);
+                
+                toast({
+                    title: "Data Imported!",
+                    description: "The bike details have been populated from the import page."
+                });
+
+                // Clean up sessionStorage
+                sessionStorage.removeItem('importedBikeData');
+            }
+        } catch (error) {
+            console.error("Failed to parse imported data:", error);
+            toast({
+                variant: 'destructive',
+                title: "Import Error",
+                description: "There was an issue loading the imported data into the form."
+            });
+        }
+    }, [form, toast]);
+
+
     const { fields } = useFieldArray({
       control: form.control,
       name: "components"
