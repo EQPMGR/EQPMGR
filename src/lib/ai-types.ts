@@ -4,15 +4,17 @@
  * @fileOverview Centralized type and schema definitions for AI flows.
  */
 import { z } from 'zod';
-import type { MasterComponent } from './types';
 
-
-// === Schemas for two-stage bike spec extraction ===
-
-// Stage 1: Rough extraction
-export const RoughComponentSchema = z.object({
-  name: z.string().describe("The best-guess name of the component from the raw text (e.g., 'Rear Derailleur', 'Fork')."),
-  description: z.string().describe("The full line or block of text associated with this component."),
+const ExtractedComponentSchema = z.object({
+  name: z.string().describe('The name of the component (e.g., "Rear Derailleur", "Fork", "Bottom Bracket").'),
+  brand: z.string().optional().describe('The brand of the component (e.g., "SRAM", "FOX").'),
+  series: z.string().optional().describe('The product family or series name (e.g., "Dura-Ace", "Ultegra", "105", "XT", "Apex", "GX Eagle").'),
+  model: z.string().optional().describe('The specific model or part number of the component (e.g., "RD-5701", "ST-5700L", "CS-4600").'),
+  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", "E-Bike", or "Accessories".'),
+  size: z.string().optional().describe('The default or single size of the component (e.g., "27.2mm", "700x28c", "160mm").'),
+  chainring1: z.string().optional().describe("For cranksets with multiple rings, the tooth count of the largest chainring."),
+  chainring2: z.string().optional().describe("The tooth count of the second chainring."),
+  chainring3: z.string().optional().describe("The tooth count of the third chainring."),
 });
 
 export const ExtractBikeDetailsInputSchema = z.object({
@@ -20,51 +22,13 @@ export const ExtractBikeDetailsInputSchema = z.object({
 });
 export type ExtractBikeDetailsInput = z.infer<typeof ExtractBikeDetailsInputSchema>;
 
-
 export const ExtractBikeDetailsOutputSchema = z.object({
   brand: z.string().optional().describe('The brand of the bike (e.g., "Specialized").'),
   model: z.string().optional().describe('The model name of the bike (e.g., "Tarmac SL7").'),
   modelYear: z.coerce.number().optional().describe('The model year of the bike (e.g., 2023).'),
-  components: z.array(RoughComponentSchema).describe('An array of all identified bike components with their raw descriptions.'),
+  components: z.array(ExtractedComponentSchema).describe('An array of all the extracted bike components.'),
 });
-
-
-// Stage 2: Detailed cleaning/refining
-export const UnstructuredComponentSchema = z.object({
-  name: z.string().describe("The best-guess name of the component from the raw text."),
-  description: z.string().describe("The full line or block of text associated with this component."),
-});
-
-export const CleanComponentListInputSchema = z.object({
-  components: z.array(UnstructuredComponentSchema),
-});
-
-export const StructuredComponentSchema = z.object({
-  name: z.string().describe("The official name of the component (e.g., 'Rear Derailleur')."),
-  brand: z.string().optional().describe("The brand of the component (e.g., 'SRAM')."),
-  series: z.string().optional().describe("The product family name (e.g., 'GX Eagle')."),
-  model: z.string().optional().describe("The specific part number (e.g., 'RD-M8100-SGS')."),
-  system: z.string().describe("The system it belongs to: 'Drivetrain', 'Brakes', 'Wheelset', 'Frameset', 'Cockpit', 'Suspension', 'E-Bike', or 'Accessories'."),
-  size: z.string().optional().describe("The primary size if available (e.g., '175mm')."),
-  sizeVariants: z.string().optional().describe('A JSON string mapping frame sizes to component sizes. E.g., \'{"S": "40cm", "M": "42cm"}\'.'),
-  chainring1: z.string().optional().describe("Tooth count for the first chainring (e.g., '42t')."),
-  chainring2: z.string().optional().describe("Tooth count for the second chainring."),
-  chainring3: z.string().optional().describe("Tooth count for the third chainring."),
-});
-
-export const CleanComponentListOutputSchema = z.object({
-  components: z.array(StructuredComponentSchema),
-});
-export type CleanComponentListOutput = z.infer<typeof CleanComponentListOutputSchema>;
-
-
-// Final combined output for the form
-export type ExtractBikeDetailsOutput = {
-    brand?: string;
-    model?: string;
-    modelYear?: number;
-    components: z.infer<typeof StructuredComponentSchema>[];
-}
+export type ExtractBikeDetailsOutput = z.infer<typeof ExtractBikeDetailsOutputSchema>;
 
 
 // === From generate-maintenance-schedule.ts ===

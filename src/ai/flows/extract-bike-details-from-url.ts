@@ -1,34 +1,49 @@
 
 'use server';
 /**
- * @fileOverview An AI agent that performs an initial, rough extraction of bike components from raw text.
- * This flow is designed to be fast and simple, focusing only on identifying component text blocks.
- * A secondary, more detailed flow will handle the fine-grained structuring.
+ * @fileOverview An AI agent that extracts structured bike data from raw text content,
+ * typically from a manufacturer's product page.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
 import {
+    ExtractBikeDetailsInput,
     ExtractBikeDetailsInputSchema,
-    ExtractBikeDetailsOutputSchema,
-    type ExtractBikeDetailsInput,
-    type ExtractBikeDetailsOutput,
-    RoughComponentSchema
+    ExtractBikeDetailsOutput,
+    ExtractBikeDetailsOutputSchema
 } from '@/lib/ai-types';
 
+export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetailsInput): Promise<ExtractBikeDetailsOutput> {
+  return extractBikeDetailsFlow(input);
+}
 
-const roughExtractorPrompt = ai.definePrompt({
-  name: 'roughBikeExtractorPrompt',
+// A more robust, single-pass prompt to perform both extraction and structuring.
+const bikeExtractorPrompt = ai.definePrompt({
+  name: 'bikeExtractorPrompt',
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
   config: {
-    temperature: 0.0,
+    temperature: 0.1,
+    safetySettings: [
+        {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_ONLY_HIGH',
+        },
+    ]
   },
-  prompt: `You are a simple data extraction tool. From the provided text, identify the bike's brand, model, and modelYear.
-Then, extract every single component listed. For each component, provide a best-guess 'name' and the full 'description' text for that line item.
-Do not try to structure the component details yet. Just extract the raw text for each part.
+  prompt: `You are an expert bike mechanic. Analyze the provided text. Extract the bike's brand, model, and modelYear.
+Identify all components listed. For each component, extract its name, brand, series, and model. Assign it to a 'system'.
 
-Return ONLY the structured JSON object.
+CRITICAL RULES:
+1.  **Component Name:** Identify the official name (e.g., "Rear Derailleur", "Crankset", "Cassette"). Standardize "Seat Post" to "Seatpost".
+2.  **Brand, Series, Model:** From the component's description, extract its brand (e.g., "SRAM"), series (e.g., "GX Eagle"), and model.
+3.  **MODEL**: The 'model' field is ONLY for the specific part number (e.g., RD-M8100-SGS, XG-1275).
+4.  **SERIES**: The 'series' is the product family (e.g., 'Deore XT', 'CUES', 'Force').
+5.  **SYSTEM**: Assign the component to a system: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "Suspension", "E-Bike", or "Accessories".
+6.  **SIZE**: Extract the primary size if available (e.g., crank length "175mm", handlebar width "780mm", tire size "700x28c").
+7.  **NO GUESSING**: If a value is not present in the text, omit the field. Do not invent data.
+
+Return ONLY the structured JSON format.
 
 Page Content:
 {{{textContent}}}
@@ -42,15 +57,10 @@ const extractBikeDetailsFlow = ai.defineFlow(
     outputSchema: ExtractBikeDetailsOutputSchema,
   },
   async (input) => {
-    const { output } = await roughExtractorPrompt(input);
+    const { output } = await extractBikeDetailsPrompt(input);
     if (!output) {
-      throw new Error('Could not perform the initial extraction of bike components from the provided text.');
+      throw new Error('Could not extract bike details from the provided text.');
     }
     return output;
   }
 );
-
-
-export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetailsInput): Promise<ExtractBikeDetailsOutput> {
-  return extractBikeDetailsFlow(input);
-}

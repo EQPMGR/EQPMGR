@@ -1,5 +1,5 @@
-// This file has been removed.
-// The two-stage extraction process (initial + refinement) proved to be unreliable
-// and has been consolidated into a single, more robust flow in
-// `extract-bike-details-from-url.ts`.
+
 'use server';
+// This file is no longer used and has been removed to avoid confusion.
+// The component import process has been consolidated into a single flow
+// in `extract-bike-details-from-url.ts`.
