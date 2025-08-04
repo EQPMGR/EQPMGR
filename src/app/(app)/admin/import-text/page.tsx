@@ -45,8 +45,12 @@ export default function ImportTextPage() {
     const handleContinueToForm = () => {
         if (structuredResult) {
             try {
-                // Use sessionStorage to pass the data to the next page
-                sessionStorage.setItem('importedBikeData', JSON.stringify(structuredResult));
+                // Store all relevant data for the form and for training data collection
+                const dataToStore = {
+                    rawText: textContent,
+                    aiOutput: structuredResult,
+                };
+                sessionStorage.setItem('importedBikeData', JSON.stringify(dataToStore));
                 router.push('/admin/add-bike-model');
             } catch (error) {
                 console.error('Failed to save data to sessionStorage:', error);

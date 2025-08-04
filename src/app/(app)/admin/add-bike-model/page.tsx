@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { writeBatch, doc } from 'firebase/firestore';
+import { writeBatch, doc, collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -26,6 +26,11 @@ import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 import { getAvailableBrands } from './actions';
 
+interface TrainingData {
+    rawText: string;
+    aiOutput: ExtractBikeDetailsOutput;
+    userCorrectedOutput: AddBikeModelFormValues;
+}
 
 const componentSchema = z.object({
   id: z.string().optional(), // Used to track fields in the array
@@ -90,6 +95,7 @@ function AddBikeModelFormComponent() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+    const [importedTrainingData, setImportedTrainingData] = useState<Omit<TrainingData, 'userCorrectedOutput'> | null>(null);
 
     const form = useForm<AddBikeModelFormValues>({
         resolver: zodResolver(addBikeModelSchema),
@@ -114,7 +120,10 @@ function AddBikeModelFormComponent() {
         try {
             const storedData = sessionStorage.getItem('importedBikeData');
             if (storedData) {
-                const importedData: ExtractBikeDetailsOutput = JSON.parse(storedData);
+                const fullImportedData: { rawText: string; aiOutput: ExtractBikeDetailsOutput } = JSON.parse(storedData);
+                const importedData = fullImportedData.aiOutput;
+                
+                setImportedTrainingData({ rawText: fullImportedData.rawText, aiOutput: importedData });
                 
                 if (importedData.brand) form.setValue('brand', importedData.brand);
                 if (importedData.model) form.setValue('model', importedData.model);
@@ -261,6 +270,16 @@ function AddBikeModelFormComponent() {
                 imageUrl: `https://placehold.co/600x400.png`
             });
             
+            // If there was imported data, save it for training purposes
+            if (importedTrainingData) {
+                const trainingDocRef = doc(collection(db, 'trainingData'));
+                const trainingData: TrainingData = {
+                    ...importedTrainingData,
+                    userCorrectedOutput: values,
+                };
+                batch.set(trainingDocRef, trainingData);
+            }
+
             await batch.commit();
             
             toast({
