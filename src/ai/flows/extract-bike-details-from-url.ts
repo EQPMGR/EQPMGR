@@ -65,4 +65,3 @@ const extractBikeDetailsFlow = ai.defineFlow(
     return output;
   }
 );
-
