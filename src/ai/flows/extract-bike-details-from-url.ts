@@ -40,9 +40,8 @@ Follow these rules precisely:
     - "Seat Post" -> "Seatpost"
 4.  **Handle Duplicates:** If a component like "Brake Rotor" is listed twice with different sizes, create two entries: one "Front Brake Rotor" and one "Rear Brake Rotor".
 5.  **Clean the 'size' field:** Extract only the core measurement (e.g., "29x2.50\"", "820mm", "165mm length"). Do not include descriptive words like "width" or "length" in the size field itself.
-6.  **CRITICAL SIZING RULE:** Pay close attention to frame sizes (like "R1, R2, R3", or "S, M, L"). Do NOT assign these frame sizes to a component's 'size' field unless a component's dimension is explicitly tied to one of those frame sizes. Most components have one size for all frames. Only apply a frame size variant if the text provides a clear mapping, like "Handlebar: S/M 780mm, L/XL 800mm". If a component's size does not vary, do not include any frame size data for it.
-7.  If a value isn't available for a field (like 'series' or 'model'), omit it. Do not invent values.
-8.  Remember brand relationships: Bontrager is part of Trek. Specialized has Roval.
+6.  If a value isn't available for a field (like 'series' or 'model'), omit it. Do not invent values.
+7.  Remember brand relationships: Bontrager is part of Trek. Specialized has Roval.
 
 Return ONLY the structured JSON format.
 
@@ -62,6 +61,26 @@ const extractBikeDetailsFlow = ai.defineFlow(
     if (!output) {
       throw new Error('Could not extract bike details from the provided text. The AI returned an empty response.');
     }
+
+    // Post-processing to clean up the AI's output, since it struggles with sizing rules.
+    if (output.components) {
+      output.components.forEach(component => {
+        if (component.size) {
+            // Check for aggregated sizes like "165mm, 170mm, 172.5mm"
+            const hasAggregatedSizes = component.size.includes(',') && /\d/.test(component.size);
+            
+            // Check for frame size lists like "S, M, L, XL"
+            const hasFrameSizeList = (/(S,|M,|L,|XL)/i.test(component.size) && component.size.includes(','));
+            
+            if (hasAggregatedSizes || hasFrameSizeList) {
+                // If the size is an aggregated list or a frame size list, delete it.
+                // This is better than having incorrect data.
+                delete component.size;
+            }
+        }
+      });
+    }
+
     return output;
   }
 );
