@@ -34,14 +34,15 @@ const bikeExtractorPrompt = ai.definePrompt({
 Follow these rules precisely:
 1.  Extract the bike's primary 'brand', 'model', and 'modelYear'.
 2.  Identify all components. For each, extract its 'name', 'brand', 'series', and 'model'. Assign it to a 'system'.
-3.  **Standardize Names:**
-    - "Crank" -> "Crankset"
-    - "Shock" -> "Rear Shock"
-    - "Seat Post" -> "Seatpost"
-4.  **Handle Duplicates:** If a component like "Brake Rotor" is listed twice with different sizes, create two entries: one "Front Brake Rotor" and one "Rear Brake Rotor".
-5.  **Clean the 'size' field:** Extract only the core measurement (e.g., "29x2.50\"", "820mm", "165mm length"). Do not include descriptive words like "width" or "length" in the size field itself.
-6.  If a value isn't available for a field (like 'series' or 'model'), omit it. Do not invent values.
-7.  Remember brand relationships: Bontrager is part of Trek. Specialized has Roval.
+3.  **CRITICAL SIZING RULE:**
+    -   If a component has multiple sizes listed based on frame size (e.g., Handlebar: 40cm for S, 42cm for M), create a separate JSON object for each variant.
+    -   For components like tires or saddles with a single, non-varying size (e.g., 700x28mm, 145mm width), extract that single size.
+    -   **Do not** use a list of frame sizes (e.g., "S, M, L, XL") as the 'size' for any component.
+4.  **COMPONENT Splitting:** If a component like "Brake Rotor" is listed twice with different sizes, create two entries: one "Front Brake Rotor" and one "Rear Brake Rotor".
+5.  **SYSTEM CLASSIFICATION:**
+    -   Standardize "Seat Post" -> "Seatpost".
+    -   "Crank" -> "Crankset".
+    -   **Electronic Shifting:** Components named "Battery" or "Charger" related to "Di2," "AXS," or "eTap" belong to the "Drivetrain" system, NOT the "E-Bike" system.
 
 Return ONLY the structured JSON format.
 
@@ -62,25 +63,31 @@ const extractBikeDetailsFlow = ai.defineFlow(
       throw new Error('Could not extract bike details from the provided text. The AI returned an empty response.');
     }
 
-    // Post-processing to clean up the AI's output, since it struggles with sizing rules.
+    // Post-processing to merge duplicate components and clean up sizing
     if (output.components) {
-      output.components.forEach(component => {
-        if (component.size) {
-            // Check for aggregated sizes like "165mm, 170mm, 172.5mm"
-            const hasAggregatedSizes = component.size.includes(',') && /\d/.test(component.size);
-            
-            // Check for frame size lists like "S, M, L, XL"
-            const hasFrameSizeList = (/(S,|M,|L,|XL)/i.test(component.size) && component.size.includes(','));
-            
-            if (hasAggregatedSizes || hasFrameSizeList) {
-                // If the size is an aggregated list or a frame size list, delete it.
-                // This is better than having incorrect data.
-                delete component.size;
+        const componentMap = new Map<string, any>();
+        const componentsToRemove: any[] = [];
+        
+        output.components.forEach(component => {
+            const key = `${component.name}-${component.brand}-${component.model}`;
+            if (componentMap.has(key)) {
+                // We've seen this component before, it's a size variant.
+                // Mark the current one for removal and ensure the original has no size.
+                const originalComponent = componentMap.get(key);
+                delete originalComponent.size;
+                componentsToRemove.push(component);
+            } else {
+                // First time seeing this component.
+                componentMap.set(key, component);
             }
-        }
-      });
+        });
+        
+        // Filter out the components marked for removal
+        output.components = output.components.filter(c => !componentsToRemove.includes(c));
     }
+
 
     return output;
   }
 );
+

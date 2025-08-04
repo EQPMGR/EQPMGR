@@ -347,6 +347,8 @@ function AddBikeModelFormComponent() {
                                         </div></div>)}
                                     </CardContent></Card>
                                     {renderComponentFields('Chain', ['brand', 'series', 'model', 'links', 'tensioner'])}
+                                    {renderComponentFields('Battery', ['brand', 'model'])}
+                                    {renderComponentFields('Charger', ['brand', 'model'])}
                                 </AccordionContent>
                             </AccordionItem>
 

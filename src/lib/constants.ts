@@ -23,6 +23,8 @@ export const BASE_COMPONENTS = [
     { name: 'Front Shifter', system: 'Drivetrain', brand: '', series: '', model: '' },
     { name: 'Rear Shifter', system: 'Drivetrain', brand: '', series: '', model: '' },
     { name: 'Chain', system: 'Drivetrain', brand: '', series: '', model: '', links: '', tensioner: '' },
+    { name: 'Battery', system: 'Drivetrain', brand: '', model: '' },
+    { name: 'Charger', system: 'Drivetrain', brand: '', model: '' },
     // Brakes
     { name: 'Front Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
     { name: 'Rear Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
