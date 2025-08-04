@@ -32,16 +32,16 @@ const bikeExtractorPrompt = ai.definePrompt({
   prompt: `You are an expert bike mechanic. Analyze the provided text to extract bike and component data.
 
 Follow these rules precisely:
-1.  Extract the bike's primary 'brand', 'model', and 'modelYear'.
+1.  Extract the bike's primary 'brand', 'model', and 'modelYear'. Only extract a modelYear if it is explicitly stated in the text.
 2.  Identify all components. For each, extract its 'name', 'brand', 'series', and 'model'. Assign it to a 'system'.
 3.  **CRITICAL SIZING RULE:**
-    -   If a component has multiple sizes listed based on frame size (e.g., Handlebar: 40cm for S, 42cm for M), create a separate JSON object for each variant.
-    -   For components like tires or saddles with a single, non-varying size (e.g., 700x28mm, 145mm width), extract that single size.
-    -   **Do not** use a list of frame sizes (e.g., "S, M, L, XL") as the 'size' for any component.
+    -   If a component has a single, non-varying size (e.g., 700x28mm, 145mm width), extract that single size.
+    -   **FORBIDDEN:** Do not use a list of frame sizes (e.g., "S, M, L, XL") as the 'size' for any component. If a component's size is listed only as a frame size, leave the 'size' field blank.
+    -   **FORBIDDEN:** Do not aggregate multiple size variants (e.g., "165mm, 170mm") into the 'size' field. Leave the 'size' field blank for these components.
 4.  **COMPONENT Splitting:** If a component like "Brake Rotor" is listed twice with different sizes, create two entries: one "Front Brake Rotor" and one "Rear Brake Rotor".
 5.  **SYSTEM CLASSIFICATION:**
     -   Standardize "Seat Post" -> "Seatpost".
-    -   "Crank" -> "Crankset".
+    -   Standardize "Crank" -> "Crankset".
     -   **Electronic Shifting:** Components named "Battery" or "Charger" related to "Di2," "AXS," or "eTap" belong to the "Drivetrain" system, NOT the "E-Bike" system.
 
 Return ONLY the structured JSON format.
@@ -63,8 +63,19 @@ const extractBikeDetailsFlow = ai.defineFlow(
       throw new Error('Could not extract bike details from the provided text. The AI returned an empty response.');
     }
 
-    // Post-processing to merge duplicate components and clean up sizing
     if (output.components) {
+        // First pass: clean up invalid size fields on all components.
+        output.components.forEach(component => {
+            if (component.size) {
+                // Regex to check for frame size letters (S, M, L, X) or multiple comma-separated values
+                const isInvalidSize = /[SMLX,]/i.test(component.size) && component.size.length > 5;
+                if (isInvalidSize) {
+                    delete component.size;
+                }
+            }
+        });
+        
+        // Second pass: merge duplicate components (which often result from size variants).
         const componentMap = new Map<string, any>();
         const componentsToRemove: any[] = [];
         
@@ -74,7 +85,7 @@ const extractBikeDetailsFlow = ai.defineFlow(
                 // We've seen this component before, it's a size variant.
                 // Mark the current one for removal and ensure the original has no size.
                 const originalComponent = componentMap.get(key);
-                delete originalComponent.size;
+                delete originalComponent.size; // Ensure size is deleted on the merged component
                 componentsToRemove.push(component);
             } else {
                 // First time seeing this component.
@@ -86,8 +97,6 @@ const extractBikeDetailsFlow = ai.defineFlow(
         output.components = output.components.filter(c => !componentsToRemove.includes(c));
     }
 
-
     return output;
   }
 );
-
