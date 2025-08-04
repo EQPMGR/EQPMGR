@@ -43,6 +43,7 @@ Follow these rules precisely:
     -   Standardize "Seat Post" -> "Seatpost".
     -   Standardize "Crank" -> "Crankset".
     -   **Electronic Shifting:** Components named "Battery" or "Charger" related to "Di2," "AXS," or "eTap" belong to the "Drivetrain" system, NOT the "E-Bike" system.
+    -   **Frameset Components:** "Fork" and "Rear Shock" belong to the "Frameset" system.
 
 Return ONLY the structured JSON format.
 

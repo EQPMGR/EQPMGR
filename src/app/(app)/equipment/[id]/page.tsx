@@ -45,7 +45,6 @@ import type { Equipment, MaintenanceLog as MaintenanceLogType, Component, Master
 import { AccessoriesIcon } from '@/components/icons/accessories-icon';
 import { WheelsetIcon } from '@/components/icons/wheelset-icon';
 import { RimBrakeIcon } from '@/components/icons/rim-brake-icon';
-import { SuspensionIcon } from '@/components/icons/suspension-icon';
 import { FramesetIcon } from '@/components/icons/frameset-icon';
 import { FitInfoIcon } from '@/components/icons/fit-info-icon';
 import { DrivetrainIcon } from '@/components/icons/drivetrain-icon';
@@ -79,9 +78,6 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
     }
     if (name.includes('cockpit')) {
         return <Puzzle className={className} />;
-    }
-    if (name.includes('suspension')) {
-      return <SuspensionIcon className={className} />;
     }
     if (name.includes('drivetrain')) {
       return <DrivetrainIcon className={className} />;
@@ -244,8 +240,8 @@ export default function EquipmentDetailPage() {
     equipment.components.forEach(c => systems.add(c.system));
     
     const preferredOrder = [
-        'Drivetrain', 'Suspension', 'E-Bike', 'Brakes', 
-        'Wheelset', 'Frameset', 'Cockpit', 'Accessories'
+        'Drivetrain', 'Brakes', 'Frameset', 
+        'Wheelset', 'Cockpit', 'E-Bike', 'Accessories'
     ];
 
     return preferredOrder.filter(system => systems.has(system));

@@ -10,7 +10,7 @@ const ExtractedComponentSchema = z.object({
   brand: z.string().optional().describe('The brand of the component (e.g., "SRAM", "FOX").'),
   series: z.string().optional().describe('The product family or series name (e.g., "Dura-Ace", "Ultegra", "105", "XT", "Apex", "GX Eagle").'),
   model: z.string().optional().describe('The specific model or part number of the component (e.g., "RD-5701", "ST-5700L", "CS-4600").'),
-  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", "E-Bike", or "Accessories".'),
+  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "E-Bike", or "Accessories".'),
   size: z.string().optional().describe('The default or single size of the component (e.g., "27.2mm", "700x28c", "160mm").'),
   chainring1: z.string().optional().describe("For cranksets with multiple rings, the tooth count of the largest chainring."),
   chainring2: z.string().optional().describe("The tooth count of the second chainring."),
@@ -92,7 +92,7 @@ const ExtractedSingleComponentSchema = z.object({
   brand: z.string().optional().describe('The brand of the component (e.g., "SRAM", "Shimano").'),
   series: z.string().optional().describe('The product family or series name (e.g., "GX Eagle").'),
   model: z.string().optional().describe('The specific model or part number of the component (e.g., "XG-1275").'),
-  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Suspension", "Brakes", "Wheelset", "Frameset", "Cockpit", "E-Bike", or "Accessories".'),
+  system: z.string().describe('The system the component belongs to. Must be one of: "Drivetrain", "Brakes", "Wheelset", "Frameset", "Cockpit", "E-Bike", or "Accessories".'),
   chainring1: z.string().optional().describe("For chainrings, the tooth count (e.g., '44t')."),
   size: z.string().optional().describe("Size of the component, if applicable (e.g., '175mm' for cranks, '27.2mm' for seatposts)."),
 });

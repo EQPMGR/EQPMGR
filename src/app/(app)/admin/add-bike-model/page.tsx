@@ -60,7 +60,6 @@ const addBikeModelSchema = z.object({
   shifterSetType: z.enum(['matched', 'unmatched']).default('matched'),
   brakeSetType: z.enum(['matched', 'unmatched']).default('matched'),
   rotorSetType: z.enum(['matched', 'unmatched']).default('matched'),
-  suspensionType: z.enum(['none', 'front', 'full']).default('none'),
   rimSetType: z.enum(['matched', 'unmatched']).default('matched'),
   tireSetType: z.enum(['matched', 'unmatched']).default('matched'),
   wheelsetSetup: z.enum(['tubes', 'tubeless']).default('tubes'),
@@ -87,7 +86,6 @@ function AddBikeModelFormComponent() {
             shifterSetType: 'matched',
             brakeSetType: 'matched',
             rotorSetType: 'matched',
-            suspensionType: 'none',
             rimSetType: 'matched',
             tireSetType: 'matched',
             wheelsetSetup: 'tubes',
@@ -106,14 +104,6 @@ function AddBikeModelFormComponent() {
                 if (importedData.brand) form.setValue('brand', importedData.brand);
                 if (importedData.model) form.setValue('model', importedData.model);
                 if (importedData.modelYear) form.setValue('modelYear', importedData.modelYear);
-
-                const hasFork = importedData.components.some(c => c.name === 'Fork');
-                const hasRearShock = importedData.components.some(c => c.name === 'Rear Shock');
-                if (hasFork && hasRearShock) {
-                    form.setValue('suspensionType', 'full');
-                } else if (hasFork) {
-                    form.setValue('suspensionType', 'front');
-                }
 
                 const updatedComponents = [...BASE_COMPONENTS];
                 importedData.components.forEach(importedComp => {
@@ -180,7 +170,6 @@ function AddBikeModelFormComponent() {
     const shifterSetType = form.watch('shifterSetType');
     const brakeSetType = form.watch('brakeSetType');
     const rotorSetType = form.watch('rotorSetType');
-    const suspensionType = form.watch('suspensionType');
     const rimSetType = form.watch('rimSetType');
     const tireSetType = form.watch('tireSetType');
     const wheelsetSetup = form.watch('wheelsetSetup');
@@ -309,6 +298,8 @@ function AddBikeModelFormComponent() {
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Frameset</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
                                     {renderComponentFields('Frame', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Fork', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Rear Shock', ['brand', 'series', 'model', 'size'])}
                                 </AccordionContent>
                             </AccordionItem>
                             
@@ -399,17 +390,7 @@ function AddBikeModelFormComponent() {
                                     </CardContent></Card>
                                 </AccordionContent>
                             </AccordionItem>
-
-                            <AccordionItem value="suspension" className="border rounded-lg px-4">
-                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">Suspension</AccordionTrigger>
-                                <AccordionContent className="space-y-6 pt-4">
-                                    <Card className="p-4"><FormField control={form.control} name="suspensionType" render={({ field }) => ( <FormItem className="space-y-3"><FormLabel>Suspension Configuration</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="none" /></FormControl><FormLabel className="font-normal">No Suspension</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="front" /></FormControl><FormLabel className="font-normal">Front Suspension</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="full" /></FormControl><FormLabel className="font-normal">Full Suspension</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
-                                    </Card>
-                                    {(suspensionType === 'front' || suspensionType === 'full') && renderComponentFields('Fork', ['brand', 'series', 'model', 'size'])}
-                                    {suspensionType === 'full' && renderComponentFields('Rear Shock', ['brand', 'series', 'model', 'size'])}
-                                </AccordionContent>
-                            </AccordionItem>
-
+                            
                             <AccordionItem value="wheelset" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Wheelset</AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
@@ -514,5 +495,3 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
-
-    
