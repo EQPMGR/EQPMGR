@@ -273,9 +273,33 @@ function AddBikeModelFormComponent() {
             // If there was imported data, save it for training purposes
             if (importedTrainingData) {
                 const trainingDocRef = doc(collection(db, 'trainingData'));
+
+                // Clean the 'userCorrectedOutput' to remove undefined/null values
+                const cleanedValues: { [key: string]: any } = {};
+                 Object.keys(values).forEach((key: any) => {
+                    const typedKey = key as keyof AddBikeModelFormValues;
+                    const value = values[typedKey];
+                     if (value !== undefined && value !== null) {
+                        if (Array.isArray(value)) {
+                            cleanedValues[typedKey] = value.map(item => {
+                                const cleanedItem: { [key: string]: any } = {};
+                                Object.keys(item).forEach(itemKey => {
+                                    const itemValue = item[itemKey as keyof typeof item];
+                                    if (itemValue !== undefined && itemValue !== null && itemValue !== '') {
+                                        cleanedItem[itemKey] = itemValue;
+                                    }
+                                });
+                                return cleanedItem;
+                            });
+                        } else if (value !== '') {
+                           cleanedValues[typedKey] = value;
+                        }
+                    }
+                });
+
                 const trainingData: TrainingData = {
                     ...importedTrainingData,
-                    userCorrectedOutput: values,
+                    userCorrectedOutput: cleanedValues as AddBikeModelFormValues,
                 };
                 batch.set(trainingDocRef, trainingData);
             }
@@ -581,3 +605,5 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
+
+    
