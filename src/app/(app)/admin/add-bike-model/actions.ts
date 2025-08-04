@@ -17,7 +17,6 @@ export async function getAvailableBrands(): Promise<string[]> {
         return Array.from(brands).sort();
     } catch (error) {
         console.error("Server Action: Error fetching brands", error);
-        // Re-throw the error to be handled by the calling component
         throw new Error("Could not fetch bike brands from the server.");
     }
 }

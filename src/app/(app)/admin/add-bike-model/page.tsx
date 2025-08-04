@@ -116,7 +116,6 @@ function AddBikeModelFormComponent() {
             if (storedData) {
                 const importedData: ExtractBikeDetailsOutput = JSON.parse(storedData);
                 
-                // Populate top-level fields
                 if (importedData.brand) form.setValue('brand', importedData.brand);
                 if (importedData.model) form.setValue('model', importedData.model);
                 if (importedData.modelYear) form.setValue('modelYear', importedData.modelYear);
@@ -129,8 +128,6 @@ function AddBikeModelFormComponent() {
                     form.setValue('suspensionType', 'front');
                 }
 
-
-                // Populate components
                 const updatedComponents = [...BASE_COMPONENTS];
                 importedData.components.forEach(importedComp => {
                     let targetName = importedComp.name;
@@ -141,10 +138,10 @@ function AddBikeModelFormComponent() {
                         const frontIndex = updatedComponents.findIndex(c => c.name === frontName);
                         const rearIndex = updatedComponents.findIndex(c => c.name === rearName);
                         if (frontIndex > -1) {
-                            updatedComponents[frontIndex] = { ...updatedComponents[frontIndex], ...importedComp };
+                            updatedComponents[frontIndex] = { ...updatedComponents[frontIndex], ...importedComp, name: frontName };
                         }
                         if (rearIndex > -1) {
-                           updatedComponents[rearIndex] = { ...updatedComponents[rearIndex], ...importedComp };
+                           updatedComponents[rearIndex] = { ...updatedComponents[rearIndex], ...importedComp, name: rearName };
                         }
                         return;
                     }
@@ -163,7 +160,6 @@ function AddBikeModelFormComponent() {
                             chainring3: importedComp.chainring3 || '',
                         };
                     } else {
-                        // If component not in BASE_COMPONENTS, add it.
                         updatedComponents.push({ ...importedComp, id: crypto.randomUUID() });
                     }
                 });
@@ -174,8 +170,6 @@ function AddBikeModelFormComponent() {
                     title: "Data Imported!",
                     description: "The bike details have been populated from the import page."
                 });
-
-                // Clean up sessionStorage
                 sessionStorage.removeItem('importedBikeData');
             }
         } catch (error) {
@@ -225,7 +219,6 @@ function AddBikeModelFormComponent() {
         const batch = writeBatch(db);
 
         try {
-            // Process and save components
             const componentReferences: string[] = [];
             for (const originalComponent of values.components) {
                 const componentToSave: { [key: string]: any } = {};
@@ -345,7 +338,7 @@ function AddBikeModelFormComponent() {
                             <h3 className="text-lg font-semibold">Primary Bike Details</h3>
                              <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Bike Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a bike type" /></SelectTrigger></FormControl><SelectContent>{BIKE_TYPES.map((type) => (<SelectItem key={type} value={type}>{type}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem className="flex flex-col justify-end"><FormLabel>Brand</FormLabel><Popover open={brandPopoverOpen} onOpenChange={setBrandPopoverOpen}><PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className={cn("w-full justify-between",!field.value && "text-muted-foreground")}>{field.value || "Select or create brand"}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent side="bottom" align="start" className="w-[--radix-popover-trigger-width] p-0" avoidCollisions={false}><Command><CommandInput placeholder="Search brand..." /><CommandEmpty>No brand found.</CommandEmpty><CommandList><CommandGroup>{availableBrands.map((brand) => (<CommandItem value={brand} key={brand} onSelect={() => {form.setValue("brand", brand); setBrandPopoverOpen(false);}}><Check className={cn("mr-2 h-4 w-4", brand === field.value ? "opacity-100" : "opacity-0")}/>{brand}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem className="flex flex-col justify-end"><FormLabel>Brand</FormLabel><Popover open={brandPopoverOpen} onOpenChange={setBrandPopoverOpen}><PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className={cn("w-full justify-between",!field.value && "text-muted-foreground")}>{field.value || "Select or create brand"}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent side="bottom" align="start" className="w-[--radix-popover-trigger-width] p-0" avoidCollisions={false}><Command shouldFilter={false}><CommandInput placeholder="Search or create brand..." onValueChange={(value) => form.setValue("brand", value)} value={field.value} /><CommandEmpty>No brand found. You can add a new one.</CommandEmpty><CommandList><CommandGroup>{availableBrands.map((brand) => (<CommandItem value={brand} key={brand} onSelect={() => {form.setValue("brand", brand); setBrandPopoverOpen(false);}}><Check className={cn("mr-2 h-4 w-4", brand === field.value ? "opacity-100" : "opacity-0")}/>{brand}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="model" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Tarmac SL7" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="modelYear" render={({ field }) => (<FormItem><FormLabel>Model Year</FormLabel><FormControl><Input type="number" placeholder="e.g., 2023" {...field} /></FormControl><FormMessage /></FormItem>)} />
                              </div>
@@ -353,7 +346,6 @@ function AddBikeModelFormComponent() {
                         </div>
                         
                         <Accordion type="multiple" className="w-full space-y-4">
-                            {/* Frameset Section */}
                             <AccordionItem value="frameset" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Frameset</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
@@ -361,7 +353,6 @@ function AddBikeModelFormComponent() {
                                 </AccordionContent>
                             </AccordionItem>
                             
-                            {/* Drivetrain Section */}
                             <AccordionItem value="drivetrain" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Drivetrain</AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
@@ -400,8 +391,7 @@ function AddBikeModelFormComponent() {
                                 </AccordionContent>
                             </AccordionItem>
 
-                            {/* Brakes Section */}
-                             <AccordionItem value="brakes" className="border rounded-lg px-4">
+                            <AccordionItem value="brakes" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Brakes</AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
                                     {DROP_BAR_BIKE_TYPES.includes(bikeType as any) && fields[getComponentIndex('Front Shifter')] && (<Card><CardHeader><CardTitle className="text-lg">Brake Levers</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">Brake levers are integrated with the shifters for this bike type.</p><p className="font-medium mt-1">{fields[getComponentIndex('Front Shifter')].brand} {fields[getComponentIndex('Front Shifter')].series}</p></CardContent></Card>)}
@@ -449,8 +439,7 @@ function AddBikeModelFormComponent() {
                                 </AccordionContent>
                             </AccordionItem>
 
-                            {/* Suspension Section */}
-                             <AccordionItem value="suspension" className="border rounded-lg px-4">
+                            <AccordionItem value="suspension" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Suspension</AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
                                     <Card className="p-4"><FormField control={form.control} name="suspensionType" render={({ field }) => ( <FormItem className="space-y-3"><FormLabel>Suspension Configuration</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="none" /></FormControl><FormLabel className="font-normal">No Suspension</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="front" /></FormControl><FormLabel className="font-normal">Front Suspension</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="full" /></FormControl><FormLabel className="font-normal">Full Suspension</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
@@ -460,7 +449,6 @@ function AddBikeModelFormComponent() {
                                 </AccordionContent>
                             </AccordionItem>
 
-                            {/* Wheelset Section */}
                             <AccordionItem value="wheelset" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Wheelset</AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
@@ -520,7 +508,6 @@ function AddBikeModelFormComponent() {
                                 </AccordionContent>
                             </AccordionItem>
 
-                             {/* Cockpit Section */}
                             <AccordionItem value="cockpit" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Cockpit</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
@@ -534,7 +521,6 @@ function AddBikeModelFormComponent() {
                                 </AccordionContent>
                             </AccordionItem>
                             
-                            {/* E-Bike Section */}
                             {isEbike && (
                                 <AccordionItem value="ebike" className="border rounded-lg px-4">
                                     <AccordionTrigger className="text-lg font-semibold hover:no-underline">E-Bike System</AccordionTrigger>
@@ -563,7 +549,6 @@ function AddBikeModelFormComponent() {
 }
 
 export default function AddBikeModelPage() {
-    // This page component can be simpler as the logic is in the form component
     return (
         <AddBikeModelFormComponent />
     )
