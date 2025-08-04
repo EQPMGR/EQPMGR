@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { writeBatch, doc, collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -20,11 +19,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
-import { getAvailableBrands } from './actions';
+import { getAvailableBrands, saveBikeModelAction } from './actions';
 
 interface TrainingData {
     rawText: string;
@@ -69,26 +67,6 @@ const addBikeModelSchema = z.object({
 });
 
 export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
-
-const createComponentId = (component: Partial<z.infer<typeof componentSchema>>) => {
-    const idString = [component.brand, component.name, component.model]
-        .filter(Boolean)
-        .join('-');
-    
-    if (!idString) return null;
-
-    return idString
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-};
-
-const createBikeModelId = (bike: AddBikeModelFormValues) => {
-    return `${bike.brand}-${bike.model}-${bike.modelYear}`
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-}
 
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
@@ -225,93 +203,22 @@ function AddBikeModelFormComponent() {
 
     async function onSubmit(values: AddBikeModelFormValues) {
         setIsSubmitting(true);
-        const batch = writeBatch(db);
-
         try {
-            const componentReferences: string[] = [];
-            for (const originalComponent of values.components) {
-                const componentToSave: { [key: string]: any } = {};
-                Object.keys(originalComponent).forEach((key: any) => {
-                    const typedKey = key as keyof typeof originalComponent;
-                    const value = originalComponent[typedKey];
-                    if (value !== undefined && value !== null && value !== '' && key !== 'id') {
-                        componentToSave[key] = value;
-                    }
+            const result = await saveBikeModelAction({ values, importedTrainingData });
+            
+            if (result.success) {
+                toast({
+                    title: 'Bike Model Saved!',
+                    description: result.message,
                 });
-                
-                if (Object.keys(componentToSave).length <= 2) continue;
-                if (!componentToSave.brand && !componentToSave.series && !componentToSave.model) continue;
-
-                const componentId = createComponentId(componentToSave as Partial<z.infer<typeof componentSchema>>);
-                if (!componentId) continue;
-                
-                const masterComponentRef = doc(db, 'masterComponents', componentId);
-                batch.set(masterComponentRef, componentToSave, { merge: true });
-                componentReferences.push(`masterComponents/${componentId}`);
-            }
-            
-            const bikeModelId = createBikeModelId(values);
-            const bikeModelDocRef = doc(db, 'bikeModels', bikeModelId);
-            
-            const { components, ...bikeModelData } = values;
-
-            const bikeModelToSave: { [key: string]: any } = {};
-            Object.keys(bikeModelData).forEach((key: any) => {
-                const typedKey = key as keyof typeof bikeModelData;
-                const value = bikeModelData[typedKey];
-                if (value !== undefined && value !== null && value !== '') {
-                    bikeModelToSave[key] = value;
-                }
-            });
-            
-            batch.set(bikeModelDocRef, {
-                ...bikeModelToSave,
-                components: componentReferences,
-                imageUrl: `https://placehold.co/600x400.png`
-            });
-            
-            // If there was imported data, save it for training purposes
-            if (importedTrainingData) {
-                const trainingDocRef = doc(collection(db, 'trainingData'));
-
-                // Clean the 'userCorrectedOutput' to remove undefined/null values
-                const cleanedValues: { [key: string]: any } = {};
-                 Object.keys(values).forEach((key: any) => {
-                    const typedKey = key as keyof AddBikeModelFormValues;
-                    const value = values[typedKey];
-                     if (value !== undefined && value !== null) {
-                        if (Array.isArray(value)) {
-                            cleanedValues[typedKey] = value.map(item => {
-                                const cleanedItem: { [key: string]: any } = {};
-                                Object.keys(item).forEach(itemKey => {
-                                    const itemValue = item[itemKey as keyof typeof item];
-                                    if (itemValue !== undefined && itemValue !== null && itemValue !== '') {
-                                        cleanedItem[itemKey] = itemValue;
-                                    }
-                                });
-                                return cleanedItem;
-                            });
-                        } else if (value !== '') {
-                           cleanedValues[typedKey] = value;
-                        }
-                    }
+                form.reset();
+            } else {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Save Failed',
+                    description: result.message,
                 });
-
-                const trainingData: TrainingData = {
-                    ...importedTrainingData,
-                    userCorrectedOutput: cleanedValues as AddBikeModelFormValues,
-                };
-                batch.set(trainingDocRef, trainingData);
             }
-
-            await batch.commit();
-            
-            toast({
-                title: 'Bike Model Saved!',
-                description: `${values.brand} ${values.model} (${values.modelYear}) has been added to the database.`,
-            });
-
-            form.reset();
 
         } catch (error: any) {
             console.error("Failed to save bike model:", error);
