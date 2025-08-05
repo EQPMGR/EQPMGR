@@ -42,6 +42,7 @@ Follow these rules precisely:
 5.  **SYSTEM CLASSIFICATION:**
     -   Standardize "Seat Post" -> "Seatpost".
     -   Standardize "Crank" -> "Crankset".
+    -   Standardize "Rear cogs" -> "Cassette".
     -   **Electronic Shifting:** Components named "Battery" or "Charger" related to "Di2," "AXS," or "eTap" belong to the "Drivetrain" system, NOT the "E-Bike" system.
     -   **Frameset Components:** "Fork" and "Rear Shock" belong to the "Frameset" system.
 
