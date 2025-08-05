@@ -38,7 +38,9 @@ Follow these rules precisely:
     -   If a component has a single, non-varying size (e.g., 700x28mm, 145mm width), extract that single size.
     -   **FORBIDDEN:** Do not use a list of frame sizes (e.g., "S, M, L, XL") as the 'size' for any component. If a component's size is listed only as a frame size, leave the 'size' field blank.
     -   **FORBIDDEN:** Do not aggregate multiple size variants (e.g., "165mm, 170mm") into the 'size' field. Leave the 'size' field blank for these components.
-4.  **COMPONENT Splitting:** If a component like "Brake Rotor" is listed twice with different sizes, create two entries: one "Front Brake Rotor" and one "Rear Brake Rotor".
+4.  **COMPONENT Splitting:**
+    - If a component like "Brake Rotor" is listed twice with different sizes, create two entries: one "Front Brake Rotor" and one "Rear Brake Rotor".
+    - If a component like "Wheel" or "Tire" is listed once, create two entries: "Front Wheel" and "Rear Wheel", or "Front Tire" and "Rear Tire".
 5.  **SYSTEM CLASSIFICATION & NAMING:**
     -   Standardize "Seat Post" -> "Seatpost".
     -   Standardize "Seat Clamp" -> "Seatpost Clamp".
@@ -46,7 +48,7 @@ Follow these rules precisely:
     -   Standardize "Rear cogs" -> "Cassette".
     -   **Electronic Shifting:** Components named "Battery" or "Charger" related to "Di2," "AXS," or "eTap" belong to the "Drivetrain" system, NOT the "E-Bike" system.
     -   **Shifters:** Components named "Shift-/ Brake Lever" are "Shifters" and belong to the "Drivetrain" system.
-    -   **Frameset Components:** "Fork" and "Rear Shock" belong to the "Frameset" system.
+    -   **Frameset Components:** "Fork", "Rear Shock", and "Headset" belong to the "Frameset" system.
 6. **MODEL NUMBER CLEANUP:** Do not include speed indicators like "12s", "11s", "10-speed" in the 'model' field. The model should only contain the part number (e.g., "RD-R7100", not "RD-R7100 12s").
 
 Return ONLY the structured JSON format.
