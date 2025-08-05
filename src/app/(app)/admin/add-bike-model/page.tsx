@@ -109,9 +109,10 @@ function AddBikeModelFormComponent() {
                 importedData.components.forEach(importedComp => {
                     let targetName = importedComp.name;
 
-                    if (targetName === 'Wheel' || targetName === 'Tire') {
-                        const frontName = `Front ${targetName}`;
-                        const rearName = `Rear ${targetName}`;
+                    // Handle generic components that apply to both front and rear
+                    if (['Wheel', 'Tire', 'Rim', 'Brake Caliper', 'Brake Rotor'].includes(targetName)) {
+                        const frontName = `Front ${targetName.replace(' Caliper', '')}`;
+                        const rearName = `Rear ${targetName.replace(' Caliper', '')}`;
                         const frontIndex = updatedComponents.findIndex(c => c.name === frontName);
                         const rearIndex = updatedComponents.findIndex(c => c.name === rearName);
                         if (frontIndex > -1) {

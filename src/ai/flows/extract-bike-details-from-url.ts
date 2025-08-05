@@ -35,7 +35,7 @@ Follow these rules precisely:
 1.  Extract the bike's primary 'brand', 'model', and 'modelYear'. Only extract a modelYear if it is explicitly stated in the text.
 2.  Identify all components. For each, extract its 'name', 'brand', 'series', and 'model'. Assign it to a 'system'.
 3.  **CRITICAL SIZING RULE:**
-    -   If a component has a single, non-varying size (e.g., 700x28mm, 145mm width), extract that single size.
+    -   If a component has a single, non-varying size (e.g., "700x28c", "145mm width", "29x2.25"), extract that single size.
     -   **FORBIDDEN:** Do not use a list of frame sizes (e.g., "S, M, L, XL") as the 'size' for any component. If a component's size is listed only as a frame size, leave the 'size' field blank.
     -   **FORBIDDEN:** Do not aggregate multiple size variants (e.g., "165mm, 170mm") into the 'size' field. Leave the 'size' field blank for these components.
 4.  **COMPONENT Splitting:**
