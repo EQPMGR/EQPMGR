@@ -300,6 +300,7 @@ function AddBikeModelFormComponent() {
                                     {renderComponentFields('Frame', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Fork', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Rear Shock', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Headset', ['brand', 'series', 'model', 'size'])}
                                 </AccordionContent>
                             </AccordionItem>
                             
@@ -456,7 +457,6 @@ function AddBikeModelFormComponent() {
                                     {renderComponentFields('Handlebar', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Stem', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Seatpost', ['brand', 'model', 'size'])}
-                                    {renderComponentFields('Headset', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Saddle', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Grips', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Seatpost Clamp', ['brand', 'series', 'model', 'size'])}

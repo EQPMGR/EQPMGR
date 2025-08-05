@@ -16,6 +16,7 @@ export const BASE_COMPONENTS = [
     { name: 'Frame', system: 'Frameset', brand: '', series: '', model: ''},
     { name: 'Fork', system: 'Frameset', brand: '', series: '', model: '' },
     { name: 'Rear Shock', system: 'Frameset', brand: '', series: '', model: '' },
+    { name: 'Headset', system: 'Frameset', brand: '', series: '', model: '' },
     // Drivetrain
     { name: 'Crankset', system: 'Drivetrain', brand: '', series: '', model: ''},
     { name: 'Bottom Bracket', system: 'Drivetrain', brand: '', series: '', model: '' },
@@ -46,7 +47,6 @@ export const BASE_COMPONENTS = [
     { name: 'Handlebar', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Stem', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Seatpost', system: 'Cockpit', brand: '', series: '', model: '' },
-    { name: 'Headset', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Saddle', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Grips', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Seatpost Clamp', system: 'Cockpit', brand: '', series: '', model: '' },
