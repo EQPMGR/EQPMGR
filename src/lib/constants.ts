@@ -34,6 +34,7 @@ export const BASE_COMPONENTS = [
     { name: 'Rear Brake', system: 'Brakes', brand: '', series: '', model: '', pads: '' },
     { name: 'Front Rotor', system: 'Brakes', brand: '', series: '', model: '' },
     { name: 'Rear Rotor', system: 'Brakes', brand: '', series: '', model: '' },
+    { name: 'Brake Levers', system: 'Brakes', brand: '', series: '', model: ''},
     // Wheelset
     { name: 'Front Hub', system: 'Wheelset', brand: '', series: '', model: '' },
     { name: 'Rear Hub', system: 'Wheelset', brand: '', series: '', model: '' },

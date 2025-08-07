@@ -109,19 +109,21 @@ function AddBikeModelFormComponent() {
                 importedData.components.forEach(importedComp => {
                     let targetName = importedComp.name;
 
-                    // Handle generic components that apply to both front and rear
-                    if (['Wheel', 'Tire', 'Rim', 'Brake Caliper', 'Brake Rotor'].includes(targetName)) {
-                        const frontName = `Front ${targetName.replace(' Caliper', '')}`;
-                        const rearName = `Rear ${targetName.replace(' Caliper', '')}`;
+                    if (['Brake Caliper', 'Brake Rotor', 'Rim', 'Tire', 'Wheel'].includes(importedComp.name)) {
+                        const baseName = importedComp.name.replace(' Caliper', '');
+                        const frontName = `Front ${baseName}`;
+                        const rearName = `Rear ${baseName}`;
+                        
                         const frontIndex = updatedComponents.findIndex(c => c.name === frontName);
-                        const rearIndex = updatedComponents.findIndex(c => c.name === rearName);
                         if (frontIndex > -1) {
-                            updatedComponents[frontIndex] = { ...updatedComponents[frontIndex], ...importedComp, name: frontName };
+                            updatedComponents[frontIndex] = { ...updatedComponents[frontIndex], ...importedComp, name: frontName, id: updatedComponents[frontIndex].id };
                         }
+                        
+                        const rearIndex = updatedComponents.findIndex(c => c.name === rearName);
                         if (rearIndex > -1) {
-                           updatedComponents[rearIndex] = { ...updatedComponents[rearIndex], ...importedComp, name: rearName };
+                            updatedComponents[rearIndex] = { ...updatedComponents[rearIndex], ...importedComp, name: rearName, id: updatedComponents[rearIndex].id };
                         }
-                        return;
+                        return; // Done with this component
                     }
 
                     const componentIndex = updatedComponents.findIndex(c => c.name === targetName);
@@ -175,6 +177,8 @@ function AddBikeModelFormComponent() {
     const tireSetType = form.watch('tireSetType');
     const wheelsetSetup = form.watch('wheelsetSetup');
     const bikeType = form.watch('type');
+    
+    const showIntegratedBrakeLevers = DROP_BAR_BIKE_TYPES.includes(bikeType as any) && bikeType !== 'Time Trial' && bikeType !== 'Triathlon';
 
     useEffect(() => {
       async function fetchBrands() {
@@ -348,7 +352,16 @@ function AddBikeModelFormComponent() {
                             <AccordionItem value="brakes" className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">Brakes</AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
-                                    {DROP_BAR_BIKE_TYPES.includes(bikeType as any) && fields[getComponentIndex('Front Shifter')] && (<Card><CardHeader><CardTitle className="text-lg">Brake Levers</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">Brake levers are integrated with the shifters for this bike type.</p><p className="font-medium mt-1">{fields[getComponentIndex('Front Shifter')].brand} {fields[getComponentIndex('Front Shifter')].series}</p></CardContent></Card>)}
+                                    {showIntegratedBrakeLevers && fields[getComponentIndex('Front Shifter')] && (
+                                        <Card>
+                                            <CardHeader><CardTitle className="text-lg">Brake Levers</CardTitle></CardHeader>
+                                            <CardContent>
+                                                <p className="text-sm text-muted-foreground">Brake levers are integrated with the shifters for this bike type.</p>
+                                                <p className="font-medium mt-1">{fields[getComponentIndex('Front Shifter')].brand} {fields[getComponentIndex('Front Shifter')].series}</p>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                    {!showIntegratedBrakeLevers && renderComponentFields('Brake Levers', ['brand', 'series', 'model'])}
                                     <Card><CardHeader><CardTitle className="text-lg">Brake Calipers</CardTitle></CardHeader><CardContent className="space-y-4"><FormField control={form.control} name="brakeSetType" render={({ field }) => ( <FormItem className="space-y-3"><FormLabel>Configuration</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="matched" /></FormControl><FormLabel className="font-normal">Matched Set</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="unmatched" /></FormControl><FormLabel className="font-normal">Unmatched Set</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                                         {brakeSetType === 'matched' && getComponentIndex('Front Brake') !== -1 && (<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                             <FormField control={form.control} name={`components.${getComponentIndex('Front Brake')}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} value={field.value || ''} onChange={(e) => { field.onChange(e); form.setValue(`components.${getComponentIndex('Rear Brake')}.brand`, e.target.value); }} /></FormControl><FormMessage /></FormItem>)} />
