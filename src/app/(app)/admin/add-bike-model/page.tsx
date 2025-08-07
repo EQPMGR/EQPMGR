@@ -457,6 +457,7 @@ function AddBikeModelFormComponent() {
                                 <AccordionContent className="space-y-4 pt-4">
                                     {renderComponentFields('Handlebar', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Stem', ['brand', 'series', 'model', 'size'])}
+                                    {renderComponentFields('Aero Bars', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Seatpost', ['brand', 'model', 'size'])}
                                     {renderComponentFields('Saddle', ['brand', 'series', 'model', 'size'])}
                                     {renderComponentFields('Grips', ['brand', 'series', 'model', 'size'])}

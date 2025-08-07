@@ -1,3 +1,4 @@
+
 export const BIKE_TYPES = ['Road', 'Track', 'Time Trial', 'Triathlon', 'Cyclocross', 'Gravel', 'Cross Country', 'All Mountain', 'Enduro', 'Dirt Jumper', 'Downhill', 'Hybrid', 'E-Bike (Road)', 'E-Bike (Mountain)', 'E-Bike (Hybrid)'] as const;
 export type BikeType = (typeof BIKE_TYPES)[number];
 
@@ -46,6 +47,7 @@ export const BASE_COMPONENTS = [
     // Cockpit
     { name: 'Handlebar', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Stem', system: 'Cockpit', brand: '', series: '', model: '' },
+    { name: 'Aero Bars', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Seatpost', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Saddle', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Grips', system: 'Cockpit', brand: '', series: '', model: '' },

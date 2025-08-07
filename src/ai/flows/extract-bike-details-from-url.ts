@@ -46,6 +46,7 @@ Follow these rules precisely:
     -   Standardize "Seat Clamp" -> "Seatpost Clamp".
     -   Standardize "Crank" -> "Crankset".
     -   Standardize "Rear cogs" -> "Cassette".
+    -   Standardize "Extensions" -> "Aero Bars".
     -   **Electronic Shifting:** Components named "Battery" or "Charger" related to "Di2," "AXS," or "eTap" belong to the "Drivetrain" system, NOT the "E-Bike" system.
     -   **Shifters:** Components named "Shift-/ Brake Lever" are "Shifters" and belong to the "Drivetrain" system.
     -   **Frameset Components:** "Fork", "Rear Shock", and "Headset" belong to the "Frameset" system.
