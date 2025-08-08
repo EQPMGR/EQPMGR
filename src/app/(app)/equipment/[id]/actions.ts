@@ -3,8 +3,8 @@
 
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
-import type { UserComponent, MasterComponent } from '@/lib/types';
-import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import type { UserComponent, MasterComponent, MaintenanceLog } from '@/lib/types';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -75,6 +75,7 @@ export async function replaceUserComponentAction({
         }
         const equipmentData = equipmentDocSnap.data();
 
+        // 1. Archive the old component data.
         const archivedComponent = {
             name: masterComponentToReplace.name,
             brand: masterComponentToReplace.brand,
@@ -89,22 +90,32 @@ export async function replaceUserComponentAction({
             finalMileage: equipmentData?.totalDistance || 0,
             replacementReason: replacementReason,
         };
-        
-        batch.update(equipmentDocRef, {
-            archivedComponents: FieldValue.arrayUnion(archivedComponent)
-        });
 
         let finalNewMasterComponentId: string;
         let newComponentSize: string | undefined;
+        let newComponentDetails: Omit<MasterComponent, 'id' | 'embedding'>;
 
+
+        // 2. Determine the details of the new master component (either existing or manual).
         if (newMasterComponentId) {
             finalNewMasterComponentId = newMasterComponentId;
             const newMasterCompDoc = await adminDb.doc(`masterComponents/${finalNewMasterComponentId}`).get();
             if (newMasterCompDoc.exists) {
-                newComponentSize = (newMasterCompDoc.data() as MasterComponent).size;
+                const masterData = newMasterCompDoc.data() as MasterComponent
+                newComponentSize = masterData.size;
+                newComponentDetails = {
+                    name: masterData.name,
+                    brand: masterData.brand,
+                    model: masterData.model,
+                    series: masterData.series,
+                    size: masterData.size,
+                    system: masterData.system,
+                };
+            } else {
+                throw new Error("Selected replacement component not found in database.");
             }
         } else if (manualNewComponentData) {
-            const newMasterData: Omit<MasterComponent, 'id' | 'embedding'> = {
+            newComponentDetails = {
                 name: masterComponentToReplace.name,
                 brand: manualNewComponentData.brand,
                 series: manualNewComponentData.series,
@@ -112,18 +123,43 @@ export async function replaceUserComponentAction({
                 size: manualNewComponentData.size,
                 system: masterComponentToReplace.system,
             };
-            const generatedId = createComponentId(newMasterData);
+            const generatedId = createComponentId(newComponentDetails);
             if (!generatedId) {
                 throw new Error("Could not generate a valid ID for the new manual component.");
             }
             finalNewMasterComponentId = generatedId;
             newComponentSize = manualNewComponentData.size;
             const newMasterComponentRef = adminDb.doc(`masterComponents/${finalNewMasterComponentId}`);
-            batch.set(newMasterComponentRef, newMasterData, { merge: true });
+            batch.set(newMasterComponentRef, newComponentDetails, { merge: true });
         } else {
             throw new Error("No new component data provided.");
         }
 
+        // 3. Create the maintenance log entry for the replacement.
+        const newLogEntry: MaintenanceLog = {
+            id: adminDb.collection('tmp').doc().id, // Generate a unique ID
+            date: new Date(),
+            logType: replacementReason === 'failure' ? 'repair' : 'modification',
+            description: `Replaced ${masterComponentToReplace.name}.`,
+            cost: 0,
+            serviceType: 'diy',
+            componentReplaced: true,
+            isOEM: newComponentDetails.brand === masterComponentToReplace.brand,
+            replacementPart: `${newComponentDetails.brand || ''} ${newComponentDetails.series || ''} ${newComponentDetails.model || ''}`.trim(),
+            notes: `Original part was ${masterComponentToReplace.brand} ${masterComponentToReplace.model}. Reason: ${replacementReason}.`
+        };
+
+
+        // 4. Update the equipment document with the archived component and the new log entry.
+        batch.update(equipmentDocRef, {
+            archivedComponents: FieldValue.arrayUnion(archivedComponent),
+            maintenanceLog: FieldValue.arrayUnion({
+                ...newLogEntry,
+                date: Timestamp.fromDate(newLogEntry.date), // Convert Date to Timestamp for Firestore
+            })
+        });
+
+        // 5. Update the user's component subcollection with the new component's data.
         const newUserComponentData: Omit<UserComponent, 'id'> = {
             masterComponentId: finalNewMasterComponentId,
             wearPercentage: 0,
@@ -133,9 +169,7 @@ export async function replaceUserComponentAction({
             size: newComponentSize || undefined,
         };
         
-        // Remove undefined properties before writing to Firestore
         const cleanData = Object.fromEntries(Object.entries(newUserComponentData).filter(([_, v]) => v !== undefined));
-
         batch.set(componentToReplaceRef, cleanData);
         
         await batch.commit();
