@@ -1,10 +1,10 @@
 
 'use server';
 
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import type { UserComponent, MasterComponent, MaintenanceLog } from '@/lib/types';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc as getClientDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -232,7 +232,7 @@ export async function addUserComponentAction({
     try {
         const newComponentRef = doc(collection(db, 'users', userId, 'equipment', equipmentId, 'components'));
         const masterComponentRef = doc(db, 'masterComponents', masterComponentId);
-        const masterComponentSnap = await getDoc(masterComponentRef);
+        const masterComponentSnap = await getClientDoc(masterComponentRef);
 
         if (!masterComponentSnap.exists()) {
             throw new Error("The selected master component does not exist.");
