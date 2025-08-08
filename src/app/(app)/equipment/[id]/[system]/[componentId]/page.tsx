@@ -4,8 +4,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, Pencil, Trash2, Loader2 } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { ChevronLeft, Pencil, Trash2, Loader2, Wrench } from 'lucide-react';
+import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -25,11 +25,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { toDate, toNullableDate, formatDate } from '@/lib/date-utils';
-import type { Component, MasterComponent, UserComponent } from '@/lib/types';
+import type { Component, MasterComponent, UserComponent, MaintenanceLog as MaintenanceLogType, Equipment } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { ReplaceComponentDialog } from '@/components/replace-component-dialog';
 import { EditComponentDialog } from '@/components/edit-component-dialog';
 import { deleteUserComponentAction } from '../../actions';
+import { AddMaintenanceLogDialog } from '@/components/add-maintenance-log-dialog';
 
 
 export default function ComponentDetailPage() {
@@ -39,12 +40,30 @@ export default function ComponentDetailPage() {
   const { toast } = useToast();
   const [component, setComponent] = useState<Component | undefined>();
   const [subComponents, setSubComponents] = useState<Component[]>([]);
+  const [equipment, setEquipment] = useState<Equipment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchComponentData = useCallback(async (uid: string, equipmentId: string, userComponentId: string) => {
     setIsLoading(true);
     try {
+      // Fetch equipment data to get the maintenance log
+      const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
+      const equipmentDocSnap = await getDoc(equipmentDocRef);
+
+      if (!equipmentDocSnap.exists()) {
+          toast({ variant: 'destructive', title: 'Equipment not found' });
+          setIsLoading(false);
+          return;
+      }
+      const eqData = equipmentDocSnap.data();
+      setEquipment({ 
+          id: equipmentDocSnap.id, 
+          ...eqData,
+          purchaseDate: toDate(eqData.purchaseDate),
+          maintenanceLog: (eqData.maintenanceLog || []).map((l: any) => ({...l, date: toDate(l.date)})),
+        } as Equipment);
+
       const componentsCollectionRef = collection(db, 'users', uid, 'equipment', equipmentId, 'components');
       
       const mainComponentDocRef = doc(componentsCollectionRef, userComponentId);
@@ -144,6 +163,20 @@ export default function ComponentDetailPage() {
         setIsDeleting(false);
     }
   }
+  
+   const handleAddLog = async (newLog: Omit<MaintenanceLogType, 'id'>) => {
+    if (!user || !equipment) return;
+    const logWithId = { ...newLog, id: crypto.randomUUID() };
+    const updatedLog = [...equipment.maintenanceLog, logWithId];
+    
+    const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+    await updateDoc(equipmentDocRef, {
+      maintenanceLog: updatedLog.map(l => ({...l, date: toDate(l.date)})),
+    });
+
+    handleSuccess(); // Re-fetch data
+  }
+
 
   if (isLoading || authLoading) {
       return (
@@ -221,7 +254,7 @@ export default function ComponentDetailPage() {
 
              <div className="mt-6 border-t pt-6">
                 <h4 className="font-semibold mb-2">Actions</h4>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     <ReplaceComponentDialog 
                         userId={user?.uid} 
                         equipmentId={params.id as string} 
@@ -242,7 +275,12 @@ export default function ComponentDetailPage() {
                         </Button>
                        </EditComponentDialog>
                     )}
-                    <Button variant="secondary">Log Maintenance</Button>
+                    <AddMaintenanceLogDialog onAddLog={handleAddLog}>
+                        <Button variant="secondary">
+                            <Wrench className="mr-2 h-4 w-4" />
+                            Log Maintenance
+                        </Button>
+                    </AddMaintenanceLogDialog>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="icon">
@@ -272,3 +310,5 @@ export default function ComponentDetailPage() {
      </>
   );
 }
+
+    

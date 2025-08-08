@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -115,7 +116,7 @@ export function AddMaintenanceLogDialog({ onAddLog, children }: AddMaintenanceLo
   function onSubmit(data: MaintenanceLogFormValues) {
     const newLogData = {
       ...data,
-      date: data.date.toISOString(),
+      date: data.date,
     };
     onAddLog(newLogData);
     toast({
@@ -402,3 +403,5 @@ export function AddMaintenanceLogDialog({ onAddLog, children }: AddMaintenanceLo
     </Dialog>
   );
 }
+
+    
