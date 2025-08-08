@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -178,7 +179,7 @@ function AddBikeModelFormComponent() {
     const wheelsetSetup = form.watch('wheelsetSetup');
     const bikeType = form.watch('type');
     
-    const showIntegratedBrakeLevers = DROP_BAR_BIKE_TYPES.includes(bikeType as any) && bikeType !== 'Time Trial' && bikeType !== 'Triathlon';
+    const showIntegratedBrakeLevers = DROP_BAR_BIKE_TYPES.includes(bikeType as any) && bikeType !== 'TT/Triathlon';
 
     useEffect(() => {
       async function fetchBrands() {
