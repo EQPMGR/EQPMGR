@@ -75,12 +75,12 @@ export async function replaceUserComponentAction({
         }
         const equipmentData = equipmentDocSnap.data();
 
-        // 1. Archive the old component data.
+        // 1. Archive the old component data, ensuring no undefined values.
         const archivedComponent = {
             name: masterComponentToReplace.name,
-            brand: masterComponentToReplace.brand,
-            series: masterComponentToReplace.series,
-            model: masterComponentToReplace.model,
+            brand: masterComponentToReplace.brand || null,
+            series: masterComponentToReplace.series || null,
+            model: masterComponentToReplace.model || null,
             system: masterComponentToReplace.system,
             size: componentData.size || masterComponentToReplace.size || null,
             wearPercentage: componentData.wearPercentage,
@@ -129,8 +129,14 @@ export async function replaceUserComponentAction({
             }
             finalNewMasterComponentId = generatedId;
             newComponentSize = manualNewComponentData.size;
+            
+            // Ensure no undefined values are written for the new master component
+            const cleanNewComponentDetails = Object.fromEntries(
+                Object.entries(newComponentDetails).filter(([_, v]) => v !== undefined)
+            );
+
             const newMasterComponentRef = adminDb.doc(`masterComponents/${finalNewMasterComponentId}`);
-            batch.set(newMasterComponentRef, newComponentDetails, { merge: true });
+            batch.set(newMasterComponentRef, cleanNewComponentDetails, { merge: true });
         } else {
             throw new Error("No new component data provided.");
         }
@@ -169,6 +175,7 @@ export async function replaceUserComponentAction({
             size: newComponentSize || undefined,
         };
         
+        // Ensure no undefined values are written to the user component document
         const cleanData = Object.fromEntries(Object.entries(newUserComponentData).filter(([_, v]) => v !== undefined));
         batch.set(componentToReplaceRef, cleanData);
         
