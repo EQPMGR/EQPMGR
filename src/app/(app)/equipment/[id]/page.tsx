@@ -13,6 +13,7 @@ import {
   Trash2,
   Loader2,
   Zap,
+  Wrench, // New icon
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
@@ -53,7 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
 import { toDate, toNullableDate, formatDate } from '@/lib/date-utils';
-import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -400,16 +401,28 @@ export default function EquipmentDetailPage() {
             <Card>
               <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                      <FitInfoIcon className="h-5 w-5" />
-                      Fit Information
+                      <Wrench />
+                      Service & Support
                   </CardTitle>
               </CardHeader>
-              <CardContent>
-                  <Button asChild variant="secondary" className="w-full">
-                      <Link href="#">
-                          View Fit Details
-                      </Link>
-                  </Button>
+              <CardContent className="grid gap-2">
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button>Request Service</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Request Service</DialogTitle>
+                            <DialogDescription>
+                                This feature is coming soon! You will be able to send a service request directly to your favorite local bike shop.
+                            </DialogDescription>
+                        </DialogHeader>
+                         <DialogFooter>
+                            <Button variant="secondary" asChild><Link href="#">Browse Shops</Link></Button>
+                            <Button type="submit" disabled>Send Request</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                 </Dialog>
               </CardContent>
             </Card>
             <Card>
