@@ -13,7 +13,7 @@ import {
   Trash2,
   Loader2,
   Zap,
-  Wrench, // New icon
+  Wrench,
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
@@ -55,6 +55,7 @@ import { useToast } from '@/hooks/use-toast';
 import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
 import { toDate, toNullableDate, formatDate } from '@/lib/date-utils';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { BikeFitDialog } from '@/components/bike-fit-dialog';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -433,22 +434,9 @@ export default function EquipmentDetailPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-2">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button>Enter Fit Details</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Bike Fit Details</DialogTitle>
-                                <DialogDescription>
-                                    This feature is coming soon! You will be able to store all your bike fit measurements here.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <DialogFooter>
-                                <Button type="submit" disabled>Save Fit</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                   <BikeFitDialog>
+                        <Button>Enter Fit Details</Button>
+                   </BikeFitDialog>
                 </CardContent>
             </Card>
             <Card>
