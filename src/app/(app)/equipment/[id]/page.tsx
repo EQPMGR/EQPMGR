@@ -428,6 +428,32 @@ export default function EquipmentDetailPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
+                        <FitInfoIcon className="h-5 w-5" />
+                        Bike Fit
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button>Enter Fit Details</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Bike Fit Details</DialogTitle>
+                                <DialogDescription>
+                                    This feature is coming soon! You will be able to store all your bike fit measurements here.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button type="submit" disabled>Save Fit</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
                         <Shield />
                         Protect Your Gear
                     </CardTitle>
