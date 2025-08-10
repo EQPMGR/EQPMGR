@@ -35,6 +35,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
+import { BikeFitDiagram } from './icons/bike-fit-diagram';
 
 const fitFormSchema = z.object({
   saddleHeight: z.coerce.number().optional(),
@@ -174,8 +175,8 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                 {/* Column 1: SVG and some fields */}
                 <div className="space-y-4">
-                    <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center">
-                        <p className="text-muted-foreground">SVG Placeholder</p>
+                    <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center p-4">
+                        <BikeFitDiagram className="w-full h-full" />
                     </div>
                      {renderTextField('saddleBrandModel', 'Saddle Brand and Model', 'F')}
                      {renderTextField('handlebarBrandModel', 'Handlebar Brand and Model', 'I')}
