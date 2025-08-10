@@ -28,7 +28,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -156,30 +155,29 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
             Enter your bike fit measurements below. All measurements are from the center line unless otherwise specified.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow overflow-y-auto pr-6 -mr-6">
-            <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <RadioGroup
-                    value={units}
-                    onValueChange={(value: 'metric' | 'imperial') => setUnits(value)}
-                    className="flex space-x-4"
-                >
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl><RadioGroupItem value="metric" /></FormControl>
-                    <FormLabel className="font-normal">Metric (mm/deg)</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl><RadioGroupItem value="imperial" /></FormControl>
-                    <FormLabel className="font-normal">Imperial (in/deg)</FormLabel>
-                    </FormItem>
-                </RadioGroup>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    <div className="space-y-4">
-                        <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center p-4">
-                            <BikeFitDiagram className="w-full h-full" />
-                        </div>
-                    </div>
+        <div className="grid md:grid-cols-2 gap-x-8 min-h-0 flex-1">
+          <div className="hidden md:flex flex-col gap-4 py-4 pr-6 -mr-6 border-r">
+             <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center p-4 sticky top-0">
+                <BikeFitDiagram className="w-full h-full" />
+            </div>
+          </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 flex flex-col">
+                <div className="space-y-6 flex-1 overflow-y-auto pr-2 -mr-2">
+                    <RadioGroup
+                        value={units}
+                        onValueChange={(value: 'metric' | 'imperial') => setUnits(value)}
+                        className="flex space-x-4"
+                    >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl><RadioGroupItem value="metric" /></FormControl>
+                        <FormLabel className="font-normal">Metric (mm/deg)</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl><RadioGroupItem value="imperial" /></FormControl>
+                        <FormLabel className="font-normal">Imperial (in/deg)</FormLabel>
+                        </FormItem>
+                    </RadioGroup>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                         {renderMeasurementField('saddleHeight', 'Saddle Height', 'A', units === 'metric' ? 'mm' : 'in')}
@@ -197,36 +195,36 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
                         {renderTextField('brakeLeverPosition', 'Brake Lever Position', 'M')}
                         {renderMeasurementField('crankLength', 'Crank Length', 'N', 'mm')}
                     </div>
-                </div>
                 
-                <Separator />
-                
-                <FormField
-                    control={form.control}
-                    name="hasAeroBars"
-                    render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                        <div className="space-y-0.5">
-                        <FormLabel>Aero Bar Setup</FormLabel>
-                        <FormDescription>
-                            Enable this to add aero bar specific measurements.
-                        </FormDescription>
-                        </div>
-                        <FormControl>
-                        <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                        />
-                        </FormControl>
-                    </FormItem>
-                    )}
-                />
+                    <Separator />
+                    
+                    <FormField
+                        control={form.control}
+                        name="hasAeroBars"
+                        render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                            <FormLabel>Aero Bar Setup</FormLabel>
+                            <span className="text-xs text-muted-foreground block">
+                                Enable this to add aero bar specific measurements.
+                            </span>
+                            </div>
+                            <FormControl>
+                            <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                            />
+                            </FormControl>
+                        </FormItem>
+                        )}
+                    />
 
-                {hasAeroBars && (
-                    <div className="p-4 border-l-2 ml-2 space-y-4">
-                        <p className="text-muted-foreground">Aero bar setup fields will go here.</p>
-                    </div>
-                )}
+                    {hasAeroBars && (
+                        <div className="p-4 border-l-2 ml-2 space-y-4">
+                            <p className="text-muted-foreground">Aero bar setup fields will go here.</p>
+                        </div>
+                    )}
+                </div>
                 <DialogFooter className="pt-4 border-t bg-background sticky bottom-0">
                     <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
                         Cancel
