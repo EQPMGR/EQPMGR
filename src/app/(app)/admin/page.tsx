@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { ServiceProviderSeeder } from './service-provider-seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -77,6 +78,7 @@ export default function AdminPage() {
                         </Button>
                     </CardHeader>
                 </Card>
+                 <ServiceProviderSeeder />
             </CardContent>
         </Card>
     );

@@ -21,8 +21,8 @@ export interface MasterComponent {
 // Data specific to a user's instance of a component
 export interface UserComponent {
   id: string; // Unique ID for this specific instance (document ID in the subcollection)
-  masterComponentId: string; // Reference to the MasterComponent
   parentUserComponentId?: string | null; // ID of the parent UserComponent, if this is a sub-component
+  masterComponentId: string; // Reference to the MasterComponent
   wearPercentage: number;
   lastServiceDate: Date | null;
   purchaseDate: Date;
@@ -95,4 +95,18 @@ export interface Equipment {
   maintenanceLog: MaintenanceLog[];
   archivedComponents?: ArchivedComponent[];
   fitData?: BikeFitData;
+}
+
+export interface ServiceProvider {
+  id: string;
+  name: string;
+  services: ('bike-fitting' | 'repairs')[];
+  address: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+  phone?: string;
+  website?: string;
+  geohash?: string; // For location-based queries
 }
