@@ -28,6 +28,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -35,7 +36,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { BikeFitDiagram } from './icons/bike-fit-diagram';
-import { FormDescription } from './ui/form';
+
 
 const fitFormSchema = z.object({
   saddleHeight: z.coerce.number().optional(),
@@ -148,96 +149,96 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Bike Fit Details</DialogTitle>
           <DialogDescription>
             Enter your bike fit measurements below. All measurements are from the center line unless otherwise specified.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 overflow-y-auto pr-4">
-            <RadioGroup
-                value={units}
-                onValueChange={(value: 'metric' | 'imperial') => setUnits(value)}
-                className="flex space-x-4"
-              >
-                <FormItem className="flex items-center space-x-2 space-y-0">
-                  <FormControl><RadioGroupItem value="metric" /></FormControl>
-                  <FormLabel className="font-normal">Metric (mm/deg)</FormLabel>
-                </FormItem>
-                <FormItem className="flex items-center space-x-2 space-y-0">
-                  <FormControl><RadioGroupItem value="imperial" /></FormControl>
-                  <FormLabel className="font-normal">Imperial (in/deg)</FormLabel>
-                </FormItem>
-            </RadioGroup>
+        <div className="flex-grow overflow-y-auto pr-6 -mr-6">
+            <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <RadioGroup
+                    value={units}
+                    onValueChange={(value: 'metric' | 'imperial') => setUnits(value)}
+                    className="flex space-x-4"
+                >
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl><RadioGroupItem value="metric" /></FormControl>
+                    <FormLabel className="font-normal">Metric (mm/deg)</FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl><RadioGroupItem value="imperial" /></FormControl>
+                    <FormLabel className="font-normal">Imperial (in/deg)</FormLabel>
+                    </FormItem>
+                </RadioGroup>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                <div className="space-y-4">
-                    <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center p-4">
-                        <BikeFitDiagram className="w-full h-full" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                    <div className="space-y-4">
+                        <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center p-4">
+                            <BikeFitDiagram className="w-full h-full" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                        {renderMeasurementField('saddleHeight', 'Saddle Height', 'A', units === 'metric' ? 'mm' : 'in')}
+                        {renderMeasurementField('saddleHeightOverBars', 'Saddle Height Over Bars', 'B', units === 'metric' ? 'mm' : 'in')}
+                        {renderMeasurementField('saddleToHandlebarReach', 'Saddle to Handlebar Reach', 'C', units === 'metric' ? 'mm' : 'in')}
+                        {renderMeasurementField('saddleAngle', 'Saddle Angle', 'D', 'deg')}
+                        {renderMeasurementField('saddleForeAft', 'Saddle Fore-Aft', 'E', units === 'metric' ? 'mm' : 'in')}
+                        {renderTextField('saddleBrandModel', 'Saddle Brand and Model', 'F')}
+                        {renderMeasurementField('stemLength', 'Stem Length', 'G', 'mm')}
+                        {renderMeasurementField('stemAngle', 'Stem Angle', 'H', 'deg')}
+                        {renderTextField('handlebarBrandModel', 'Handlebar Brand and Model', 'I')}
+                        {renderMeasurementField('handlebarWidth', 'Handlebar Width', 'J', units === 'metric' ? 'mm' : 'in')}
+                        {renderMeasurementField('handlebarAngle', 'Handlebar Angle', 'K', 'deg')}
+                        {renderMeasurementField('handlebarExtension', 'Handlebar Extension', 'L', 'mm')}
+                        {renderTextField('brakeLeverPosition', 'Brake Lever Position', 'M')}
+                        {renderMeasurementField('crankLength', 'Crank Length', 'N', 'mm')}
                     </div>
                 </div>
+                
+                <Separator />
+                
+                <FormField
+                    control={form.control}
+                    name="hasAeroBars"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                        <FormLabel>Aero Bar Setup</FormLabel>
+                        <FormDescription>
+                            Enable this to add aero bar specific measurements.
+                        </FormDescription>
+                        </div>
+                        <FormControl>
+                        <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                        />
+                        </FormControl>
+                    </FormItem>
+                    )}
+                />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                    {renderMeasurementField('saddleHeight', 'Saddle Height', 'A', units === 'metric' ? 'mm' : 'in')}
-                    {renderMeasurementField('saddleHeightOverBars', 'Saddle Height Over Bars', 'B', units === 'metric' ? 'mm' : 'in')}
-                    {renderMeasurementField('saddleToHandlebarReach', 'Saddle to Handlebar Reach', 'C', units === 'metric' ? 'mm' : 'in')}
-                    {renderMeasurementField('saddleAngle', 'Saddle Angle', 'D', 'deg')}
-                    {renderMeasurementField('saddleForeAft', 'Saddle Fore-Aft', 'E', units === 'metric' ? 'mm' : 'in')}
-                    {renderTextField('saddleBrandModel', 'Saddle Brand and Model', 'F')}
-                    {renderMeasurementField('stemLength', 'Stem Length', 'G', 'mm')}
-                    {renderMeasurementField('stemAngle', 'Stem Angle', 'H', 'deg')}
-                    {renderTextField('handlebarBrandModel', 'Handlebar Brand and Model', 'I')}
-                    {renderMeasurementField('handlebarWidth', 'Handlebar Width', 'J', units === 'metric' ? 'mm' : 'in')}
-                    {renderMeasurementField('handlebarAngle', 'Handlebar Angle', 'K', 'deg')}
-                    {renderMeasurementField('handlebarExtension', 'Handlebar Extension', 'L', 'mm')}
-                    {renderTextField('brakeLeverPosition', 'Brake Lever Position', 'M')}
-                    {renderMeasurementField('crankLength', 'Crank Length', 'N', 'mm')}
-                </div>
-            </div>
-            
-            <Separator />
-            
-            <FormField
-                control={form.control}
-                name="hasAeroBars"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Aero Bar Setup</FormLabel>
-                      <FormDescription>
-                        Enable this to add aero bar specific measurements.
-                      </FormDescription>
+                {hasAeroBars && (
+                    <div className="p-4 border-l-2 ml-2 space-y-4">
+                        <p className="text-muted-foreground">Aero bar setup fields will go here.</p>
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
                 )}
-              />
-
-            {hasAeroBars && (
-                <div className="p-4 border-l-2 ml-2 space-y-4">
-                    <p className="text-muted-foreground">Aero bar setup fields will go here.</p>
-                </div>
-            )}
-
-
-            <DialogFooter className="pt-4 border-t bg-background sticky bottom-0">
-              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Fit Details
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                <DialogFooter className="pt-4 border-t bg-background sticky bottom-0">
+                    <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSaving}>
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Fit Details
+                    </Button>
+                </DialogFooter>
+            </form>
+            </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );
