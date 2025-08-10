@@ -24,7 +24,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -158,7 +157,7 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
         </DialogHeader>
         
         <div className="grid md:grid-cols-2 gap-x-8 flex-1 min-h-0">
-          <div className="hidden md:flex sticky top-0 h-full flex-col items-center justify-center py-4 pr-6 border-r">
+          <div className="md:sticky md:top-0 h-fit md:h-full flex-col items-center justify-center py-4 md:border-r md:pr-6">
              <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center p-4">
                 <BikeFitDiagram className="w-full h-full object-contain" />
             </div>
