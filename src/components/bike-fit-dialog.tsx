@@ -28,7 +28,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -36,6 +35,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { BikeFitDiagram } from './icons/bike-fit-diagram';
+import { FormDescription } from './ui/form';
 
 const fitFormSchema = z.object({
   saddleHeight: z.coerce.number().optional(),
@@ -156,7 +156,7 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 overflow-y-auto pr-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 overflow-y-auto pr-4">
             <RadioGroup
                 value={units}
                 onValueChange={(value: 'metric' | 'imperial') => setUnits(value)}
@@ -172,25 +172,23 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
                 </FormItem>
             </RadioGroup>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                {/* Column 1: SVG and some fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 <div className="space-y-4">
                     <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center p-4">
                         <BikeFitDiagram className="w-full h-full" />
                     </div>
-                     {renderTextField('saddleBrandModel', 'Saddle Brand and Model', 'F')}
-                     {renderTextField('handlebarBrandModel', 'Handlebar Brand and Model', 'I')}
                 </div>
 
-                {/* Column 2: The rest of the fields */}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                     {renderMeasurementField('saddleHeight', 'Saddle Height', 'A', units === 'metric' ? 'mm' : 'in')}
                     {renderMeasurementField('saddleHeightOverBars', 'Saddle Height Over Bars', 'B', units === 'metric' ? 'mm' : 'in')}
                     {renderMeasurementField('saddleToHandlebarReach', 'Saddle to Handlebar Reach', 'C', units === 'metric' ? 'mm' : 'in')}
                     {renderMeasurementField('saddleAngle', 'Saddle Angle', 'D', 'deg')}
                     {renderMeasurementField('saddleForeAft', 'Saddle Fore-Aft', 'E', units === 'metric' ? 'mm' : 'in')}
+                    {renderTextField('saddleBrandModel', 'Saddle Brand and Model', 'F')}
                     {renderMeasurementField('stemLength', 'Stem Length', 'G', 'mm')}
                     {renderMeasurementField('stemAngle', 'Stem Angle', 'H', 'deg')}
+                    {renderTextField('handlebarBrandModel', 'Handlebar Brand and Model', 'I')}
                     {renderMeasurementField('handlebarWidth', 'Handlebar Width', 'J', units === 'metric' ? 'mm' : 'in')}
                     {renderMeasurementField('handlebarAngle', 'Handlebar Angle', 'K', 'deg')}
                     {renderMeasurementField('handlebarExtension', 'Handlebar Extension', 'L', 'mm')}
@@ -229,7 +227,7 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
             )}
 
 
-            <DialogFooter className="pt-4 border-t">
+            <DialogFooter className="pt-4 border-t bg-background sticky bottom-0">
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
