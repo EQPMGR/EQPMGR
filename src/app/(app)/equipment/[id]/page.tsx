@@ -437,6 +437,7 @@ export default function EquipmentDetailPage() {
                    <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
                         <Button>Enter Fit Details</Button>
                    </BikeFitDialog>
+                   <Button variant="secondary">Book a Bike Fitting</Button>
                 </CardContent>
             </Card>
             <Card>
