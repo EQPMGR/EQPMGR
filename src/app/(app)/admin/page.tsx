@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput } from 'lucide-react';
+import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput, Building } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { ServiceProviderSeeder } from './service-provider-seeder';
@@ -44,6 +44,21 @@ export default function AdminPage() {
                         <Button asChild size="sm" variant="outline">
                             <Link href="/admin/import-text">
                                 <FileInput className="h-4 w-4 mr-2" /> Import
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Add Service Provider</CardTitle>
+                            <CardDescription className="text-sm">
+                                Onboard a new service provider or partner.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/add-service-provider">
+                                <Building className="h-4 w-4 mr-2" /> Add Provider
                             </Link>
                         </Button>
                     </CardHeader>
