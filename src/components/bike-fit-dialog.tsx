@@ -1,12 +1,16 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
 
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import type { Equipment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -33,60 +37,81 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 
 const fitFormSchema = z.object({
-  saddleHeight: z.number().optional(),
-  saddleHeightOverBars: z.number().optional(),
-  saddleToHandlebarReach: z.number().optional(),
-  saddleAngle: z.number().optional(),
-  saddleForeAft: z.number().optional(),
+  saddleHeight: z.coerce.number().optional(),
+  saddleHeightOverBars: z.coerce.number().optional(),
+  saddleToHandlebarReach: z.coerce.number().optional(),
+  saddleAngle: z.coerce.number().optional(),
+  saddleForeAft: z.coerce.number().optional(),
   saddleBrandModel: z.string().optional(),
-  stemLength: z.number().optional(),
-  stemAngle: z.number().optional(),
+  stemLength: z.coerce.number().optional(),
+  stemAngle: z.coerce.number().optional(),
   handlebarBrandModel: z.string().optional(),
-  handlebarWidth: z.number().optional(),
-  handlebarAngle: z.number().optional(),
-  handlebarExtension: z.number().optional(),
+  handlebarWidth: z.coerce.number().optional(),
+  handlebarAngle: z.coerce.number().optional(),
+  handlebarExtension: z.coerce.number().optional(),
   brakeLeverPosition: z.string().optional(),
-  crankLength: z.number().optional(),
+  crankLength: z.coerce.number().optional(),
   hasAeroBars: z.boolean().default(false),
-  // Placeholder for aero bar fields
 });
 
 type FitFormValues = z.infer<typeof fitFormSchema>;
 
 interface BikeFitDialogProps {
   children: React.ReactNode;
+  equipment: Equipment;
+  onSuccess: () => void;
 }
 
-export function BikeFitDialog({ children }: BikeFitDialogProps) {
+export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [units, setUnits] = useState<'metric' | 'imperial'>('metric');
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<FitFormValues>({
     resolver: zodResolver(fitFormSchema),
-    defaultValues: {
+    defaultValues: equipment.fitData || {
       hasAeroBars: false,
     },
   });
   
+  useEffect(() => {
+      if (open && equipment.fitData) {
+          form.reset(equipment.fitData);
+      }
+  }, [open, equipment.fitData, form]);
+
   const hasAeroBars = form.watch('hasAeroBars');
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      form.reset();
+      form.reset(equipment.fitData || { hasAeroBars: false });
     }
   };
 
   const onSubmit = async (data: FitFormValues) => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Not authenticated' });
+      return;
+    }
     setIsSaving(true);
-    console.log("Saving bike fit data:", data);
-    // In a real scenario, you'd save this data to Firestore
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({ title: 'Bike Fit Saved!', description: 'Your measurements have been updated.' });
-    setIsSaving(false);
-    handleOpenChange(false);
+    
+    try {
+      const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+      await updateDoc(equipmentDocRef, {
+        fitData: data,
+      });
+      toast({ title: 'Bike Fit Saved!', description: 'Your measurements have been updated.' });
+      onSuccess();
+      handleOpenChange(false);
+    } catch (error: any) {
+      console.error("Failed to save bike fit data:", error);
+      toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+    } finally {
+        setIsSaving(false);
+    }
   };
   
   const renderMeasurementField = (name: keyof FitFormValues, label: string, letter: string, unit: string) => (
@@ -97,7 +122,7 @@ export function BikeFitDialog({ children }: BikeFitDialogProps) {
           <FormItem>
             <FormLabel>{letter}. {label} ({unit})</FormLabel>
             <FormControl>
-              <Input type="number" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+              <Input type="number" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} value={field.value ?? ''} />
             </FormControl>
           </FormItem>
         )}
@@ -112,7 +137,7 @@ export function BikeFitDialog({ children }: BikeFitDialogProps) {
           <FormItem>
             <FormLabel>{letter}. {label}</FormLabel>
             <FormControl>
-              <Input {...field} />
+              <Input {...field} value={field.value ?? ''} />
             </FormControl>
           </FormItem>
         )}

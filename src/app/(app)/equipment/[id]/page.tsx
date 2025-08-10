@@ -434,7 +434,7 @@ export default function EquipmentDetailPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-2">
-                   <BikeFitDialog>
+                   <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
                         <Button>Enter Fit Details</Button>
                    </BikeFitDialog>
                 </CardContent>

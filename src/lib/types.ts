@@ -58,6 +58,24 @@ export interface MaintenanceLog {
   notes?: string;
 }
 
+export interface BikeFitData {
+  saddleHeight?: number;
+  saddleHeightOverBars?: number;
+  saddleToHandlebarReach?: number;
+  saddleAngle?: number;
+  saddleForeAft?: number;
+  saddleBrandModel?: string;
+  stemLength?: number;
+  stemAngle?: number;
+  handlebarBrandModel?: string;
+  handlebarWidth?: number;
+  handlebarAngle?: number;
+  handlebarExtension?: number;
+  brakeLeverPosition?: string;
+  crankLength?: number;
+  hasAeroBars?: boolean;
+}
+
 export interface Equipment {
   id:string;
   name: string;
@@ -76,4 +94,5 @@ export interface Equipment {
   components: Component[]; // This will be populated at runtime, not stored in Firestore
   maintenanceLog: MaintenanceLog[];
   archivedComponents?: ArchivedComponent[];
+  fitData?: BikeFitData;
 }
