@@ -10,7 +10,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import type { Equipment } from '@/lib/types';
+import type { Equipment, BikeFitData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -102,9 +102,24 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
     
     try {
       const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
+      
+      // Clean the data to remove undefined or NaN, replacing with null
+      const cleanedData: Partial<BikeFitData> = {};
+      for (const key in data) {
+          const typedKey = key as keyof FitFormValues;
+          let value = data[typedKey];
+          if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) {
+              value = undefined;
+          }
+          if (value !== undefined) {
+             (cleanedData as any)[typedKey] = value;
+          }
+      }
+
       await updateDoc(equipmentDocRef, {
-        fitData: data,
+        fitData: cleanedData,
       });
+
       toast({ title: 'Bike Fit Saved!', description: 'Your measurements have been updated.' });
       onSuccess();
       handleOpenChange(false);
@@ -124,7 +139,7 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
           <FormItem>
             <FormLabel>{letter}. {label} ({unit})</FormLabel>
             <FormControl>
-              <Input type="number" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} value={field.value ?? ''} />
+              <Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={field.value ?? ''} />
             </FormControl>
           </FormItem>
         )}
@@ -158,7 +173,7 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
         </DialogHeader>
         
         <div className="grid md:grid-cols-2 gap-x-8 flex-1 min-h-0">
-          <div className="relative md:sticky md:top-0 h-fit md:h-full flex-col items-center justify-center py-4 md:border-r md:pr-6">
+          <div className="relative md:sticky md:top-0 h-fit md:h-full flex flex-col items-center justify-center py-4 md:border-r md:pr-6">
              <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center p-4">
                 <BikeFitDiagram className="w-full h-full object-contain" />
             </div>
