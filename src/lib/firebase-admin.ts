@@ -1,4 +1,5 @@
 
+import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
 // This is the "singleton" pattern. We will keep the initialized app here.
