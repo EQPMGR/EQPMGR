@@ -1,5 +1,4 @@
 
-import 'dotenv/config';
 import { getAuth } from 'firebase-admin/auth';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';

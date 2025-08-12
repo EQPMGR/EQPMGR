@@ -36,8 +36,17 @@ export interface Component extends MasterComponent, Omit<UserComponent, 'id' | '
 }
 
 // Represents a component that has been replaced.
-export interface ArchivedComponent extends Omit<Component, 'id' | 'maintenanceLog' | 'components' | 'userComponentId'> {
-    replacedOn: Date;
+export interface ArchivedComponent {
+    name: string;
+    brand?: string;
+    series?: string;
+    model?: string;
+    system: string;
+    size?: string;
+    wearPercentage: number;
+    purchaseDate: string;
+    lastServiceDate: string | null;
+    replacedOn: string;
     finalMileage: number;
     replacementReason: 'failure' | 'modification' | 'upgrade';
 }

@@ -1,4 +1,6 @@
 
+'use server';
+
 import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
@@ -17,7 +19,7 @@ function getAdminApp(): admin.app.App {
   }
 
   // When running in a Google Cloud environment, the SDK can automatically
-  // discover the service account credentials.
+  // discover the service account credentials. This is the standard practice.
   adminApp = admin.initializeApp();
   
   return adminApp;

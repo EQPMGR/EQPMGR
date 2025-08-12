@@ -3,59 +3,24 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is authenticated
-    function isSignedIn() {
-      return request.auth != null;
+  
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // Helper function to check if the user is the owner of the document
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // --- User Profiles ---
-    // Users can only read and write their own profile document.
-    match /users/{userId} {
-      allow read, update, delete: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn();
-      
-      // --- User Subcollections ---
-      // Users can manage their own equipment and its subcollections.
-      match /equipment/{equipmentId} {
-        allow read, write: if isSignedIn() && isOwner(userId);
-
-        match /components/{componentId} {
-           allow read, write: if isSignedIn() && isOwner(userId);
-        }
-      }
-    }
-
-    // --- Shared Data ---
-    // All authenticated users can read from these collections.
-    // Writing should only be done via secure server-side admin functions.
+    // Allow authenticated users to read shared/public data
     match /masterComponents/{componentId} {
-      allow read: if isSignedIn();
-      allow write: if false; // Disallow client-side writes
+      allow read: if request.auth != null;
     }
     
     match /bikeModels/{modelId} {
-        allow read: if isSignedIn();
-        allow write: if false;
+      allow read: if request.auth != null;
     }
-    
-    match /serviceProviders/{providerId} {
-        allow read: if isSignedIn();
-        allow write: if false;
-    }
-    
-    // Admin-only collections for training data and duplicate management.
-    match /trainingData/{docId} {
-        allow read, write: if false;
-    }
-    
-    match /ignoredDuplicates/{docId} {
-        allow read, write: if false;
+
+    // Allow authenticated users to read and write their own data
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
