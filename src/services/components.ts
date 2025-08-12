@@ -24,7 +24,7 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
   } catch (error) {
     console.error("Error fetching master components with Admin SDK:", error);
     // Throw a more specific error to help with debugging Firestore permissions.
-    if ((error as any).code === 'permission-denied') {
+    if ((error as any).code === 'permission-denied' || (error as any).code === 7) {
         throw new Error("Firestore permission denied. Ensure your service account has the 'Cloud Datastore User' role.");
     }
     throw new Error("Failed to fetch master components from the database.");
