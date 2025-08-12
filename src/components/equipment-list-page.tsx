@@ -190,23 +190,29 @@ export function EquipmentListPage() {
                   notes: '',
               };
               
-              // Resolve the size for the user's component
+              let resolvedSize: string | undefined;
+
               if (formData.frameSize && masterComp.sizeVariants) {
                   try {
                       const variants = JSON.parse(masterComp.sizeVariants);
-                      // Find the variant that matches the user's frame size (case-insensitive)
                       const frameSizeKey = Object.keys(variants).find(key => key.toLowerCase() === formData.frameSize!.toLowerCase());
                       if (frameSizeKey) {
-                        userComponent.size = variants[frameSizeKey];
+                        resolvedSize = variants[frameSizeKey];
                       } else {
-                        userComponent.size = masterComp.size; // Fallback to default size
+                        resolvedSize = masterComp.size; 
                       }
                   } catch (e) {
                       console.error("Could not parse sizeVariants JSON", masterComp.sizeVariants);
-                      userComponent.size = masterComp.size; // Fallback on parsing error
+                      resolvedSize = masterComp.size;
                   }
               } else {
-                  userComponent.size = masterComp.size; // Default if no frame size or variants
+                  resolvedSize = masterComp.size;
+              }
+
+              // *** THIS IS THE FIX ***
+              // Only add the size field if it's a valid, non-empty string.
+              if (resolvedSize) {
+                userComponent.size = resolvedSize;
               }
 
               batch.set(newComponentDocRef, userComponent);
