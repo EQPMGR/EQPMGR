@@ -23,6 +23,10 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
     return components;
   } catch (error) {
     console.error("Error fetching master components with Admin SDK:", error);
+    // Throw a more specific error to help with debugging Firestore permissions.
+    if ((error as any).code === 'permission-denied') {
+        throw new Error("Firestore permission denied. Ensure your service account has the 'Cloud Datastore User' role.");
+    }
     throw new Error("Failed to fetch master components from the database.");
   }
 }
@@ -42,8 +46,8 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         const filteredComponents = allComponents.filter(c => c.name === type);
         return filteredComponents;
     } catch (error) {
-        console.error(`Error fetching components of type ${type} with Admin SDK:`, error);
-        // Re-throw a more user-friendly error.
-        throw new Error(`Could not load components. This may be due to a missing Firestore index. Please check your Firebase console.`);
+        console.error(`Error fetching components of type ${type}:`, error);
+        // Re-throw the original error to be displayed on the client.
+        throw error;
     }
 }

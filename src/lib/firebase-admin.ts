@@ -17,34 +17,12 @@ function getAdminApp(): admin.app.App {
     return admin.apps[0];
   }
 
-  // If the app is not initialized, we need to do it now.
-  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
-    
-  if (!serviceAccountString) {
-    // This is a critical error. The server cannot function without credentials.
-    // Throwing a clear error is better than letting the app run in a broken state.
-    throw new Error(
-      'CRITICAL: FIREBASE_SERVICE_ACCOUNT environment variable is not set. The server cannot start without credentials.'
-    );
-  }
-
-  try {
-    const serviceAccount = JSON.parse(serviceAccountString);
-    
-    // Initialize the app and store it in our singleton variable.
-    adminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: serviceAccount.project_id,
-    });
-    
-    console.log("Firebase Admin SDK initialized successfully.");
-    return adminApp;
-
-  } catch (error: any) {
-    // This will catch errors like an invalid JSON key.
-    console.error("CRITICAL: Firebase Admin SDK initialization failed.", error);
-    throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT or initialize app: ${error.message}`);
-  }
+  // Initialize the app with default credentials and store it.
+  // This is the standard method for environments like this.
+  adminApp = admin.initializeApp();
+  
+  console.log("Firebase Admin SDK initialized successfully.");
+  return adminApp;
 }
 
 // Initialize the app on first access.
