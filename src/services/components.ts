@@ -28,7 +28,8 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
 }
 
 /**
- * Fetches master components of a specific type (e.g., "Cassette") using the Admin SDK.
+ * Fetches master components of a specific type (e.g., "Cassette") by fetching all components
+ * and filtering them in memory. This is more robust than a direct query if indexes are not set up.
  * @param type The component name/type to filter by.
  * @returns A promise that resolves to an array of matching master components.
  */
@@ -37,15 +38,9 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return [];
     }
     try {
-        const componentsCollection = adminDb.collection('masterComponents');
-        const q = componentsCollection.where('name', '==', type);
-        const querySnapshot = await q.get();
-        
-        const components: MasterComponentWithOptions[] = [];
-        querySnapshot.forEach((doc) => {
-            components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
-        });
-        return components;
+        const allComponents = await fetchAllMasterComponents();
+        const filteredComponents = allComponents.filter(c => c.name === type);
+        return filteredComponents;
     } catch (error) {
         console.error(`Error fetching components of type ${type} with Admin SDK:`, error);
         // Re-throw a more user-friendly error.
