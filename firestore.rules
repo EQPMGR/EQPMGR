@@ -4,21 +4,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
   
-    // Allow any authenticated user to read from shared collections.
-    // Writes are handled by server-side logic with the Admin SDK.
-    match /masterComponents/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if false; // Disallow all client writes
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    match /bikeModels/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if false; // Disallow all client writes
+    // --- User Data ---
+    // Users can only read and write their own data.
+    match /users/{userId} {
+      allow read, update, delete: if request.auth.uid == userId;
+      allow create: if isAuthenticated();
+
+      // Equipment and component subcollections inherit the parent rule.
+      // Users can only manage their own equipment and components.
+      match /equipment/{equipmentId} {
+        allow read, write: if request.auth.uid == userId;
+        
+        match /components/{componentId} {
+           allow read, write: if request.auth.uid == userId;
+        }
+      }
+    }
+
+    // --- Shared Data ---
+    // Any authenticated user can read from these collections.
+    // Writes are restricted to prevent users from modifying shared data.
+    match /bikeModels/{bikeModelId} {
+      allow read: if isAuthenticated();
+      allow write: if false; 
+    }
+
+    match /masterComponents/{componentId} {
+      allow read: if isAuthenticated();
+      // Allow create for when new components are added via server actions,
+      // but disallow update/delete to protect the central database.
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
     }
     
-    // Lock down user data to only the authenticated user
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    match /serviceProviders/{providerId} {
+       allow read: if isAuthenticated();
+       allow write: if false; // Only admin actions should write here
     }
+    
+    match /trainingData/{docId} {
+      allow write: if isAuthenticated(); // Allow any logged-in user to contribute training data
+      allow read: if false; // Disallow reading by clients
+    }
+    
+     match /ignoredDuplicates/{docId} {
+       allow write: if isAuthenticated();
+       allow read: if false;
+     }
   }
 }
