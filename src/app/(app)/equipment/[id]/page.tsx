@@ -132,7 +132,10 @@ export default function EquipmentDetailPage() {
 
         const combinedComponents: Component[] = userComponents.map(userComp => {
             const masterComp = masterComponentsMap.get(userComp.masterComponentId);
-            if (!masterComp) return null; // Gracefully skip if master component is missing
+            if (!masterComp) {
+                console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
+                return null; 
+            }
             return {
                 ...masterComp,
                 ...userComp,

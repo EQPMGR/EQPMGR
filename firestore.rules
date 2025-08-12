@@ -3,58 +3,46 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
+    
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Logged-in users can read from the master data collections
+    match /masterComponents/{component} {
+      allow read: if request.auth != null;
+    }
+    match /bikeModels/{bike} {
+      allow read: if request.auth != null;
+    }
+    match /serviceProviders/{provider} {
+      allow read: if request.auth != null;
     }
 
-    // --- User Data ---
-    // Users can only read and write their own data.
+    // Users can only read and write their own documents in the 'users' collection
     match /users/{userId} {
-      allow read, update, delete: if request.auth.uid == userId;
-      allow create: if isAuthenticated();
-
-      // Equipment and component subcollections inherit the parent rule.
-      // Users can only manage their own equipment and components.
-      match /equipment/{equipmentId} {
-        allow read, write: if request.auth.uid == userId;
-        
-        match /components/{componentId} {
-           allow read, write: if request.auth.uid == userId;
-        }
-      }
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
 
-    // --- Shared Data ---
-    // Any authenticated user can read from these collections.
-    // Writes are restricted to prevent users from modifying shared data.
-    match /bikeModels/{bikeModelId} {
-      allow read: if isAuthenticated();
-      allow write: if false; 
+    // Users can only read and write the components in their own equipment subcollections
+    match /users/{userId}/equipment/{equipmentId}/components/{componentId} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    match /masterComponents/{componentId} {
-      allow read: if isAuthenticated();
-      // Allow create for when new components are added via server actions,
-      // but disallow update/delete to protect the central database.
-      allow create: if isAuthenticated();
-      allow update, delete: if false;
+    // Allow logged-in users to create equipment documents
+    match /users/{userId}/equipment/{equipmentId} {
+      allow create, read, update, delete: if request.auth != null && request.auth.uid == userId;
     }
-    
-    match /serviceProviders/{providerId} {
-       allow read: if isAuthenticated();
-       allow write: if false; // Only admin actions should write here
-    }
-    
+
+    // Deny access to the trainingData collection from the client
     match /trainingData/{docId} {
-      allow write: if isAuthenticated(); // Allow any logged-in user to contribute training data
-      allow read: if false; // Disallow reading by clients
+      allow read, write: if false;
     }
-    
-     match /ignoredDuplicates/{docId} {
-       allow write: if isAuthenticated();
-       allow read: if false;
-     }
+    // Deny access to the ignoredDuplicates collection from the client
+    match /ignoredDuplicates/{docId} {
+      allow read, write: if false;
+    }
   }
 }

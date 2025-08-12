@@ -10,7 +10,6 @@ import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'fireb
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -310,5 +309,3 @@ export default function ComponentDetailPage() {
      </>
   );
 }
-
-    

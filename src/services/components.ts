@@ -33,7 +33,7 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
 
 /**
  * Fetches master components of a specific type (e.g., "Cassette") by fetching all components
- * and filtering them in memory. This is more robust than a direct query if indexes are not set up.
+ * and filtering them in the code. This is more robust than a direct query if indexes are not set up.
  * @param type The component name/type to filter by.
  * @returns A promise that resolves to an array of matching master components.
  */
