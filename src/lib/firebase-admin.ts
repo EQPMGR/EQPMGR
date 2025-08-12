@@ -18,10 +18,10 @@ function getAdminApp(): admin.app.App {
   }
 
   // Initialize the app with default credentials and store it.
-  // This is the standard method for environments like this.
+  // This is the standard method for environments where environment variables
+  // are used for configuration.
   adminApp = admin.initializeApp();
   
-  console.log("Firebase Admin SDK initialized successfully.");
   return adminApp;
 }
 
