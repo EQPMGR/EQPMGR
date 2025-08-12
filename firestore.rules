@@ -3,46 +3,59 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Default deny all
-    match /{document=**} {
-      allow read, write: if false;
-    }
-    
-    // Logged-in users can read from the master data collections
-    match /masterComponents/{component} {
-      allow read: if request.auth != null;
-    }
-    match /bikeModels/{bike} {
-      allow read: if request.auth != null;
-    }
-    match /serviceProviders/{provider} {
-      allow read: if request.auth != null;
+
+    // Helper function to check if a user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Users can only read and write their own documents in the 'users' collection
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // --- User Profiles ---
+    // Users can only read and write their own profile document.
     match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, update, delete: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn();
+      
+      // --- User Subcollections ---
+      // Users can manage their own equipment and its subcollections.
+      match /equipment/{equipmentId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+
+        match /components/{componentId} {
+           allow read, write: if isSignedIn() && isOwner(userId);
+        }
+      }
     }
 
-    // Users can only read and write the components in their own equipment subcollections
-    match /users/{userId}/equipment/{equipmentId}/components/{componentId} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    // --- Shared Data ---
+    // All authenticated users can read from these collections.
+    // Writing should only be done via secure server-side admin functions.
+    match /masterComponents/{componentId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Disallow client-side writes
     }
-
-    // Allow logged-in users to create equipment documents
-    match /users/{userId}/equipment/{equipmentId} {
-      allow create, read, update, delete: if request.auth != null && request.auth.uid == userId;
+    
+    match /bikeModels/{modelId} {
+        allow read: if isSignedIn();
+        allow write: if false;
     }
-
-    // Deny access to the trainingData collection from the client
+    
+    match /serviceProviders/{providerId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+    }
+    
+    // Admin-only collections for training data and duplicate management.
     match /trainingData/{docId} {
-      allow read, write: if false;
+        allow read, write: if false;
     }
-    // Deny access to the ignoredDuplicates collection from the client
+    
     match /ignoredDuplicates/{docId} {
-      allow read, write: if false;
+        allow read, write: if false;
     }
   }
 }

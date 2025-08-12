@@ -12,14 +12,12 @@ let adminApp: admin.app.App;
  * @returns The initialized Firebase Admin App instance.
  */
 function getAdminApp(): admin.app.App {
-  // If the app is already initialized, return it.
   if (admin.apps.length > 0 && admin.apps[0]) {
     return admin.apps[0];
   }
 
-  // Initialize the app with default credentials and store it.
-  // This is the standard method for environments where environment variables
-  // are used for configuration.
+  // When running in a Google Cloud environment, the SDK can automatically
+  // discover the service account credentials.
   adminApp = admin.initializeApp();
   
   return adminApp;
