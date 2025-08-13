@@ -18,7 +18,7 @@ if (!admin.apps.length) {
 
         // Check if the required service account details are present.
         if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-            throw new Error('Missing Firebase Admin SDK credentials. Please check your .env file.');
+            throw new Error('Missing Firebase Admin SDK credentials. Please check your .env.local file.');
         }
 
         admin.initializeApp({
@@ -28,7 +28,7 @@ if (!admin.apps.length) {
     } catch (error) {
         console.error('Firebase admin initialization error', error);
         // Throw a more descriptive error to help with debugging.
-        throw new Error('Failed to initialize Firebase Admin SDK. This is often caused by missing or misconfigured service account credentials in the .env file.');
+        throw new Error('Failed to initialize Firebase Admin SDK. This is often caused by missing or misconfigured service account credentials in the .env.local file.');
     }
 }
 
