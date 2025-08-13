@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getComponentForDebug, testVertexAIConnection } from './actions';
+import { getComponentForDebug, testVertexAIConnection, getEnvironmentStatus } from './actions';
 
 export default function DebugPage() {
   const { toast } = useToast();
@@ -37,6 +37,9 @@ export default function DebugPage() {
 
   const [isLoadingSessionTest, setIsLoadingSessionTest] = useState(false);
   const [sessionTestResult, setSessionTestResult] = useState<string | null>(null);
+  
+  const [isLoadingEnvTest, setIsLoadingEnvTest] = useState(false);
+  const [envTestResult, setEnvTestResult] = useState<string | null>(null);
 
   const handleTestSessionCookie = async () => {
       if (!auth.currentUser) {
@@ -46,10 +49,14 @@ export default function DebugPage() {
       setIsLoadingSessionTest(true);
       setSessionTestResult(null);
       try {
-          const idToken = await auth.currentUser.getIdToken();
+          const idToken = await auth.currentUser.getIdToken(true);
           const response = await fetch('/api/auth/session', {
               method: 'POST',
-              body: idToken,
+              headers: {
+                Authorization: `Bearer ${idToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({}),
           });
 
           const result = await response.json();
@@ -74,6 +81,20 @@ export default function DebugPage() {
       } finally {
           setIsLoadingSessionTest(false);
       }
+  };
+  
+   const handleEnvCheck = async () => {
+    setIsLoadingEnvTest(true);
+    setEnvTestResult(null);
+    try {
+      const result = await getEnvironmentStatus();
+      setEnvTestResult(JSON.stringify(result, null, 2));
+    } catch (error: any) {
+      setEnvTestResult(`Failed to check environment: ${error.message}`);
+      toast({ variant: 'destructive', title: 'Check Failed', description: error.message });
+    } finally {
+      setIsLoadingEnvTest(false);
+    }
   };
 
   const handleTestWrite = async () => {
@@ -150,9 +171,31 @@ export default function DebugPage() {
 
   return (
     <div className="space-y-6">
+        <Card className="max-w-md mx-auto">
+            <CardHeader>
+                <CardTitle>1. Server Environment Test</CardTitle>
+                <CardDescription>
+                This tests if the server environment has loaded the necessary API keys and credentials from your .env file. This is the most likely cause of the authentication issues.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={handleEnvCheck} disabled={isLoadingEnvTest}>
+                    {isLoadingEnvTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Check Server Environment
+                </Button>
+            </CardContent>
+            {envTestResult && (
+            <CardFooter>
+                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-all w-full bg-muted p-2 rounded-md">
+                    {envTestResult}
+                </pre>
+            </CardFooter>
+            )}
+       </Card>
+
        <Card className="max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>Session Cookie Test</CardTitle>
+          <CardTitle>2. Session Cookie Test</CardTitle>
           <CardDescription>
             This tests if the server can create a session cookie, which is required for all authenticated server actions.
           </CardDescription>
@@ -172,7 +215,7 @@ export default function DebugPage() {
 
       <Card className="max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>Vertex AI Connection Test</CardTitle>
+          <CardTitle>3. Vertex AI Connection Test</CardTitle>
           <CardDescription>
             This tests if the server can successfully authenticate with and call the Google AI (Vertex AI) API for embeddings.
           </CardDescription>

@@ -1,3 +1,4 @@
+
 'use server';
 
 import { doc, getDoc } from 'firebase/firestore';
@@ -50,4 +51,22 @@ export async function testVertexAIConnection(): Promise<string> {
         console.error('[Debug Action] Vertex AI connection failed:', error);
         return `Connection failed: ${error.message}`;
     }
+}
+
+export async function getEnvironmentStatus(): Promise<object> {
+  try {
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const gaeCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+    return {
+      geminiApiKeyStatus: geminiKey ? `Loaded (${geminiKey.substring(0, 4)}...${geminiKey.slice(-4)})` : 'NOT FOUND',
+      googleApplicationCredentialsStatus: gaeCredentials ? `Loaded (Path: ${gaeCredentials})` : 'NOT FOUND (This is expected in many environments, Admin SDK may use default credentials)',
+      nodeEnv: process.env.NODE_ENV || 'Not set'
+    };
+  } catch (error: any) {
+    return {
+      error: 'Failed to read environment variables.',
+      message: error.message,
+    };
+  }
 }
