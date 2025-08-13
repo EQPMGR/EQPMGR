@@ -25,10 +25,15 @@ function getAdminApp(): admin.app.App {
   return adminApp;
 }
 
-// Initialize the app on first access.
-const app = getAdminApp();
+// Export functions that return the initialized services.
+// This is required for compatibility with Next.js "use server".
+export async function getAdminAuth() {
+  return admin.auth(getAdminApp());
+}
 
-// Export the initialized services for use in other server-side files.
-export const adminAuth = admin.auth(app);
-export const adminDb = admin.firestore(app);
-export { app as adminApp };
+export async function getAdminDb() {
+  return admin.firestore(getAdminApp());
+}
+
+// Re-exporting the app instance itself for any cases that need it directly.
+export { getAdminApp as adminApp };
