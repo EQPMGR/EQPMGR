@@ -80,15 +80,19 @@ export const indexComponentFlow = ai.defineFlow(
     outputSchema: z.void(),
   },
   async (component) => {
+    console.log(`[SERVER] Starting indexComponentFlow for component ID: ${component.id}`);
     try {
         // 1. Create the string to be embedded.
         const vectorDocument = createComponentVectorDocument(component as MasterComponent);
+        console.log(`[SERVER] Created vector document: "${vectorDocument}"`);
 
         // 2. Generate the embedding.
+        console.log(`[SERVER] Calling ai.embed with text embedder...`);
         const embedding = await ai.embed({
             embedder: textEmbedding004,
             content: vectorDocument,
         });
+        console.log(`[SERVER] Successfully received embedding from AI service.`);
         
         // 3. Prepare the full document to save to Firestore.
         const docToSave = {
@@ -96,14 +100,19 @@ export const indexComponentFlow = ai.defineFlow(
         };
         
         // 4. Save/update the document in Firestore.
+        console.log(`[SERVER] Updating Firestore document: masterComponents/${component.id}`);
         const componentDocRef = doc(db, 'masterComponents', component.id);
         await updateDoc(componentDocRef, docToSave);
+        console.log(`[SERVER] Successfully updated Firestore for component ID: ${component.id}`);
 
     } catch (e: any) {
+        console.error(`[SERVER ERROR] in indexComponentFlow for ${component.id}:`, e);
+        // Re-throw a more informative error to the client.
         if (e.message?.includes('permission-denied') || e.code === 7 || e.code === 'PERMISSION_DENIED') {
-            throw new Error(`PERMISSION_DENIED while processing ${component.id}. The AI service rejected the request. Ensure the Vertex AI API is enabled and your API key has the correct permissions.`);
+            throw new Error(`PERMISSION_DENIED while processing ${component.id}. The AI service rejected the request. Ensure the Vertex AI API is enabled and your API key has the correct permissions. Full error: ${e.message}`);
         }
         throw new Error(`Failed to process component ${component.id}: ${e.message}`);
     }
   }
 );
+
