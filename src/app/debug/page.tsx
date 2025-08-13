@@ -58,6 +58,7 @@ export default function DebugPage() {
           const result = await response.json();
 
           if (!response.ok) {
+              // Now we can display the more detailed error from the server
               throw new Error(result.error || `HTTP error! status: ${response.status}`);
           }
           

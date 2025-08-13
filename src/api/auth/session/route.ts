@@ -20,12 +20,18 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ status: 'success' });
   } catch (error: any) {
+    // Log the detailed error on the server for debugging
     console.error('Error creating session cookie:', error);
-    // Provide a more specific error message to the client
-    const errorMessage = error.code === 'auth/invalid-id-token' 
-        ? 'The provided ID token is invalid.' 
-        : 'Failed to create session.';
-    return NextResponse.json({ error: errorMessage }, { status: 401 });
+
+    // Send a more specific error message back to the client
+    let errorMessage = 'Failed to create session.';
+    if (error.code === 'auth/invalid-id-token') {
+        errorMessage = 'The provided ID token is invalid or has expired. Please try signing out and back in.';
+    } else if (error.code === 'auth/argument-error') {
+        errorMessage = 'The ID token is malformed or has been revoked.';
+    }
+    
+    return NextResponse.json({ error: errorMessage, details: error.message }, { status: 401 });
   }
 }
 
