@@ -12,18 +12,22 @@ const getAdminApp = () => {
     }
     try {
         // This will automatically use the GOOGLE_APPLICATION_CREDENTIALS
-        // environment variable for authentication.
+        // environment variable for authentication if it's set.
+        // Otherwise, it relies on the default credential discovery.
         return admin.initializeApp({
             credential: admin.credential.applicationDefault(),
         });
     } catch (error) {
         console.error('Firebase admin initialization error', error);
-        throw new Error('Failed to initialize Firebase Admin SDK. Check server logs.');
+        // Throw a more descriptive error to help with debugging.
+        throw new Error('Failed to initialize Firebase Admin SDK. Check server logs for details.');
     }
 };
 
-const adminApp = getAdminApp;
-const adminAuth = admin.auth(adminApp());
-const adminDb = admin.firestore(adminApp());
+// We initialize the app once and then export functions to access the services.
+// This prevents re-initialization on every server action call.
+const adminApp = getAdminApp();
+const adminAuth = admin.auth(adminApp);
+const adminDb = admin.firestore(adminApp);
 
 export { adminApp, adminAuth, adminDb };
