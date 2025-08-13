@@ -82,7 +82,9 @@ const setSessionCookie = async (user: User) => {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${idToken}`,
-      }
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
     });
 };
 
