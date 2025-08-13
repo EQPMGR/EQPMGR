@@ -77,7 +77,7 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
 };
 
 const setSessionCookie = async (user: User) => {
-    const idToken = await user.getIdToken();
+    const idToken = await user.getIdToken(true); // Force refresh the token
     await fetch('/api/auth/session', {
       method: 'POST',
       headers: {
