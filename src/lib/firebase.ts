@@ -7,13 +7,13 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 import { getPerformance } from "firebase/performance";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyCbDubpUzZRcEEB2WHY9OxeKoMQVVCjgLY",
+  authDomain: "eqpmgr-test.firebaseapp.com",
+  projectId: "eqpmgr-test",
+  storageBucket: "eqpmgr-test.appspot.com",
+  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
+  appId: "REPLACE_WITH_YOUR_FIREBASE_APP_ID",
+  measurementId: "REPLACE_WITH_YOUR_MEASUREMENT_ID"
 };
 
 // DEBUG: Log the config to the browser console to verify it's loaded.
