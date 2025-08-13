@@ -52,12 +52,12 @@ export default function DebugPage() {
               body: idToken,
           });
 
-          if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-          }
-
           const result = await response.json();
+
+          if (!response.ok) {
+              throw new Error(result.error || `HTTP error! status: ${response.status}`);
+          }
+          
           const message = `Successfully created session cookie. Status: ${result.status}`;
           setSessionTestResult(message);
           toast({ title: 'Success!', description: message });
@@ -268,5 +268,5 @@ export default function DebugPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
