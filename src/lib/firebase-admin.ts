@@ -4,28 +4,21 @@
 import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
-let app: admin.app.App;
-
-function getAdminApp() {
-    if (!admin.apps.length) {
-      app = admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-      });
-    } else {
-      app = admin.app();
-    }
-    return app;
+// This is the recommended approach for initializing the Admin SDK in Next.js.
+// It ensures that the app is only initialized once.
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+    });
+  } catch (error) {
+    console.error('Firebase admin initialization error', error);
+  }
 }
 
-// Export functions that return the initialized services.
-// This is required for compatibility with Next.js "use server".
-export async function getAdminAuth() {
-    return admin.auth(getAdminApp());
-}
+// We are now exporting the initialized instance directly.
+// Files that use this will need to import it.
+const adminDb = admin.firestore();
+const adminAuth = admin.auth();
 
-export async function getAdminDb() {
-  return admin.firestore(getAdminApp());
-}
-
-// Re-exporting the app instance itself for any cases that need it directly.
-export { getAdminApp as adminApp };
+export { adminDb, adminAuth, adminApp };
