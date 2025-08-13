@@ -54,9 +54,7 @@ export default function DebugPage() {
               method: 'POST',
               headers: {
                 Authorization: `Bearer ${idToken}`,
-                'Content-Type': 'application/json',
               },
-              body: JSON.stringify({}),
           });
 
           const result = await response.json();
