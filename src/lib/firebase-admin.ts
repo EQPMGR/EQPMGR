@@ -5,7 +5,7 @@ import * as admin from 'firebase-admin';
 // It ensures that the app is only initialized once per server instance.
 if (!admin.apps.length) {
     try {
-        // We will initialize with the service account credentials from the .env file.
+        // We will initialize with the service account credentials from the .env.local file.
         // This is a robust way to handle authentication in different environments.
         const serviceAccount = {
             projectId: process.env.FIREBASE_PROJECT_ID,
@@ -17,8 +17,8 @@ if (!admin.apps.length) {
         };
 
         // Check if the required service account details are present.
-        if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-            throw new Error('Missing Firebase Admin SDK credentials. Please check your .env.local file.');
+        if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey || serviceAccount.privateKey.includes('REPLACE')) {
+            throw new Error('Missing or placeholder Firebase Admin SDK credentials. Please check your .env.local file.');
         }
 
         admin.initializeApp({

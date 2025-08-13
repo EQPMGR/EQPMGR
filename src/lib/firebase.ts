@@ -6,27 +6,27 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getPerformance } from "firebase/performance";
 
-// IMPORTANT: Replace these placeholder values with your actual
-// Firebase project's configuration details.
+// This configuration now securely loads from your .env.local file.
+// It is the standard and recommended way to handle client-side credentials.
 const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
-  authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
-  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
-  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-  appId: "REPLACE_WITH_YOUR_APP_ID",
-  measurementId: "REPLACE_WITH_YOUR_MEASUREMENT_ID"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // DEBUG: Log the config to the browser console to verify it's loaded.
 if (typeof window !== 'undefined') {
   console.log("Firebase Config Loaded:", {
-      apiKey: firebaseConfig.apiKey ? 'Loaded' : 'MISSING!',
+      apiKey: firebaseConfig.apiKey && !firebaseConfig.apiKey.includes('REPLACE') ? 'Loaded' : 'MISSING!',
       authDomain: firebaseConfig.authDomain,
       projectId: firebaseConfig.projectId,
   });
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId || firebaseConfig.apiKey.includes('REPLACE')) {
-      console.error("Firebase config is missing or incomplete. Please check your .env files or the hardcoded config in src/lib/firebase.ts.");
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('REPLACE')) {
+      console.error("Firebase config is missing or incomplete. Please fill out the values in your .env.local file and restart the development server.");
   }
 }
 
