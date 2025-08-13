@@ -1,8 +1,9 @@
-
 'use server';
 
 import { doc, getDoc } from 'firebase/firestore';
 import { adminDb } from '@/lib/firebase-admin';
+import { ai } from '@/ai/genkit';
+import { textEmbedding004 } from '@genkit-ai/googleai';
 
 export async function getComponentForDebug(componentId: string): Promise<string> {
     if (!componentId) {
@@ -32,5 +33,21 @@ export async function getComponentForDebug(componentId: string): Promise<string>
     } catch (error: any) {
         console.error("Debug fetch error:", error);
         return `Error fetching component: ${error.message}`;
+    }
+}
+
+
+export async function testVertexAIConnection(): Promise<string> {
+    try {
+        console.log('[Debug Action] Testing Vertex AI connection...');
+        await ai.embed({
+            embedder: textEmbedding004,
+            content: 'This is a test.',
+        });
+        console.log('[Debug Action] Vertex AI connection successful.');
+        return 'Successfully connected to Vertex AI and generated a test embedding.';
+    } catch (error: any) {
+        console.error('[Debug Action] Vertex AI connection failed:', error);
+        return `Connection failed: ${error.message}`;
     }
 }

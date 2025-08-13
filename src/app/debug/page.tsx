@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -19,7 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getComponentForDebug } from './actions';
+import { getComponentForDebug, testVertexAIConnection } from './actions';
 
 export default function DebugPage() {
   const { toast } = useToast();
@@ -30,6 +31,9 @@ export default function DebugPage() {
   const [isLoadingComponent, setIsLoadingComponent] = useState(false);
   const [componentId, setComponentId] = useState('');
   const [componentResult, setComponentResult] = useState<string | null>(null);
+  
+  const [isLoadingVertexTest, setIsLoadingVertexTest] = useState(false);
+  const [vertexTestResult, setVertexTestResult] = useState<string | null>(null);
 
   const handleTestWrite = async () => {
     if (!user) {
@@ -83,8 +87,48 @@ export default function DebugPage() {
     }
   };
 
+  const handleVertexTest = async () => {
+    setIsLoadingVertexTest(true);
+    setVertexTestResult(null);
+    try {
+      const result = await testVertexAIConnection();
+      setVertexTestResult(result);
+      if (result.startsWith('Success')) {
+        toast({ title: 'Success!', description: result });
+      } else {
+        toast({ variant: 'destructive', title: 'Connection Failed', description: result, duration: 9000 });
+      }
+    } catch (error: any) {
+      const msg = `An unexpected client-side error occurred: ${error.message}`;
+      setVertexTestResult(msg);
+      toast({ variant: 'destructive', title: 'Test Failed', description: msg });
+    } finally {
+      setIsLoadingVertexTest(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      <Card className="max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>Vertex AI Connection Test</CardTitle>
+          <CardDescription>
+            This tests if the server can successfully authenticate with and call the Google AI (Vertex AI) API for embeddings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleVertexTest} disabled={isLoadingVertexTest}>
+            {isLoadingVertexTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Run AI Connection Test
+          </Button>
+        </CardContent>
+        {vertexTestResult && (
+          <CardFooter>
+            <p className="text-sm text-muted-foreground break-all">{vertexTestResult}</p>
+          </CardFooter>
+        )}
+      </Card>
+      
       <Card className="max-w-md mx-auto">
         <CardHeader>
           <CardTitle>Component Inspector</CardTitle>
