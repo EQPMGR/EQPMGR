@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -34,6 +34,47 @@ export default function DebugPage() {
   
   const [isLoadingVertexTest, setIsLoadingVertexTest] = useState(false);
   const [vertexTestResult, setVertexTestResult] = useState<string | null>(null);
+
+  const [isLoadingSessionTest, setIsLoadingSessionTest] = useState(false);
+  const [sessionTestResult, setSessionTestResult] = useState<string | null>(null);
+
+  const handleTestSessionCookie = async () => {
+      if (!auth.currentUser) {
+          toast({ variant: 'destructive', title: 'Not Logged In', description: 'Cannot run test without a user.' });
+          return;
+      }
+      setIsLoadingSessionTest(true);
+      setSessionTestResult(null);
+      try {
+          const idToken = await auth.currentUser.getIdToken();
+          const response = await fetch('/api/auth/session', {
+              method: 'POST',
+              body: idToken,
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          const message = `Successfully created session cookie. Status: ${result.status}`;
+          setSessionTestResult(message);
+          toast({ title: 'Success!', description: message });
+
+      } catch (error: any) {
+          console.error("Session cookie test failed:", error);
+          const errorMessage = error.message || "An unknown error occurred.";
+          setSessionTestResult(`Session cookie test failed: ${errorMessage}`);
+          toast({
+              variant: 'destructive',
+              title: 'Session Cookie Test Failed',
+              description: errorMessage,
+          });
+      } finally {
+          setIsLoadingSessionTest(false);
+      }
+  };
 
   const handleTestWrite = async () => {
     if (!user) {
@@ -109,6 +150,26 @@ export default function DebugPage() {
 
   return (
     <div className="space-y-6">
+       <Card className="max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>Session Cookie Test</CardTitle>
+          <CardDescription>
+            This tests if the server can create a session cookie, which is required for all authenticated server actions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleTestSessionCookie} disabled={isLoadingSessionTest || authLoading}>
+            {isLoadingSessionTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Run Session Test
+          </Button>
+        </CardContent>
+        {sessionTestResult && (
+          <CardFooter>
+            <p className="text-sm text-muted-foreground break-all">{sessionTestResult}</p>
+          </CardFooter>
+        )}
+      </Card>
+
       <Card className="max-w-md mx-auto">
         <CardHeader>
           <CardTitle>Vertex AI Connection Test</CardTitle>
@@ -207,5 +268,5 @@ export default function DebugPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
