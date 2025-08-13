@@ -52,9 +52,7 @@ export default function DebugPage() {
           const idToken = await auth.currentUser.getIdToken(true);
           const response = await fetch('/api/auth/session', {
               method: 'POST',
-              headers: {
-                Authorization: `Bearer ${idToken}`,
-              },
+              body: idToken,
           });
 
           const result = await response.json();

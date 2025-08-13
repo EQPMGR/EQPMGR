@@ -1,18 +1,14 @@
 
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebase-admin';
 
 // This endpoint is called by the client to create a session cookie after a successful login.
 export async function POST(request: NextRequest) {
-  const authorization = headers().get('Authorization');
-  if (!authorization?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Bearer token is required' }, { status: 401 });
-  }
+  const idToken = await request.text();
 
-  const idToken = authorization.split('Bearer ')[1];
   if (!idToken) {
-    return NextResponse.json({ error: 'ID token is missing from Bearer token' }, { status: 401 });
+    return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
   }
 
   // Set session expiration to 5 days.
