@@ -163,9 +163,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+     await sendEmailVerification(userCredential.user);
      toast({
        title: 'Account Created!',
-       description: "You have successfully signed up.",
+       description: "You have successfully signed up. Please check your email to verify your account.",
      })
    } catch (error) {
      handleAuthError(error, 'Sign Up Failed');
