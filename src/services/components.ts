@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -45,17 +46,19 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return [];
     }
     try {
-        // Fetch all components and filter on the server. This is more robust against
-        // Firestore indexing issues, especially with vector indexes in place.
-        const allComponents = await fetchAllMasterComponents();
-        const filteredComponents = allComponents.filter(c => c.name === type);
-        return filteredComponents;
+        const q = query(collection(db, "masterComponents"), where("name", "==", type));
+        const querySnapshot = await getDocs(q);
+        const components: MasterComponentWithOptions[] = [];
+        querySnapshot.forEach((doc) => {
+            components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
+        });
+        return components;
 
     } catch (error) {
         console.error(`Error fetching components of type ${type}:`, error);
         // Re-throw the original error to be displayed on the client.
         if ((error as any).code?.includes('failed-precondition')) {
-            throw new Error(`A database index is required for this query. Please check the Firestore console for an automatic index creation link related to the 'masterComponents' collection on the 'name' field.`);
+            throw new Error(`A database index is required for this query. Please check the Firestore console for an automatic index creation link. The query is on the 'masterComponents' collection, for the 'name' field.`);
         }
         throw error;
     }
