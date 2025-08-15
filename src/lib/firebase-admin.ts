@@ -43,4 +43,5 @@ if (!admin.apps.length) {
 const adminAuth = admin.auth();
 const adminDb = admin.firestore();
 
-export { adminAuth, adminDb, admin };
+const adminApp = admin; // Explicitly name and export the app instance
+export { adminAuth, adminDb, adminApp, admin };

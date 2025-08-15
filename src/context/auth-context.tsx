@@ -9,6 +9,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs, query } from 'firebase/firestore';
@@ -77,6 +78,10 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
 };
 
 const setSessionCookie = async (user: User) => {
+    if (!user.emailVerified) {
+        console.warn('setSessionCookie: User email not verified. Aborting session cookie creation.');
+        return;
+    }
     const idToken = await user.getIdToken(true); // Force refresh the token
     await fetch('/api/auth/session', {
       method: 'POST',
@@ -113,33 +118,39 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       setLoading(true);
       if (authUser) {
         const userDocRef = doc(db, 'users', authUser.uid);
-        try {
-          await setSessionCookie(authUser);
-          const userDocSnap = await getDoc(userDocRef);
-          let userDocData: UserDocument;
-          
-          if (userDocSnap.exists()) {
-            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-            userDocData = userDocSnap.data() as UserDocument;
-          } else {
-            userDocData = {
-              displayName: authUser.displayName || '',
-              photoURL: authUser.photoURL || '',
-              measurementSystem: 'imperial',
-              shoeSizeSystem: 'us',
-              distanceUnit: 'km',
-              dateFormat: 'MM/DD/YYYY',
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp(),
-            };
-            await setDoc(userDocRef, userDocData);
-          }
-          
-          const safeProfile = createSafeUserProfile(authUser, userDocData);
-          setUser(safeProfile);
+        if (authUser.emailVerified) {
+            try {
+              await setSessionCookie(authUser);
+              const userDocSnap = await getDoc(userDocRef);
+              let userDocData: UserDocument;
+              
+              if (userDocSnap.exists()) {
+                await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+                userDocData = userDocSnap.data() as UserDocument;
+              } else {
+                userDocData = {
+                  displayName: authUser.displayName || '',
+                  photoURL: authUser.photoURL || '',
+                  measurementSystem: 'imperial',
+                  shoeSizeSystem: 'us',
+                  distanceUnit: 'km',
+                  dateFormat: 'MM/DD/YYYY',
+                  createdAt: serverTimestamp(),
+                  lastLogin: serverTimestamp(),
+                };
+                await setDoc(userDocRef, userDocData);
+              }
+              
+              const safeProfile = createSafeUserProfile(authUser, userDocData);
+              setUser(safeProfile);
 
-        } catch (error) {
-            handleAuthError(error, 'Profile Sync Failed');
+            } catch (error) {
+                handleAuthError(error, 'Profile Sync Failed');
+                await firebaseSignOut(auth);
+            }
+        } else {
+            console.warn('onAuthStateChanged: User email not verified. Session cookie not set.');
+            // Sign the user out if their email is not verified
             await firebaseSignOut(auth);
         }
       } else {
@@ -160,12 +171,18 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
-     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      handleAuthError(error, 'Sign Up Failed');
-    }
-  };
+    try {
+     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+     await sendEmailVerification(userCredential.user);
+     toast({
+       title: 'Account Created!',
+       description: "You have successfully signed up. Please check your email to verify your account.",
+     })
+   } catch (error) {
+     handleAuthError(error, 'Sign Up Failed');
+   }
+ };
+
 
   const signOutHandler = async () => {
     try {
