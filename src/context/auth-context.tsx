@@ -81,10 +81,9 @@ const setSessionCookie = async (user: User) => {
     await fetch('/api/auth/session', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${idToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ idToken: idToken }),
     });
 };
 

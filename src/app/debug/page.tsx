@@ -58,10 +58,9 @@ export default function DebugPage() {
           const result = await response.json();
 
           if (!response.ok) {
-              // Now we can display the more detailed error from the server
-              throw new Error(result.error || `HTTP error! status: ${response.status}`);
+            const errorMessage = result.details || result.error || `HTTP error! status: ${response.status}`;
+            throw new Error(errorMessage);
           }
-          
           const message = `Successfully created session cookie. Status: ${result.status}`;
           setSessionTestResult(message);
           toast({ title: 'Success!', description: message });

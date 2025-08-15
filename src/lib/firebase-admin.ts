@@ -16,15 +16,23 @@ if (!admin.apps.length) {
             privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
         };
 
+        // Add logging for environment variables
+        console.log('Firebase Admin SDK Initialization: Checking environment variables...');
+        console.log('FIREBASE_PROJECT_ID:', serviceAccount.projectId);
+        console.log('FIREBASE_CLIENT_EMAIL:', serviceAccount.clientEmail);
+        // Be cautious about logging the private key in full in a real environment
+        console.log('FIREBASE_PRIVATE_KEY (first 20 chars):', serviceAccount.privateKey.substring(0, 20) + '...');
+
         // Check if the required service account details are present.
         if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey || serviceAccount.privateKey.includes('REPLACE')) {
-            throw new Error('Missing or placeholder Firebase Admin SDK credentials. Please check your .env.local file.');
+            throw new Error('Missing or placeholder Firebase Admin SDK credentials. Please check your .env.local file or environment configuration.'); // Updated error message
         }
 
+        console.log('Firebase Admin SDK Initialization: Initializing app...'); // Add logging before initialization
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
         });
-
+        console.log('Firebase Admin SDK Initialization: App initialized successfully.'); // Add logging after successful initialization
     } catch (error) {
         console.error('Firebase admin initialization error', error);
         // Throw a more descriptive error to help with debugging.
