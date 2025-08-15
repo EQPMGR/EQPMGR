@@ -46,13 +46,10 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return [];
     }
     try {
-        const q = query(collection(db, "masterComponents"), where("name", "==", type));
-        const querySnapshot = await getDocs(q);
-        const components: MasterComponentWithOptions[] = [];
-        querySnapshot.forEach((doc) => {
-            components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
-        });
-        return components;
+        // Fetch all components and filter on the server to avoid query conflicts with vector indexes.
+        const allComponents = await fetchAllMasterComponents();
+        const filteredComponents = allComponents.filter(component => component.name === type);
+        return filteredComponents;
 
     } catch (error) {
         console.error(`Error fetching components of type ${type}:`, error);
