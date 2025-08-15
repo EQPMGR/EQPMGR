@@ -109,10 +109,9 @@ export const indexComponentFlow = ai.defineFlow(
         console.error(`[SERVER ERROR] in indexComponentFlow for ${component.id}:`, e);
         // Re-throw a more informative error to the client.
         if (e.message?.includes('permission-denied') || e.code === 7 || e.code === 'PERMISSION_DENIED') {
-            throw new Error(`7 PERMISSION_DENIED: Your request to the AI service was rejected. This is likely an issue with your Google Cloud project configuration. Please ensure the Vertex AI API is enabled and your service account has the 'Vertex AI User' role.`);
+            throw new Error(`7 PERMISSION_DENIED: Your request to the AI service was rejected. This is likely an issue with your Google Cloud project configuration (ensure the Vertex AI API is enabled) or invalid Firebase Admin credentials in your .env file.`);
         }
         throw new Error(`Failed to process component ${component.id}: ${e.message}`);
     }
   }
 );
-
