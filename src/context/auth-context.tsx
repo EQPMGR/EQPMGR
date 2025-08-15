@@ -81,13 +81,15 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
 };
 
 const setSessionCookie = async (user: User) => {
+    // This function should only be called for verified users.
+    if (!user.emailVerified) {
+        console.warn('setSessionCookie was called for an unverified user. Aborting.');
+        return;
+    }
     const idToken = await user.getIdToken(true); // Force refresh the token
     await fetch('/api/auth/session', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ idToken: idToken }),
+      body: idToken,
     });
 };
 
@@ -117,36 +119,47 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       setLoading(true);
       if (authUser) {
         const userDocRef = doc(db, 'users', authUser.uid);
-        try {
-          await setSessionCookie(authUser);
-          const userDocSnap = await getDoc(userDocRef);
-          let userDocData: UserDocument;
-          
-          if (userDocSnap.exists()) {
-            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-            userDocData = userDocSnap.data() as UserDocument;
-          } else {
-            userDocData = {
-              displayName: authUser.displayName || '',
-              photoURL: authUser.photoURL || '',
-              measurementSystem: 'imperial',
-              shoeSizeSystem: 'us',
-              distanceUnit: 'km',
-              dateFormat: 'MM/DD/YYYY',
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp(),
-            };
-            await setDoc(userDocRef, userDocData);
-          }
-          
-          const safeProfile = createSafeUserProfile(authUser, userDocData);
-          setUser(safeProfile);
+        
+        if (authUser.emailVerified) {
+            try {
+              await setSessionCookie(authUser);
+              const userDocSnap = await getDoc(userDocRef);
+              let userDocData: UserDocument;
+              
+              if (userDocSnap.exists()) {
+                await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+                userDocData = userDocSnap.data() as UserDocument;
+              } else {
+                userDocData = {
+                  displayName: authUser.displayName || '',
+                  photoURL: authUser.photoURL || '',
+                  measurementSystem: 'imperial',
+                  shoeSizeSystem: 'us',
+                  distanceUnit: 'km',
+                  dateFormat: 'MM/DD/YYYY',
+                  createdAt: serverTimestamp(),
+                  lastLogin: serverTimestamp(),
+                };
+                await setDoc(userDocRef, userDocData);
+              }
+              
+              const safeProfile = createSafeUserProfile(authUser, userDocData);
+              setUser(safeProfile);
 
-        } catch (error) {
-            handleAuthError(error, 'Profile Sync Failed');
-            await firebaseSignOut(auth);
+            } catch (error) {
+                handleAuthError(error, 'Profile Sync Failed');
+                await firebaseSignOut(auth); // Sign out on error
+            }
+        } else {
+            // User is logged in but email is not verified.
+            // Do not set session cookie. Just set user state.
+            const userDocSnap = await getDoc(userDocRef);
+            const safeProfile = createSafeUserProfile(authUser, userDocSnap.data());
+            setUser(safeProfile);
+            console.log("User is not verified. Session cookie not set.");
         }
       } else {
+        // User is logged out.
         setUser(null);
         await clearSessionCookie();
       }
@@ -175,7 +188,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
      handleAuthError(error, 'Sign Up Failed');
    }
  };
-
 
   const signOutHandler = async () => {
     try {
