@@ -2,7 +2,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User, MailWarning } from 'lucide-react';
 
 import {
   Avatar,
@@ -22,7 +22,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 
 export function UserNav() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, resendVerificationEmail } = useAuth();
   const router = useRouter();
   
   if (!user) {
@@ -69,6 +69,12 @@ export function UserNav() {
               Settings
             </Link>
           </DropdownMenuItem>
+          {!user.emailVerified && (
+            <DropdownMenuItem onClick={resendVerificationEmail}>
+              <MailWarning />
+              Re-send Verification
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>

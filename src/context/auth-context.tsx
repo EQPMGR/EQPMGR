@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 export interface UserProfile {
   uid: string;
   email: string | null;
+  emailVerified: boolean;
   displayName: string | null;
   photoURL: string | null;
   height?: number; 
@@ -52,6 +53,7 @@ interface AuthContextType {
   signInWithEmailPassword: (email: string, password:string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
   updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => Promise<void>;
   updateUserPreferences: (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit' | 'dateFormat'>>) => Promise<void>;
   updateProfilePhoto: (photoDataUrl: string) => Promise<boolean>;
@@ -64,6 +66,7 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
   return {
     uid: authUser.uid,
     email: authUser.email,
+    emailVerified: authUser.emailVerified,
     displayName: authUser.displayName || data.displayName || null,
     photoURL: authUser.photoURL || data.photoURL || null,
     measurementSystem: data.measurementSystem || 'imperial',
@@ -181,6 +184,25 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         handleAuthError(error, 'Sign Out Failed');
     }
   };
+  
+  const resendVerificationEmailHandler = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to resend a verification email.' });
+      return;
+    }
+    if (currentUser.emailVerified) {
+       toast({ title: 'Already Verified', description: 'Your email is already verified.' });
+       return;
+    }
+    try {
+      await sendEmailVerification(currentUser);
+      toast({ title: 'Verification Email Sent', description: 'Please check your inbox (and spam folder).' });
+    } catch (error) {
+      handleAuthError(error, 'Failed to send verification email');
+    }
+  };
+
 
   const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => {
       const currentUser = auth.currentUser;
@@ -262,6 +284,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     signInWithEmailPassword: signInWithEmailPasswordHandler,
     signUpWithEmailPassword: signUpWithEmailPasswordHandler,
     signOut: signOutHandler,
+    resendVerificationEmail: resendVerificationEmailHandler,
     updateProfileInfo: updateProfileInfoHandler,
     updateUserPreferences: updateUserPreferencesHandler,
     updateProfilePhoto: updateProfilePhotoHandler,
