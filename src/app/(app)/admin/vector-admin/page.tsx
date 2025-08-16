@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, DatabaseZap, Info, Terminal } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { indexComponentFlow } from '@/ai/flows/index-components';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -68,17 +68,29 @@ export default function VectorAdminPage() {
       for (let i = 0; i < componentsToIndex.length; i++) {
         const component = componentsToIndex[i];
         try {
-          addLog(`[${i + 1}/${componentsToIndex.length}] Indexing: ${component.brand || ''} ${component.name}...`);
-          await indexComponentFlow(component);
+          addLog(`[${i + 1}/${componentsToIndex.length}] Calling AI for: ${component.brand || ''} ${component.name}...`);
+          // 1. Call the server flow to ONLY get the embedding
+          const { embedding } = await indexComponentFlow(component);
+          
+          if (!embedding || embedding.length === 0) {
+              throw new Error("AI returned an empty embedding.");
+          }
+          addLog(`[${i + 1}/${componentsToIndex.length}] Embedding received. Saving to Firestore...`);
+
+          // 2. Write the embedding to Firestore from the CLIENT
+          const componentDocRef = doc(db, 'masterComponents', component.id);
+          await updateDoc(componentDocRef, { embedding });
+
+          addLog(`[${i + 1}/${componentsToIndex.length}] Successfully saved embedding for ${component.id}.`);
           successCount++;
         } catch (e: any) {
-          const errorMsg = `Failed to index component ${component.id}: ${e.message}`;
+          const errorMsg = `Failed to process component ${component.id}: ${e.message}`;
           addLog(errorMsg);
           console.error(errorMsg, e);
         }
       }
 
-      const finalMessage = `Indexing complete. Successfully indexed ${successCount} of ${componentsToIndex.length} components.`;
+      const finalMessage = `Indexing complete. Successfully processed ${successCount} of ${componentsToIndex.length} components.`;
       addLog(finalMessage);
       toast({
         title: 'Indexing Complete!',
@@ -119,7 +131,7 @@ export default function VectorAdminPage() {
           <Info className="h-4 w-4" />
           <AlertTitle>How This Works</AlertTitle>
           <AlertDescription>
-            This tool fetches all components and processes them one-by-one to generate embeddings for search. If a component fails, it will be skipped and the process will continue.
+            This tool fetches all components and processes them one-by-one. It calls a server flow to generate an embedding via AI, then saves that embedding back to the database from your browser.
           </AlertDescription>
         </Alert>
          <Alert>

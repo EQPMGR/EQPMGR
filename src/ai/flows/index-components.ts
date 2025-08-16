@@ -7,8 +7,6 @@
  * - `indexComponentFlow`: A new flow to process a single component, called from the client.
  */
 import { ai } from '@/ai/genkit';
-import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
 import { z } from 'zod';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 import type { MasterComponent } from '@/lib/types';
@@ -31,10 +29,6 @@ const createComponentVectorDocument = (component: MasterComponent): string => {
   
   return fields.join(', ');
 };
-
-const isValidEmbedding = (embedding: any): embedding is number[] => {
-    return Array.isArray(embedding) && embedding.length > 0 && typeof embedding[0] === 'number';
-}
 
 /**
  * DEPRECATED: A Genkit flow that takes all master components, generates vector embeddings for those
@@ -68,16 +62,22 @@ const IndexComponentInputSchema = z.object({
     // Allow other fields to exist but we don't need them for the embedding.
 }).passthrough();
 
+// Define the output schema to return the embedding.
+const IndexComponentOutputSchema = z.object({
+    embedding: z.array(z.number()),
+});
+
+
 /**
  * A Genkit flow that takes a single component data, generates a vector embedding,
- * and saves the full component document (with embedding) to Firestore.
- * This flow is designed to be called individually for each component from the client.
+ * and crucially, **returns it to the client**. The client is now responsible for
+ * writing this data to Firestore. This avoids server-side permission issues.
  */
 export const indexComponentFlow = ai.defineFlow(
   {
     name: 'indexComponentFlow',
     inputSchema: IndexComponentInputSchema,
-    outputSchema: z.void(),
+    outputSchema: IndexComponentOutputSchema,
   },
   async (component) => {
     console.log(`[SERVER] Starting indexComponentFlow for component ID: ${component.id}`);
@@ -94,27 +94,18 @@ export const indexComponentFlow = ai.defineFlow(
         });
         console.log(`[SERVER] Successfully received embedding from AI service.`);
         
-        // 3. Prepare the full document to save to Firestore.
-        const docToSave = {
-            embedding: embedding,
-        };
-        
-        // 4. Save/update the document in Firestore.
-        console.log(`[SERVER] Updating Firestore document: masterComponents/${component.id}`);
-        const componentDocRef = doc(db, 'masterComponents', component.id);
-        await updateDoc(componentDocRef, docToSave);
-        console.log(`[SERVER] Successfully updated Firestore for component ID: ${component.id}`);
+        // 3. Return the embedding to the client.
+        return { embedding };
 
     } catch (e: any) {
         console.error(`[SERVER ERROR] in indexComponentFlow for ${component.id}:`, e);
         // Re-throw a more informative error to the client.
-        if (e.message?.includes('permission-denied') || e.code === 7 || e.code === 'PERMISSION_DENIED') {
-            const detailedError = `Firestore permission denied when trying to save the embedding for component ${component.id}. ` +
-                                  `The AI call to generate the embedding succeeded, but writing the result to the database failed. ` +
-                                  `Please ensure the service account configured in your .env.local file has the 'Cloud Datastore User' or 'Editor' IAM role in your Google Cloud project.`;
+        if (e.code === 7 || e.code === 'PERMISSION_DENIED') {
+            const detailedError = `The AI service call failed with a permission error. ` +
+                                  `Please ensure the service account configured in your .env.local file has the 'Vertex AI User' IAM role.`;
             throw new Error(detailedError);
         }
-        throw new Error(`Failed to process component ${component.id}: ${e.message}`);
+        throw new Error(`Failed to generate embedding for component ${component.id}: ${e.message}`);
     }
   }
 );
