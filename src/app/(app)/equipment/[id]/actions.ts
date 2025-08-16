@@ -100,20 +100,19 @@ export async function replaceUserComponentAction({
         if (newMasterComponentId) {
             finalNewMasterComponentId = newMasterComponentId;
             const newMasterCompDoc = await adminDb.doc(`masterComponents/${finalNewMasterComponentId}`).get();
-            if (newMasterCompDoc.exists) {
-                const masterData = newMasterCompDoc.data() as MasterComponent
-                newComponentSize = masterData.size;
-                newComponentDetails = {
-                    name: masterData.name,
-                    brand: masterData.brand,
-                    model: masterData.model,
-                    series: masterData.series,
-                    size: masterData.size,
-                    system: masterData.system,
-                };
-            } else {
+            if (!newMasterCompDoc.exists) {
                 throw new Error("Selected replacement component not found in database.");
             }
+            const masterData = newMasterCompDoc.data() as MasterComponent
+            newComponentSize = masterData.size;
+            newComponentDetails = {
+                name: masterData.name,
+                brand: masterData.brand,
+                model: masterData.model,
+                series: masterData.series,
+                size: masterData.size,
+                system: masterData.system,
+            };
         } else if (manualNewComponentData) {
             newComponentDetails = {
                 name: masterComponentToReplace.name,
