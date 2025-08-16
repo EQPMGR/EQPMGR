@@ -14,7 +14,7 @@ if (!admin.apps.length) {
         };
 
         if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey || serviceAccount.privateKey.includes('REPLACE')) {
-             console.error('Firebase Admin SDK Initialization Error: Missing or placeholder Firebase Admin SDK credentials. Please check your .env.local file.');
+             console.error('Firebase Admin SDK Initialization Error: Missing or placeholder Firebase Admin SDK credentials. Please check your .env file.');
              // Throwing an error here can stop the server from starting, which is good for debugging.
              // For a more resilient approach in production, you might handle this differently.
              throw new Error('Firebase Admin SDK credentials are not configured correctly.');
