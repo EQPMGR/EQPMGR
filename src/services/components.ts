@@ -36,8 +36,8 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
 
 /**
  * Fetches master components of a specific type (e.g., "Cassette").
- * This function now fetches all components and filters them on the server
- * to avoid complex queries that might conflict with vector indexes.
+ * This function performs a direct query to Firestore to avoid any potential
+ * conflicts with vector search indexing on the same collection.
  * @param type The component name/type to filter by.
  * @returns A promise that resolves to an array of matching master components.
  */
@@ -46,10 +46,15 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
         return [];
     }
     try {
-        // Fetch all components and filter on the server to avoid query conflicts with vector indexes.
-        const allComponents = await fetchAllMasterComponents();
-        const filteredComponents = allComponents.filter(component => component.name === type);
-        return filteredComponents;
+        const componentsCollection = collection(db, 'masterComponents');
+        const q = query(componentsCollection, where("name", "==", type));
+        const querySnapshot = await getDocs(q);
+
+        const components: MasterComponentWithOptions[] = [];
+        querySnapshot.forEach((doc) => {
+            components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
+        });
+        return components;
 
     } catch (error) {
         console.error(`Error fetching components of type ${type}:`, error);
