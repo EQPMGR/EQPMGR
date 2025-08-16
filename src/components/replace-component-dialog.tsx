@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2, Replace } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchMasterComponentsByType, type MasterComponentWithOptions } from '@/services/components';
+import { fetchAllMasterComponents, type MasterComponentWithOptions } from '@/services/components';
 import type { Component } from '@/lib/types';
 import { replaceUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
 import {
@@ -79,7 +80,7 @@ export function ReplaceComponentDialog({
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
-  const [componentOptions, setComponentOptions] = useState<MasterComponentWithOptions[]>([]);
+  const [allComponentOptions, setAllComponentOptions] = useState<MasterComponentWithOptions[]>([]);
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -103,8 +104,9 @@ export function ReplaceComponentDialog({
       async function loadComponents() {
         setIsLoadingOptions(true);
         try {
-          const options = await fetchMasterComponentsByType(componentToReplace.name);
-          setComponentOptions(options);
+          // Fetch ALL master components.
+          const options = await fetchAllMasterComponents();
+          setAllComponentOptions(options);
         } catch (error: any) {
             let description = 'Could not load components.';
             if (error.message.includes('firestore/failed-precondition') || error.message.includes('index')) {
@@ -117,7 +119,12 @@ export function ReplaceComponentDialog({
       }
       loadComponents();
     }
-  }, [open, toast, componentToReplace.name]);
+  }, [open, toast]);
+
+  // Client-side filtering
+  const componentOptions = useMemo(() => {
+    return allComponentOptions.filter(c => c.name === componentToReplace.name);
+  }, [allComponentOptions, componentToReplace.name]);
 
   const brands = useMemo(() => [...new Set(componentOptions.map(c => c.brand).filter(Boolean))].sort(), [componentOptions]);
   const sizes = useMemo(() => [...new Set(componentOptions.map(c => c.size).filter(Boolean))].sort(), [componentOptions]);
