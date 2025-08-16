@@ -109,7 +109,10 @@ export const indexComponentFlow = ai.defineFlow(
         console.error(`[SERVER ERROR] in indexComponentFlow for ${component.id}:`, e);
         // Re-throw a more informative error to the client.
         if (e.message?.includes('permission-denied') || e.code === 7 || e.code === 'PERMISSION_DENIED') {
-            throw new Error(`7 PERMISSION_DENIED: Your request to the AI service was rejected. This is likely an issue with your Google Cloud project configuration (ensure the Vertex AI API is enabled) or invalid Firebase Admin credentials in your .env file.`);
+            const detailedError = `Firestore permission denied when trying to save the embedding for component ${component.id}. ` +
+                                  `The AI call to generate the embedding succeeded, but writing the result to the database failed. ` +
+                                  `Please ensure the service account configured in your .env.local file has the 'Cloud Datastore User' or 'Editor' IAM role in your Google Cloud project.`;
+            throw new Error(detailedError);
         }
         throw new Error(`Failed to process component ${component.id}: ${e.message}`);
     }
