@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput, Building } from 'lucide-react';
+import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput, Building, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { ServiceProviderSeeder } from './service-provider-seeder';
@@ -89,6 +89,21 @@ export default function AdminPage() {
                         <Button asChild size="sm" variant="outline">
                             <Link href="/admin/find-duplicates">
                                 <SearchCheck className="h-4 w-4 mr-2" /> Review Duplicates
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Database Cleanup</CardTitle>
+                            <CardDescription className="text-sm">
+                                Run scripts to clean up or migrate data.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/data-cleanup">
+                                <Trash2 className="h-4 w-4 mr-2" /> Data Tools
                             </Link>
                         </Button>
                     </CardHeader>
