@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc } from 'firebase/firestore';
+import { getDoc } from 'firebase/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { textEmbedding004 } from '@genkit-ai/googleai';
@@ -11,16 +11,16 @@ export async function getComponentForDebug(componentId: string): Promise<string>
         return "Please provide a component ID.";
     }
     try {
-        const docRef = doc(adminDb, 'masterComponents', componentId);
-        const docSnap = await getDoc(docRef);
+        const docRef = adminDb.doc(`masterComponents/${componentId}`);
+        const docSnap = await docRef.get();
 
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
             return `No component found with ID: ${componentId}`;
         }
 
         const data = docSnap.data();
         // Check for embedding and show summary
-        const embeddingInfo = data.embedding 
+        const embeddingInfo = data?.embedding 
             ? `Embedding found with ${data.embedding.length} dimensions.` 
             : 'No embedding field found.';
         
