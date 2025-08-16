@@ -36,8 +36,8 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
 
 /**
  * Fetches master components of a specific type (e.g., "Cassette").
- * This function performs a direct query to Firestore to avoid any potential
- * conflicts with vector search indexing on the same collection.
+ * This function performs a direct query to Firestore and adds robust
+ * data validation to prevent crashes from malformed documents.
  * @param type The component name/type to filter by.
  * @returns A promise that resolves to an array of matching master components.
  */
@@ -52,7 +52,13 @@ export async function fetchMasterComponentsByType(type: string): Promise<MasterC
 
         const components: MasterComponentWithOptions[] = [];
         querySnapshot.forEach((doc) => {
-            components.push({ id: doc.id, ...doc.data() } as MasterComponentWithOptions);
+            const data = doc.data();
+            // Data validation step
+            if (data && typeof data.name === 'string' && typeof data.system === 'string') {
+                 components.push({ id: doc.id, ...data } as MasterComponentWithOptions);
+            } else {
+                console.warn(`[Data Validation] Skipped malformed component document with ID: ${doc.id}. Document data:`, data);
+            }
         });
         return components;
 
