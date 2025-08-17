@@ -81,9 +81,10 @@ export const SimulateWearOutputSchema = z.object({
   wearPercentage: z
     .number()
     .describe('The estimated percentage of wear and tear on the equipment after the workout.'),
-  componentWear: z
-    .record(z.string(), z.number())
-    .describe('A breakdown of wear and tear on individual components of the equipment.'),
+  componentWear: z.array(z.object({
+      componentName: z.string().describe("The name of the component, e.g., 'Chain' or 'Brake Pads'."),
+      wearPercentage: z.number().describe("The new total wear percentage of this component after the activity.")
+    })).describe('A breakdown of wear and tear on individual components of the equipment.'),
   recommendations: z.array(z.string()).describe('Recommendations for maintenance or replacement based on the wear.'),
 });
 export type SimulateWearOutput = z.infer<typeof SimulateWearOutputSchema>;

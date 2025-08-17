@@ -56,11 +56,10 @@ const prompt = ai.definePrompt({
   Current Component Wear: {{{wearAndTearData}}}
 
   Provide the wearPercentage as a percentage between 0 and 100. Also provide a
-  componentWear breakdown with specific wear percentages for individual components and
-  recommendations for maintenance or replacement, if needed.
-  Make sure the componentWear object keys are specific names of parts for the given
-  equipment type. For example, if the equipment type is running shoes, a good key would be
-  'soleWear'.
+  componentWear breakdown as an array of objects, with each object containing the componentName and its new total wearPercentage.
+  For example, if the equipment type is running shoes, a good entry in the array would be
+  { "componentName": "soleWear", "wearPercentage": 15 }.
+  Make sure your recommendations for maintenance or replacement, if needed, are in an array of strings.
   `,
 });
 
