@@ -56,6 +56,7 @@ import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit
 import { toDate, toNullableDate, formatDate } from '@/lib/date-utils';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { BikeFitDialog } from '@/components/bike-fit-dialog';
+import { EBIKE_TYPES } from '@/lib/constants';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -239,18 +240,15 @@ export default function EquipmentDetailPage() {
   }
 
   const systemsToDisplay = useMemo(() => {
-    if (!equipment?.components) return [];
-    
-    const systems = new Set<string>();
-    equipment.components.forEach(c => systems.add(c.system));
-    
-    const preferredOrder = [
+    const baseSystems = [
         'Drivetrain', 'Brakes', 'Frameset', 
-        'Wheelset', 'Cockpit', 'E-Bike', 'Accessories'
+        'Wheelset', 'Cockpit', 'Accessories'
     ];
-
-    return preferredOrder.filter(system => systems.has(system));
-  }, [equipment?.components]);
+    if (equipment && EBIKE_TYPES.includes(equipment.type as any)) {
+        return [...baseSystems, 'E-Bike'];
+    }
+    return baseSystems;
+  }, [equipment]);
 
   if (isLoading || authLoading) {
       return <div><Skeleton className="h-96 w-full" /></div>
