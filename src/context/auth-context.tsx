@@ -240,10 +240,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         for (const key in data) {
             const typedKey = key as keyof typeof data;
             const value = data[typedKey];
-            if (value !== undefined && value !== null && value !== '') {
-                firestoreUpdateData[key] = value;
-            } else {
+            
+            // This logic correctly handles 0 as a valid value
+            if (value === null || value === undefined || value === '') {
                 firestoreUpdateData[key] = deleteField();
+            } else {
+                firestoreUpdateData[key] = value;
             }
         }
         
