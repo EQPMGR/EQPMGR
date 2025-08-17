@@ -12,11 +12,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Globe, Phone } from 'lucide-react';
 
-function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
+function ServiceProviderCard({ provider }: { provider: any }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline">{provider.name}</CardTitle>
+        <CardTitle className="font-headline">{provider.shopName || provider.name}</CardTitle>
         <CardDescription>{provider.address}, {provider.city}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
