@@ -130,6 +130,7 @@ export function WearSimulation({ equipment }: WearSimulationProps) {
 
       const output = await simulateWear({
         equipmentType: equipment.type,
+        workoutType: values.workoutType,
         distance: values.distance,
         duration: values.duration,
         intensity: values.intensity,
