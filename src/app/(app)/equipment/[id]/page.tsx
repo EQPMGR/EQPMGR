@@ -271,10 +271,11 @@ export default function EquipmentDetailPage() {
     .sort((a, b) => b.wearPercentage - a.wearPercentage)
     .slice(0, 3);
 
-  const Icon = (equipment.type !== 'Running Shoes' && equipment.type !== 'Other') ? Bike : Footprints;
+  const Icon = equipment.type.includes('Shoes') ? Footprints : Bike;
+  const isShoes = equipment.type === 'Cycling Shoes';
 
-  return (
-    <>
+  const MainLayout = (
+     <>
         <div className="flex items-center gap-2 mb-4">
             <Button variant="outline" size="sm" asChild>
                 <Link href="/equipment">
@@ -283,65 +284,153 @@ export default function EquipmentDetailPage() {
                 </Link>
             </Button>
         </div>
+        <Card>
+            <CardHeader>
+            <div className="flex justify-between items-start">
+                <div>
+                    <CardTitle className="text-2xl font-headline flex items-center gap-2">
+                        <Icon className="h-7 w-7" />
+                        {equipment.name}
+                    </CardTitle>
+                    <CardDescription>
+                      <span>{equipment.brand} {equipment.model}{equipment.frameSize && ` - ${equipment.frameSize}`}</span>
+                      <span className="block">{equipment.type}</span>
+                    </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                     <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Edit Equipment</span>
+                            </Button>
+                        </DialogTrigger>
+                        <EditEquipmentDialog 
+                            equipment={equipment} 
+                            onUpdateEquipment={handleUpdateEquipment}
+                        />
+                    </Dialog>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="icon">
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete Equipment</span>
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete your
+                                equipment and all of its associated data.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteEquipment} disabled={isDeleting}>
+                                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            </div>
+            </CardHeader>
+            <CardContent>
+                <ComponentStatusList components={topComponents} />
+            </CardContent>
+        </Card>
+        <div className="grid gap-4 mt-4 grid-cols-1 sm:grid-cols-2">
+            <Card>
+                <CardContent className="grid grid-cols-2 text-center pt-6">
+                    <div>
+                        <p className="text-3xl md:text-4xl font-headline">
+                            {equipment.totalDistance}
+                            <span className="text-lg md:text-xl font-normal text-muted-foreground"> km</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">Total Distance</p>
+                    </div>
+                    <div>
+                        <p className="text-3xl md:text-4xl font-headline">
+                            {equipment.totalHours}
+                            <span className="text-lg md:text-xl font-normal text-muted-foreground"> hrs</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">Total Time</p>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardContent className="grid grid-cols-2 text-center pt-6">
+                    <div>
+                        <p className="text-xl md:text-2xl font-headline pt-2">
+                            {formatDate(equipment.purchaseDate, user?.dateFormat)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Purchased</p>
+                    </div>
+                    <div>
+                        <p className="text-xl md:text-2xl font-headline pt-2">
+                            ${equipment.purchasePrice?.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Price</p>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+     </>
+  )
+
+  if (isShoes) {
+      return (
+          <div className="grid items-start gap-4 md:gap-8 lg:grid-cols-3">
+            <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+                {MainLayout}
+            </div>
+            <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <FitInfoIcon className="h-5 w-5" />
+                            Bike Fit
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-4">
+                        <div className="grid gap-2 text-sm">
+                            <div className="font-semibold">Cleat Position</div>
+                            <ul className="grid gap-1">
+                                <li className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">Fore-Aft</span>
+                                    <span>{equipment.fitData?.cleatPosition?.foreAft ?? 'N/A'}</span>
+                                </li>
+                                <li className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">Lateral</span>
+                                    <span>{equipment.fitData?.cleatPosition?.lateral ?? 'N/A'}</span>
+                                </li>
+                                <li className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">Rotational (deg)</span>
+                                    <span>{equipment.fitData?.cleatPosition?.rotational ?? 'N/A'}</span>
+                                </li>
+                            </ul>
+                        </div>
+                       <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
+                            <Button>Edit Cleat Position</Button>
+                       </BikeFitDialog>
+                       <Button asChild variant="secondary">
+                        <Link href="/service-providers">Book a Bike Fitting</Link>
+                       </Button>
+                    </CardContent>
+                </Card>
+            </div>
+          </div>
+      )
+  }
+
+  // Default bike layout
+  return (
+    <>
         <div className="grid items-start gap-4 md:gap-8 lg:grid-cols-3">
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle className="text-2xl font-headline flex items-center gap-2">
-                            <Icon className="h-7 w-7" />
-                            {equipment.name}
-                        </CardTitle>
-                        <CardDescription>
-                          <span>{equipment.brand} {equipment.model}{equipment.frameSize && ` - ${equipment.frameSize}`}</span>
-                          <span className="block">{equipment.type}</span>
-                        </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                         <Dialog>
-                            <DialogTrigger asChild>
-                                <Button variant="outline" size="icon">
-                                    <Pencil className="h-4 w-4" />
-                                    <span className="sr-only">Edit Equipment</span>
-                                </Button>
-                            </DialogTrigger>
-                            <EditEquipmentDialog 
-                                equipment={equipment} 
-                                onUpdateEquipment={handleUpdateEquipment}
-                            />
-                        </Dialog>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon">
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Delete Equipment</span>
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete your
-                                    equipment and all of its associated data.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteEquipment} disabled={isDeleting}>
-                                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Delete
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ComponentStatusList components={topComponents} />
-              </CardContent>
-            </Card>
+            {MainLayout}
             
             <Card>
               <CardContent className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -357,43 +446,6 @@ export default function EquipmentDetailPage() {
                   ))}
               </CardContent>
             </Card>
-            
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                <Card>
-                    <CardContent className="grid grid-cols-2 text-center pt-6">
-                        <div>
-                            <p className="text-3xl md:text-4xl font-headline">
-                                {equipment.totalDistance}
-                                <span className="text-lg md:text-xl font-normal text-muted-foreground"> km</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground">Total Distance</p>
-                        </div>
-                        <div>
-                            <p className="text-3xl md:text-4xl font-headline">
-                                {equipment.totalHours}
-                                <span className="text-lg md:text-xl font-normal text-muted-foreground"> hrs</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground">Total Time</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="grid grid-cols-2 text-center pt-6">
-                        <div>
-                            <p className="text-xl md:text-2xl font-headline pt-2">
-                                {formatDate(equipment.purchaseDate, user?.dateFormat)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Purchased</p>
-                        </div>
-                        <div>
-                            <p className="text-xl md:text-2xl font-headline pt-2">
-                                ${equipment.purchasePrice?.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Price</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
             
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
             <WearSimulation equipment={equipment} />
