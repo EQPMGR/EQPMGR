@@ -50,6 +50,11 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 flex-grow">
+         <div className="flex flex-wrap gap-2">
+            {provider.availability && <Badge variant="outline">Available Now</Badge>}
+            {provider.dropOff && <Badge variant="outline">Drop-off Service</Badge>}
+            {provider.valetService && <Badge variant="outline">Valet Service</Badge>}
+        </div>
         <div className="flex items-center gap-2">
             {provider.ratingCount && provider.ratingCount > 0 && provider.averageRating ? (
                  <>

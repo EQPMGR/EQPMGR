@@ -123,4 +123,7 @@ export interface ServiceProvider {
   lng?: number;
   averageRating?: number;
   ratingCount?: number;
+  availability?: boolean;
+  dropOff?: boolean;
+  valetService?: boolean;
 }
