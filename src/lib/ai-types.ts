@@ -72,6 +72,8 @@ export const SimulateWearInputSchema = z.object({
   environmentalConditions: z
     .string()
     .describe('The environmental conditions during the workout (e.g., sunny, rainy, muddy).'),
+  wearAndTearData: z.string().optional().describe('JSON string of the current wear and tear data for each component.'),
+  manufacturerGuidelines: z.string().optional().describe('JSON string of manufacturer guidelines for maintenance.'),
 });
 export type SimulateWearInput = z.infer<typeof SimulateWearInputSchema>;
 
