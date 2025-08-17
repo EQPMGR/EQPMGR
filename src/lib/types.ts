@@ -109,6 +109,8 @@ export interface Equipment {
 export interface ServiceProvider {
   id: string;
   name: string;
+  shopName?: string;
+  logoUrl?: string;
   services: ('bike-fitting' | 'repairs')[];
   address: string;
   city: string;

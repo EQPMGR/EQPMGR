@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -10,12 +11,26 @@ import { getServiceProviders } from './actions';
 import type { ServiceProvider } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Phone } from 'lucide-react';
+import { Globe, Phone, Building } from 'lucide-react';
 
-function ServiceProviderCard({ provider }: { provider: any }) {
+function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
   return (
     <Card>
       <CardHeader>
+        {provider.logoUrl ? (
+          <div className="relative h-24 w-full mb-4">
+            <Image
+              src={provider.logoUrl}
+              alt={`${provider.shopName || provider.name} logo`}
+              layout="fill"
+              objectFit="contain"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-24 w-full mb-4 bg-muted rounded-md">
+            <Building className="h-10 w-10 text-muted-foreground" />
+          </div>
+        )}
         <CardTitle className="font-headline">{provider.shopName || provider.name}</CardTitle>
         <CardDescription>{provider.address}, {provider.city}</CardDescription>
       </CardHeader>
