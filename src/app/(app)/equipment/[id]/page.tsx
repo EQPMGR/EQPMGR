@@ -463,7 +463,7 @@ export default function EquipmentDetailPage() {
             </Card>
             
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
-            <WearSimulation equipment={equipment} />
+            <WearSimulation equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)} />
             <MaintenanceSchedule equipment={equipment} />
           </div>
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
