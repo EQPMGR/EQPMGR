@@ -188,7 +188,7 @@ export default function ServiceProvidersPage() {
     }
     
     if (selectedServices.length > 0) {
-        providers = providers.filter(p => selectedServices.every(s => p.services.includes(s as any)));
+        providers = providers.filter(p => selectedServices.some(s => p.services.includes(s as any)));
     }
 
     return providers;
@@ -276,4 +276,5 @@ export default function ServiceProvidersPage() {
     </div>
   );
 }
+
 
