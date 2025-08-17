@@ -6,7 +6,6 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { geminiPro } from '@genkit-ai/googleai';
 import {
     SimulateWearInput,
     SimulateWearInputSchema,
@@ -21,7 +20,7 @@ export async function simulateWear(input: SimulateWearInput): Promise<SimulateWe
 
 const prompt = ai.definePrompt({
   name: 'simulateWearPrompt',
-  model: geminiPro,
+  model: 'googleai/gemini-2.5-flash-lite',
   input: {schema: SimulateWearInputSchema},
   output: {schema: SimulateWearOutputSchema},
   prompt: `You are an expert in simulating wear and tear on sports equipment.
