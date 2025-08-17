@@ -1,5 +1,4 @@
 
-
 import type { BikeType } from '@/lib/constants';
 
 // Data from the master/central database
@@ -122,4 +121,6 @@ export interface ServiceProvider {
   geohash?: string; // For location-based queries
   lat?: number;
   lng?: number;
+  averageRating?: number;
+  ratingCount?: number;
 }

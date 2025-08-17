@@ -17,6 +17,7 @@ import { getDistanceFromLatLonInKm } from '@/lib/geo-utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { FormItem } from '@/components/ui/form';
+import { StarRating } from '@/components/star-rating';
 
 interface ServiceProviderWithDistance extends ServiceProvider {
   distance?: number;
@@ -24,7 +25,7 @@ interface ServiceProviderWithDistance extends ServiceProvider {
 
 function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistance }) {
   return (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader>
         {provider.logoUrl ? (
           <div className="relative h-24 w-full mb-4">
@@ -48,7 +49,17 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
           )}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 flex-grow">
+        <div className="flex items-center gap-2">
+            {provider.ratingCount && provider.ratingCount > 0 && provider.averageRating ? (
+                 <>
+                    <StarRating rating={provider.averageRating} />
+                    <span className="text-xs text-muted-foreground">({provider.ratingCount} reviews)</span>
+                 </>
+            ) : (
+                <p className="text-sm text-muted-foreground italic">Not rated yet, be the first!</p>
+            )}
+        </div>
         <div className="flex flex-wrap gap-2">
             {provider.services.map(service => (
                 <Badge key={service} variant="secondary">
@@ -56,7 +67,9 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
                 </Badge>
             ))}
         </div>
-        <div className="flex items-center gap-4 text-sm">
+      </CardContent>
+       <CardContent className="mt-auto">
+         <div className="flex items-center gap-4 text-sm">
             {provider.website && (
                 <Button variant="ghost" size="sm" asChild>
                     <a href={provider.website} target="_blank" rel="noopener noreferrer">
@@ -74,7 +87,7 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
                 </Button>
             )}
         </div>
-      </CardContent>
+       </CardContent>
     </Card>
   )
 }
