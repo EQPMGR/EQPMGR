@@ -16,6 +16,7 @@ import { Globe, Phone, Building, LocateFixed } from 'lucide-react';
 import { getDistanceFromLatLonInKm } from '@/lib/geo-utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { FormItem } from '@/components/ui/form';
 
 interface ServiceProviderWithDistance extends ServiceProvider {
   distance?: number;
