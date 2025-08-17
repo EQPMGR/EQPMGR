@@ -48,6 +48,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { fetchAllMasterComponents, type MasterComponentWithOptions } from '@/services/components';
 import type { Equipment } from '@/lib/types';
+import { Label } from '@/components/ui/label';
 
 
 const shoesFormSchema = z.object({
