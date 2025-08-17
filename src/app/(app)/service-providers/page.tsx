@@ -51,7 +51,7 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
       </CardHeader>
       <CardContent className="space-y-4 flex-grow">
          <div className="flex flex-wrap gap-2">
-            {provider.availability && <Badge variant="outline">Available Now</Badge>}
+            {provider.availability && <Badge variant="outline">{provider.availability}</Badge>}
             {provider.dropOff && <Badge variant="outline">Drop-off Service</Badge>}
             {provider.valetService && <Badge variant="outline">Valet Service</Badge>}
         </div>

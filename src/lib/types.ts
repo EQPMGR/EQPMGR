@@ -1,4 +1,5 @@
 
+
 import type { BikeType } from '@/lib/constants';
 
 // Data from the master/central database
@@ -123,7 +124,7 @@ export interface ServiceProvider {
   lng?: number;
   averageRating?: number;
   ratingCount?: number;
-  availability?: boolean;
+  availability?: string;
   dropOff?: boolean;
   valetService?: boolean;
 }
