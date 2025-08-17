@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Activity, Footprints } from 'lucide-react';
+import { Activity, Footprints, Bike } from 'lucide-react';
 import { doc, getDocs, updateDoc, collection, query, where, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -333,6 +333,8 @@ export function EquipmentListPage() {
      )
   }
 
+  const bikes = data.filter(e => e.type !== 'Cycling Shoes');
+
   return (
     <>
       <div className="flex items-center justify-between space-y-2 mb-6">
@@ -348,7 +350,7 @@ export function EquipmentListPage() {
             Sync Activity
           </Button>
            <AddEquipmentDialog onAddEquipment={handleAddEquipment} />
-           <AddShoesDialog onAddShoes={handleAddShoes} allBikes={data.filter(e => e.type !== 'Cycling Shoes')} />
+           <AddShoesDialog onAddShoes={handleAddShoes} allBikes={bikes} />
         </div>
       </div>
       {data.length > 0 ? (
