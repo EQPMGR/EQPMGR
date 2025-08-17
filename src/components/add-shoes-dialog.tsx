@@ -52,7 +52,6 @@ import { Label } from '@/components/ui/label';
 
 
 const shoesFormSchema = z.object({
-  name: z.string().min(2, { message: 'Nickname is required.' }),
   shoeId: z.string().min(1, { message: 'Please select a shoe model.' }),
   purchaseDate: z.date({
     required_error: 'A purchase date is required.',
@@ -82,7 +81,6 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
   const form = useForm<ShoesFormValues>({
     resolver: zodResolver(shoesFormSchema),
     defaultValues: {
-      name: '',
       shoeId: '',
       purchaseDate: new Date(),
       purchasePrice: 0,
@@ -144,7 +142,7 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
         await onAddShoes(data);
         toast({
             title: 'Shoes Added!',
-            description: `${data.name} have been added to your inventory.`,
+            description: `The shoes have been added to your inventory.`,
         });
         handleOpenChange(false);
     } catch (error) {
@@ -249,8 +247,6 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
                   )}
                 />
             </div>
-            
-            <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nickname</FormLabel><FormControl><Input placeholder="e.g., My race day shoes" {...field} /></FormControl><FormMessage /></FormItem> )} />
             
              <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="purchaseDate" render={({ field }) => ( <FormItem><FormLabel>Purchase Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : (<span>Pick a date</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)} />

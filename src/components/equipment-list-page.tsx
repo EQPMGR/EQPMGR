@@ -59,7 +59,7 @@ export function EquipmentListPage() {
             const masterComp = masterComponentsMap.get(userComp.masterComponentId);
              if (!masterComp) {
                 console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
-                return null;
+                return null; 
             }
             return {
                 ...masterComp,
@@ -259,7 +259,7 @@ export function EquipmentListPage() {
         // 1. Create the main equipment document for the shoes
         const newEquipmentDocRef = doc(collection(db, 'users', user.uid, 'equipment'));
         const newShoeData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog'> & { associatedEquipmentIds?: string[] } = {
-            name: formData.name,
+            name: `${shoeFromDb.brand} ${shoeFromDb.model}`,
             type: 'Cycling Shoes', // Specific type for shoes
             brand: shoeFromDb.brand!,
             model: shoeFromDb.model!,
@@ -347,8 +347,8 @@ export function EquipmentListPage() {
             <Activity className="mr-2 h-4 w-4" />
             Sync Activity
           </Button>
-           <AddShoesDialog onAddShoes={handleAddShoes} allBikes={data.filter(e => e.type !== 'Cycling Shoes')} />
            <AddEquipmentDialog onAddEquipment={handleAddEquipment} />
+           <AddShoesDialog onAddShoes={handleAddShoes} allBikes={data.filter(e => e.type !== 'Cycling Shoes')} />
         </div>
       </div>
       {data.length > 0 ? (
