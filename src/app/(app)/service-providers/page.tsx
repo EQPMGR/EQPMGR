@@ -16,7 +16,7 @@ function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{provider.name}</CardTitle>
+        <CardTitle className="font-headline">{provider.name}</CardTitle>
         <CardDescription>{provider.address}, {provider.city}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
