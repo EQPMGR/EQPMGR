@@ -4,8 +4,6 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import type { UserComponent, MasterComponent, MaintenanceLog } from '@/lib/types';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc as getClientDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 
 // Helper to create a slug from a component's details
@@ -225,7 +223,7 @@ export async function addUserComponentAction({
     equipmentId,
     masterComponentId,
     system,
-    manualNewComponentData,
+     manualNewComponentData,
 }: {
     userId: string;
     equipmentId: string;
@@ -245,6 +243,8 @@ export async function addUserComponentAction({
     
     let finalMasterComponentId: string;
     let newComponentSize: string | undefined;
+
+    const batch = adminDb.batch();
 
     // Logic to handle manual entry vs. selection from DB
     if (manualNewComponentData && manualNewComponentData.brand) {
@@ -267,25 +267,25 @@ export async function addUserComponentAction({
             Object.entries(newComponentDetails).filter(([_, v]) => v !== undefined && v !== '')
         );
 
-        const newMasterComponentRef = doc(db, 'masterComponents', finalMasterComponentId);
-        await setDoc(newMasterComponentRef, cleanNewComponentDetails, { merge: true });
+        const newMasterComponentRef = adminDb.collection('masterComponents').doc(finalMasterComponentId);
+        batch.set(newMasterComponentRef, cleanNewComponentDetails, { merge: true });
+
     } else if (masterComponentId) {
         finalMasterComponentId = masterComponentId;
-        const masterComponentRef = doc(db, 'masterComponents', finalMasterComponentId);
-        const masterComponentSnap = await getClientDoc(masterComponentRef);
-        if (!masterComponentSnap.exists()) {
+        const masterComponentRef = adminDb.collection('masterComponents').doc(finalMasterComponentId);
+        const masterComponentSnap = await masterComponentRef.get();
+        if (!masterComponentSnap.exists) {
             throw new Error("The selected master component does not exist.");
         }
-        newComponentSize = masterComponentSnap.data().size;
+        newComponentSize = masterComponentSnap.data()?.size;
     } else {
         throw new Error("No component data provided.");
     }
 
     try {
-        const newComponentRef = doc(collection(db, 'users', userId, 'equipment', equipmentId, 'components'));
+        const newComponentRef = adminDb.collection('users').doc(userId).collection('equipment').doc(equipmentId).collection('components').doc();
         
-        const newComponentData: UserComponent = {
-            id: newComponentRef.id,
+        const newComponentData: Omit<UserComponent, 'id'> = {
             masterComponentId: finalMasterComponentId,
             wearPercentage: 0,
             purchaseDate: new Date(),
@@ -294,9 +294,16 @@ export async function addUserComponentAction({
             notes: `Added on ${new Date().toLocaleDateString()}`,
         };
         
-        const cleanData = Object.fromEntries(Object.entries(newComponentData).filter(([_, v]) => v !== undefined));
+        const cleanData: {[k:string]: any} = {};
+        for(const key in newComponentData) {
+            if((newComponentData as any)[key] !== undefined) {
+                cleanData[key] = (newComponentData as any)[key]
+            }
+        }
+        cleanData.purchaseDate = Timestamp.fromDate(cleanData.purchaseDate);
 
-        await setDoc(newComponentRef, cleanData);
+        batch.set(newComponentRef, cleanData);
+        await batch.commit();
         
         return { success: true, message: "Component added successfully." };
     } catch (error) {
