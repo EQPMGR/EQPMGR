@@ -7,6 +7,7 @@ import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput, Building, Trash2 } f
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { ServiceProviderSeeder } from './service-provider-seeder';
+import { PedalSeeder } from './pedal-seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -109,6 +110,7 @@ export default function AdminPage() {
                     </CardHeader>
                 </Card>
                  <ServiceProviderSeeder />
+                 <PedalSeeder />
             </CardContent>
         </Card>
     );
