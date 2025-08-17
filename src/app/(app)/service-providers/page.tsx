@@ -28,16 +28,16 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
     <Card className="flex flex-col">
       <CardHeader>
         {provider.logoUrl ? (
-          <div className="relative h-24 w-full mb-4">
+          <div className="relative h-[100px] w-[100px] mb-4 rounded-md overflow-hidden">
             <Image
               src={provider.logoUrl}
               alt={`${provider.shopName || provider.name} logo`}
               fill
-              objectFit="contain"
+              style={{ objectFit: "contain" }}
             />
           </div>
         ) : (
-          <div className="flex items-center justify-center h-24 w-full mb-4 bg-muted rounded-md">
+          <div className="flex items-center justify-center h-[100px] w-[100px] mb-4 bg-muted rounded-md">
             <Building className="h-10 w-10 text-muted-foreground" />
           </div>
         )}
