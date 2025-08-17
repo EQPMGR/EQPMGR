@@ -57,6 +57,7 @@ import { toDate, toNullableDate, formatDate } from '@/lib/date-utils';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { BikeFitDialog } from '@/components/bike-fit-dialog';
 import { EBIKE_TYPES } from '@/lib/constants';
+import { CockpitIcon } from '@/components/icons/cockpit-icon';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -80,7 +81,7 @@ function ComponentIcon({ componentName, className }: { componentName: string, cl
         return <WheelsetIcon className={className} />;
     }
     if (name.includes('cockpit')) {
-        return <Puzzle className={className} />;
+        return <CockpitIcon className={className} />;
     }
     if (name.includes('drivetrain')) {
       return <DrivetrainIcon className={className} />;
