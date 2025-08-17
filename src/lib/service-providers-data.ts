@@ -8,7 +8,7 @@ export const SERVICE_PROVIDERS_DATA: Omit<ServiceProvider, 'id'>[] = [
   {
     name: 'Vancouver Bike Fit Physio',
     shopName: 'Vancouver Bike Fit',
-    services: ['bike-fitting', 'repairs'],
+    services: ['bike-fitting', 'repairs', 'rental'],
     address: '123 Main Street',
     city: 'Vancouver',
     province: 'BC',
