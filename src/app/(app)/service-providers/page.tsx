@@ -2,7 +2,8 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { FormItem } from '@/components/ui/form';
 import { StarRating } from '@/components/star-rating';
 import { RequestServiceDialog } from '@/components/request-service-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ServiceProviderWithDistance extends ServiceProvider {
   distance?: number;
@@ -100,42 +102,48 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
 }
 
 const distanceFilters = [
-  { value: '2', label: '2 km' },
   { value: '10', label: '10 km' },
   { value: '25', label: '25 km' },
   { value: '50', label: '50 km' },
-  { value: '100', label: '100 km' },
   { value: 'all', label: 'All' },
 ];
 
 
 export default function ServiceProvidersPage() {
+  const searchParams = useSearchParams();
   const [allProviders, setAllProviders] = useState<ServiceProvider[]>([]);
-  const [providersWithDistance, setProvidersWithDistance] = useState<ServiceProviderWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedDistance, setSelectedDistance] = useState('all');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
-    async function loadProviders() {
-      setIsLoading(true);
-      try {
-        const fetchedProviders = await getServiceProviders();
-        setAllProviders(fetchedProviders);
-        setProvidersWithDistance(fetchedProviders); // Initially show all
-      } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Failed to load shops',
-          description: error.message,
-        });
-      } finally {
-        setIsLoading(false);
-      }
+    const serviceFromUrl = searchParams.get('service');
+    if (serviceFromUrl) {
+      setSelectedServices([serviceFromUrl]);
     }
-    loadProviders();
+  }, [searchParams]);
+
+  const loadProviders = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const fetchedProviders = await getServiceProviders();
+      setAllProviders(fetchedProviders);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to load shops',
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, [toast]);
+  
+  useEffect(() => {
+    loadProviders();
+  }, [loadProviders]);
 
   const handleSetUserLocation = () => {
     if (!navigator.geolocation) {
@@ -152,35 +160,45 @@ export default function ServiceProvidersPage() {
       }
     );
   };
-
-  useEffect(() => {
-    if (userLocation) {
-      const calculatedProviders = allProviders
-        .map(provider => {
-          if (provider.lat && provider.lng) {
-            const distance = getDistanceFromLatLonInKm(
-              userLocation.lat,
-              userLocation.lon,
-              provider.lat,
-              provider.lng
-            );
-            return { ...provider, distance };
-          }
-          return provider;
-        })
-        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
-      
-      setProvidersWithDistance(calculatedProviders);
-    }
-  }, [userLocation, allProviders]);
+  
+  const handleServiceChange = (serviceId: string, checked: boolean | 'indeterminate') => {
+      if (checked) {
+          setSelectedServices(prev => [...prev, serviceId]);
+      } else {
+          setSelectedServices(prev => prev.filter(s => s !== serviceId));
+      }
+  }
 
   const filteredProviders = useMemo(() => {
-    if (selectedDistance === 'all' || !userLocation) {
-      return providersWithDistance;
+    let providers: ServiceProviderWithDistance[] = allProviders;
+
+    if (userLocation) {
+        providers = providers.map(p => {
+             if (p.lat && p.lng) {
+                const distance = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lon, p.lat, p.lng);
+                return { ...p, distance };
+            }
+            return p;
+        }).sort((a,b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     }
-    const maxDistance = Number(selectedDistance);
-    return providersWithDistance.filter(p => p.distance !== undefined && p.distance <= maxDistance);
-  }, [providersWithDistance, selectedDistance, userLocation]);
+    
+    if (selectedDistance !== 'all' && userLocation) {
+        const maxDistance = Number(selectedDistance);
+        providers = providers.filter(p => p.distance !== undefined && p.distance <= maxDistance);
+    }
+    
+    if (selectedServices.length > 0) {
+        providers = providers.filter(p => selectedServices.every(s => p.services.includes(s as any)));
+    }
+
+    return providers;
+  }, [allProviders, userLocation, selectedDistance, selectedServices]);
+
+  const availableServices = useMemo(() => {
+      const services = new Set<string>();
+      allProviders.forEach(p => p.services.forEach(s => services.add(s)));
+      return Array.from(services);
+  }, [allProviders]);
 
   return (
     <div className="space-y-6">
@@ -193,30 +211,47 @@ export default function ServiceProvidersPage() {
 
        <Card>
         <CardHeader>
-          <CardTitle>Filter by Distance</CardTitle>
-          <CardDescription>
-            Use your current location to find shops nearby.
-          </CardDescription>
+          <CardTitle>Filter Results</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <Button onClick={handleSetUserLocation} disabled={!!userLocation}>
-            <LocateFixed className="mr-2 h-4 w-4" />
-            {userLocation ? 'Location Set!' : 'Use My Location'}
-          </Button>
-          {userLocation && (
-            <RadioGroup
-              value={selectedDistance}
-              onValueChange={setSelectedDistance}
-              className="flex flex-wrap items-center gap-4"
-            >
-              {distanceFilters.map(({ value, label }) => (
-                <FormItem key={value} className="flex items-center space-x-2 space-y-0">
-                  <RadioGroupItem value={value} id={`r-${value}`} />
-                  <Label htmlFor={`r-${value}`}>{label}</Label>
-                </FormItem>
-              ))}
-            </RadioGroup>
-          )}
+        <CardContent className="grid gap-6">
+           <div className="space-y-2">
+                <Label>Services</Label>
+                <div className="flex flex-wrap items-center gap-4">
+                    {availableServices.map(service => (
+                       <FormItem key={service} className="flex items-center space-x-2 space-y-0">
+                          <Checkbox 
+                            id={service} 
+                            checked={selectedServices.includes(service)}
+                            onCheckedChange={(checked) => handleServiceChange(service, checked)}
+                          />
+                          <Label htmlFor={service} className="font-normal capitalize">{service.replace('-', ' ')}</Label>
+                        </FormItem>
+                    ))}
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label>Distance</Label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <Button onClick={handleSetUserLocation} disabled={!!userLocation} size="sm">
+                        <LocateFixed className="mr-2 h-4 w-4" />
+                        {userLocation ? 'Location Set!' : 'Use My Location'}
+                    </Button>
+                    {userLocation && (
+                        <RadioGroup
+                        value={selectedDistance}
+                        onValueChange={setSelectedDistance}
+                        className="flex flex-wrap items-center gap-4"
+                        >
+                        {distanceFilters.map(({ value, label }) => (
+                            <FormItem key={value} className="flex items-center space-x-2 space-y-0">
+                            <RadioGroupItem value={value} id={`r-${value}`} />
+                            <Label htmlFor={`r-${value}`}>{label}</Label>
+                            </FormItem>
+                        ))}
+                        </RadioGroup>
+                    )}
+                </div>
+            </div>
         </CardContent>
       </Card>
 
@@ -235,9 +270,10 @@ export default function ServiceProvidersPage() {
       ) : (
           <div className="text-center py-16 border-2 border-dashed rounded-lg">
             <h3 className="text-xl font-semibold">No Service Providers Found</h3>
-            <p className="text-muted-foreground">Try expanding your distance filter or check back later.</p>
+            <p className="text-muted-foreground">Try adjusting your filters or check back later.</p>
           </div>
       )}
     </div>
   );
 }
+

@@ -350,7 +350,7 @@ export default function EquipmentDetailPage() {
                 <CardContent className="grid grid-cols-2 text-center pt-6">
                     <div>
                         <p className="text-3xl md:text-4xl font-headline">
-                            {equipment.totalDistance}
+                            {equipment.totalDistance.toFixed(2)}
                             <span className="text-lg md:text-xl font-normal text-muted-foreground"> km</span>
                         </p>
                         <p className="text-xs text-muted-foreground">Total Distance</p>
@@ -420,7 +420,7 @@ export default function EquipmentDetailPage() {
                             <Button>Edit Cleat Position</Button>
                        </BikeFitDialog>
                        <Button asChild variant="secondary">
-                        <Link href="/service-providers">Book a Bike Fitting</Link>
+                        <Link href="/service-providers?service=bike-fitting">Book a Bike Fitting</Link>
                        </Button>
                     </CardContent>
                 </Card>
@@ -476,7 +476,7 @@ export default function EquipmentDetailPage() {
               </CardHeader>
               <CardContent className="grid gap-2">
                 <Button asChild>
-                  <Link href="/service-providers">Request Service</Link>
+                  <Link href="/service-providers?service=repairs">Request Service</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -492,7 +492,7 @@ export default function EquipmentDetailPage() {
                         <Button>Enter Fit Details</Button>
                    </BikeFitDialog>
                    <Button asChild variant="secondary">
-                    <Link href="/service-providers">Book a Bike Fitting</Link>
+                    <Link href="/service-providers?service=bike-fitting">Book a Bike Fitting</Link>
                    </Button>
                 </CardContent>
             </Card>
