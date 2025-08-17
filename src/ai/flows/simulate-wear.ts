@@ -54,6 +54,7 @@ const prompt = ai.definePrompt({
   Duration: {{{duration}}} minutes
   Intensity: {{{intensity}}}
   Environmental Conditions: {{{environmentalConditions}}}
+  Current Component Wear: {{{wearAndTearData}}}
 
   Provide the wearPercentage as a percentage between 0 and 100. Also provide a
   componentWear breakdown with specific wear percentages for individual components and
