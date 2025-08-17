@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { ServiceProviderSeeder } from './service-provider-seeder';
 import { PedalSeeder } from './pedal-seeder';
+import { ShoeSeeder } from './shoe-seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -111,6 +112,7 @@ export default function AdminPage() {
                 </Card>
                  <ServiceProviderSeeder />
                  <PedalSeeder />
+                 <ShoeSeeder />
             </CardContent>
         </Card>
     );
