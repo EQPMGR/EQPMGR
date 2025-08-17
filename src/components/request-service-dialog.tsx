@@ -174,14 +174,6 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
         );
 
       case 3: // Confirmation/Form
-        if (selectedService !== 'bike-fitting') {
-             return (
-                 <div>
-                    <Label htmlFor="notes">Notes for the shop</Label>
-                    <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={`Please describe the issue or service you need for your ${selectedEquipment?.name}...`} />
-                 </div>
-            );
-        }
         return (
             <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
                 <Card>
@@ -199,21 +191,34 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
                          <p><strong>Size:</strong> {selectedEquipment?.frameSize || 'N/A'}</p>
                     </CardContent>
                 </Card>
-                 <Card>
-                    <CardHeader><CardTitle>Current Fit Measurements</CardTitle><CardDescription>This information will be sent to the fitter.</CardDescription></CardHeader>
-                    <CardContent className="text-sm space-y-2">
-                       {selectedEquipment?.fitData ? (
-                           Object.entries(selectedEquipment.fitData).map(([key, value]) => (
-                               <p key={key}><strong>{key}:</strong> {String(value)}</p>
-                           ))
-                       ) : (
-                           <p>No fit data has been saved for this bike.</p>
-                       )}
-                    </CardContent>
-                </Card>
+                {selectedService === 'bike-fitting' && (
+                     <Card>
+                        <CardHeader><CardTitle>Current Fit Measurements</CardTitle><CardDescription>This information will be sent to the fitter.</CardDescription></CardHeader>
+                        <CardContent className="text-sm space-y-2">
+                           {selectedEquipment?.fitData ? (
+                               Object.entries(selectedEquipment.fitData).map(([key, value]) => (
+                                   <p key={key}><strong>{key}:</strong> {String(value)}</p>
+                               ))
+                           ) : (
+                               <p>No fit data has been saved for this bike.</p>
+                           )}
+                        </CardContent>
+                    </Card>
+                )}
                 <div>
-                    <Label htmlFor="notes">Reason for Fit / Issues</Label>
-                    <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g., Numbness in hands, lower back pain, want a more aggressive position..." />
+                    <Label htmlFor="notes">
+                        {selectedService === 'bike-fitting' ? 'Reason for Fit / Issues' : 'Notes for the Shop'}
+                    </Label>
+                    <Textarea 
+                        id="notes" 
+                        value={notes} 
+                        onChange={(e) => setNotes(e.target.value)} 
+                        placeholder={
+                            selectedService === 'bike-fitting' 
+                            ? "e.g., Numbness in hands, lower back pain..." 
+                            : `Please describe the issue or service you need for your ${selectedEquipment?.name}...`
+                        } 
+                    />
                 </div>
             </div>
         )
