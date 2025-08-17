@@ -120,10 +120,10 @@ export default function ServiceProvidersPage() {
 
   useEffect(() => {
     const serviceFromUrl = searchParams.get('service');
-    if (serviceFromUrl) {
-      setSelectedServices([serviceFromUrl]);
+    if (serviceFromUrl && !selectedServices.includes(serviceFromUrl)) {
+      setSelectedServices(prev => [...prev, serviceFromUrl]);
     }
-  }, [searchParams]);
+  }, [searchParams, selectedServices]);
 
   const loadProviders = useCallback(async () => {
     setIsLoading(true);
@@ -276,5 +276,3 @@ export default function ServiceProvidersPage() {
     </div>
   );
 }
-
-
