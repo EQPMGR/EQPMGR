@@ -14,6 +14,7 @@ import {
   Loader2,
   Zap,
   Wrench,
+  PlusCircle,
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
@@ -58,6 +59,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { BikeFitDialog } from '@/components/bike-fit-dialog';
 import { EBIKE_TYPES } from '@/lib/constants';
 import { CockpitIcon } from '@/components/icons/cockpit-icon';
+import { AddWheelsetDialog } from '@/components/add-wheelset-dialog';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -434,6 +436,15 @@ export default function EquipmentDetailPage() {
             {MainLayout}
             
             <Card>
+              <CardHeader className='flex-row items-center justify-between'>
+                <CardTitle>Systems</CardTitle>
+                  <AddWheelsetDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
+                    <Button variant="outline" size="sm">
+                      <PlusCircle className='mr-2 h-4 w-4' />
+                      Add Wheelset
+                    </Button>
+                  </AddWheelsetDialog>
+              </CardHeader>
               <CardContent className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
                   {systemsToDisplay.map(systemName => (
                     <Link href={`/equipment/${equipment.id}/${systemName.toLowerCase().replace(/\s+/g, '-')}`} key={systemName}>

@@ -29,6 +29,7 @@ export interface UserComponent {
   purchaseDate: Date;
   notes?: string;
   size?: string; // The specific size for this user's instance, resolved from size or sizeVariants.
+  wheelsetId?: string; // To associate a component with a specific wheelset
 }
 
 // The combined object we'll use in the app UI
@@ -113,6 +114,7 @@ export interface Equipment {
   archivedComponents?: ArchivedComponent[];
   fitData?: BikeFitData;
   associatedEquipmentIds?: string[];
+  wheelsets?: Record<string, string>; // e.g. { "wheelsetId1": "Training Wheels" }
 }
 
 export interface ServiceProvider {

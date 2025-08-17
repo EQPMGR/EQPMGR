@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Bot, Loader2, LocateFixed } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -44,6 +44,7 @@ const formSchema = z.object({
   duration: z.coerce.number().min(1, 'Duration must be positive'),
   intensity: z.enum(['low', 'medium', 'high']),
   environmentalConditions: z.string().min(1, 'Weather conditions are required. Please fetch them using your location.'),
+  wheelsetId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -59,6 +60,15 @@ export function WearSimulation({ equipment }: WearSimulationProps) {
   const { toast } = useToast();
 
   const isBike = equipment.type !== 'Running Shoes' && equipment.type !== 'Other';
+  const wheelsetOptions = useMemo(() => {
+    const sets = [{ id: 'default', name: 'Default Wheelset' }];
+    if (equipment.wheelsets) {
+      Object.entries(equipment.wheelsets).forEach(([id, name]) => {
+        sets.push({ id, name });
+      });
+    }
+    return sets;
+  }, [equipment.wheelsets]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -68,6 +78,7 @@ export function WearSimulation({ equipment }: WearSimulationProps) {
       duration: 60,
       intensity: 'medium',
       environmentalConditions: '',
+      wheelsetId: 'default',
     },
   });
 
@@ -106,9 +117,25 @@ export function WearSimulation({ equipment }: WearSimulationProps) {
     setIsLoading(true);
     setResult(null);
     try {
+      const componentsToSimulate = values.wheelsetId === 'default'
+        ? equipment.components.filter(c => !c.wheelsetId)
+        : equipment.components.filter(c => c.wheelsetId === values.wheelsetId);
+
+      const wearAndTearData = JSON.stringify(
+        componentsToSimulate.map((c) => ({
+          name: c.name,
+          wear: `${c.wearPercentage}%`,
+        }))
+      );
+
       const output = await simulateWear({
         equipmentType: equipment.type,
-        ...values,
+        distance: values.distance,
+        duration: values.duration,
+        intensity: values.intensity,
+        environmentalConditions: values.environmentalConditions,
+        wearAndTearData,
+        manufacturerGuidelines: JSON.stringify({}), // Placeholder
       });
       setResult(output);
     } catch (error) {
@@ -207,6 +234,30 @@ export function WearSimulation({ equipment }: WearSimulationProps) {
                   </FormItem>
                 )}
               />
+              {isBike && wheelsetOptions.length > 1 && (
+                <FormField
+                  control={form.control}
+                  name="wheelsetId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Wheelset Used</FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select the wheelset used for this activity" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {wheelsetOptions.map(ws => (
+                            <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               {result && (
                 <Alert>
                   <AlertTitle className="font-semibold">Simulation Result</AlertTitle>
