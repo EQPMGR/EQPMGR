@@ -410,23 +410,9 @@ export default function EquipmentDetailPage() {
                   </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2">
-                 <Dialog>
-                    <DialogTrigger asChild>
-                        <Button>Request Service</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Request Service</DialogTitle>
-                            <DialogDescription>
-                                This feature is coming soon! You will be able to send a service request directly to your favorite local bike shop.
-                            </DialogDescription>
-                        </DialogHeader>
-                         <DialogFooter>
-                            <Button variant="secondary" asChild><Link href="#">Browse Shops</Link></Button>
-                            <Button type="submit" disabled>Send Request</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                 </Dialog>
+                <Button asChild>
+                  <Link href="/service-providers">Request Service</Link>
+                </Button>
               </CardContent>
             </Card>
             <Card>
@@ -440,7 +426,9 @@ export default function EquipmentDetailPage() {
                    <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
                         <Button>Enter Fit Details</Button>
                    </BikeFitDialog>
-                   <Button variant="secondary">Book a Bike Fitting</Button>
+                   <Button asChild variant="secondary">
+                    <Link href="/service-providers">Book a Bike Fitting</Link>
+                   </Button>
                 </CardContent>
             </Card>
             <Card>
