@@ -52,8 +52,7 @@ const formSchema = z.object({
   manualModel: z.string(),
   manualSize: z.string(),
   brand: z.string().optional(),
-  size: z.string().optional(),
-  series: z.string().optional(),
+  model: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -83,13 +82,15 @@ export function AddComponentDialog({
   const { toast } = useToast();
 
   const isAccessory = system.toLowerCase() === 'accessories';
+  
+  // Singularize the category name for matching with component names in the DB
+  const singularCategory = selectedCategory ? selectedCategory.slice(0, -1) : null;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
      defaultValues: {
       brand: '',
-      size: '',
-      series: '',
+      model: '',
       componentId: '',
       manualBrand: '',
       manualSeries: '',
@@ -98,7 +99,7 @@ export function AddComponentDialog({
     }
   });
 
-   const { brand, size, series, componentId, manualBrand } = form.watch();
+   const { brand, model: componentId, manualBrand } = form.watch();
 
   const loadComponents = useCallback(async () => {
     setIsLoadingOptions(true);
@@ -138,29 +139,19 @@ export function AddComponentDialog({
   
   const componentOptions = useMemo(() => {
     let options = allComponentOptions.filter(c => c.system.toLowerCase() === system.toLowerCase());
-    if (isAccessory && selectedCategory) {
-        options = options.filter(c => c.name === selectedCategory);
+    if (isAccessory && singularCategory) {
+        options = options.filter(c => c.name === singularCategory);
     }
     return options;
-  }, [allComponentOptions, system, isAccessory, selectedCategory]);
+  }, [allComponentOptions, system, isAccessory, singularCategory]);
 
   const brands = useMemo(() => [...new Set(componentOptions.map(c => c.brand).filter(Boolean))].sort(), [componentOptions]);
-  const sizes = useMemo(() => [...new Set(componentOptions.map(c => c.size).filter(Boolean))].sort(), [componentOptions]);
   
-  const filteredSeries = useMemo(() => {
-      let filtered = componentOptions;
-      if (brand) filtered = filtered.filter(c => c.brand === brand);
-      if (size) filtered = filtered.filter(c => c.size === size);
-      return [...new Set(filtered.map(c => c.series).filter(Boolean))].sort();
-  }, [componentOptions, brand, size]);
-
   const filteredModels = useMemo(() => {
       let filtered = componentOptions;
       if (brand) filtered = filtered.filter(c => c.brand === brand);
-      if (size) filtered = filtered.filter(c => c.size === size);
-      if (series) filtered = filtered.filter(c => c.series === series);
       return filtered.filter(c => c.model).sort((a,b) => a.model!.localeCompare(b.model!));
-  }, [componentOptions, brand, size, series]);
+  }, [componentOptions, brand]);
 
 
   const onSubmit = async (data: FormValues) => {
@@ -172,7 +163,7 @@ export function AddComponentDialog({
         system,
         masterComponentId: data.componentId || null,
         manualNewComponentData: data.manualBrand ? {
-            name: isAccessory ? selectedCategory! : system, // Use category or system name for new item
+            name: isAccessory ? singularCategory! : system, // Use singular category or system name
             brand: data.manualBrand,
             series: data.manualSeries,
             model: data.manualModel,
@@ -227,9 +218,7 @@ export function AddComponentDialog({
                     <AccordionTrigger>Add from Database</AccordionTrigger>
                     <AccordionContent className="space-y-4 pt-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('componentId', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="size" render={({ field }) => ( <FormItem><FormLabel>Size / Speeds</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('componentId', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Size" /></SelectTrigger></FormControl><SelectContent>{sizes.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('componentId', ''); }} value={field.value} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('componentId', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="componentId" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                         </div>
                     </AccordionContent>
@@ -239,9 +228,9 @@ export function AddComponentDialog({
                     <AccordionContent className="space-y-4 pt-4">
                         <div className="grid grid-cols-2 gap-4">
                             <FormField control={form.control} name="manualBrand" render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., Shimano" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="manualSize" render={({ field }) => (<FormItem><FormLabel>Size / Speeds</FormLabel><FormControl><Input placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="manualSeries" render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="e.g., Tiagra" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="manualModel" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., CS-HG500-10" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="manualModel" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g., Ultegra PD-R8000" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="manualSeries" render={({ field }) => (<FormItem><FormLabel>Series</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="manualSize" render={({ field }) => (<FormItem><FormLabel>Size</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                         </div>
                     </AccordionContent>
                 </AccordionItem>
