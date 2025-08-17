@@ -115,20 +115,13 @@ export default function ServiceProvidersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedDistance, setSelectedDistance] = useState('all');
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const { toast } = useToast();
-
-  useEffect(() => {
+  
+  // Initialize state directly from URL search parameters
+  const [selectedServices, setSelectedServices] = useState<string[]>(() => {
     const serviceFromUrl = searchParams.get('service');
-    if (serviceFromUrl) {
-      setSelectedServices(prev => {
-        if (!prev.includes(serviceFromUrl)) {
-          return [...prev, serviceFromUrl];
-        }
-        return prev;
-      });
-    }
-  }, [searchParams]);
+    return serviceFromUrl ? [serviceFromUrl] : [];
+  });
+  const { toast } = useToast();
 
   const loadProviders = useCallback(async () => {
     setIsLoading(true);
@@ -281,3 +274,4 @@ export default function ServiceProvidersPage() {
     </div>
   );
 }
+
