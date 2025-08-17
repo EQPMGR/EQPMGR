@@ -99,7 +99,7 @@ export function AddComponentDialog({
     }
   });
 
-   const { brand, model: componentId, manualBrand } = form.watch();
+   const { brand, componentId, manualBrand } = form.watch();
 
   const loadComponents = useCallback(async () => {
     setIsLoadingOptions(true);
@@ -138,9 +138,11 @@ export function AddComponentDialog({
   }
   
   const componentOptions = useMemo(() => {
-    let options = allComponentOptions.filter(c => c.system.toLowerCase() === system.toLowerCase());
+    let options = allComponentOptions;
     if (isAccessory && singularCategory) {
         options = options.filter(c => c.name === singularCategory);
+    } else if (!isAccessory) {
+        options = options.filter(c => c.system.toLowerCase() === system.toLowerCase());
     }
     return options;
   }, [allComponentOptions, system, isAccessory, singularCategory]);
