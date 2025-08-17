@@ -116,13 +116,9 @@ export default function ServiceProvidersPage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedDistance, setSelectedDistance] = useState('all');
   
-  // Initialize state directly from URL search parameters
-  const [selectedServices, setSelectedServices] = useState<string[]>(() => {
-    const serviceFromUrl = searchParams.get('service');
-    return serviceFromUrl ? [serviceFromUrl] : [];
-  });
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const { toast } = useToast();
-
+  
   const loadProviders = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -142,6 +138,13 @@ export default function ServiceProvidersPage() {
   useEffect(() => {
     loadProviders();
   }, [loadProviders]);
+
+  useEffect(() => {
+    const serviceFromUrl = searchParams.get('service');
+    if (serviceFromUrl) {
+      setSelectedServices([serviceFromUrl]);
+    }
+  }, [searchParams]);
 
   const handleSetUserLocation = () => {
     if (!navigator.geolocation) {
@@ -194,7 +197,7 @@ export default function ServiceProvidersPage() {
 
   const availableServices = useMemo(() => {
       const services = new Set<string>();
-      allProviders.forEach(p => p.services.forEach(s => services.add(s)));
+      allProviders.forEach(p => p.services.forEach(s => services.add(s as string)));
       return Array.from(services);
   }, [allProviders]);
 
