@@ -475,19 +475,6 @@ export default function ProfilePage() {
           </div>
         </form>
       </Form>
-      <Card>
-          <CardHeader>
-            <CardTitle>Insurance</CardTitle>
-            <CardDescription>
-              Protect your equipment against theft and damage with one of our partners.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <Link href="#">Explore Insurance Partners</Link>
-            </Button>
-          </CardContent>
-        </Card>
     </>
   )
 }
