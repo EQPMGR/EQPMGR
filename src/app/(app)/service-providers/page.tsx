@@ -29,76 +29,78 @@ interface ServiceProviderWithDistance extends ServiceProvider {
 function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistance }) {
   return (
     <Card className="flex flex-col">
-       <CardHeader>
+      <CardHeader className="flex flex-row items-start gap-4">
         {provider.logoUrl ? (
-          <div className="relative h-[100px] w-[100px] mb-4 rounded-md overflow-hidden">
+          <div className="relative h-[50px] w-[50px] rounded-md overflow-hidden flex-shrink-0">
             <Image
               src={provider.logoUrl}
               alt={`${provider.shopName || provider.name} logo`}
               fill
-              style={{ objectFit: "contain" }}
+              style={{ objectFit: 'contain' }}
             />
           </div>
         ) : (
-          <div className="flex items-center justify-center h-[100px] w-[100px] mb-4 bg-muted rounded-md">
-            <Building className="h-10 w-10 text-muted-foreground" />
+          <div className="flex items-center justify-center h-[50px] w-[50px] bg-muted rounded-md flex-shrink-0">
+            <Building className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
-        <CardTitle className="font-headline">{provider.shopName || provider.name}</CardTitle>
-        <CardDescription>
-          {provider.address}, {provider.city}
-          {provider.distance !== undefined && (
-            <span className="block font-semibold text-primary">{provider.distance.toFixed(1)} km away</span>
-          )}
-        </CardDescription>
+        <div className="flex-grow">
+          <CardTitle className="font-headline text-lg">{provider.shopName || provider.name}</CardTitle>
+          <CardDescription>
+            {provider.address}, {provider.city}
+            {provider.distance !== undefined && (
+              <span className="block font-semibold text-primary">{provider.distance.toFixed(1)} km away</span>
+            )}
+          </CardDescription>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4 flex-grow">
-         <div className="flex flex-wrap gap-2">
-            {provider.availability && <Badge variant="outline">{provider.availability}</Badge>}
-            {provider.dropOff && <Badge variant="outline">Drop-off Service</Badge>}
-            {provider.valetService && <Badge variant="outline">Valet Service</Badge>}
+        <div className="flex flex-wrap gap-2">
+          {provider.availability && <Badge variant="outline">{provider.availability}</Badge>}
+          {provider.dropOff && <Badge variant="outline">Drop-off Service</Badge>}
+          {provider.valetService && <Badge variant="outline">Valet Service</Badge>}
         </div>
         <div className="flex items-center gap-2">
-            {provider.ratingCount && provider.ratingCount > 0 && provider.averageRating ? (
-                 <>
-                    <StarRating rating={provider.averageRating} />
-                    <span className="text-xs text-muted-foreground">({provider.ratingCount} reviews)</span>
-                 </>
-            ) : (
-                <p className="text-sm text-muted-foreground italic">Not rated yet, be the first!</p>
-            )}
+          {provider.ratingCount && provider.ratingCount > 0 && provider.averageRating ? (
+            <>
+              <StarRating rating={provider.averageRating} />
+              <span className="text-xs text-muted-foreground">({provider.ratingCount} reviews)</span>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">Not rated yet, be the first!</p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
-            {provider.services.map(service => (
-                <Badge key={service} variant="secondary">
-                    {service.replace('-', ' ')}
-                </Badge>
-            ))}
+          {provider.services.map(service => (
+            <Badge key={service} variant="secondary">
+              {service.replace('-', ' ')}
+            </Badge>
+          ))}
         </div>
       </CardContent>
-       <CardFooter className="mt-auto flex flex-col items-stretch gap-2">
+      <CardFooter className="mt-auto flex flex-col items-stretch gap-2">
         <RequestServiceDialog provider={provider} />
-         <div className="flex items-center gap-4 text-sm">
-            {provider.website && (
-                <Button variant="ghost" size="sm" asChild>
-                    <a href={provider.website} target="_blank" rel="noopener noreferrer">
-                        <Globe className="mr-2 h-4 w-4" />
-                        Website
-                    </a>
-                </Button>
-            )}
-            {provider.phone && (
-                 <Button variant="ghost" size="sm" asChild>
-                    <a href={`tel:${provider.phone}`}>
-                       <Phone className="mr-2 h-4 w-4" />
-                        {provider.phone}
-                    </a>
-                </Button>
-            )}
+        <div className="flex items-center gap-4 text-sm">
+          {provider.website && (
+            <Button variant="ghost" size="sm" asChild>
+              <a href={provider.website} target="_blank" rel="noopener noreferrer">
+                <Globe className="mr-2 h-4 w-4" />
+                Website
+              </a>
+            </Button>
+          )}
+          {provider.phone && (
+            <Button variant="ghost" size="sm" asChild>
+              <a href={`tel:${provider.phone}`}>
+                <Phone className="mr-2 h-4 w-4" />
+                {provider.phone}
+              </a>
+            </Button>
+          )}
         </div>
-       </CardFooter>
+      </CardFooter>
     </Card>
-  )
+  );
 }
 
 const distanceFilters = [
@@ -142,7 +144,10 @@ export default function ServiceProvidersPage() {
   useEffect(() => {
     const serviceFromUrl = searchParams.get('service');
     if (serviceFromUrl) {
-      setSelectedServices([serviceFromUrl]);
+      setSelectedServices(prev => {
+        if (prev.includes(serviceFromUrl)) return prev;
+        return [...prev, serviceFromUrl]
+      });
     }
   }, [searchParams]);
 
