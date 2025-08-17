@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -83,7 +84,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
   
   const handleNextStep = () => {
       if (step === 1 && !selectedEquipmentId) {
-          toast({ variant: 'destructive', title: 'Please select a bike.'});
+          toast({ variant: 'destructive', title: 'Please select an item.'});
           return;
       }
        if (step === 2 && !selectedService) {
@@ -134,17 +135,17 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
     }
 
     switch (step) {
-      case 1: // Bike Selection
+      case 1: // Equipment Selection
         if (equipmentList.length === 0) {
-            return <p>You have no equipment. Please add a bike first.</p>;
+            return <p>You have no equipment. Please add gear first.</p>;
         }
         if (equipmentList.length > 1) {
           return (
             <div>
-              <Label>Select a bike</Label>
+              <Label>Select your gear</Label>
               <Select onValueChange={setSelectedEquipmentId} value={selectedEquipmentId || ''}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select your bike..." />
+                  <SelectValue placeholder="Select your bike or shoes..." />
                 </SelectTrigger>
                 <SelectContent>
                   {equipmentList.map(eq => (
@@ -155,13 +156,13 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
             </div>
           );
         }
-        // If only one bike, this step is automatically handled
-        return <p className="font-medium p-2 border rounded-md bg-muted">Selected bike: {equipmentList[0].name}</p>;
+        // If only one piece of equipment, this step is automatically handled
+        return <p className="font-medium p-2 border rounded-md bg-muted">Selected: {equipmentList[0].name}</p>;
       
       case 2: // Service Selection
         return (
           <div className="space-y-4">
-            <Label>What service do you need?</Label>
+            <Label>What service do you need for your {selectedEquipment?.name}?</Label>
             <RadioGroup onValueChange={setSelectedService} value={selectedService || ''}>
               {provider.services.map(service => (
                 <Label key={service} htmlFor={service} className="flex items-center gap-4 p-4 border rounded-md has-[:checked]:bg-muted">
@@ -187,7 +188,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
                  <Card>
                     <CardHeader><CardTitle>Equipment Details</CardTitle></CardHeader>
                     <CardContent className="text-sm space-y-2">
-                        <p><strong>Bike:</strong> {selectedEquipment?.name} ({selectedEquipment?.brand} {selectedEquipment?.model})</p>
+                        <p><strong>Item:</strong> {selectedEquipment?.name} ({selectedEquipment?.brand} {selectedEquipment?.model})</p>
                          <p><strong>Size:</strong> {selectedEquipment?.frameSize || 'N/A'}</p>
                     </CardContent>
                 </Card>
@@ -197,10 +198,18 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
                         <CardContent className="text-sm space-y-2">
                            {selectedEquipment?.fitData ? (
                                Object.entries(selectedEquipment.fitData).map(([key, value]) => (
-                                   <p key={key}><strong>{key}:</strong> {String(value)}</p>
+                                   value && typeof value !== 'object' && <p key={key}><strong>{key}:</strong> {String(value)}</p>
                                ))
                            ) : (
                                <p>No fit data has been saved for this bike.</p>
+                           )}
+                           {selectedEquipment?.fitData?.cleatPosition && (
+                                <div className='pt-2 mt-2 border-t'>
+                                    <h4 className='font-semibold'>Cleat Position</h4>
+                                    {Object.entries(selectedEquipment.fitData.cleatPosition).map(([key, value]) => (
+                                        <p key={key}><strong>{key}:</strong> {String(value)}</p>
+                                    ))}
+                                </div>
                            )}
                         </CardContent>
                     </Card>

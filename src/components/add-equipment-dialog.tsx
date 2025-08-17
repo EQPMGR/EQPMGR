@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import { CalendarIcon, PlusCircle, Loader2 } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Loader2, Bike } from 'lucide-react';
 import { format } from 'date-fns';
 import { collection, getDocs } from 'firebase/firestore';
 
@@ -156,7 +157,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     try {
         await onAddEquipment(data);
         toast({
-            title: 'Equipment Added!',
+            title: 'Bike Added!',
             description: `${data.name} has been added to your inventory.`,
         });
         handleOpenChange(false);
@@ -235,13 +236,13 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Equipment
+          <Bike className="mr-2 h-4 w-4" />
+          Add Bike
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add New Equipment</DialogTitle>
+          <DialogTitle>Add New Bike</DialogTitle>
           <DialogDescription>
             Select a bike from our database and give it a nickname.
           </DialogDescription>

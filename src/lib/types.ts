@@ -68,6 +68,12 @@ export interface MaintenanceLog {
   notes?: string;
 }
 
+export interface CleatPosition {
+    foreAft?: number;
+    lateral?: number;
+    rotational?: number;
+}
+
 export interface BikeFitData {
   saddleHeight?: number;
   saddleHeightOverBars?: number;
@@ -84,12 +90,13 @@ export interface BikeFitData {
   brakeLeverPosition?: string;
   crankLength?: number;
   hasAeroBars?: boolean;
+  cleatPosition?: CleatPosition;
 }
 
 export interface Equipment {
   id:string;
   name: string;
-  type: BikeType | 'Running Shoes' | 'Other';
+  type: BikeType | 'Running Shoes' | 'Other' | 'Cycling Shoes';
   brand: string;
   model: string;
   modelYear: number;
@@ -105,6 +112,7 @@ export interface Equipment {
   maintenanceLog: MaintenanceLog[];
   archivedComponents?: ArchivedComponent[];
   fitData?: BikeFitData;
+  associatedEquipmentIds?: string[];
 }
 
 export interface ServiceProvider {

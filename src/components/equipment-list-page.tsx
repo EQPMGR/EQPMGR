@@ -3,13 +3,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Activity } from 'lucide-react';
+import { Activity, Footprints } from 'lucide-react';
 import { doc, getDocs, updateDoc, collection, query, where, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment, MasterComponent, UserComponent, Component } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
 import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-dialog';
+import { AddShoesDialog, type ShoesFormValues } from './add-shoes-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -209,7 +210,6 @@ export function EquipmentListPage() {
                   resolvedSize = masterComp.size;
               }
 
-              // *** THIS IS THE FIX ***
               // Only add the size field if it's a valid, non-empty string.
               if (resolvedSize) {
                 userComponent.size = resolvedSize;
@@ -233,6 +233,73 @@ export function EquipmentListPage() {
         throw error;
     }
   }
+
+  async function handleAddShoes(
+    formData: ShoesFormValues
+  ) {
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Not Authenticated',
+            description: 'You must be logged in to add shoes.'
+        });
+        throw new Error("User not authenticated");
+    }
+
+    try {
+        const batch = writeBatch(db);
+        const masterComponentRef = doc(db, 'masterComponents', formData.shoeId);
+        const masterComponentSnap = await getDoc(masterComponentRef);
+
+        if (!masterComponentSnap.exists()) {
+          throw new Error('Selected shoes could not be found in the database.');
+        }
+        const shoeFromDb = masterComponentSnap.data() as MasterComponent;
+
+        // 1. Create the main equipment document for the shoes
+        const newEquipmentDocRef = doc(collection(db, 'users', user.uid, 'equipment'));
+        const newShoeData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog'> & { associatedEquipmentIds?: string[] } = {
+            name: formData.name,
+            type: 'Cycling Shoes', // Specific type for shoes
+            brand: shoeFromDb.brand!,
+            model: shoeFromDb.model!,
+            modelYear: new Date().getFullYear(), // Or a default/not applicable value
+            purchaseDate: formData.purchaseDate,
+            purchasePrice: formData.purchasePrice,
+            purchaseCondition: formData.purchaseCondition,
+            imageUrl: 'https://placehold.co/600x400.png', // Placeholder
+            totalDistance: 0,
+            totalHours: 0,
+            associatedEquipmentIds: formData.associatedBikeIds,
+        };
+        batch.set(newEquipmentDocRef, newShoeData);
+
+        // 2. Create the single component entry for the shoes themselves in the subcollection
+        const newComponentDocRef = doc(collection(db, 'users', user.uid, 'equipment', newEquipmentDocRef.id, 'components'));
+        const userComponent: UserComponent = {
+            id: newComponentDocRef.id,
+            masterComponentId: formData.shoeId,
+            wearPercentage: 0,
+            purchaseDate: formData.purchaseDate,
+            lastServiceDate: null,
+            notes: '',
+        };
+        batch.set(newComponentDocRef, userComponent);
+
+        await batch.commit();
+        await fetchEquipment(user.uid);
+
+    } catch (error) {
+        console.error("Failed to add shoes:", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to Add Shoes",
+            description: "There was an issue adding your shoes. Please try again.",
+        });
+        throw error;
+    }
+  }
+
 
   if (isLoading || authLoading) {
     return (
@@ -280,7 +347,8 @@ export function EquipmentListPage() {
             <Activity className="mr-2 h-4 w-4" />
             Sync Activity
           </Button>
-          <AddEquipmentDialog onAddEquipment={handleAddEquipment} />
+           <AddShoesDialog onAddShoes={handleAddShoes} allBikes={data.filter(e => e.type !== 'Cycling Shoes')} />
+           <AddEquipmentDialog onAddEquipment={handleAddEquipment} />
         </div>
       </div>
       {data.length > 0 ? (
