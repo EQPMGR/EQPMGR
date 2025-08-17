@@ -54,6 +54,8 @@ export const BASE_COMPONENTS = [
     { name: 'Saddle', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Grips', system: 'Cockpit', brand: '', series: '', model: '' },
     { name: 'Seatpost Clamp', system: 'Cockpit', brand: '', series: '', model: '' },
+    // Accessories
+    { name: 'Pedals', system: 'Accessories', brand: '', series: '', model: '' },
     // E-Bike
     { name: 'Motor', system: 'E-Bike', brand: '', model: '', power: '' },
     { name: 'Battery', system: 'E-Bike', brand: '', model: '', capacity: '' },
