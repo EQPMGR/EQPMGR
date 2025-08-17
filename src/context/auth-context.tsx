@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC, useCallback, useMemo } from 'react';
@@ -21,6 +22,7 @@ export interface UserProfile {
   email: string | null;
   emailVerified: boolean;
   displayName: string | null;
+  phone?: string | null;
   photoURL: string | null;
   height?: number; 
   weight?: number; 
@@ -34,6 +36,7 @@ export interface UserProfile {
 
 interface UserDocument {
     displayName?: string;
+    phone?: string;
     photoURL?: string;
     height?: number;
     weight?: number;
@@ -68,6 +71,7 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     email: authUser.email,
     emailVerified: authUser.emailVerified,
     displayName: authUser.displayName || data.displayName || null,
+    phone: data.phone || null,
     photoURL: authUser.photoURL || data.photoURL || null,
     measurementSystem: data.measurementSystem || 'imperial',
     shoeSizeSystem: data.shoeSizeSystem || 'us',

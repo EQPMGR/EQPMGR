@@ -47,6 +47,7 @@ const inchesSchema = emptyStringToUndefined.pipe(
 
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(30, "Name must not be longer than 30 characters.").optional().or(z.literal('')),
+  phone: z.string().optional(),
   height: optionalPositiveNumber,
   feet: optionalPositiveNumber,
   inches: inchesSchema,
@@ -122,6 +123,7 @@ const mapProfileToForm = (profile: UserProfile): ProfileFormValues => {
 
     return {
         name: profile.displayName || '',
+        phone: profile.phone || '',
         age: profile.age,
         measurementSystem: profile.measurementSystem,
         shoeSizeSystem: profile.shoeSizeSystem,
@@ -157,6 +159,7 @@ const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile
 
     return {
         displayName: formData.name || null,
+        phone: formData.phone,
         age: formData.age,
         height: height,
         weight: weight,
@@ -176,6 +179,7 @@ export default function ProfilePage() {
       distanceUnit: 'km',
       dateFormat: 'MM/DD/YYYY',
       name: '',
+      phone: '',
       age: undefined,
       height: undefined,
       feet: undefined,
@@ -220,19 +224,34 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Your name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Your name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input placeholder="(555) 123-4567" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                <FormField
                 control={form.control}
                 name="measurementSystem"

@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { getServiceProviders } from './actions';
 import type { ServiceProvider } from '@/lib/types';
@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { FormItem } from '@/components/ui/form';
 import { StarRating } from '@/components/star-rating';
+import { RequestServiceDialog } from '@/components/request-service-dialog';
 
 interface ServiceProviderWithDistance extends ServiceProvider {
   distance?: number;
@@ -26,7 +27,7 @@ interface ServiceProviderWithDistance extends ServiceProvider {
 function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistance }) {
   return (
     <Card className="flex flex-col">
-      <CardHeader>
+       <CardHeader>
         {provider.logoUrl ? (
           <div className="relative h-[100px] w-[100px] mb-4 rounded-md overflow-hidden">
             <Image
@@ -73,7 +74,8 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
             ))}
         </div>
       </CardContent>
-       <CardContent className="mt-auto">
+       <CardFooter className="mt-auto flex flex-col items-stretch gap-2">
+        <RequestServiceDialog provider={provider} />
          <div className="flex items-center gap-4 text-sm">
             {provider.website && (
                 <Button variant="ghost" size="sm" asChild>
@@ -92,7 +94,7 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
                 </Button>
             )}
         </div>
-       </CardContent>
+       </CardFooter>
     </Card>
   )
 }
