@@ -49,7 +49,7 @@ export function EquipmentCard({ equipment }: EquipmentCardProps) {
           </div>
           <div>
             <p className="font-semibold text-lg text-foreground">
-              {equipment.totalHours}
+              {equipment.totalHours.toFixed(2)}
             </p>
             <p>hours</p>
           </div>

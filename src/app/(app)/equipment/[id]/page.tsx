@@ -357,7 +357,7 @@ export default function EquipmentDetailPage() {
                     </div>
                     <div>
                         <p className="text-3xl md:text-4xl font-headline">
-                            {equipment.totalHours}
+                            {equipment.totalHours.toFixed(2)}
                             <span className="text-lg md:text-xl font-normal text-muted-foreground"> hrs</span>
                         </p>
                         <p className="text-xs text-muted-foreground">Total Time</p>
