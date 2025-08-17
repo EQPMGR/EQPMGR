@@ -229,10 +229,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const userDocRef = doc(db, 'users', currentUser.uid);
 
       try {
-        if (data.displayName !== undefined && data.displayName !== currentUser.displayName) {
-            await updateProfile(currentUser, { displayName: data.displayName });
-        }
+        // Sync with Firebase Auth service
+        await updateProfile(currentUser, {
+            displayName: data.displayName || undefined,
+            photoURL: data.photoURL || undefined,
+        });
 
+        // Sync with Firestore document
         const firestoreUpdateData: { [key: string]: any } = {};
         for (const key in data) {
             const typedKey = key as keyof typeof data;
