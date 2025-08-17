@@ -225,37 +225,78 @@ export async function addUserComponentAction({
     equipmentId,
     masterComponentId,
     system,
+    manualNewComponentData,
 }: {
     userId: string;
     equipmentId: string;
-    masterComponentId: string;
+    masterComponentId: string | null;
     system: string;
+     manualNewComponentData?: {
+        name: string;
+        brand: string;
+        series?: string;
+        model?: string;
+        size?: string;
+    } | null;
 }) {
-    if (!userId || !equipmentId || !masterComponentId || !system) {
+    if (!userId || !equipmentId || (!masterComponentId && !manualNewComponentData)) {
         throw new Error("Missing required parameters for adding a component.");
+    }
+    
+    let finalMasterComponentId: string;
+    let newComponentSize: string | undefined;
+
+    // Logic to handle manual entry vs. selection from DB
+    if (manualNewComponentData && manualNewComponentData.brand) {
+        const newComponentDetails: Omit<MasterComponent, 'id' | 'embedding'> = {
+            name: manualNewComponentData.name,
+            brand: manualNewComponentData.brand,
+            series: manualNewComponentData.series,
+            model: manualNewComponentData.model,
+            size: manualNewComponentData.size,
+            system: system,
+        };
+        const generatedId = createComponentId(newComponentDetails);
+        if (!generatedId) {
+            throw new Error("Could not generate a valid ID for the new manual component.");
+        }
+        finalMasterComponentId = generatedId;
+        newComponentSize = manualNewComponentData.size;
+        
+        const cleanNewComponentDetails = Object.fromEntries(
+            Object.entries(newComponentDetails).filter(([_, v]) => v !== undefined && v !== '')
+        );
+
+        const newMasterComponentRef = doc(db, 'masterComponents', finalMasterComponentId);
+        await setDoc(newMasterComponentRef, cleanNewComponentDetails, { merge: true });
+    } else if (masterComponentId) {
+        finalMasterComponentId = masterComponentId;
+        const masterComponentRef = doc(db, 'masterComponents', finalMasterComponentId);
+        const masterComponentSnap = await getClientDoc(masterComponentRef);
+        if (!masterComponentSnap.exists()) {
+            throw new Error("The selected master component does not exist.");
+        }
+        newComponentSize = masterComponentSnap.data().size;
+    } else {
+        throw new Error("No component data provided.");
     }
 
     try {
         const newComponentRef = doc(collection(db, 'users', userId, 'equipment', equipmentId, 'components'));
-        const masterComponentRef = doc(db, 'masterComponents', masterComponentId);
-        const masterComponentSnap = await getClientDoc(masterComponentRef);
-
-        if (!masterComponentSnap.exists()) {
-            throw new Error("The selected master component does not exist.");
-        }
-        const masterComponent = masterComponentSnap.data() as MasterComponent;
-
+        
         const newComponentData: UserComponent = {
             id: newComponentRef.id,
-            masterComponentId: masterComponentId,
+            masterComponentId: finalMasterComponentId,
             wearPercentage: 0,
             purchaseDate: new Date(),
             lastServiceDate: null,
-            size: masterComponent.size,
+            size: newComponentSize,
             notes: `Added on ${new Date().toLocaleDateString()}`,
         };
+        
+        const cleanData = Object.fromEntries(Object.entries(newComponentData).filter(([_, v]) => v !== undefined));
 
-        await setDoc(newComponentRef, newComponentData);
+        await setDoc(newComponentRef, cleanData);
         
         return { success: true, message: "Component added successfully." };
     } catch (error) {
