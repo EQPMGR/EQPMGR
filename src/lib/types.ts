@@ -1,6 +1,7 @@
 
 
 import type { BikeType } from '@/lib/constants';
+import { Timestamp } from 'firebase/firestore';
 
 // Data from the master/central database
 export interface MasterComponent {
@@ -127,4 +128,24 @@ export interface ServiceProvider {
   availability?: string;
   dropOff?: boolean;
   valetService?: boolean;
+}
+
+export interface WorkOrder {
+    id: string;
+    userId: string;
+    userName: string;
+    userPhone: string;
+    userEmail: string;
+    serviceProviderId: string;
+    providerName: string;
+    equipmentId: string;
+    equipmentName: string;
+    equipmentBrand: string;
+    equipmentModel: string;
+    serviceType: string;
+    status: 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
+    notes?: string;
+    fitData?: BikeFitData;
+    createdAt: Date | Timestamp;
+    updatedAt?: Date | Timestamp;
 }

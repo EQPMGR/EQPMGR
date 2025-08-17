@@ -24,7 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Wrench, Bike } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { ServiceProvider, Equipment, Component } from '@/lib/types';
-import { toDate, toNullableDate } from '@/lib/date-utils';
+import { submitWorkOrderAction } from '@/app/(app)/service-providers/actions';
 
 interface RequestServiceDialogProps {
   provider: ServiceProvider;
@@ -35,8 +35,10 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
   const [step, setStep] = useState(1);
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -74,6 +76,8 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
           setSelectedEquipmentId(null);
           setSelectedService(null);
           setIsLoading(true);
+          setIsSubmitting(false);
+          setNotes('');
       }
   }
   
@@ -87,6 +91,39 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
           return;
       }
       setStep(prev => prev + 1);
+  }
+
+  const handleSubmit = async () => {
+    if (!user || !selectedEquipmentId || !selectedService || !selectedEquipment) {
+        toast({ variant: 'destructive', title: 'Missing Information', description: 'Please ensure all fields are selected.' });
+        return;
+    }
+    setIsSubmitting(true);
+    
+    const result = await submitWorkOrderAction({
+        userId: user.uid,
+        userName: user.displayName || user.email || 'Unknown User',
+        userPhone: user.phone || '',
+        userEmail: user.email || '',
+        serviceProviderId: provider.id,
+        providerName: provider.shopName || provider.name,
+        equipmentId: selectedEquipmentId,
+        equipmentName: selectedEquipment.name,
+        equipmentBrand: selectedEquipment.brand,
+        equipmentModel: selectedEquipment.model,
+        serviceType: selectedService,
+        notes: notes,
+        fitData: selectedService === 'bike-fitting' ? selectedEquipment.fitData : undefined,
+    });
+    
+    if (result.success) {
+        toast({ title: 'Success!', description: result.message });
+        handleOpenChange(false);
+    } else {
+        toast({ variant: 'destructive', title: 'Submission Failed', description: result.message });
+    }
+    
+    setIsSubmitting(false);
   }
 
   const selectedEquipment = equipmentList.find(e => e.id === selectedEquipmentId);
@@ -118,8 +155,8 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
             </div>
           );
         }
-        // If only one bike, this step is skipped, but we handle it just in case
-        return <p>Selected bike: {equipmentList[0].name}</p>;
+        // If only one bike, this step is automatically handled
+        return <p className="font-medium p-2 border rounded-md bg-muted">Selected bike: {equipmentList[0].name}</p>;
       
       case 2: // Service Selection
         return (
@@ -136,9 +173,14 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
           </div>
         );
 
-      case 3: // Bike Fit Form
+      case 3: // Confirmation/Form
         if (selectedService !== 'bike-fitting') {
-             return <p>This service form is not yet available.</p>;
+             return (
+                 <div>
+                    <Label htmlFor="notes">Notes for the shop</Label>
+                    <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={`Please describe the issue or service you need for your ${selectedEquipment?.name}...`} />
+                 </div>
+            );
         }
         return (
             <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
@@ -170,8 +212,8 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
                     </CardContent>
                 </Card>
                 <div>
-                    <Label>Reason for Fit / Issues</Label>
-                    <Textarea placeholder="e.g., Numbness in hands, lower back pain, want a more aggressive position..." />
+                    <Label htmlFor="notes">Reason for Fit / Issues</Label>
+                    <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g., Numbness in hands, lower back pain, want a more aggressive position..." />
                 </div>
             </div>
         )
@@ -206,7 +248,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>Cancel</Button>
           {step > 1 && <Button variant="secondary" onClick={() => setStep(prev => prev - 1)}>Back</Button>}
           {step < 3 && <Button onClick={handleNextStep} disabled={(step === 1 && !selectedEquipmentId) || (step === 2 && !selectedService)}>Next</Button>}
-          {step === 3 && <Button>Submit Request (WIP)</Button>}
+          {step === 3 && <Button onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit Request</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>
