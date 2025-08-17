@@ -120,4 +120,6 @@ export interface ServiceProvider {
   phone?: string;
   website?: string;
   geohash?: string; // For location-based queries
+  lat?: number;
+  lng?: number;
 }

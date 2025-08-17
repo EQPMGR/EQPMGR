@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
@@ -14,6 +15,10 @@ export async function getServiceProviders(): Promise<ServiceProvider[]> {
     return providers;
   } catch (error) {
     console.error("Error fetching service providers:", error);
+    // Be more descriptive with the error thrown
+    if ((error as any).code === 'permission-denied') {
+        throw new Error('You do not have permission to access service providers. Please check your Firestore security rules.');
+    }
     throw new Error("Could not fetch service providers from the database.");
   }
 }

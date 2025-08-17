@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,6 +34,8 @@ const addProviderSchema = z.object({
   country: z.string().min(2, { message: 'Country is required.' }),
   phone: z.string().optional(),
   website: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  lat: z.coerce.number().optional(),
+  lng: z.coerce.number().optional(),
 });
 
 export type AddProviderFormValues = z.infer<typeof addProviderSchema>;
@@ -154,6 +157,10 @@ export default function AddServiceProviderPage() {
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="postalCode" render={({ field }) => (<FormItem><FormLabel>Postal / Zip Code</FormLabel><FormControl><Input placeholder="V5T 3N4" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="Canada" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="lat" render={({ field }) => (<FormItem><FormLabel>Latitude</FormLabel><FormControl><Input type="number" step="any" placeholder="49.2827" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="lng" render={({ field }) => (<FormItem><FormLabel>Longitude</FormLabel><FormControl><Input type="number" step="any" placeholder="-123.1207" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                         </div>
 

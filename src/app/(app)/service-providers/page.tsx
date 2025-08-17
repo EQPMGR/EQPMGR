@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -11,9 +12,16 @@ import { getServiceProviders } from './actions';
 import type { ServiceProvider } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Phone, Building } from 'lucide-react';
+import { Globe, Phone, Building, LocateFixed } from 'lucide-react';
+import { getDistanceFromLatLonInKm } from '@/lib/geo-utils';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
-function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
+interface ServiceProviderWithDistance extends ServiceProvider {
+  distance?: number;
+}
+
+function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistance }) {
   return (
     <Card>
       <CardHeader>
@@ -22,7 +30,7 @@ function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
             <Image
               src={provider.logoUrl}
               alt={`${provider.shopName || provider.name} logo`}
-              layout="fill"
+              fill
               objectFit="contain"
             />
           </div>
@@ -32,7 +40,12 @@ function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
           </div>
         )}
         <CardTitle className="font-headline">{provider.shopName || provider.name}</CardTitle>
-        <CardDescription>{provider.address}, {provider.city}</CardDescription>
+        <CardDescription>
+          {provider.address}, {provider.city}
+          {provider.distance !== undefined && (
+            <span className="block font-semibold text-primary">{provider.distance.toFixed(1)} km away</span>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -65,10 +78,21 @@ function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
   )
 }
 
+const distanceFilters = [
+  { value: '2', label: '2 km' },
+  { value: '10', label: '10 km' },
+  { value: '50', label: '50 km' },
+  { value: '100', label: '100 km' },
+  { value: 'all', label: 'All' },
+];
+
 
 export default function ServiceProvidersPage() {
-  const [providers, setProviders] = useState<ServiceProvider[]>([]);
+  const [allProviders, setAllProviders] = useState<ServiceProvider[]>([]);
+  const [providersWithDistance, setProvidersWithDistance] = useState<ServiceProviderWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [selectedDistance, setSelectedDistance] = useState('all');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -76,7 +100,8 @@ export default function ServiceProvidersPage() {
       setIsLoading(true);
       try {
         const fetchedProviders = await getServiceProviders();
-        setProviders(fetchedProviders);
+        setAllProviders(fetchedProviders);
+        setProvidersWithDistance(fetchedProviders); // Initially show all
       } catch (error: any) {
         toast({
           variant: 'destructive',
@@ -90,32 +115,107 @@ export default function ServiceProvidersPage() {
     loadProviders();
   }, [toast]);
 
+  const handleSetUserLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ variant: 'destructive', title: 'Location services are not supported by your browser.' });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ lat: latitude, lon: longitude });
+      },
+      () => {
+        toast({ variant: 'destructive', title: 'Could not get your location. Please ensure location services are enabled.' });
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (userLocation) {
+      const calculatedProviders = allProviders
+        .map(provider => {
+          if (provider.lat && provider.lng) {
+            const distance = getDistanceFromLatLonInKm(
+              userLocation.lat,
+              userLocation.lon,
+              provider.lat,
+              provider.lng
+            );
+            return { ...provider, distance };
+          }
+          return provider;
+        })
+        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      
+      setProvidersWithDistance(calculatedProviders);
+    }
+  }, [userLocation, allProviders]);
+
+  const filteredProviders = useMemo(() => {
+    if (selectedDistance === 'all' || !userLocation) {
+      return providersWithDistance;
+    }
+    const maxDistance = Number(selectedDistance);
+    return providersWithDistance.filter(p => p.distance !== undefined && p.distance <= maxDistance);
+  }, [providersWithDistance, selectedDistance, userLocation]);
+
   return (
     <div className="space-y-6">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Service Providers</h1>
-            <p className="text-muted-foreground">
-                Find trusted partners for bike fitting, repairs, and more.
-            </p>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Service Providers</h1>
+        <p className="text-muted-foreground">
+            Find trusted partners for bike fitting, repairs, and more.
+        </p>
+      </div>
+
+       <Card>
+        <CardHeader>
+          <CardTitle>Filter by Distance</CardTitle>
+          <CardDescription>
+            Use your current location to find shops nearby.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <Button onClick={handleSetUserLocation} disabled={!!userLocation}>
+            <LocateFixed className="mr-2 h-4 w-4" />
+            {userLocation ? 'Location Set!' : 'Use My Location'}
+          </Button>
+          {userLocation && (
+            <RadioGroup
+              value={selectedDistance}
+              onValueChange={setSelectedDistance}
+              className="flex flex-wrap items-center gap-4"
+            >
+              {distanceFilters.map(({ value, label }) => (
+                <FormItem key={value} className="flex items-center space-x-2 space-y-0">
+                  <RadioGroupItem value={value} id={`r-${value}`} />
+                  <Label htmlFor={`r-${value}`}>{label}</Label>
+                </FormItem>
+              ))}
+            </RadioGroup>
+          )}
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
         </div>
-        {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Skeleton className="h-48" />
-                <Skeleton className="h-48" />
-                <Skeleton className="h-48" />
-            </div>
-        ) : providers.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {providers.map(provider => (
-                    <ServiceProviderCard key={provider.id} provider={provider} />
-                ))}
-            </div>
-        ) : (
-             <div className="text-center py-16 border-2 border-dashed rounded-lg">
-                <h3 className="text-xl font-semibold">No Service Providers Found</h3>
-                <p className="text-muted-foreground">Check back later or add a new provider in the admin panel.</p>
-            </div>
-        )}
+      ) : filteredProviders.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredProviders.map(provider => (
+            <ServiceProviderCard key={provider.id} provider={provider} />
+          ))}
+        </div>
+      ) : (
+          <div className="text-center py-16 border-2 border-dashed rounded-lg">
+            <h3 className="text-xl font-semibold">No Service Providers Found</h3>
+            <p className="text-muted-foreground">Try expanding your distance filter or check back later.</p>
+          </div>
+      )}
     </div>
   );
 }
