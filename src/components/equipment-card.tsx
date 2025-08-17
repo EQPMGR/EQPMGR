@@ -19,7 +19,7 @@ interface EquipmentCardProps {
 }
 
 export function EquipmentCard({ equipment }: EquipmentCardProps) {
-  const Icon = (equipment.type !== 'Running Shoes' && equipment.type !== 'Other') ? Bike : Footprints;
+  const Icon = (equipment.type === 'Cycling Shoes' || equipment.type === 'Running Shoes') ? Footprints : Bike;
 
   // Sort components by wear percentage and take the top 4
   const topComponents = [...equipment.components]
