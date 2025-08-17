@@ -1,4 +1,5 @@
 
+
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
@@ -438,12 +439,14 @@ export default function EquipmentDetailPage() {
             <Card>
               <CardHeader className='flex-row items-center justify-between'>
                 <CardTitle>Systems</CardTitle>
-                  <AddWheelsetDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
-                    <Button variant="outline" size="sm">
-                      <PlusCircle className='mr-2 h-4 w-4' />
-                      Add Wheelset
-                    </Button>
-                  </AddWheelsetDialog>
+                  {user && (
+                    <AddWheelsetDialog equipment={equipment} onSuccess={() => fetchEquipment(user.uid, equipment.id)}>
+                        <Button variant="outline" size="sm">
+                        <PlusCircle className='mr-2 h-4 w-4' />
+                        Add Wheelset
+                        </Button>
+                    </AddWheelsetDialog>
+                  )}
               </CardHeader>
               <CardContent className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
                   {systemsToDisplay.map(systemName => (
