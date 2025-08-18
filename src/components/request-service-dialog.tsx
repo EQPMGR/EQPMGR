@@ -22,10 +22,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Wrench, Bike } from 'lucide-react';
+import { Loader2, Wrench, Bike, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { ServiceProvider, Equipment, Component } from '@/lib/types';
 import { submitWorkOrderAction } from '@/app/(app)/service-providers/actions';
+import { Checkbox } from './ui/checkbox';
 
 interface RequestServiceDialogProps {
   provider: ServiceProvider;
@@ -40,6 +41,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [hasConsented, setHasConsented] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -79,6 +81,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
           setIsLoading(true);
           setIsSubmitting(false);
           setNotes('');
+          setHasConsented(false);
       }
   }
   
@@ -99,6 +102,10 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
         toast({ variant: 'destructive', title: 'Missing Information', description: 'Please ensure all fields are selected.' });
         return;
     }
+    if (!hasConsented) {
+        toast({ variant: 'destructive', title: 'Consent Required', description: 'You must consent to sharing your data to proceed.' });
+        return;
+    }
     setIsSubmitting(true);
     
     const result = await submitWorkOrderAction({
@@ -115,6 +122,10 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
         serviceType: selectedService,
         notes: notes,
         fitData: selectedService === 'bike-fitting' ? selectedEquipment.fitData : undefined,
+        userConsent: {
+            consentGiven: hasConsented,
+            timestamp: new Date(),
+        }
     });
     
     if (result.success) {
@@ -229,6 +240,20 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
                         } 
                     />
                 </div>
+                 <div className="flex items-start space-x-3 rounded-md border p-4">
+                    <Checkbox id="consent" checked={hasConsented} onCheckedChange={(checked) => setHasConsented(checked as boolean)} />
+                    <div className="grid gap-1.5 leading-none">
+                        <label
+                        htmlFor="consent"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                        Data Sharing Consent
+                        </label>
+                        <p className="text-sm text-muted-foreground">
+                         I consent to having <strong>{provider.shopName || provider.name}</strong> view and edit the data related to my <strong>{selectedEquipment?.name}</strong> and any associated equipment.
+                        </p>
+                    </div>
+                </div>
             </div>
         )
       default:
@@ -262,7 +287,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>Cancel</Button>
           {step > 1 && <Button variant="secondary" onClick={() => setStep(prev => prev - 1)}>Back</Button>}
           {step < 3 && <Button onClick={handleNextStep} disabled={(step === 1 && !selectedEquipmentId) || (step === 2 && !selectedService)}>Next</Button>}
-          {step === 3 && <Button onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit Request</Button>}
+          {step === 3 && <Button onClick={handleSubmit} disabled={isSubmitting || !hasConsented}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit Request</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

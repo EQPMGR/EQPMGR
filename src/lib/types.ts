@@ -156,4 +156,9 @@ export interface WorkOrder {
     status: 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
     notes?: string;
     fitData?: BikeFitData;
-    createdAt:
+    createdAt: Timestamp;
+    userConsent: {
+      consentGiven: boolean;
+      timestamp: Timestamp;
+    };
+}

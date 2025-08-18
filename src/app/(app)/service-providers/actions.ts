@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
@@ -37,6 +38,10 @@ export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' 
       ...workOrderData,
       status: 'pending',
       createdAt: Timestamp.now(),
+      userConsent: {
+          ...workOrderData.userConsent,
+          timestamp: Timestamp.fromDate(workOrderData.userConsent.timestamp as unknown as Date),
+      },
     };
 
     await newWorkOrderRef.set(newWorkOrder);
