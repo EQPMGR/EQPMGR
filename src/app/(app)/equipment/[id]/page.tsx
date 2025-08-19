@@ -390,19 +390,9 @@ export default function EquipmentDetailPage() {
                 {MainLayout}
             </div>
              <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <FitInfoIcon className="h-5 w-5" />
-                            Cleat Position
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-2">
-                        <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
-                            <Button>Enter/Edit Cleat Position</Button>
-                       </BikeFitDialog>
-                    </CardContent>
-                </Card>
+                <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
+                    <Button>Enter/Edit Cleat Position</Button>
+                </BikeFitDialog>
             </div>
           </div>
       )
