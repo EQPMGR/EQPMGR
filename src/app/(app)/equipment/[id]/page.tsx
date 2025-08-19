@@ -390,33 +390,16 @@ export default function EquipmentDetailPage() {
             <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
                 {MainLayout}
             </div>
-            <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
+             <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <FitInfoIcon className="h-5 w-5" />
-                            Bike Fit
+                            <Wrench />
+                            Service & Support
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="grid gap-4">
-                        <div className="grid gap-2 text-sm">
-                            <div className="font-semibold">Cleat Position</div>
-                            <ul className="grid gap-1">
-                                <li className="flex items-center justify-between">
-                                    <span className="text-muted-foreground">Fore-Aft</span>
-                                    <span>{equipment.fitData?.cleatPosition?.foreAft ?? 'N/A'}</span>
-                                </li>
-                                <li className="flex items-center justify-between">
-                                    <span className="text-muted-foreground">Lateral</span>
-                                    <span>{equipment.fitData?.cleatPosition?.lateral ?? 'N/A'}</span>
-                                </li>
-                                <li className="flex items-center justify-between">
-                                    <span className="text-muted-foreground">Rotational (deg)</span>
-                                    <span>{equipment.fitData?.cleatPosition?.rotational ?? 'N/A'}</span>
-                                </li>
-                            </ul>
-                        </div>
-                       <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
+                    <CardContent className="grid gap-2">
+                        <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
                             <Button>Edit Cleat Position</Button>
                        </BikeFitDialog>
                        <Button asChild variant="secondary">
