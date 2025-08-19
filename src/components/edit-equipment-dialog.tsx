@@ -24,6 +24,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -36,64 +37,109 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Checkbox } from './ui/checkbox';
 
 
-const editEquipmentFormSchema = z.object({
+const baseSchema = z.object({
   name: z.string().min(2, { message: 'Nickname is required.' }),
   purchaseDate: z.date({
     required_error: 'A purchase date is required.',
   }),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
+  purchaseCondition: z.enum(['new', 'used']),
+});
+
+const bikeSchema = baseSchema.extend({
+  type: z.literal('bike'),
   serialNumber: z.string().optional(),
   frameSize: z.string().optional(),
-  purchaseCondition: z.enum(['new', 'used']),
-}).refine(data => !data.serialNumber || data.serialNumber.length === 0 || data.serialNumber.length >= 3, {
-  message: "Serial number must be at least 3 characters.",
-  path: ["serialNumber"],
 });
+
+const shoesSchema = baseSchema.extend({
+  type: z.literal('shoe'),
+  size: z.coerce.number().min(1, 'Please enter a valid size.'),
+  shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
+  associatedBikeIds: z.array(z.string()).optional(),
+});
+
+const editEquipmentFormSchema = z.discriminatedUnion("type", [
+    bikeSchema,
+    shoesSchema
+]);
 
 type EditEquipmentFormValues = z.infer<typeof editEquipmentFormSchema>;
 
-export interface UpdateEquipmentData extends Omit<EditEquipmentFormValues, 'serialNumber' | 'frameSize'> {
-    serialNumber?: string;
-    frameSize?: string;
-}
+export interface UpdateEquipmentData extends Omit<EditEquipmentFormValues, 'type'> {}
 
 interface EditEquipmentDialogProps {
   equipment: Equipment;
-  onUpdateEquipment: (equipment: UpdateEquipmentData) => Promise<void>;
+  allBikes: Equipment[];
+  onUpdateEquipment: (equipment: Partial<Equipment>) => Promise<void>;
   onOpenChange?: (open: boolean) => void;
 }
 
-export function EditEquipmentDialog({ equipment, onUpdateEquipment, onOpenChange }: EditEquipmentDialogProps) {
+export function EditEquipmentDialog({ equipment, allBikes, onUpdateEquipment, onOpenChange }: EditEquipmentDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const isShoes = equipment.type === 'Cycling Shoes';
   
   const form = useForm<EditEquipmentFormValues>({
     resolver: zodResolver(editEquipmentFormSchema),
-    // Use useEffect to reset the form when the equipment prop changes.
   });
 
   useEffect(() => {
-    form.reset({
-      name: equipment.name,
-      purchaseCondition: equipment.purchaseCondition,
-      purchaseDate: equipment.purchaseDate,
-      purchasePrice: equipment.purchasePrice,
-      serialNumber: equipment.serialNumber || '',
-      frameSize: equipment.frameSize || '',
-    });
-  }, [equipment, form]);
+    if (isShoes) {
+        const [size, system] = (equipment.size || '0 eu').split(' ');
+        form.reset({
+            type: 'shoe',
+            name: equipment.name,
+            purchaseCondition: equipment.purchaseCondition,
+            purchaseDate: equipment.purchaseDate,
+            purchasePrice: equipment.purchasePrice,
+            size: parseFloat(size),
+            shoeSizeSystem: (system?.toLowerCase() as 'us' | 'uk' | 'eu') || 'eu',
+            associatedBikeIds: equipment.associatedEquipmentIds || [],
+        });
+    } else {
+        form.reset({
+            type: 'bike',
+            name: equipment.name,
+            purchaseCondition: equipment.purchaseCondition,
+            purchaseDate: equipment.purchaseDate,
+            purchasePrice: equipment.purchasePrice,
+            serialNumber: equipment.serialNumber || '',
+            frameSize: equipment.frameSize || '',
+        });
+    }
+  }, [equipment, form, isShoes]);
 
   async function onSubmit(data: EditEquipmentFormValues) {
     setIsSubmitting(true);
     try {
-        const updateData: UpdateEquipmentData = {
-            ...data,
-            serialNumber: data.serialNumber || undefined,
-            frameSize: data.frameSize || undefined,
-        };
+        let updateData: Partial<Equipment>;
+        
+        if (data.type === 'shoe') {
+             updateData = {
+                name: data.name,
+                purchaseCondition: data.purchaseCondition,
+                purchaseDate: data.purchaseDate,
+                purchasePrice: data.purchasePrice,
+                size: `${data.size} ${data.shoeSizeSystem.toUpperCase()}`,
+                shoeSizeSystem: data.shoeSizeSystem,
+                associatedEquipmentIds: data.associatedBikeIds || [],
+             };
+        } else {
+             updateData = {
+                name: data.name,
+                purchaseCondition: data.purchaseCondition,
+                purchaseDate: data.purchaseDate,
+                purchasePrice: data.purchasePrice,
+                serialNumber: data.serialNumber || '',
+                frameSize: data.frameSize || '',
+             };
+        }
+        
         await onUpdateEquipment(updateData);
         toast({
             title: 'Equipment Updated!',
@@ -179,9 +225,9 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, onOpenChange
   return (
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit Equipment</DialogTitle>
+          <DialogTitle>Edit {isShoes ? "Shoes" : "Equipment"}</DialogTitle>
           <DialogDescription>
-            Update the details for your equipment.
+            Update the details for your {isShoes ? "cycling shoes" : "equipment"}.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -257,34 +303,99 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, onOpenChange
                 )}
               />
             </div>
-             <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="frameSize"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Frame Size</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., 56cm" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                    control={form.control}
-                    name="serialNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Serial Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Optional" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-             </div>
+            
+            {isShoes ? (
+                <>
+                    <FormField
+                        control={form.control}
+                        name="shoeSizeSystem"
+                        render={({ field }) => (
+                            <FormItem className="space-y-3">
+                                <FormLabel>Sizing System</FormLabel>
+                                <FormControl>
+                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4">
+                                        <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="us" /></FormControl><FormLabel className="font-normal">US</FormLabel></FormItem>
+                                        <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="uk" /></FormControl><FormLabel className="font-normal">UK</FormLabel></FormItem>
+                                        <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="eu" /></FormControl><FormLabel className="font-normal">EU</FormLabel></FormItem>
+                                    </RadioGroup>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="size"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Size</FormLabel>
+                                <FormControl><Input type="number" step="0.5" placeholder="e.g., 43.5" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="associatedBikeIds"
+                        render={() => (
+                            <FormItem>
+                                <div className="mb-4"><FormLabel className="text-base">Associated Bikes</FormLabel><FormDescription>Select which bikes you use these shoes with.</FormDescription></div>
+                                {allBikes.map((bike) => (
+                                    <FormField key={bike.id} control={form.control} name="associatedBikeIds"
+                                        render={({ field }) => {
+                                            return (
+                                                <FormItem key={bike.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                    <FormControl>
+                                                        <Checkbox checked={field.value?.includes(bike.id)}
+                                                            onCheckedChange={(checked) => {
+                                                                return checked
+                                                                    ? field.onChange([...(field.value || []), bike.id])
+                                                                    : field.onChange(field.value?.filter((value) => value !== bike.id))
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal">{bike.name} ({bike.brand} {bike.model})</FormLabel>
+                                                </FormItem>
+                                            )
+                                        }}
+                                    />
+                                ))}
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </>
+            ) : (
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="frameSize"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Frame Size</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., 56cm" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="serialNumber"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Serial Number</FormLabel>
+                            <FormControl>
+                            <Input placeholder="Optional" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+            )}
+            
              <DialogFooter className="sticky bottom-0 bg-background pt-4 -mx-6 px-6 -mb-6 pb-6">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -296,3 +407,4 @@ export function EditEquipmentDialog({ equipment, onUpdateEquipment, onOpenChange
       </DialogContent>
   );
 }
+

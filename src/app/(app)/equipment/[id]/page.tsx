@@ -101,12 +101,22 @@ export default function EquipmentDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [equipment, setEquipment] = useState<Equipment | undefined>();
+  const [allBikes, setAllBikes] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchEquipment = useCallback(async (uid: string, equipmentId: string) => {
+  const fetchEquipment = useCallback(async (uid: string) => {
     setIsLoading(true);
     try {
+      // Fetch all equipment to pass to dialogs
+      const allEquipmentQuery = query(collection(db, 'users', uid, 'equipment'));
+      const allEquipmentSnapshot = await getDocs(allEquipmentQuery);
+      const allEquipment = allEquipmentSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Equipment);
+      setAllBikes(allEquipment.filter(e => e.type !== 'Cycling Shoes'));
+
+
+      // Fetch the specific equipment for this page
+      const equipmentId = params.id as string;
       const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
       const equipmentDocSnap = await getDoc(equipmentDocRef);
 
@@ -169,27 +179,27 @@ export default function EquipmentDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, params.id]);
   
   useEffect(() => {
     if (user && params.id) {
-        fetchEquipment(user.uid, params.id as string);
+        fetchEquipment(user.uid);
     } else if (!authLoading) {
         setIsLoading(false);
     }
   }, [user, params.id, authLoading, fetchEquipment]);
   
-  const handleUpdateEquipment = async (data: UpdateEquipmentData) => {
+  const handleUpdateEquipment = async (data: Partial<Equipment>) => {
     if (!user || !equipment) {
       toast({ variant: "destructive", title: "Error", description: "Could not update equipment." });
       return;
     }
     
     const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
-    await updateDoc(equipmentDocRef, data as any);
+    await updateDoc(equipmentDocRef, data);
     
     // After successful update, re-fetch the data to ensure UI is in sync
-    await fetchEquipment(user.uid, equipment.id);
+    await fetchEquipment(user.uid);
   };
 
   const handleDeleteEquipment = async () => {
@@ -296,7 +306,7 @@ export default function EquipmentDetailPage() {
                         {equipment.name}
                     </CardTitle>
                     <CardDescription>
-                      <span>{equipment.brand} {equipment.model}{equipment.frameSize && ` - ${equipment.frameSize}`}</span>
+                      <span>{equipment.brand} {equipment.model}{isShoes ? ` - ${equipment.size}` : (equipment.frameSize && ` - ${equipment.frameSize}`)}</span>
                       <span className="block">{equipment.type}</span>
                     </CardDescription>
                 </div>
@@ -310,6 +320,7 @@ export default function EquipmentDetailPage() {
                         </DialogTrigger>
                         <EditEquipmentDialog 
                             equipment={equipment} 
+                            allBikes={allBikes}
                             onUpdateEquipment={handleUpdateEquipment}
                         />
                     </Dialog>
@@ -402,7 +413,7 @@ export default function EquipmentDetailPage() {
               <CardHeader className='flex-row items-center justify-between'>
                 <CardTitle>Systems</CardTitle>
                   {user && (
-                    <AddWheelsetDialog equipment={equipment} onSuccess={() => fetchEquipment(user.uid, equipment.id)}>
+                    <AddWheelsetDialog equipment={equipment} onSuccess={() => fetchEquipment(user.uid)}>
                         <Button variant="outline" size="sm">
                         <PlusCircle className='mr-2 h-4 w-4' />
                         Add Wheelset
@@ -425,7 +436,7 @@ export default function EquipmentDetailPage() {
             </Card>
             
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
-            <WearSimulation equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)} />
+            <WearSimulation equipment={equipment} onSuccess={() => fetchEquipment(user!.uid)} />
             <MaintenanceSchedule equipment={equipment} />
           </div>
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
@@ -450,7 +461,7 @@ export default function EquipmentDetailPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-2">
-                   <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
+                   <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid)}>
                         <Button>Enter Fit Details</Button>
                    </BikeFitDialog>
                    <Button asChild variant="secondary">
