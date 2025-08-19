@@ -1,4 +1,5 @@
 
+
 import type { BikeType } from '@/lib/constants';
 import { Timestamp } from 'firebase/firestore';
 
@@ -102,6 +103,8 @@ export interface Equipment {
   modelYear: number;
   serialNumber?: string;
   frameSize?: string;
+  size?: string; // For shoes
+  shoeSizeSystem?: 'us' | 'uk' | 'eu'; // For shoes
   purchaseCondition: 'new' | 'used';
   purchaseDate: Date;
   purchasePrice: number;

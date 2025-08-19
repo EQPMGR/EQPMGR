@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { CalendarIcon, Footprints, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -53,6 +53,8 @@ import { Label } from '@/components/ui/label';
 
 const shoesFormSchema = z.object({
   shoeId: z.string().min(1, { message: 'Please select a shoe model.' }),
+  size: z.coerce.number().min(1, 'Please enter a valid size.'),
+  shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
   purchaseDate: z.date({
     required_error: 'A purchase date is required.',
   }),
@@ -86,10 +88,11 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
       purchasePrice: 0,
       purchaseCondition: 'new',
       associatedBikeIds: [],
+      shoeSizeSystem: 'eu',
     },
   });
 
-  const { brand } = form.watch();
+  const { brand } = useWatch({ control: form.control });
 
   useEffect(() => {
     async function fetchShoeModels() {
@@ -248,6 +251,51 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
                 />
             </div>
             
+             <FormField
+                control={form.control}
+                name="shoeSizeSystem"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Sizing System</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex items-center space-x-4"
+                      >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="us" /></FormControl>
+                          <FormLabel className="font-normal">US</FormLabel>
+                        </FormItem>
+                         <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="uk" /></FormControl>
+                          <FormLabel className="font-normal">UK</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="eu" /></FormControl>
+                          <FormLabel className="font-normal">EU</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="size"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Size</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.5" placeholder="e.g., 43.5" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
              <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="purchaseDate" render={({ field }) => ( <FormItem><FormLabel>Purchase Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : (<span>Pick a date</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="purchasePrice" render={({ field }) => ( <FormItem><FormLabel>Purchase Price ($)</FormLabel><FormControl><Input type="number" placeholder="e.g., 300" {...field} /></FormControl><FormMessage /></FormItem> )} />

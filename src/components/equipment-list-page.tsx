@@ -267,6 +267,7 @@ export function EquipmentListPage() {
             purchaseDate: formData.purchaseDate,
             purchasePrice: formData.purchasePrice,
             purchaseCondition: formData.purchaseCondition,
+            size: `${formData.size} ${formData.shoeSizeSystem.toUpperCase()}`,
             imageUrl: 'https://placehold.co/600x400.png', // Placeholder
             totalDistance: 0,
             totalHours: 0,
@@ -282,6 +283,7 @@ export function EquipmentListPage() {
             wearPercentage: 0,
             purchaseDate: formData.purchaseDate,
             lastServiceDate: null,
+            size: String(formData.size),
             notes: '',
         };
         batch.set(newComponentDocRef, userComponent);
