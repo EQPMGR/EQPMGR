@@ -101,7 +101,7 @@ export default function EquipmentDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [equipment, setEquipment] = useState<Equipment | undefined>();
-  const [allBikes, setAllBikes] = useState<Equipment[]>([]);
+  const [allEquipment, setAllEquipment] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -111,9 +111,8 @@ export default function EquipmentDetailPage() {
       // Fetch all equipment to pass to dialogs
       const allEquipmentQuery = query(collection(db, 'users', uid, 'equipment'));
       const allEquipmentSnapshot = await getDocs(allEquipmentQuery);
-      const allEquipment = allEquipmentSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Equipment);
-      setAllBikes(allEquipment.filter(e => e.type !== 'Cycling Shoes'));
-
+      const allEq = allEquipmentSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Equipment);
+      setAllEquipment(allEq);
 
       // Fetch the specific equipment for this page
       const equipmentId = params.id as string;
@@ -263,6 +262,14 @@ export default function EquipmentDetailPage() {
     return baseSystems;
   }, [equipment]);
 
+  const associatedShoes = useMemo(() => {
+    if (!equipment || equipment.type === 'Cycling Shoes') return [];
+    return allEquipment.filter(e => 
+      e.type === 'Cycling Shoes' && 
+      e.associatedEquipmentIds?.includes(equipment.id)
+    );
+  }, [allEquipment, equipment]);
+
   if (isLoading || authLoading) {
       return <div><Skeleton className="h-96 w-full" /></div>
   }
@@ -286,6 +293,7 @@ export default function EquipmentDetailPage() {
 
   const Icon = equipment.type.includes('Shoes') ? Footprints : Bike;
   const isShoes = equipment.type === 'Cycling Shoes';
+  const allBikes = allEquipment.filter(e => e.type !== 'Cycling Shoes');
 
   const MainLayout = (
      <>
@@ -440,6 +448,23 @@ export default function EquipmentDetailPage() {
             <MaintenanceSchedule equipment={equipment} />
           </div>
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
+             {associatedShoes.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Footprints />
+                            Associated Shoes
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-2">
+                        <ul className="list-disc pl-5 text-sm">
+                            {associatedShoes.map(shoe => (
+                                <li key={shoe.id}>{shoe.name}</li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
             <Card>
               <CardHeader>
                   <CardTitle className="flex items-center gap-2">
