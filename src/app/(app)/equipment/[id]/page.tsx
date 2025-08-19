@@ -1,5 +1,4 @@
 
-
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
@@ -56,7 +55,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { EditEquipmentDialog, type UpdateEquipmentData } from '@/components/edit-equipment-dialog';
 import { toDate, toNullableDate, formatDate } from '@/lib/date-utils';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { BikeFitDialog } from '@/components/bike-fit-dialog';
 import { EBIKE_TYPES } from '@/lib/constants';
 import { CockpitIcon } from '@/components/icons/cockpit-icon';
@@ -394,17 +393,14 @@ export default function EquipmentDetailPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Wrench />
-                            Service & Support
+                            <FitInfoIcon className="h-5 w-5" />
+                            Cleat Position
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-2">
                         <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
-                            <Button>Edit Cleat Position</Button>
+                            <Button>Enter/Edit Cleat Position</Button>
                        </BikeFitDialog>
-                       <Button asChild variant="secondary">
-                        <Link href="/service-providers?service=bike-fitting">Book a Bike Fitting</Link>
-                       </Button>
                     </CardContent>
                 </Card>
             </div>

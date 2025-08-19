@@ -1,5 +1,4 @@
 
-
 import type { BikeType } from '@/lib/constants';
 import { Timestamp } from 'firebase/firestore';
 
@@ -122,7 +121,7 @@ export interface ServiceProvider {
   name: string;
   shopName?: string;
   logoUrl?: string;
-  services: ('bike-fitting' | 'repairs')[];
+  services: ('bike-fitting' | 'repairs' | 'rental')[];
   address: string;
   city: string;
   province: string;
