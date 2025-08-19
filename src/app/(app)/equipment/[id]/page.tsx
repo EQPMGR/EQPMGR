@@ -385,15 +385,8 @@ export default function EquipmentDetailPage() {
 
   if (isShoes) {
       return (
-          <div className="grid items-start gap-4 md:gap-8 lg:grid-cols-3">
-            <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-                {MainLayout}
-            </div>
-             <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
-                <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, equipment.id)}>
-                    <Button>Enter/Edit Cleat Position</Button>
-                </BikeFitDialog>
-            </div>
+          <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+              {MainLayout}
           </div>
       )
   }
