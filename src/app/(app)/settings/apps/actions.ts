@@ -48,7 +48,7 @@ async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
         if (Date.now() / 1000 > expiresAt - 300) {
             console.log("Strava token expired, refreshing...");
             const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-            const clientSecret = process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET;
+            const clientSecret = process.env.STRAVA_CLIENT_SECRET;
 
             const response = await fetch('https://www.strava.com/oauth/token', {
                 method: 'POST',

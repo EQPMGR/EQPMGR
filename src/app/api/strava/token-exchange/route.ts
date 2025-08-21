@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const { code } = await request.json();
 
     const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-    const clientSecret = process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET;
+    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
       console.error('Strava environment variables are not set correctly on the server.');

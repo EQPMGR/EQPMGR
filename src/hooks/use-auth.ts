@@ -1,3 +1,4 @@
+
 'use client';
 import { useContext } from 'react';
 import { AuthContext, type UserProfile } from '@/context/auth-context';

@@ -112,12 +112,13 @@ function ConnectedAppsManager() {
 
       const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
       if (clientId) {
+        // Construct the redirect URI using the current window's origin
         const redirectUri = window.location.origin + '/strava/callback';
         const params = new URLSearchParams({
           client_id: clientId,
           redirect_uri: redirectUri,
           response_type: 'code',
-          approval_prompt: 'force',
+          approval_prompt: 'force', // or 'auto'
           scope: 'read_all,profile:read_all,activity:read_all',
         });
         setStravaAuthUrl(`https://www.strava.com/oauth/authorize?${params.toString()}`);
@@ -139,7 +140,7 @@ function ConnectedAppsManager() {
     if (user) {
         const userDocRef = doc(db, "users", user.uid);
         await updateDoc(userDocRef, {
-            strava: null
+            strava: null // Or use deleteField()
         });
         toast({ title: 'Strava Disconnected' });
     }
@@ -175,7 +176,7 @@ function ConnectedAppsManager() {
                       <Button variant="destructive" onClick={handleStravaDisconnect}>Disconnect</Button>
                     ) : (
                       <Button asChild disabled={!stravaAuthUrl}>
-                        <Link href={stravaAuthUrl || '#'}>Connect</Link>
+                        <a href={stravaAuthUrl || '#'} target="_top">Connect with Strava</a>
                       </Button>
                     )}
                 </div>

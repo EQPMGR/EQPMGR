@@ -65,7 +65,11 @@ function StravaCallback() {
         }, { merge: true });
 
         // Set the session cookie after successful token exchange
-        await fetch('/api/auth/session', { method: 'POST' });
+        const idToken = await user.getIdToken(true);
+        await fetch('/api/auth/session', { 
+            method: 'POST',
+            body: idToken 
+        });
 
         toast({
           title: 'Strava Connected!',

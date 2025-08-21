@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC, useCallback, useMemo } from 'react';
@@ -32,6 +31,7 @@ export interface UserProfile {
   shoeSizeSystem: 'us' | 'uk' | 'eu';
   distanceUnit: 'km' | 'miles';
   dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
+  getIdToken: (forceRefresh?: boolean) => Promise<string>;
 }
 
 interface UserDocument {
@@ -57,7 +57,7 @@ interface AuthContextType {
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
-  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => Promise<void>;
+  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'>) => Promise<void>;
   updateUserPreferences: (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit' | 'dateFormat'>>) => Promise<void>;
   updateProfilePhoto: (photoDataUrl: string) => Promise<boolean>;
 }
@@ -81,16 +81,12 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     weight: data.weight,
     shoeSize: data.shoeSize,
     age: data.age,
+    getIdToken: (forceRefresh?: boolean) => authUser.getIdToken(forceRefresh),
   };
 };
 
 const setSessionCookie = async (user: User) => {
-    // This function should only be called for verified users.
-    if (!user.emailVerified) {
-        console.warn('setSessionCookie was called for an unverified user. Aborting.');
-        return;
-    }
-    const idToken = await user.getIdToken(true); // Force refresh the token
+    const idToken = await user.getIdToken(true);
     await fetch('/api/auth/session', {
       method: 'POST',
       body: idToken,
@@ -156,11 +152,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             }
         } else {
             // User is logged in but email is not verified.
-            // Do not set session cookie. Just set user state.
             const userDocSnap = await getDoc(userDocRef);
             const safeProfile = createSafeUserProfile(authUser, userDocSnap.data());
             setUser(safeProfile);
-            console.log("User is not verified. Session cookie not set.");
         }
       } else {
         // User is logged out.
