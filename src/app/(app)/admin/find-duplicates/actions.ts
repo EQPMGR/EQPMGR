@@ -1,7 +1,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin';
 
 /**
  * Merges multiple master components into a single primary component.
@@ -17,6 +17,7 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
   if (!primaryComponentId || !idsToMerge || idsToMerge.length === 0) {
     return { success: false, message: 'Missing primary component ID or IDs to merge.' };
   }
+  const adminDb = await getAdminDb();
   const batch = adminDb.batch();
 
   try {
@@ -73,6 +74,7 @@ export async function ignoreDuplicateGroup(key: string): Promise<{ success: bool
     if (!key) {
         return { success: false, message: 'A group key is required to ignore duplicates.' };
     }
+    const adminDb = await getAdminDb();
     
     try {
         const ignoredRef = adminDb.collection('ignoredDuplicates').doc(key);

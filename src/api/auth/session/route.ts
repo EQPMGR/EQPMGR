@@ -1,7 +1,7 @@
 
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 // This endpoint is called by the client to create a session cookie after a successful login.
 export async function POST(request: NextRequest) {
@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
     try {
+      const adminAuth = await getAdminAuth();
       // Verify the ID token first
       await adminAuth.verifyIdToken(idToken);
 

@@ -2,7 +2,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin';
 import type { MasterComponent } from '@/lib/types';
 
 
@@ -16,6 +16,7 @@ export interface MasterComponentWithOptions extends MasterComponent {
  */
 export async function fetchAllMasterComponents(): Promise<MasterComponentWithOptions[]> {
   try {
+    const adminDb = await getAdminDb();
     // Use the adminDb instance which has full privileges on the server.
     const querySnapshot = await adminDb.collection('masterComponents').get();
     const components: MasterComponentWithOptions[] = [];

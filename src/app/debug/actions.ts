@@ -2,7 +2,7 @@
 'use server';
 
 import { getDoc } from 'firebase/firestore';
-import { adminDb } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 
@@ -11,6 +11,7 @@ export async function getComponentForDebug(componentId: string): Promise<string>
         return "Please provide a component ID.";
     }
     try {
+        const adminDb = await getAdminDb();
         const docRef = adminDb.doc(`masterComponents/${componentId}`);
         const docSnap = await docRef.get();
 

@@ -25,18 +25,13 @@ const initializeAdminApp = () => {
   });
 };
 
-// Export functions that ensure the app is initialized before returning the service.
-function getAdminAuth() {
+// Export async functions that ensure the app is initialized before returning the service.
+export async function getAdminAuth() {
   initializeAdminApp();
   return admin.auth();
 }
 
-function getAdminDb() {
+export async function getAdminDb() {
   initializeAdminApp();
   return admin.firestore();
 }
-
-export const adminApp = initializeAdminApp();
-export const adminAuth = getAdminAuth();
-export const adminDb = getAdminDb();
-export { admin };

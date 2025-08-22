@@ -1,7 +1,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin';
 import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent } from '@/lib/types';
 import { z } from 'zod';
@@ -35,6 +35,7 @@ interface TrainingData {
 
 export async function getAvailableBrands(): Promise<string[]> {
     try {
+        const adminDb = await getAdminDb();
         const querySnapshot = await adminDb.collection("bikeModels").get();
         const brands = new Set<string>();
         querySnapshot.forEach((doc) => {
@@ -57,6 +58,7 @@ export async function saveBikeModelAction({
     values: AddBikeModelFormValues;
     importedTrainingData: Omit<TrainingData, 'userCorrectedOutput'> | null;
 }): Promise<{ success: boolean; message: string }> {
+    const adminDb = await getAdminDb();
     const batch = adminDb.batch();
 
     try {
