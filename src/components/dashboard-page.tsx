@@ -15,7 +15,6 @@ import { Bike, Wrench, AlertTriangle, ArrowUpRight, PlusCircle } from 'lucide-re
 import { formatDate } from '@/lib/date-utils';
 
 interface DashboardStats {
-    equipmentCount: number;
     openWorkOrders: WorkOrder[];
 }
 

@@ -3,15 +3,13 @@
 
 import { getAdminDb } from '@/lib/firebase-admin';
 import { getAdminAuth } from '@/lib/firebase-admin';
-import type { WorkOrder, Equipment } from '@/lib/types';
+import type { WorkOrder } from '@/lib/types';
 import { cookies } from 'next/headers';
 import { toDate } from '@/lib/date-utils';
 
 
 interface DashboardData {
-    equipmentCount: number;
     openWorkOrders: WorkOrder[];
-    // We can add more dashboard-specific data here in the future
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -26,12 +24,9 @@ export async function getDashboardData(): Promise<DashboardData> {
         
         const adminDb = await getAdminDb();
 
-        // Fetch equipment count
-        const equipmentQuery = adminDb.collection('users').doc(userId).collection('equipment');
-        const equipmentSnapshot = await equipmentQuery.get();
-        const equipmentCount = equipmentSnapshot.size;
-        
-        // Fetch open work orders
+        // Fetch open work orders by excluding completed or cancelled ones.
+        // Firestore does not support multiple 'not-in' or '!=' clauses on different fields in a single query.
+        // A more robust way is to fetch all and filter, or add a field like 'isOpen'. For now, fetching statuses that are NOT completed is best.
         const workOrdersQuery = adminDb.collection('workOrders')
             .where('userId', '==', userId)
             .where('status', 'in', ['pending', 'in-progress', 'accepted']);
@@ -51,7 +46,6 @@ export async function getDashboardData(): Promise<DashboardData> {
         });
 
         return {
-            equipmentCount,
             openWorkOrders,
         };
 
