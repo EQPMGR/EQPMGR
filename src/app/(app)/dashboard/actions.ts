@@ -16,7 +16,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     try {
         const session = cookies().get('__session')?.value || '';
         if (!session) {
-            throw new Error("User not authenticated");
+            // Instead of throwing an error, return an empty state.
+            // This handles cases where the client-side calls this before session is fully established.
+            return { openWorkOrders: [] };
         }
         const adminAuth = await getAdminAuth();
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
@@ -49,8 +51,9 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     } catch (error: any) {
         console.error("Error fetching dashboard data:", error);
-        if (error.message === "User not authenticated") {
-            throw error;
+        // If the error is due to an invalid session token, it's similar to not being authenticated.
+        if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/invalid-session-cookie') {
+            return { openWorkOrders: [] };
         }
         throw new Error("Could not fetch dashboard data from the server.");
     }

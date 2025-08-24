@@ -24,16 +24,21 @@ export function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    // Only fetch data if the user is logged in and their email is verified.
+    if (user && user.emailVerified) {
         getDashboardData()
             .then(data => {
                 setStats(data);
-                setIsLoading(false);
             })
             .catch(error => {
                 console.error("Failed to fetch dashboard stats:", error);
+            })
+            .finally(() => {
                 setIsLoading(false);
             });
+    } else if (user) {
+        // Handle the case where user is logged in but not verified
+        setIsLoading(false);
     }
   }, [user]);
 
