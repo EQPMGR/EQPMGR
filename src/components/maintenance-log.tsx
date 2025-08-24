@@ -1,4 +1,5 @@
 
+
 'use client';
 import {
   Card,
@@ -86,7 +87,7 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
                                             <TableCell><Badge variant={getBadgeVariant(entry.logType)} className="capitalize">{entry.logType || 'service'}</Badge></TableCell>
                                             <TableCell>
                                                 <p className="font-medium">{entry.description || entry.notes}</p>
-                                                <p className="text-xs text-muted-foreground">{entry.serviceType === 'diy' ? 'DIY' : (entry.serviceProvider || 'Shop')}</p>
+                                                <p className="text-xs text-muted-foreground">{entry.serviceType === 'diy' ? 'DIY' : (entry.shopName || entry.serviceProvider || 'Shop')}</p>
                                             </TableCell>
                                             <TableCell className="text-right">${(entry.cost || 0).toFixed(2)}</TableCell>
                                             </TableRow>

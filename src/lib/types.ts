@@ -62,6 +62,7 @@ export interface MaintenanceLog {
   cost: number;
   serviceType: 'diy' | 'shop';
   serviceProvider?: string;
+  shopName?: string;
   technician?: string;
   componentReplaced: boolean;
   isOEM?: boolean;
