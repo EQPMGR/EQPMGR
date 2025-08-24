@@ -88,7 +88,7 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
                                                 <p className="font-medium">{entry.description}</p>
                                                 <p className="text-xs text-muted-foreground">{entry.serviceType === 'diy' ? 'DIY' : entry.serviceProvider}</p>
                                             </TableCell>
-                                            <TableCell className="text-right">${entry.cost.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">${(entry.cost || 0).toFixed(2)}</TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
