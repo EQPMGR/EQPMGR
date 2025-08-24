@@ -37,7 +37,7 @@ interface MaintenanceLogProps {
 
 export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
   const { user } = useAuth();
-  const getBadgeVariant = (logType: MaintenanceLogType['logType']): 'secondary' | 'default' | 'outline' => {
+  const getBadgeVariant = (logType?: MaintenanceLogType['logType']): 'secondary' | 'default' | 'outline' => {
     switch (logType) {
         case 'repair': return 'secondary';
         case 'modification': return 'default';
@@ -83,10 +83,10 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
                                         sortedLog.map((entry) => (
                                             <TableRow key={entry.id}>
                                             <TableCell>{formatDate(entry.date, user?.dateFormat)}</TableCell>
-                                            <TableCell><Badge variant={getBadgeVariant(entry.logType)} className="capitalize">{entry.logType}</Badge></TableCell>
+                                            <TableCell><Badge variant={getBadgeVariant(entry.logType)} className="capitalize">{entry.logType || 'service'}</Badge></TableCell>
                                             <TableCell>
-                                                <p className="font-medium">{entry.description}</p>
-                                                <p className="text-xs text-muted-foreground">{entry.serviceType === 'diy' ? 'DIY' : entry.serviceProvider}</p>
+                                                <p className="font-medium">{entry.description || entry.notes}</p>
+                                                <p className="text-xs text-muted-foreground">{entry.serviceType === 'diy' ? 'DIY' : (entry.serviceProvider || 'Shop')}</p>
                                             </TableCell>
                                             <TableCell className="text-right">${(entry.cost || 0).toFixed(2)}</TableCell>
                                             </TableRow>
@@ -128,7 +128,7 @@ export function MaintenanceLog({ log, onAddLog }: MaintenanceLogProps) {
                   <TableCell>
                     {formatDate(entry.date, user?.dateFormat)}
                   </TableCell>
-                  <TableCell>{entry.description}</TableCell>
+                  <TableCell>{entry.description || entry.notes}</TableCell>
                 </TableRow>
               ))
             ) : (
