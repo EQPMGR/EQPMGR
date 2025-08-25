@@ -58,7 +58,7 @@ export async function testTextGeneration(): Promise<string> {
     try {
         console.log('[Debug Action] Testing Text Generation...');
         const { text } = await ai.generate({
-            model: 'googleai/gemini-2.5-flash-preview',
+            model: 'googleai/gemini-pro',
             prompt: 'Why is the sky blue? Be concise.',
         });
         console.log('[Debug Action] Text Generation successful.');
