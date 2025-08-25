@@ -190,26 +190,26 @@ export default function DebugPage() {
 
   return (
     <div className="space-y-6">
-        <Card className="max-w-md mx-auto">
-            <CardHeader>
-                <CardTitle>1. Server Environment Test</CardTitle>
-                <CardDescription>
-                This tests if the server environment has loaded the necessary API keys and credentials from your .env file. This is the most likely cause of the authentication issues.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button onClick={handleEnvCheck} disabled={isLoadingEnvTest}>
-                    {isLoadingEnvTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Check Server Environment
-                </Button>
-            </CardContent>
-            {envTestResult && (
-            <CardFooter>
-                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-all w-full bg-muted p-2 rounded-md">
-                    {envTestResult}
-                </pre>
-            </CardFooter>
-            )}
+       <Card className="max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>1. Server Environment Test</CardTitle>
+          <CardDescription>
+          This tests if the server environment has loaded the necessary API keys and credentials from your .env file. This is the most likely cause of the authentication issues.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleEnvCheck} disabled={isLoadingEnvTest}>
+            {isLoadingEnvTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Check Server Environment
+          </Button>
+        </CardContent>
+        {envTestResult && (
+        <CardFooter>
+          <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-all w-full bg-muted p-2 rounded-md">
+            {envTestResult}
+          </pre>
+        </CardFooter>
+        )}
        </Card>
 
        <Card className="max-w-md mx-auto">
@@ -256,7 +256,7 @@ export default function DebugPage() {
         <CardHeader>
           <CardTitle>4. Embedding Model Connection Test</CardTitle>
           <CardDescription>
-            This tests if the server can successfully authenticate with and call the Google AI API for embeddings (a different function than text generation).
+            This tests if the server can successfully authenticate with and call the Google AI API for embeddings (a different function than text generation). This only tests the embedding model.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -264,7 +264,7 @@ export default function DebugPage() {
             {isLoadingVertexTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Run Embedding Test
           </Button>
-        </Content>
+        </CardContent>
         {vertexTestResult && (
           <CardFooter>
             <p className="text-sm text-muted-foreground break-all">{vertexTestResult}</p>
