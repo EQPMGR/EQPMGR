@@ -19,7 +19,7 @@ export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetails
 
 const bikeExtractorPrompt = ai.definePrompt({
   name: 'bikeExtractorPrompt',
-  model: 'googleai/gemini-pro-vision',
+  model: 'googleai/gemini-pro',
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
   config: {
