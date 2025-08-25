@@ -12,3 +12,4 @@ export const ai = genkit({
   model: geminiPro,
   embedder: textEmbedding004,
 });
+
