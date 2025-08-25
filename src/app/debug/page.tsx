@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getComponentForDebug, testVertexAIConnection, getEnvironmentStatus } from './actions';
+import { getComponentForDebug, testVertexAIConnection, getEnvironmentStatus, testTextGeneration } from './actions';
 
 export default function DebugPage() {
   const { toast } = useToast();
@@ -34,6 +34,9 @@ export default function DebugPage() {
   
   const [isLoadingVertexTest, setIsLoadingVertexTest] = useState(false);
   const [vertexTestResult, setVertexTestResult] = useState<string | null>(null);
+  
+  const [isLoadingTextGenTest, setIsLoadingTextGenTest] = useState(false);
+  const [textGenTestResult, setTextGenTestResult] = useState<string | null>(null);
 
   const [isLoadingSessionTest, setIsLoadingSessionTest] = useState(false);
   const [sessionTestResult, setSessionTestResult] = useState<string | null>(null);
@@ -165,6 +168,26 @@ export default function DebugPage() {
     }
   };
 
+  const handleTextGenTest = async () => {
+    setIsLoadingTextGenTest(true);
+    setTextGenTestResult(null);
+    try {
+        const result = await testTextGeneration();
+        setTextGenTestResult(result);
+        if (result.startsWith('Success')) {
+            toast({ title: 'Success!', description: result });
+        } else {
+            toast({ variant: 'destructive', title: 'Connection Failed', description: result, duration: 9000 });
+        }
+    } catch (error: any) {
+        const msg = `An unexpected client-side error occurred: ${error.message}`;
+        setTextGenTestResult(msg);
+        toast({ variant: 'destructive', title: 'Test Failed', description: msg });
+    } finally {
+        setIsLoadingTextGenTest(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
         <Card className="max-w-md mx-auto">
@@ -208,20 +231,40 @@ export default function DebugPage() {
           </CardFooter>
         )}
       </Card>
+      
+       <Card className="max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>3. Text Generation Test</CardTitle>
+          <CardDescription>
+            This tests if the server can successfully call a text-generation model like Gemini. This is a more direct test for flows that create text.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleTextGenTest} disabled={isLoadingTextGenTest}>
+            {isLoadingTextGenTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Run Text Generation Test
+          </Button>
+        </CardContent>
+        {textGenTestResult && (
+          <CardFooter>
+            <p className="text-sm text-muted-foreground break-all">{textGenTestResult}</p>
+          </CardFooter>
+        )}
+      </Card>
 
       <Card className="max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>3. Vertex AI Connection Test</CardTitle>
+          <CardTitle>4. Embedding Model Connection Test</CardTitle>
           <CardDescription>
-            This tests if the server can successfully authenticate with and call the Google AI (Vertex AI) API for embeddings.
+            This tests if the server can successfully authenticate with and call the Google AI API for embeddings (a different function than text generation).
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={handleVertexTest} disabled={isLoadingVertexTest}>
             {isLoadingVertexTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Run AI Connection Test
+            Run Embedding Test
           </Button>
-        </CardContent>
+        </Content>
         {vertexTestResult && (
           <CardFooter>
             <p className="text-sm text-muted-foreground break-all">{vertexTestResult}</p>
