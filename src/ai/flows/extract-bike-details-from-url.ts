@@ -23,6 +23,7 @@ const bikeExtractorPrompt = ai.definePrompt({
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
   config: {
+    temperature: 0.2,
     safetySettings: [
         {
             category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
