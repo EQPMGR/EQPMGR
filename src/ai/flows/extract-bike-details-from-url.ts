@@ -12,6 +12,7 @@ import {
     ExtractBikeDetailsOutput,
     ExtractBikeDetailsOutputSchema
 } from '@/lib/ai-types';
+import { geminiPro } from '@genkit-ai/googleai';
 
 export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetailsInput): Promise<ExtractBikeDetailsOutput> {
   return extractBikeDetailsFlow(input);
@@ -19,6 +20,7 @@ export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetails
 
 const bikeExtractorPrompt = ai.definePrompt({
   name: 'bikeExtractorPrompt',
+  model: geminiPro,
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
   config: {
