@@ -180,7 +180,7 @@ function ConnectedAppsManager() {
                       </Button>
                     )}
                 </div>
-                 <div className="flex items-center justify-between p-4 border rounded-lg opacity-50">
+                 <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                         <h4 className="font-semibold">MapMyRide</h4>
                         <p className="text-sm text-muted-foreground">Not connected</p>
