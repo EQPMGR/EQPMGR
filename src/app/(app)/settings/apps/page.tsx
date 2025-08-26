@@ -115,7 +115,7 @@ function ConnectedAppsManager() {
       
       const stravaClientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
       if (stravaClientId) {
-        const stravaRedirectUri = (window.location.hostname === 'localhost' ? 'http://localhost:6000' : window.location.origin) + '/strava/callback';
+        const stravaRedirectUri = window.location.origin + '/strava/callback';
         const stravaParams = new URLSearchParams({
           client_id: stravaClientId,
           redirect_uri: stravaRedirectUri,
@@ -127,7 +127,7 @@ function ConnectedAppsManager() {
       }
       
       if (mapMyRideClientId) {
-          const mmrRedirectUri = 'http://localhost:6000/mapmyride/callback';
+          const mmrRedirectUri = window.location.origin + '/mapmyride/callback';
           const mmrParams = new URLSearchParams({
             client_id: mapMyRideClientId,
             response_type: 'code',
