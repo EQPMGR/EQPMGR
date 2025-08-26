@@ -112,7 +112,8 @@ function ConnectedAppsManager() {
 
       const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
       if (clientId) {
-        const redirectUri = window.location.origin + '/strava/callback';
+        // Correctly use http://localhost:6000 for local development
+        const redirectUri = (window.location.hostname === 'localhost' ? 'http://localhost:6000' : window.location.origin) + '/strava/callback';
         const params = new URLSearchParams({
           client_id: clientId,
           redirect_uri: redirectUri,
