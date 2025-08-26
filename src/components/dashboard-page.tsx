@@ -12,7 +12,7 @@ import type { WorkOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bike, Wrench, AlertTriangle, ArrowUpRight, PlusCircle } from 'lucide-react';
-import { formatDate } from '@/lib/date-utils';
+import { formatDate, toDate } from '@/lib/date-utils';
 
 interface DashboardStats {
     openWorkOrders: WorkOrder[];
@@ -28,7 +28,16 @@ export function DashboardPage() {
     if (user && user.emailVerified) {
         getDashboardData()
             .then(data => {
-                setStats(data);
+                // Since the server now sends ISO strings, we need to convert them back to Date objects on the client.
+                const hydratedWorkOrders = data.openWorkOrders.map(order => ({
+                    ...order,
+                    createdAt: toDate(order.createdAt),
+                    userConsent: {
+                        ...order.userConsent,
+                        timestamp: toDate(order.userConsent.timestamp)
+                    }
+                }))
+                setStats({ openWorkOrders: hydratedWorkOrders as WorkOrder[] });
             })
             .catch(error => {
                 console.error("Failed to fetch dashboard stats:", error);

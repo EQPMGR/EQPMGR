@@ -9,7 +9,7 @@ import { toDate } from '@/lib/date-utils';
 
 
 interface DashboardData {
-    openWorkOrders: WorkOrder[];
+    openWorkOrders: any[]; // Use `any` to allow for serialized dates
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -30,24 +30,24 @@ export async function getDashboardData(): Promise<DashboardData> {
             .where('status', 'not-in', ['completed', 'cancelled']);
             
         const workOrdersSnapshot = await workOrdersQuery.get();
+        
         const openWorkOrders = workOrdersSnapshot.docs.map(doc => {
             const data = doc.data();
             
-            // Defensive check for userConsent and its timestamp
-            const userConsent = data.userConsent && data.userConsent.timestamp ? {
-                ...data.userConsent,
-                timestamp: toDate(data.userConsent.timestamp)
-            } : {
-                consentGiven: data.userConsent?.consentGiven || false,
-                timestamp: new Date()
-            };
+            // This is the new, safer serialization logic.
+            // Convert all date objects to ISO strings before returning.
+            const userConsentTimestamp = data.userConsent?.timestamp ? toDate(data.userConsent.timestamp).toISOString() : new Date().toISOString();
+            const createdAtTimestamp = data.createdAt ? toDate(data.createdAt).toISOString() : new Date().toISOString();
 
             return {
                 ...data,
                 id: doc.id,
-                createdAt: data.createdAt ? toDate(data.createdAt) : new Date(),
-                userConsent: userConsent
-            } as WorkOrder;
+                createdAt: createdAtTimestamp,
+                userConsent: {
+                    ...data.userConsent,
+                    timestamp: userConsentTimestamp
+                }
+            };
         });
 
         return {
