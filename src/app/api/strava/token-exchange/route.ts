@@ -1,9 +1,32 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
+import { getAdminAuth } from '@/lib/firebase-admin';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { cookies } from 'next/headers';
+
+async function getUserIdFromSession(): Promise<string | null> {
+    const session = cookies().get('__session')?.value || '';
+    if (!session) {
+        return null;
+    }
+    try {
+        const decodedIdToken = await getAdminAuth().then(auth => auth.verifySessionCookie(session, true));
+        return decodedIdToken.uid;
+    } catch (error) {
+        console.error("Error verifying session cookie in token exchange:", error);
+        return null;
+    }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const { code } = await request.json();
+    const userId = await getUserIdFromSession();
+    
+    if (!userId) {
+        return NextResponse.json({ error: 'User is not authenticated.' }, { status: 401 });
+    }
 
     const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
     const clientSecret = process.env.STRAVA_CLIENT_SECRET;
@@ -40,7 +63,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: errorMessage }, { status: response.status });
     }
 
-    return NextResponse.json(data);
+    // Securely save the tokens to the user's document in Firestore
+    const userDocRef = doc(db, 'users', userId);
+    await setDoc(userDocRef, {
+        strava: {
+            id: data.athlete.id,
+            accessToken: data.access_token,
+            refreshToken: data.refresh_token,
+            expiresAt: data.expires_at,
+            scope: data.scope || '',
+            connectedAt: new Date().toISOString(),
+        }
+    }, { merge: true });
+
+    return NextResponse.json({ success: true, message: 'Strava connected successfully.' });
 
   } catch (err: any) {
     console.error('Token exchange handler error:', err);

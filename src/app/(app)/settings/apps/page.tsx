@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 import React, { useEffect, useState, Suspense } from "react";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Bike, ExternalLink, Loader2 } from "lucide-react";
@@ -104,21 +104,22 @@ function ConnectedAppsManager() {
   const mapMyRideClientId = process.env.NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID;
 
   const getStravaAuthUrl = () => {
-    if (!stravaClientId) return '';
-    // Strava's callback URL is the page we are currently on.
-    const redirectUri = window.location.origin + window.location.pathname;
+    if (!stravaClientId) return '#';
+    // Per Strava's docs for local dev, we redirect to localhost.
+    // The page at /exchange-token will handle the code.
+    const redirectUri = 'http://localhost:6000/exchange-token';
     const params = new URLSearchParams({
       client_id: stravaClientId,
       redirect_uri: redirectUri,
       response_type: 'code',
       approval_prompt: 'force',
-      scope: 'read_all,profile:read_all,activity:read_all',
+      scope: 'read,activity:read_all', // Request all necessary scopes
     });
     return `https://www.strava.com/oauth/authorize?${params.toString()}`;
   }
 
   const getMapMyRideAuthUrl = () => {
-      if (!mapMyRideClientId) return '';
+      if (!mapMyRideClientId) return '#';
       const redirectUri = `${window.location.origin}/mapmyride/callback`;
       const params = new URLSearchParams({
         client_id: mapMyRideClientId,
@@ -129,19 +130,16 @@ function ConnectedAppsManager() {
   }
 
   useEffect(() => {
-    // This effect handles the OAuth callback from Strava.
-    const stravaCode = searchParams.get('code');
-    const stravaError = searchParams.get('error');
+    // This effect runs on the settings page to check if it's being loaded
+    // with an auth code from an OAuth provider.
+    const service = searchParams.get('service');
+    const code = searchParams.get('code');
 
-    if (stravaError) {
-        toast({ variant: 'destructive', title: 'Strava Authorization Failed', description: 'Strava denied the connection request.' });
-        router.replace('/settings/apps'); // Clean URL
-    } else if (stravaCode && user) {
-        // Exchange the code for a token
+    if (user && code && service === 'strava') {
         fetch('/api/strava/token-exchange', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: stravaCode }),
+            body: JSON.stringify({ code }),
         })
         .then(res => res.ok ? res.json() : res.json().then(err => { throw new Error(err.error || 'Token exchange failed') }))
         .then(async (data) => {
@@ -156,9 +154,6 @@ function ConnectedAppsManager() {
                     connectedAt: new Date().toISOString(),
                 }
             }, { merge: true });
-
-            const idToken = await user.getIdToken(true);
-            await fetch('/api/auth/session', { method: 'POST', body: idToken });
             
             toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
         })
@@ -227,8 +222,8 @@ function ConnectedAppsManager() {
                     {stravaData ? (
                       <Button variant="destructive" onClick={handleStravaDisconnect}>Disconnect</Button>
                     ) : (
-                       <Button onClick={() => window.open(getStravaAuthUrl(), '_blank')} disabled={!stravaClientId}>
-                            Connect with Strava
+                       <Button asChild>
+                            <a href={getStravaAuthUrl()}>Connect with Strava</a>
                        </Button>
                     )}
                 </div>
