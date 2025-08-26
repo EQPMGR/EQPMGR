@@ -75,7 +75,14 @@ function StravaCallback() {
           title: 'Strava Connected!',
           description: 'Your account has been successfully linked.',
         });
-        router.push('/settings/apps');
+        
+        // This is a bit of a hack to get the settings page to reload
+        // after the new tab closes, but it's effective.
+        if (window.opener) {
+          window.opener.location.reload();
+        }
+        window.close();
+
       })
       .catch((err) => {
         setError(err.message);
@@ -108,7 +115,7 @@ function StravaCallback() {
             <AlertDescription>
               {error}
               <div className="mt-4">
-                 <button onClick={() => router.push('/settings/apps')} className="text-destructive-foreground underline">Return to Settings</button>
+                 <button onClick={() => window.close()} className="text-destructive-foreground underline">Return to Settings</button>
               </div>
             </AlertDescription>
           </Alert>

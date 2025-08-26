@@ -97,10 +97,33 @@ function ConnectedAppsManager() {
 
   const [stravaData, setStravaData] = useState<StravaData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [stravaAuthUrl, setStravaAuthUrl] = useState<string>('');
-  const [mapMyRideAuthUrl, setMapMyRideAuthUrl] = useState<string>('');
   
+  const stravaClientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
   const mapMyRideClientId = process.env.NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID;
+
+  const getStravaAuthUrl = () => {
+    if (!stravaClientId) return '';
+    const redirectUri = `${window.location.origin}/strava/callback`;
+    const params = new URLSearchParams({
+      client_id: stravaClientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      approval_prompt: 'force',
+      scope: 'read_all,profile:read_all,activity:read_all',
+    });
+    return `https://www.strava.com/oauth/authorize?${params.toString()}`;
+  }
+
+  const getMapMyRideAuthUrl = () => {
+      if (!mapMyRideClientId) return '';
+      const redirectUri = `${window.location.origin}/mapmyride/callback`;
+      const params = new URLSearchParams({
+        client_id: mapMyRideClientId,
+        response_type: 'code',
+        redirect_uri: redirectUri,
+      });
+      return `https://www.mapmyfitness.com/oauth2/authorize/?${params.toString()}`;
+  }
 
   useEffect(() => {
     if (user) {
@@ -113,34 +136,11 @@ function ConnectedAppsManager() {
         setIsLoading(false);
       });
       
-      const stravaClientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-      if (stravaClientId) {
-        const stravaRedirectUri = window.location.origin + '/strava/callback';
-        const stravaParams = new URLSearchParams({
-          client_id: stravaClientId,
-          redirect_uri: stravaRedirectUri,
-          response_type: 'code',
-          approval_prompt: 'force',
-          scope: 'read_all,profile:read_all,activity:read_all',
-        });
-        setStravaAuthUrl(`https://www.strava.com/oauth/authorize?${stravaParams.toString()}`);
-      }
-      
-      if (mapMyRideClientId) {
-          const mmrRedirectUri = window.location.origin + '/mapmyride/callback';
-          const mmrParams = new URLSearchParams({
-            client_id: mapMyRideClientId,
-            response_type: 'code',
-            redirect_uri: mmrRedirectUri,
-          });
-          setMapMyRideAuthUrl(`https://www.mapmyfitness.com/oauth2/authorize/?${mmrParams.toString()}`);
-      }
-
       return () => unsubscribe();
     } else {
         setIsLoading(false);
     }
-  }, [user, toast, mapMyRideClientId]);
+  }, [user, toast]);
 
   const handleStravaDisconnect = async () => {
     if (user) {
@@ -181,7 +181,7 @@ function ConnectedAppsManager() {
                     {stravaData ? (
                       <Button variant="destructive" onClick={handleStravaDisconnect}>Disconnect</Button>
                     ) : (
-                       <Button onClick={() => window.open(stravaAuthUrl, '_blank')} disabled={!stravaAuthUrl}>
+                       <Button onClick={() => window.open(getStravaAuthUrl(), '_blank')} disabled={!stravaClientId}>
                             Connect with Strava
                        </Button>
                     )}
@@ -191,7 +191,7 @@ function ConnectedAppsManager() {
                         <h4 className="font-semibold">MapMyRide</h4>
                         <p className="text-sm text-muted-foreground">Not connected</p>
                     </div>
-                     <Button onClick={() => window.open(mapMyRideAuthUrl, '_blank')} disabled={!mapMyRideAuthUrl}>
+                     <Button onClick={() => window.open(getMapMyRideAuthUrl(), '_blank')} disabled={!mapMyRideClientId}>
                         Connect with MapMyRide
                      </Button>
                 </div>
