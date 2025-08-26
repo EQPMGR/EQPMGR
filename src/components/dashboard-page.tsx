@@ -1,55 +1,69 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { useAuth } from "@/hooks/use-auth";
-import { getDashboardData } from '@/app/(app)/dashboard/actions';
 import type { WorkOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bike, Wrench, AlertTriangle, ArrowUpRight, PlusCircle } from 'lucide-react';
+import { Wrench, ArrowUpRight, PlusCircle } from 'lucide-react';
 import { formatDate, toDate } from '@/lib/date-utils';
-
-interface DashboardStats {
-    openWorkOrders: WorkOrder[];
-}
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const { toast } = useToast();
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Only fetch data if the user is logged in and their email is verified.
-    if (user && user.emailVerified) {
-        getDashboardData()
-            .then(data => {
-                // Since the server now sends ISO strings, we need to convert them back to Date objects on the client.
-                const hydratedWorkOrders = data.openWorkOrders.map(order => ({
-                    ...order,
-                    createdAt: toDate(order.createdAt),
-                    userConsent: {
-                        ...order.userConsent,
-                        timestamp: toDate(order.userConsent.timestamp)
-                    }
-                }))
-                setStats({ openWorkOrders: hydratedWorkOrders as WorkOrder[] });
-            })
-            .catch(error => {
-                console.error("Failed to fetch dashboard stats:", error);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    } else if (user) {
-        // Handle the case where user is logged in but not verified
-        setIsLoading(false);
+  const fetchWorkOrders = useCallback(async (uid: string) => {
+    setIsLoading(true);
+    try {
+      const workOrdersQuery = query(
+        collection(db, 'workOrders'),
+        where('userId', '==', uid),
+        where('status', 'not-in', ['completed', 'cancelled'])
+      );
+      const querySnapshot = await getDocs(workOrdersQuery);
+      const orders = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: toDate(data.createdAt),
+          userConsent: {
+            ...data.userConsent,
+            timestamp: toDate(data.userConsent?.timestamp),
+          }
+        } as WorkOrder;
+      });
+      setWorkOrders(orders);
+    } catch (error: any) {
+      console.error("Failed to fetch dashboard stats:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error Fetching Work Orders',
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [user]);
+  }, [toast]);
+
+  useEffect(() => {
+    if (user) {
+      fetchWorkOrders(user.uid);
+    } else {
+      setIsLoading(false);
+    }
+  }, [user, fetchWorkOrders]);
+
 
   const getStatusBadgeVariant = (status: WorkOrder['status']): 'secondary' | 'default' | 'outline' => {
       switch(status) {
@@ -69,10 +83,6 @@ export function DashboardPage() {
                   <Skeleton className="h-4 w-72" />
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Skeleton className="h-28 w-full" />
-                <Skeleton className="h-28 w-full" />
-              </div>
               <div className="mt-6">
                 <Skeleton className="h-64 w-full" />
               </div>
@@ -90,19 +100,7 @@ export function DashboardPage() {
           </p>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Service Due Soon</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Items needing attention</p>
-          </CardContent>
-        </Card>
-      </div>
-
+      
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -123,8 +121,8 @@ export function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats && stats.openWorkOrders.length > 0 ? (
-                  stats.openWorkOrders.map((order) => (
+                {workOrders && workOrders.length > 0 ? (
+                  workOrders.map((order) => (
                     <TableRow key={order.id}>
                       <TableCell className="font-medium">{order.providerName}</TableCell>
                       <TableCell>{order.equipmentName}</TableCell>
