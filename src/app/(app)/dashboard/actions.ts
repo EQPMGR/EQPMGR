@@ -45,7 +45,8 @@ export async function getDashboardData(): Promise<DashboardData> {
             return {
                 ...data,
                 id: doc.id,
-                createdAt: toDate(data.createdAt),
+                // Add a defensive check for createdAt as well.
+                createdAt: data.createdAt ? toDate(data.createdAt) : new Date(),
                 userConsent: userConsent
             } as WorkOrder;
         });
