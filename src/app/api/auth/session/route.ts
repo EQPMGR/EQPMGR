@@ -17,17 +17,22 @@ export async function POST(request: NextRequest) {
 
     try {
       const adminAuth = await getAdminAuth();
+      // Verify the ID token first to ensure it's valid
+      await adminAuth.verifyIdToken(idToken);
+      
       const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
       cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true, path: '/' });
 
       return NextResponse.json({ status: 'success' });
     } catch (error: any) {
+      console.log('--- Custom Error Catch Triggered ---');
+      // Log the detailed error on the server for debugging
       console.error('Error creating session cookie:', error);
 
-      // Provide a more specific error message back to the client
+      // Send a more specific error message back to the client
       let errorMessage = 'Failed to create session.';
       if (error.code === 'auth/invalid-id-token') {
-        errorMessage = 'The provided ID token is invalid or has expired. Please sign out and back in.';
+        errorMessage = 'The provided ID token is invalid or has expired. Please try signing out and back in.';
       } else if (error.code === 'auth/argument-error') {
         errorMessage = 'The ID token is malformed or has been revoked.';
       }
@@ -38,7 +43,10 @@ export async function POST(request: NextRequest) {
       }, { status: error.code === 'auth/invalid-id-token' || error.code === 'auth/argument-error' ? 401 : 500 });
     }
   } catch (outerError: any) {
+    console.log('--- Outer Catch Triggered ---');
     console.error('Error in POST function:', outerError);
+
+    // Return a generic error response from the outer catch
     return NextResponse.json({ error: 'An unexpected server error occurred.' }, { status: 500 });
   }
 }

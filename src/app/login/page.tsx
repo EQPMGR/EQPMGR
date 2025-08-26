@@ -74,11 +74,7 @@ export default function LoginPage() {
     try {
       await signInWithEmailPassword(data.email, data.password)
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Sign In Failed',
-        description: error.message || 'An unexpected error occurred.',
-      })
+      // Error is handled in the auth context
     } finally {
         setIsSubmitting(false);
     }
@@ -93,11 +89,7 @@ export default function LoginPage() {
         description: "You have successfully signed up.",
       })
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Sign Up Failed',
-        description: error.message || 'An unexpected error occurred.',
-      })
+      // Error is handled in the auth context
     } finally {
         setIsSubmitting(false);
     }

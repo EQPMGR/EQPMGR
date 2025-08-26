@@ -87,10 +87,15 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
 
 const setSessionCookie = async (user: User) => {
     const idToken = await user.getIdToken(true);
-    await fetch('/api/auth/session', {
+    const response = await fetch('/api/auth/session', {
       method: 'POST',
       body: idToken,
     });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to set session cookie.');
+    }
 };
 
 const clearSessionCookie = async () => {
@@ -120,41 +125,44 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (authUser) {
         const userDocRef = doc(db, 'users', authUser.uid);
         
-        if (authUser.emailVerified) {
-            try {
-              await setSessionCookie(authUser);
-              const userDocSnap = await getDoc(userDocRef);
-              let userDocData: UserDocument;
-              
-              if (userDocSnap.exists()) {
-                await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-                userDocData = userDocSnap.data() as UserDocument;
-              } else {
-                userDocData = {
-                  displayName: authUser.displayName || '',
-                  photoURL: authUser.photoURL || '',
-                  measurementSystem: 'imperial',
-                  shoeSizeSystem: 'us',
-                  distanceUnit: 'km',
-                  dateFormat: 'MM/DD/YYYY',
-                  createdAt: serverTimestamp(),
-                  lastLogin: serverTimestamp(),
-                };
-                await setDoc(userDocRef, userDocData);
-              }
-              
-              const safeProfile = createSafeUserProfile(authUser, userDocData);
-              setUser(safeProfile);
+        try {
+            // Always try to set the session cookie to ensure it's fresh
+            await setSessionCookie(authUser);
 
-            } catch (error) {
-                handleAuthError(error, 'Profile Sync Failed');
-                await firebaseSignOut(auth); // Sign out on error
+            if (authUser.emailVerified) {
+                const userDocSnap = await getDoc(userDocRef);
+                let userDocData: UserDocument;
+                
+                if (userDocSnap.exists()) {
+                  await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+                  userDocData = userDocSnap.data() as UserDocument;
+                } else {
+                  userDocData = {
+                    displayName: authUser.displayName || '',
+                    photoURL: authUser.photoURL || '',
+                    measurementSystem: 'imperial',
+                    shoeSizeSystem: 'us',
+                    distanceUnit: 'km',
+                    dateFormat: 'MM/DD/YYYY',
+                    createdAt: serverTimestamp(),
+                    lastLogin: serverTimestamp(),
+                  };
+                  await setDoc(userDocRef, userDocData);
+                }
+                
+                const safeProfile = createSafeUserProfile(authUser, userDocData);
+                setUser(safeProfile);
+
+            } else {
+                // User is logged in but email is not verified. Still create a session and basic profile.
+                const userDocSnap = await getDoc(userDocRef);
+                const safeProfile = createSafeUserProfile(authUser, userDocSnap.data());
+                setUser(safeProfile);
             }
-        } else {
-            // User is logged in but email is not verified.
-            const userDocSnap = await getDoc(userDocRef);
-            const safeProfile = createSafeUserProfile(authUser, userDocSnap.data());
-            setUser(safeProfile);
+
+        } catch (error) {
+            handleAuthError(error, 'Authentication Failed');
+            await firebaseSignOut(auth); // Sign out on session error
         }
       } else {
         // User is logged out.
