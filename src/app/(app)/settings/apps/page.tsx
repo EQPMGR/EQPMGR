@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Bike, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { fetchRecentStravaActivities, type StravaActivity } from './actions';
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface StravaData {
   id: number;
@@ -90,10 +91,11 @@ function StravaActivitySyncer() {
     );
 }
 
-
 function ConnectedAppsManager() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [stravaData, setStravaData] = useState<StravaData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,7 +105,8 @@ function ConnectedAppsManager() {
 
   const getStravaAuthUrl = () => {
     if (!stravaClientId) return '';
-    const redirectUri = `${window.location.origin}/strava/callback`;
+    // Strava's callback URL is the page we are currently on.
+    const redirectUri = window.location.origin + window.location.pathname;
     const params = new URLSearchParams({
       client_id: stravaClientId,
       redirect_uri: redirectUri,
@@ -126,6 +129,49 @@ function ConnectedAppsManager() {
   }
 
   useEffect(() => {
+    // This effect handles the OAuth callback from Strava.
+    const stravaCode = searchParams.get('code');
+    const stravaError = searchParams.get('error');
+
+    if (stravaError) {
+        toast({ variant: 'destructive', title: 'Strava Authorization Failed', description: 'Strava denied the connection request.' });
+        router.replace('/settings/apps'); // Clean URL
+    } else if (stravaCode && user) {
+        // Exchange the code for a token
+        fetch('/api/strava/token-exchange', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: stravaCode }),
+        })
+        .then(res => res.ok ? res.json() : res.json().then(err => { throw new Error(err.error || 'Token exchange failed') }))
+        .then(async (data) => {
+            const userDocRef = doc(db, 'users', user.uid);
+            await setDoc(userDocRef, {
+                strava: {
+                    id: data.athlete.id,
+                    accessToken: data.access_token,
+                    refreshToken: data.refresh_token,
+                    expiresAt: data.expires_at,
+                    scope: searchParams.get('scope'),
+                    connectedAt: new Date().toISOString(),
+                }
+            }, { merge: true });
+
+            const idToken = await user.getIdToken(true);
+            await fetch('/api/auth/session', { method: 'POST', body: idToken });
+            
+            toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
+        })
+        .catch((err) => {
+            toast({ variant: 'destructive', title: 'Connection Failed', description: err.message });
+        })
+        .finally(() => {
+            router.replace('/settings/apps'); // Clean URL after processing
+        });
+    }
+  }, [searchParams, user, router, toast]);
+
+  useEffect(() => {
     if (user) {
       const userDocRef = doc(db, 'users', user.uid);
       const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
@@ -140,7 +186,7 @@ function ConnectedAppsManager() {
     } else {
         setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
   const handleStravaDisconnect = async () => {
     if (user) {
