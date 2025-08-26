@@ -16,10 +16,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     try {
         const session = cookies().get('__session')?.value || '';
         if (!session) {
-            // Instead of throwing an error, return an empty state.
-            // This handles cases where the client-side calls this before session is fully established.
-            return { openWorkOrders: [] };
+            // This is a more explicit way to handle unauthenticated state.
+            // Throwing an error here will be caught below and can be handled by the client.
+            throw new Error('User not authenticated.');
         }
+        
         const adminAuth = await getAdminAuth();
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
         const userId = decodedIdToken.uid;
@@ -38,6 +39,7 @@ export async function getDashboardData(): Promise<DashboardData> {
                 ...data,
                 id: doc.id,
                 createdAt: toDate(data.createdAt),
+                // Ensure nested timestamps are also converted
                 userConsent: {
                     ...data.userConsent,
                     timestamp: toDate(data.userConsent.timestamp)
@@ -51,10 +53,12 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     } catch (error: any) {
         console.error("Error fetching dashboard data:", error);
-        // If the error is due to an invalid session token, it's similar to not being authenticated.
-        if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/invalid-session-cookie') {
-            return { openWorkOrders: [] };
+        // Instead of returning an empty array on auth errors, re-throw a more specific error.
+        // This allows the client-side to know there was an auth problem.
+        if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/invalid-session-cookie' || error.message === 'User not authenticated.') {
+            throw new Error('Authentication session has expired. Please sign out and sign back in.');
         }
+        // For other types of errors, throw a generic message.
         throw new Error("Could not fetch dashboard data from the server.");
     }
 }
