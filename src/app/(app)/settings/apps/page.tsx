@@ -112,17 +112,17 @@ function ConnectedAppsManager() {
 
       const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
       if (clientId) {
-        // Construct the redirect URI using the current window's origin
         const redirectUri = window.location.origin + '/strava/callback';
         const params = new URLSearchParams({
           client_id: clientId,
           redirect_uri: redirectUri,
           response_type: 'code',
-          approval_prompt: 'force', // or 'auto'
+          approval_prompt: 'force',
           scope: 'read_all,profile:read_all,activity:read_all',
         });
         setStravaAuthUrl(`https://www.strava.com/oauth/authorize?${params.toString()}`);
       } else {
+        console.error("Strava Client ID is not configured in environment variables.");
         toast({
           variant: 'destructive',
           title: 'Configuration Error',
@@ -136,11 +136,17 @@ function ConnectedAppsManager() {
     }
   }, [user, toast]);
 
+  const handleStravaConnect = () => {
+      if (stravaAuthUrl) {
+          window.open(stravaAuthUrl, '_blank');
+      }
+  }
+
   const handleStravaDisconnect = async () => {
     if (user) {
         const userDocRef = doc(db, "users", user.uid);
         await updateDoc(userDocRef, {
-            strava: null // Or use deleteField()
+            strava: null
         });
         toast({ title: 'Strava Disconnected' });
     }
@@ -175,8 +181,8 @@ function ConnectedAppsManager() {
                     {stravaData ? (
                       <Button variant="destructive" onClick={handleStravaDisconnect}>Disconnect</Button>
                     ) : (
-                      <Button asChild disabled={!stravaAuthUrl}>
-                        <a href={stravaAuthUrl || '#'} target="_top">Connect with Strava</a>
+                      <Button onClick={handleStravaConnect} disabled={!stravaAuthUrl}>
+                        Connect with Strava
                       </Button>
                     )}
                 </div>
