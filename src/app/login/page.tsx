@@ -31,6 +31,7 @@ import { Logo } from "@/components/logo";
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -54,9 +55,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      if (router.pathname !== '/settings/profile') {
-         router.push('/');
-      }
+      router.push('/');
     }
   }, [user, router]);
 
@@ -155,6 +154,7 @@ export default function LoginPage() {
                         )}
                       />
                       <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isSubmitting ? 'Signing In...' : 'Sign In'}
                       </Button>
                     </form>
