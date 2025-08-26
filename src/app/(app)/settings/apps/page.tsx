@@ -99,6 +99,8 @@ function ConnectedAppsManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [stravaAuthUrl, setStravaAuthUrl] = useState<string>('');
   const [mapMyRideAuthUrl, setMapMyRideAuthUrl] = useState<string>('');
+  
+  const mapMyRideClientId = process.env.NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID;
 
   useEffect(() => {
     if (user) {
@@ -124,11 +126,10 @@ function ConnectedAppsManager() {
         setStravaAuthUrl(`https://www.strava.com/oauth/authorize?${stravaParams.toString()}`);
       }
       
-      const mmrClientId = process.env.NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID;
-      if (mmrClientId) {
-          const mmrRedirectUri = (window.location.hostname === 'localhost' ? 'http://localhost:6000' : window.location.origin) + '/mapmyride/callback';
+      if (mapMyRideClientId) {
+          const mmrRedirectUri = 'http://localhost:6000/mapmyride/callback';
           const mmrParams = new URLSearchParams({
-            client_id: mmrClientId,
+            client_id: mapMyRideClientId,
             response_type: 'code',
             redirect_uri: mmrRedirectUri,
           });
@@ -139,13 +140,7 @@ function ConnectedAppsManager() {
     } else {
         setIsLoading(false);
     }
-  }, [user, toast]);
-
-  const handleConnect = (url: string) => {
-      if (url) {
-          window.open(url, '_blank');
-      }
-  }
+  }, [user, toast, mapMyRideClientId]);
 
   const handleStravaDisconnect = async () => {
     if (user) {
@@ -186,9 +181,9 @@ function ConnectedAppsManager() {
                     {stravaData ? (
                       <Button variant="destructive" onClick={handleStravaDisconnect}>Disconnect</Button>
                     ) : (
-                      <Button onClick={() => handleConnect(stravaAuthUrl)} disabled={!stravaAuthUrl}>
-                        Connect with Strava
-                      </Button>
+                       <Button onClick={() => window.open(stravaAuthUrl, '_blank')} disabled={!stravaAuthUrl}>
+                            Connect with Strava
+                       </Button>
                     )}
                 </div>
                  <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -196,7 +191,9 @@ function ConnectedAppsManager() {
                         <h4 className="font-semibold">MapMyRide</h4>
                         <p className="text-sm text-muted-foreground">Not connected</p>
                     </div>
-                    <Button onClick={() => handleConnect(mapMyRideAuthUrl)} disabled={!mapMyRideAuthUrl}>Connect with MapMyRide</Button>
+                     <Button onClick={() => window.open(mapMyRideAuthUrl, '_blank')} disabled={!mapMyRideAuthUrl}>
+                        Connect with MapMyRide
+                     </Button>
                 </div>
             </CardContent>
         </Card>
