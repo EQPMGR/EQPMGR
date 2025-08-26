@@ -98,6 +98,7 @@ function ConnectedAppsManager() {
   const [stravaData, setStravaData] = useState<StravaData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [stravaAuthUrl, setStravaAuthUrl] = useState<string>('');
+  const [mapMyRideAuthUrl, setMapMyRideAuthUrl] = useState<string>('');
 
   useEffect(() => {
     if (user) {
@@ -109,26 +110,29 @@ function ConnectedAppsManager() {
         }
         setIsLoading(false);
       });
-
-      const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-      if (clientId) {
-        // Correctly use http://localhost:6000 for local development
-        const redirectUri = (window.location.hostname === 'localhost' ? 'http://localhost:6000' : window.location.origin) + '/strava/callback';
-        const params = new URLSearchParams({
-          client_id: clientId,
-          redirect_uri: redirectUri,
+      
+      const stravaClientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+      if (stravaClientId) {
+        const stravaRedirectUri = (window.location.hostname === 'localhost' ? 'http://localhost:6000' : window.location.origin) + '/strava/callback';
+        const stravaParams = new URLSearchParams({
+          client_id: stravaClientId,
+          redirect_uri: stravaRedirectUri,
           response_type: 'code',
           approval_prompt: 'force',
           scope: 'read_all,profile:read_all,activity:read_all',
         });
-        setStravaAuthUrl(`https://www.strava.com/oauth/authorize?${params.toString()}`);
-      } else {
-        console.error("Strava Client ID is not configured in environment variables.");
-        toast({
-          variant: 'destructive',
-          title: 'Configuration Error',
-          description: 'Strava integration is not configured correctly.',
-        });
+        setStravaAuthUrl(`https://www.strava.com/oauth/authorize?${stravaParams.toString()}`);
+      }
+      
+      const mmrClientId = process.env.NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID;
+      if (mmrClientId) {
+          const mmrRedirectUri = (window.location.hostname === 'localhost' ? 'http://localhost:6000' : window.location.origin) + '/mapmyride/callback';
+          const mmrParams = new URLSearchParams({
+            client_id: mmrClientId,
+            response_type: 'code',
+            redirect_uri: mmrRedirectUri,
+          });
+          setMapMyRideAuthUrl(`https://www.mapmyfitness.com/oauth2/authorize/?${mmrParams.toString()}`);
       }
 
       return () => unsubscribe();
@@ -137,9 +141,9 @@ function ConnectedAppsManager() {
     }
   }, [user, toast]);
 
-  const handleStravaConnect = () => {
-      if (stravaAuthUrl) {
-          window.open(stravaAuthUrl, '_blank');
+  const handleConnect = (url: string) => {
+      if (url) {
+          window.open(url, '_blank');
       }
   }
 
@@ -182,7 +186,7 @@ function ConnectedAppsManager() {
                     {stravaData ? (
                       <Button variant="destructive" onClick={handleStravaDisconnect}>Disconnect</Button>
                     ) : (
-                      <Button onClick={handleStravaConnect} disabled={!stravaAuthUrl}>
+                      <Button onClick={() => handleConnect(stravaAuthUrl)} disabled={!stravaAuthUrl}>
                         Connect with Strava
                       </Button>
                     )}
@@ -192,7 +196,7 @@ function ConnectedAppsManager() {
                         <h4 className="font-semibold">MapMyRide</h4>
                         <p className="text-sm text-muted-foreground">Not connected</p>
                     </div>
-                    <Button disabled>Connect with MapMyRide</Button>
+                    <Button onClick={() => handleConnect(mapMyRideAuthUrl)} disabled={!mapMyRideAuthUrl}>Connect with MapMyRide</Button>
                 </div>
             </CardContent>
         </Card>
