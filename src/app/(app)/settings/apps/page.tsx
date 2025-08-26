@@ -185,7 +185,7 @@ function ConnectedAppsManager() {
                         <h4 className="font-semibold">MapMyRide</h4>
                         <p className="text-sm text-muted-foreground">Not connected</p>
                     </div>
-                    <Button disabled>Connect</Button>
+                    <Button disabled>Connect with MapMyRide</Button>
                 </div>
             </CardContent>
         </Card>
