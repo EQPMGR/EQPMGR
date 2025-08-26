@@ -14,7 +14,7 @@ interface DashboardData {
 
 export async function getDashboardData(): Promise<DashboardData> {
     try {
-        const session = cookies().get('__session')?.value || '';
+        const session = cookies().get('__session')?.value;
         if (!session) {
             throw new Error('User not authenticated.');
         }
@@ -34,18 +34,17 @@ export async function getDashboardData(): Promise<DashboardData> {
             const data = doc.data();
             
             // Defensive check for userConsent and its timestamp
-            const userConsent = data.userConsent ? {
+            const userConsent = data.userConsent && data.userConsent.timestamp ? {
                 ...data.userConsent,
-                timestamp: data.userConsent.timestamp ? toDate(data.userConsent.timestamp) : new Date()
+                timestamp: toDate(data.userConsent.timestamp)
             } : {
-                consentGiven: false,
+                consentGiven: data.userConsent?.consentGiven || false,
                 timestamp: new Date()
             };
 
             return {
                 ...data,
                 id: doc.id,
-                // Add a defensive check for createdAt as well.
                 createdAt: data.createdAt ? toDate(data.createdAt) : new Date(),
                 userConsent: userConsent
             } as WorkOrder;
@@ -57,9 +56,10 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     } catch (error: any) {
         console.error("Error fetching dashboard data:", error);
-        if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/invalid-session-cookie' || error.message === 'User not authenticated.') {
+        if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/invalid-session-cookie') {
             throw new Error('Authentication session has expired. Please sign out and sign back in.');
         }
-        throw new Error("Could not fetch dashboard data from the server. A server-side error occurred.");
+        // Throw a more generic but informative error for other cases
+        throw new Error("Could not fetch dashboard data from the server. An unexpected error occurred.");
     }
 }
