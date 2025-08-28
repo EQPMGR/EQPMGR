@@ -1,8 +1,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { cookies } from 'next/headers';
 
 async function getUserIdFromSession(): Promise<string | null> {
@@ -11,7 +10,8 @@ async function getUserIdFromSession(): Promise<string | null> {
         return null;
     }
     try {
-        const decodedIdToken = await getAdminAuth().then(auth => auth.verifySessionCookie(session, true));
+        const adminAuth = await getAdminAuth();
+        const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
         return decodedIdToken.uid;
     } catch (error) {
         console.error("Error verifying session cookie in token exchange:", error);
@@ -64,7 +64,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Securely save the tokens to the user's document in Firestore
-    const userDocRef = doc(db, 'users', userId);
+    const adminDb = await getAdminDb();
+    const userDocRef = doc(adminDb, 'users', userId);
     await setDoc(userDocRef, {
         strava: {
             id: data.athlete.id,

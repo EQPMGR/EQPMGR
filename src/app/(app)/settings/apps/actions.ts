@@ -4,7 +4,7 @@
 import { cookies } from 'next/headers';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { adminAuth, adminApp } from '@/lib/firebase-admin';
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 export interface StravaActivity {
   id: number;
@@ -32,6 +32,7 @@ async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
     }
 
     try {
+        const adminAuth = await getAdminAuth();
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
         const userDocRef = doc(db, 'users', decodedIdToken.uid);
         const userDocSnap = await getDoc(userDocRef);

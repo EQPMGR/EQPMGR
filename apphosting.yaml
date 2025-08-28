@@ -5,3 +5,9 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+  # Set a longer timeout for server actions to accommodate AI flows.
+  serverActionTimeoutSeconds: 300
+# Define the environment variables and secrets the application needs.
+env:
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
