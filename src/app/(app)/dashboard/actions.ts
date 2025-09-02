@@ -63,4 +63,3 @@ export async function getDashboardData(): Promise<DashboardData> {
         throw new Error("Could not fetch dashboard data from the server. An unexpected error occurred.");
     }
 }
-
