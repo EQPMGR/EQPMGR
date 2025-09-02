@@ -28,7 +28,7 @@ export function DashboardPage() {
       const workOrdersQuery = query(
         collection(db, 'workOrders'),
         where('userId', '==', uid),
-        where('status', 'not-in', ['completed', 'cancelled'])
+        where('status', 'not-in', ['Completed', 'cancelled'])
       );
       const querySnapshot = await getDocs(workOrdersQuery);
       const orders = querySnapshot.docs.map(doc => {
