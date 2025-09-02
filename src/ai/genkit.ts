@@ -2,13 +2,16 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 import { geminiPro, textEmbedding004 } from '@genkit-ai/googleai';
+import { accessSecret } from '@/lib/secrets';
 
-// This configuration explicitly uses the GEMINI_API_KEY from your .env file.
-// This is required for Genkit to authenticate with the Google AI services.
+// A function to initialize the Google AI plugin with the key from Secret Manager
+const initializeGoogleAI = async () => {
+  const geminiApiKey = await accessSecret('gemini-api-key');
+  return googleAI({ apiKey: geminiApiKey });
+};
+
+// We now initialize genkit asynchronously to fetch the API key
 export const ai = genkit({
-  plugins: [googleAI({
-    apiKey: process.env.GEMINI_API_KEY
-  })],
+  plugins: [await initializeGoogleAI()],
   embedder: textEmbedding004,
 });
-

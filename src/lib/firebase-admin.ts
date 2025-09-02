@@ -11,15 +11,10 @@ const initializeAdminApp = async () => {
     return admin.app();
   }
 
-  // In a production/Cloud Run environment, fetch from Secret Manager.
-  // For local development, it will fall back to .env variables.
+  // Fetch secrets from Secret Manager for all environments.
   const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.NODE_ENV === 'production' 
-    ? await accessSecret('firebase-client-email') 
-    : process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.NODE_ENV === 'production' 
-    ? await accessSecret('firebase-private-key')
-    : process.env.FIREBASE_PRIVATE_KEY;
+  const clientEmail = await accessSecret('firebase-client-email');
+  const privateKey = await accessSecret('firebase-private-key');
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error('Firebase Admin SDK credentials are not set correctly. Check your environment variables or Secret Manager secrets (firebase-client-email, firebase-private-key).');
