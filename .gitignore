@@ -31,8 +31,6 @@ pnpm-debug.log*
 !.env.local.template
 /config/dev.json
 
-# vercel
-.vercel
 
 # typescript
 *.tsbuildinfo
