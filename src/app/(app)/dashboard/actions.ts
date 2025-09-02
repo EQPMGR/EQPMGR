@@ -27,7 +27,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
         const workOrdersQuery = adminDb.collection('workOrders')
             .where('userId', '==', userId)
-            .where('status', 'in', ['pending', 'accepted', 'in-progress']);
+            .where('status', '!=', 'Completed');
             
         const workOrdersSnapshot = await workOrdersQuery.get();
         
