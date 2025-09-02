@@ -15,24 +15,14 @@ const initializeAdminApp = () => {
   return admin.initializeApp();
 };
 
-// A flag to ensure initialization only runs once
-let adminAppInitializationPromise: Promise<admin.app.App> | null = null;
+// Initialize the app right away
+initializeAdminApp();
 
-const ensureAdminAppInitialized = () => {
-  if (!adminAppInitializationPromise) {
-    adminAppInitializationPromise = Promise.resolve(initializeAdminApp());
-  }
-  return adminAppInitializationPromise;
-};
-
-
-// Export async functions that ensure the app is initialized before returning the service.
+// Export functions that return the services from the initialized app.
 export async function getAdminAuth() {
-  await ensureAdminAppInitialized();
   return admin.auth();
 }
 
 export async function getAdminDb() {
-  await ensureAdminAppInitialized();
   return admin.firestore();
 }
