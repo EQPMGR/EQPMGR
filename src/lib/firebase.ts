@@ -21,7 +21,7 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const db = getFirestore(app);
 
-// Initialize Analytics only on the client side
+// Initialize Analytics only on the client side if supported
 if (typeof window !== 'undefined') {
   isSupported().then(supported => {
     if (supported) {
