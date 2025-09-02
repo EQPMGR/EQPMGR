@@ -1,13 +1,17 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 
-// This file is for the browser, and it will get its configuration
-// from an environment variable we will set during deployment.
-
-const firebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_CONFIG;
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: "eqpmgr-test.firebaseapp.com",
+  projectId: "eqpmgr-test",
+  storageBucket: "eqpmgr-test.firebasestorage.app",
+  messagingSenderId: "298785422478",
+  appId: "1:298785422478:web:083473c4625749ef24dddf",
+};
 
 let app;
 if (getApps().length === 0) {
-  app = initializeApp(JSON.parse(firebaseConfig!));
+  app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
 }
