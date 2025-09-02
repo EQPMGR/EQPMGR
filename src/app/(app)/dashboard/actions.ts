@@ -27,7 +27,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
         const workOrdersQuery = adminDb.collection('workOrders')
             .where('userId', '==', userId)
-            .where('status', '!=', 'Completed');
+            .where('status', 'not-in', ['Completed', 'completed', 'Cancelled', 'cancelled']);
             
         const workOrdersSnapshot = await workOrdersQuery.get();
         
@@ -63,3 +63,4 @@ export async function getDashboardData(): Promise<DashboardData> {
         throw new Error("Could not fetch dashboard data from the server. An unexpected error occurred.");
     }
 }
+
