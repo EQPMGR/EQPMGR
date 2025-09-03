@@ -1,21 +1,34 @@
-# See https://firebase.google.com/docs/hosting/app-hosting/apphosting-yaml
+# Settings for Cloud Run (your backend instance)
 runConfig:
   cpu: 1
   memoryMiB: 1024
-  env:
-    - variable: GEMINI_API_KEY
-      secret: GEMINI_API_KEY
-    - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-      secret: FIREBASE_API_KEY
-    - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-      secret: FIREBASE_AUTH_DOMAIN
-    - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-      secret: FIREBASE_PROJECT_ID
-    - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-      secret: FIREBASE_STORAGE_BUCKET
-    - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-      secret: FIREBASE_MESSAGING_SENDER_ID
-    - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-      secret: FIREBASE_APP_ID
-    - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-      secret: FIREBASE_MEASUREMENT_ID
+
+# Environment variables and secrets for your runtime (they are NOT under runConfig)
+env:
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+
+  # The NEXT_PUBLIC_ variables are often needed at BUILD time for Next.js.
+  # If they are only set here (runtime env), your Next.js build might not
+  # pick them up for the client-side bundle. You might need a 'build.env' block too.
+  # For now, let's just fix the indentation.
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: FIREBASE_API_KEY
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    secret: FIREBASE_AUTH_DOMAIN
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    secret: FIREBASE_PROJECT_ID
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    secret: FIREBASE_STORAGE_BUCKET
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    secret: FIREBASE_MESSAGING_SENDER_ID
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: FIREBASE_APP_ID
+  - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    secret: FIREBASE_MEASUREMENT_ID
+
+# If you also have build-time environment variables, they would go here:
+# build:
+#   env:
+#     - variable: MY_BUILD_VAR
+#       value: "build_time_value"
