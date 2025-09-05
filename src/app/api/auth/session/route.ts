@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const adminAuth = await getAdminAuth();
-      // Verify the ID token first
+      // Verify the ID token first. This is a crucial step.
       await adminAuth.verifyIdToken(idToken);
 
       const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
@@ -25,27 +25,25 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ status: 'success' });
     } catch (error: any) {
-      console.log('--- Custom Error Catch Triggered ---');
       // Log the detailed error on the server for debugging
       console.error('Error creating session cookie:', error);
 
-      // Send a more specific error message back to the client
+      // Send a more specific error message back to the client based on the error code
       let errorMessage = 'Failed to create session.';
       if (error.code === 'auth/invalid-id-token' || error.code === 'auth/id-token-revoked' || error.code === 'auth/id-token-expired') {
         errorMessage = 'The ID token is malformed or has been revoked.';
       } else if (error.code === 'auth/argument-error') {
-        errorMessage = 'The ID token is malformed or has been revoked.';
+          errorMessage = 'The ID token is malformed or has been revoked.';
       }
-
+      
+      // Always return a 401 for auth-related errors.
       return NextResponse.json({
         error: errorMessage,
         fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
       }, { status: 401 });
     }
   } catch (outerError: any) {
-    console.log('--- Outer Catch Triggered ---');
     console.error('Error in POST function:', outerError);
-
     // Return a generic error response from the outer catch
     return NextResponse.json({ error: 'An unexpected server error occurred.' }, { status: 500 });
   }
