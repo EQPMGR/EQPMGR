@@ -17,25 +17,32 @@ export async function POST(request: NextRequest) {
 
     try {
       const adminAuth = await getAdminAuth();
-      // First, verify the ID token to ensure it's valid and not revoked.
-      // The `true` checks for revocation.
-      await adminAuth.verifyIdToken(idToken, true);
-
-      // If verification is successful, create the session cookie.
+      // createSessionCookie() verifies the ID token and then creates the session cookie.
+      // This is the correct, one-step process for creating a session.
       const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+      
       cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true, path: '/' });
 
       return NextResponse.json({ status: 'success' });
+
     } catch (error: any) {
       console.error('Error creating session cookie:', error);
-      let errorMessage = 'An unexpected error occurred.';
+
+      // Provide a more specific error message based on the Firebase error code.
+      let errorMessage = 'An unexpected error occurred while creating the session.';
       let statusCode = 500;
       
       switch (error.code) {
         case 'auth/invalid-id-token':
+          errorMessage = 'The ID token provided is invalid.';
+          statusCode = 401;
+          break;
         case 'auth/id-token-revoked':
+          errorMessage = 'The ID token has been revoked.';
+          statusCode = 401;
+          break;
         case 'auth/id-token-expired':
-            errorMessage = 'The ID token is malformed or has been revoked.';
+            errorMessage = 'The ID token has expired.';
             statusCode = 401;
             break;
         case 'auth/argument-error':
