@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
 
     try {
       const adminAuth = await getAdminAuth();
-      // Verify the ID token first to ensure it's valid
+      // Verify the ID token first
       await adminAuth.verifyIdToken(idToken);
-      
+
       const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
       cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true, path: '/' });
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       // Send a more specific error message back to the client
       let errorMessage = 'Failed to create session.';
       if (error.code === 'auth/invalid-id-token') {
-        errorMessage = 'The provided ID token is invalid or has expired. Please try signing out and back in.';
+        errorMessage = 'The provided ID token is invalid or has been revoked. Please try signing out and back in.';
       } else if (error.code === 'auth/argument-error') {
         errorMessage = 'The ID token is malformed or has been revoked.';
       }
