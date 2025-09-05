@@ -156,7 +156,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             setUser(safeProfile);
 
         } catch (error: any) {
-            // THIS IS THE NEW LOGIC
             // If setting the session fails (e.g., stale token), sign the user out
             // to clear the invalid client-side state.
             console.error("Session creation failed, forcing logout:", error.message);
