@@ -50,10 +50,14 @@ export default function DebugPage() {
       setIsLoadingSessionTest(true);
       setSessionTestResult(null);
       try {
+          // Force a token refresh to ensure we have a valid token.
           const idToken = await auth.currentUser.getIdToken(true);
           const response = await fetch('/api/auth/session', {
               method: 'POST',
-              body: idToken,
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ idToken }),
           });
 
           const result = await response.json();
@@ -172,7 +176,7 @@ export default function DebugPage() {
         <CardHeader>
           <CardTitle>1. Server Environment Test</CardTitle>
           <CardDescription>
-          This tests if the server environment has loaded the necessary API keys and credentials from your .env file. This is the most likely cause of the authentication issues.
+          This tests if the server environment has loaded the necessary API keys and credentials from your .env file.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -194,7 +198,7 @@ export default function DebugPage() {
         <CardHeader>
           <CardTitle>2. Session Cookie Test</CardTitle>
           <CardDescription>
-            This tests if the server can create a session cookie, which is required for all authenticated server actions.
+            This tests if the server can create a session cookie, which is required for all authenticated server actions. It sends a fresh ID token directly to the API endpoint.
           </CardDescription>
         </CardHeader>
         <CardContent>
