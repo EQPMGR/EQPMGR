@@ -1,7 +1,21 @@
 
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import * as admin from 'firebase-admin';
+
+// Initialize Firebase Admin SDK
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      // When deployed, this will use the service account from the environment.
+      // For local dev, it relies on `gcloud auth application-default login`.
+      credential: admin.credential.applicationDefault(),
+    });
+  } catch (error: any) {
+    console.error('Firebase Admin initialization error:', error.stack);
+  }
+}
+
 
 // This endpoint is called by the client to create a session cookie after a successful login.
 export async function POST(request: NextRequest) {
@@ -16,7 +30,7 @@ export async function POST(request: NextRequest) {
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
     try {
-      const adminAuth = await getAdminAuth();
+      const adminAuth = admin.auth();
       // Verify the ID token first. This is a crucial step.
       await adminAuth.verifyIdToken(idToken);
 
