@@ -13,15 +13,15 @@ const initializeAdminApp = () => {
     );
   }
 
-  // Check if the app with the correct project ID is already initialized
+  // Check if an app with the correct project ID is already initialized
   const alreadyInitializedApp = admin.apps.find(app => app?.options?.projectId === projectId);
   if (alreadyInitializedApp) {
     return alreadyInitializedApp;
   }
   
-  // If not, initialize it. Use a unique name to avoid conflicts if another app (like the default one) gets initialized.
+  // If not, initialize it. When running on Google Cloud, the SDK will automatically
+  // use the runtime's service account credentials. We don't need to specify them.
   return admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
     projectId: projectId,
   }, `app-for-${projectId}`); // Use a unique name for the app instance
 };
