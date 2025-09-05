@@ -1,21 +1,7 @@
 
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
-
-// Initialize Firebase Admin SDK
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      // When deployed, this will use the service account from the environment.
-      // For local dev, it relies on `gcloud auth application-default login`.
-      credential: admin.credential.applicationDefault(),
-    });
-  } catch (error: any) {
-    console.error('Firebase Admin initialization error:', error.stack);
-  }
-}
-
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 // This endpoint is called by the client to create a session cookie after a successful login.
 export async function POST(request: NextRequest) {
@@ -30,8 +16,8 @@ export async function POST(request: NextRequest) {
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
     try {
-      const adminAuth = admin.auth();
-      // Verify the ID token first. This is a crucial step.
+      const adminAuth = await getAdminAuth();
+      // Verify the ID token first
       await adminAuth.verifyIdToken(idToken);
 
       const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
@@ -39,25 +25,27 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ status: 'success' });
     } catch (error: any) {
+      console.log('--- Custom Error Catch Triggered ---');
       // Log the detailed error on the server for debugging
       console.error('Error creating session cookie:', error);
 
-      // Send a more specific error message back to the client based on the error code
+      // Send a more specific error message back to the client
       let errorMessage = 'Failed to create session.';
-      if (error.code === 'auth/invalid-id-token' || error.code === 'auth/id-token-revoked' || error.code === 'auth/id-token-expired') {
-        errorMessage = 'The ID token is malformed or has been revoked.';
+      if (error.code === 'auth/invalid-id-token') {
+        errorMessage = 'The provided ID token is invalid or has been revoked. Please try signing out and back in.';
       } else if (error.code === 'auth/argument-error') {
-          errorMessage = 'The ID token is malformed or has been revoked.';
+        errorMessage = 'The ID token is malformed or has been revoked.';
       }
-      
-      // Always return a 401 for auth-related errors.
+
       return NextResponse.json({
         error: errorMessage,
         fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      }, { status: 401 });
+      }, { status: error.code === 'auth/invalid-id-token' || error.code === 'auth/argument-error' ? 401 : 500 });
     }
   } catch (outerError: any) {
+    console.log('--- Outer Catch Triggered ---');
     console.error('Error in POST function:', outerError);
+
     // Return a generic error response from the outer catch
     return NextResponse.json({ error: 'An unexpected server error occurred.' }, { status: 500 });
   }
