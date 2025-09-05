@@ -86,6 +86,7 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
 };
 
 const setSessionCookie = async (user: User) => {
+    // Force a token refresh to ensure we have a valid token.
     const idToken = await user.getIdToken(true);
     const response = await fetch('/api/auth/session', {
       method: 'POST',
@@ -201,6 +202,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signOutHandler = async () => {
     try {
         await firebaseSignOut(auth);
+        await clearSessionCookie();
     } catch (error) {
         handleAuthError(error, 'Sign Out Failed');
     }
