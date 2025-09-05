@@ -89,7 +89,10 @@ const setSessionCookie = async (user: User) => {
     const idToken = await user.getIdToken(true);
     const response = await fetch('/api/auth/session', {
       method: 'POST',
-      body: idToken,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ idToken }),
     });
 
     if (!response.ok) {
@@ -222,7 +225,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
 
-  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email'>) => {
+  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'>) => {
       const currentUser = auth.currentUser;
       if (!currentUser) {
           throw new Error('Not Authenticated');
