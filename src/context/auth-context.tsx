@@ -86,7 +86,7 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
 };
 
 const setSessionCookie = async (user: User) => {
-    // Force a token refresh to ensure we have a valid token.
+    // Force a token refresh to ensure we have a valid token for the new session.
     const idToken = await user.getIdToken(true);
     const response = await fetch('/api/auth/session', {
       method: 'POST',
@@ -98,6 +98,7 @@ const setSessionCookie = async (user: User) => {
 
     if (!response.ok) {
         const errorData = await response.json();
+        // Use the detailed error from the server, or a fallback.
         throw new Error(errorData.error || 'Failed to set session cookie.');
     }
 };
@@ -164,6 +165,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             setUser(safeProfile);
 
         } catch (error: any) {
+            // If setting the session fails (e.g., stale token), sign the user out
+            // to clear the invalid client-side state.
             console.error("Session creation failed, forcing logout:", error.message);
             toast({
               variant: 'destructive',
