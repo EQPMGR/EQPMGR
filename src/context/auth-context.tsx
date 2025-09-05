@@ -127,11 +127,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       if (authUser) {
-        const userDocRef = doc(db, 'users', authUser.uid);
         
         try {
             // Always try to set the session cookie to ensure it's fresh
             await setSessionCookie(authUser);
+            const userDocRef = doc(db, 'users', authUser.uid);
 
             if (authUser.emailVerified) {
                 const userDocSnap = await getDoc(userDocRef);
