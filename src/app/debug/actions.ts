@@ -1,9 +1,8 @@
 
-
 'use server';
 
 import { getDoc } from 'firebase/firestore';
-import { getAdminDb } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 
@@ -71,4 +70,18 @@ export async function getEnvironmentStatus(): Promise<object> {
       message: error.message,
     };
   }
+}
+
+export async function testIdTokenVerification(idToken: string): Promise<string> {
+    if (!idToken) {
+        return "Error: No ID token provided to server action.";
+    }
+    try {
+        const adminAuth = await getAdminAuth();
+        const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+        return `Success! Token verified for UID: ${decodedToken.uid}, Email: ${decodedToken.email}`;
+    } catch (error: any) {
+        console.error("[Debug Action] ID Token Verification failed:", error);
+        return `Verification Failed: ${error.message} (Code: ${error.code})`;
+    }
 }

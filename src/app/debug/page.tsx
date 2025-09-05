@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
 
 import { db, auth } from '@/lib/firebase';
@@ -21,14 +22,20 @@ import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getComponentForDebug, testVertexAIConnection, getEnvironmentStatus } from './actions';
+import { getComponentForDebug, testVertexAIConnection, getEnvironmentStatus, testIdTokenVerification } from './actions';
+import { Separator } from '../ui/separator';
 
 export default function DebugPage() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const [isLoadingTestWrite, setIsLoadingTestWrite] = useState(false);
-  const [testWriteResult, setTestWriteResult] = useState<string | null>(null);
 
+  // State for ID token test
+  const [isLoadingIdTokenTest, setIsLoadingIdTokenTest] = useState(false);
+  const [idTokenTestResult, setIdTokenTestResult] = useState<string | null>(null);
+  const [testUserEmail, setTestUserEmail] = useState('');
+  const [testUserPassword, setTestUserPassword] = useState('');
+
+  // State for other tests
   const [isLoadingComponent, setIsLoadingComponent] = useState(false);
   const [componentId, setComponentId] = useState('');
   const [componentResult, setComponentResult] = useState<string | null>(null);
@@ -36,102 +43,41 @@ export default function DebugPage() {
   const [isLoadingVertexTest, setIsLoadingVertexTest] = useState(false);
   const [vertexTestResult, setVertexTestResult] = useState<string | null>(null);
 
-  const [isLoadingSessionTest, setIsLoadingSessionTest] = useState(false);
-  const [sessionTestResult, setSessionTestResult] = useState<string | null>(null);
-  
-  const [isLoadingEnvTest, setIsLoadingEnvTest] = useState(false);
-  const [envTestResult, setEnvTestResult] = useState<string | null>(null);
-
-  const handleTestSessionCookie = async () => {
-      if (!auth.currentUser) {
-          toast({ variant: 'destructive', title: 'Not Logged In', description: 'Cannot run test without a user.' });
-          return;
-      }
-      setIsLoadingSessionTest(true);
-      setSessionTestResult(null);
-      try {
-          // Force a token refresh to ensure we have a valid token.
-          const idToken = await auth.currentUser.getIdToken(true);
-          const response = await fetch('/api/auth/session', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ idToken }),
-          });
-
-          const result = await response.json();
-
-          if (!response.ok) {
-            const errorMessage = result.details || result.error || `HTTP error! status: ${response.status}`;
-            throw new Error(errorMessage);
-          }
-          const message = `Successfully created session cookie. Status: ${result.status}`;
-          setSessionTestResult(message);
-          toast({ title: 'Success!', description: message });
-
-      } catch (error: any) {
-          console.error("Session cookie test failed:", error);
-          const errorMessage = error.message || "An unknown error occurred.";
-          setSessionTestResult(`Session cookie test failed: ${errorMessage}`);
-          toast({
-              variant: 'destructive',
-              title: 'Session Cookie Test Failed',
-              description: errorMessage,
-          });
-      } finally {
-          setIsLoadingSessionTest(false);
-      }
-  };
-  
-   const handleEnvCheck = async () => {
-    setIsLoadingEnvTest(true);
-    setEnvTestResult(null);
-    try {
-      const result = await getEnvironmentStatus();
-      setEnvTestResult(JSON.stringify(result, null, 2));
-    } catch (error: any) {
-      setEnvTestResult(`Failed to check environment: ${error.message}`);
-      toast({ variant: 'destructive', title: 'Check Failed', description: error.message });
-    } finally {
-      setIsLoadingEnvTest(false);
-    }
-  };
-
-  const handleTestWrite = async () => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Not Logged In', description: 'Cannot run test without a user.' });
+  const handleIdTokenTest = async () => {
+    if (!testUserEmail || !testUserPassword) {
+      toast({ variant: 'destructive', title: 'Email and password required for test.' });
       return;
     }
-    setIsLoadingTestWrite(true);
-    setTestWriteResult(null);
+    setIsLoadingIdTokenTest(true);
+    setIdTokenTestResult(null);
     try {
-      const userDocRef = doc(db, 'users', user.uid);
+      // Step 1: Sign in on the client to get an ID token
+      const userCredential = await signInWithEmailAndPassword(auth, testUserEmail, testUserPassword);
+      const idToken = await userCredential.user.getIdToken(true);
       
-      await updateDoc(userDocRef, {
-        lastTestWrite: serverTimestamp(),
-      });
-      
-      const message = `Successfully wrote a test field to your user profile document in Firestore. Path: users/${user.uid}`;
-      setTestWriteResult(message);
-      toast({
-        title: 'Success!',
-        description: message,
-      });
+      // Step 2: Send the token to the server action for verification
+      const result = await testIdTokenVerification(idToken);
+      setIdTokenTestResult(result);
+       if (result.startsWith('Success')) {
+        toast({ title: 'Success!', description: result });
+      } else {
+        toast({ variant: 'destructive', title: 'Verification Failed', description: result, duration: 9000 });
+      }
+
     } catch (error: any) {
-      console.error("Test write failed:", error);
-      const errorMessage = error.message || "An unknown error occurred.";
-      setTestWriteResult(`Test write failed: ${errorMessage}`);
+      console.error("ID Token test failed:", error);
+      const errorMessage = `Client-side error: ${error.message} (Code: ${error.code})`;
+      setIdTokenTestResult(errorMessage);
       toast({
         variant: 'destructive',
-        title: 'Test Write Failed',
+        title: 'ID Token Test Failed',
         description: errorMessage,
       });
     } finally {
-      setIsLoadingTestWrite(false);
+      setIsLoadingIdTokenTest(false);
     }
   };
-
+  
   const handleFetchComponent = async () => {
     if (!componentId) {
         toast({ variant: 'destructive', title: 'Component ID required' });
@@ -172,53 +118,41 @@ export default function DebugPage() {
 
   return (
     <div className="space-y-6">
-       <Card className="max-w-md mx-auto">
+      <Card className="max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>1. Server Environment Test</CardTitle>
+          <CardTitle>1. Firebase Auth Token Verification Test</CardTitle>
           <CardDescription>
-          This tests if the server environment has loaded the necessary API keys and credentials from your .env file.
+            This test signs in a user on the client, gets their ID token, and sends it to a server action to verify. This directly tests if the server can communicate with Firebase Auth.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button onClick={handleEnvCheck} disabled={isLoadingEnvTest}>
-            {isLoadingEnvTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Check Server Environment
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="test-email">Test User Email</Label>
+            <Input id="test-email" type="email" placeholder="user@example.com" value={testUserEmail} onChange={(e) => setTestUserEmail(e.target.value)} />
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="test-password">Test User Password</Label>
+            <Input id="test-password" type="password" placeholder="••••••••" value={testUserPassword} onChange={(e) => setTestUserPassword(e.target.value)} />
+          </div>
+          <Button onClick={handleIdTokenTest} disabled={isLoadingIdTokenTest || authLoading}>
+            {isLoadingIdTokenTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Run Auth Test
           </Button>
         </CardContent>
-        {envTestResult && (
-        <CardFooter>
-          <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-all w-full bg-muted p-2 rounded-md">
-            {envTestResult}
-          </pre>
-        </CardFooter>
-        )}
-       </Card>
-
-       <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>2. Session Cookie Test</CardTitle>
-          <CardDescription>
-            This tests if the server can create a session cookie, which is required for all authenticated server actions. It sends a fresh ID token directly to the API endpoint.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={handleTestSessionCookie} disabled={isLoadingSessionTest || authLoading}>
-            {isLoadingSessionTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Run Session Test
-          </Button>
-        </CardContent>
-        {sessionTestResult && (
+        {idTokenTestResult && (
           <CardFooter>
-            <p className="text-sm text-muted-foreground break-all">{sessionTestResult}</p>
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-all w-full bg-muted p-2 rounded-md">
+                {idTokenTestResult}
+            </pre>
           </CardFooter>
         )}
       </Card>
       
       <Card className="max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>3. Embedding Model Connection Test</CardTitle>
+          <CardTitle>2. Embedding Model Connection Test</CardTitle>
           <CardDescription>
-            This tests if the server can successfully authenticate with and call the Google AI API for embeddings. This confirms the Admin SDK can authenticate.
+            This tests if the server can successfully authenticate with and call the Google AI API for embeddings. This confirms service account permissions for AI services.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -264,53 +198,7 @@ export default function DebugPage() {
           </CardFooter>
         )}
       </Card>
-
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>Firestore Write Test</CardTitle>
-          <CardDescription>
-            This page performs a simple write to your user profile to confirm database permissions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={handleTestWrite} disabled={isLoadingTestWrite || authLoading || !user}>
-            {isLoadingTestWrite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Run Write Test
-          </Button>
-        </CardContent>
-        {testWriteResult && (
-          <CardFooter>
-            <p className="text-sm text-muted-foreground break-all">{testWriteResult}</p>
-          </CardFooter>
-        )}
-      </Card>
       
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-            <CardTitle>Authentication Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-            {authLoading ? (
-                <p>Checking authentication status...</p>
-            ) : user ? (
-                <Alert variant="default">
-                    <AlertTitle>Authenticated</AlertTitle>
-                    <AlertDescription className="break-all">
-                        <p>You are logged in.</p>
-                        <p><strong>UID:</strong> {user.uid}</p>
-                        <p><strong>Email:</strong> {user.email}</p>
-                    </AlertDescription>
-                </Alert>
-            ) : (
-                <Alert variant="destructive">
-                    <AlertTitle>Not Authenticated</AlertTitle>
-                    <AlertDescription>
-                        You are not logged in. The write test will be disabled.
-                    </AlertDescription>
-                </Alert>
-            )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
