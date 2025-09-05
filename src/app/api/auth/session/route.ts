@@ -6,7 +6,7 @@ import { getAdminAuth } from '@/lib/firebase-admin';
 // This endpoint is called by the client to create a session cookie after a successful login.
 export async function POST(request: NextRequest) {
   try {
-    const idToken = await request.text();
+    const { idToken } = await request.json();
 
     if (!idToken) {
       return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
