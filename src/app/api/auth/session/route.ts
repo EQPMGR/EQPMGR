@@ -17,35 +17,39 @@ export async function POST(request: NextRequest) {
 
     try {
       const adminAuth = await getAdminAuth();
-      // Verify the ID token first
+      // First, verify the ID token to ensure it's valid.
       await adminAuth.verifyIdToken(idToken);
 
+      // If verification is successful, create the session cookie.
       const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
       cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true, path: '/' });
 
       return NextResponse.json({ status: 'success' });
     } catch (error: any) {
-      console.log('--- Custom Error Catch Triggered ---');
-      // Log the detailed error on the server for debugging
       console.error('Error creating session cookie:', error);
-
-      // Send a more specific error message back to the client
-      let errorMessage = 'Failed to create session.';
-      if (error.code === 'auth/invalid-id-token') {
-        errorMessage = 'The provided ID token is invalid or has been revoked. Please try signing out and back in.';
-      } else if (error.code === 'auth/argument-error') {
-        errorMessage = 'The ID token is malformed or has been revoked.';
+      let errorMessage = 'An unexpected error occurred.';
+      let statusCode = 500;
+      
+      switch (error.code) {
+        case 'auth/invalid-id-token':
+        case 'auth/id-token-revoked':
+        case 'auth/id-token-expired':
+            errorMessage = 'The ID token is malformed or has been revoked.';
+            statusCode = 401;
+            break;
+        case 'auth/argument-error':
+            errorMessage = 'The ID token is malformed.';
+            statusCode = 401;
+            break;
       }
 
       return NextResponse.json({
         error: errorMessage,
-        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      }, { status: error.code === 'auth/invalid-id-token' || error.code === 'auth/argument-error' ? 401 : 500 });
+        details: error.message, // For more detailed client-side logging if needed
+      }, { status: statusCode });
     }
   } catch (outerError: any) {
-    console.log('--- Outer Catch Triggered ---');
     console.error('Error in POST function:', outerError);
-
     // Return a generic error response from the outer catch
     return NextResponse.json({ error: 'An unexpected server error occurred.' }, { status: 500 });
   }

@@ -122,13 +122,21 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     });
     throw error;
   }, [toast]);
+  
+  const signOutHandler = useCallback(async () => {
+    try {
+        await firebaseSignOut(auth);
+        await clearSessionCookie();
+    } catch (error) {
+        handleAuthError(error, 'Sign Out Failed');
+    }
+  }, [handleAuthError]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       if (authUser) {
         try {
-            // Attempt to set the session cookie with a fresh token
             await setSessionCookie(authUser);
 
             const userDocRef = doc(db, 'users', authUser.uid);
@@ -156,26 +164,21 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             setUser(safeProfile);
 
         } catch (error: any) {
-            // If setting the session fails (e.g., stale token), sign the user out
-            // to clear the invalid client-side state.
             console.error("Session creation failed, forcing logout:", error.message);
             toast({
               variant: 'destructive',
               title: 'Session Expired',
               description: 'Your session has expired. Please sign in again.',
             });
-            await firebaseSignOut(auth);
-            setUser(null);
-            await clearSessionCookie();
+            await signOutHandler();
         }
       } else {
-        // User is logged out.
         setUser(null);
       }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, signOutHandler]);
 
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
@@ -197,15 +200,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
      handleAuthError(error, 'Sign Up Failed');
    }
  };
-
-  const signOutHandler = async () => {
-    try {
-        await firebaseSignOut(auth);
-        await clearSessionCookie();
-    } catch (error) {
-        handleAuthError(error, 'Sign Out Failed');
-    }
-  };
   
   const resendVerificationEmailHandler = async () => {
     const currentUser = auth.currentUser;
@@ -315,7 +309,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     updateProfileInfo: updateProfileInfoHandler,
     updateUserPreferences: updateUserPreferencesHandler,
     updateProfilePhoto: updateProfilePhotoHandler,
-  }), [user, loading, updateProfileInfoHandler, updateUserPreferencesHandler, updateProfilePhotoHandler]);
+  }), [user, loading, updateProfileInfoHandler, updateUserPreferencesHandler, updateProfilePhotoHandler, signOutHandler]);
 
   return (
     <AuthContext.Provider value={value}>

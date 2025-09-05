@@ -18,12 +18,12 @@ const initializeAdminApp = () => {
   });
 };
 
-export const getAdminDb = async () => {
+export async function getAdminDb() {
   const app = initializeAdminApp();
   return admin.firestore(app);
 };
 
-export const getAdminAuth = async () => {
+export async function getAdminAuth() {
     const app = initializeAdminApp();
     return admin.auth(app);
 };
