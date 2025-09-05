@@ -84,10 +84,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await signUpWithEmailPassword(data.email, data.password);
-      toast({
-        title: 'Account Created!',
-        description: "You have successfully signed up.",
-      })
+      // The success toast is now handled within the signUpWithEmailPassword function.
     } catch (error: any) {
       // Error is handled in the auth context
     } finally {
