@@ -17,8 +17,9 @@ export async function POST(request: NextRequest) {
 
     try {
       const adminAuth = await getAdminAuth();
-      // First, verify the ID token to ensure it's valid.
-      await adminAuth.verifyIdToken(idToken);
+      // First, verify the ID token to ensure it's valid and not revoked.
+      // The `true` checks for revocation.
+      await adminAuth.verifyIdToken(idToken, true);
 
       // If verification is successful, create the session cookie.
       const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
