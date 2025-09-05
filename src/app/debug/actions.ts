@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getDoc } from 'firebase/firestore';
@@ -51,21 +52,6 @@ export async function testVertexAIConnection(): Promise<string> {
     } catch (error: any) {
         console.error('[Debug Action] Vertex AI connection failed:', error);
         return `Connection failed: ${error.message}`;
-    }
-}
-
-export async function testTextGeneration(): Promise<string> {
-    try {
-        console.log('[Debug Action] Testing Text Generation...');
-        const { text } = await ai.generate({
-            model: 'googleai/gemini-2.5-flash-lite',
-            prompt: 'Why is the sky blue? Be concise.',
-        });
-        console.log('[Debug Action] Text Generation successful.');
-        return `Success! Model says: "${text}"`;
-    } catch (error: any) {
-        console.error('[Debug Action] Text Generation failed:', error);
-        return `Text generation failed: ${error.message}`;
     }
 }
 
