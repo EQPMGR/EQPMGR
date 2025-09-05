@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
 
       // Send a more specific error message back to the client
       let errorMessage = 'Failed to create session.';
-      if (error.code === 'auth/invalid-id-token') {
-        errorMessage = 'The provided ID token is invalid or has been revoked. Please try signing out and back in.';
+      if (error.code === 'auth/invalid-id-token' || error.code === 'auth/id-token-revoked' || error.code === 'auth/id-token-expired') {
+        errorMessage = 'The ID token is malformed or has been revoked.';
       } else if (error.code === 'auth/argument-error') {
         errorMessage = 'The ID token is malformed or has been revoked.';
       }
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: errorMessage,
         fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      }, { status: error.code === 'auth/invalid-id-token' || error.code === 'auth/argument-error' ? 401 : 500 });
+      }, { status: 401 });
     }
   } catch (outerError: any) {
     console.log('--- Outer Catch Triggered ---');

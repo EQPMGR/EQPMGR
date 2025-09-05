@@ -127,56 +127,56 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       if (authUser) {
-        
         try {
-            // Always try to set the session cookie to ensure it's fresh
+            // Attempt to set the session cookie with a fresh token
             await setSessionCookie(authUser);
+
             const userDocRef = doc(db, 'users', authUser.uid);
-
-            if (authUser.emailVerified) {
-                const userDocSnap = await getDoc(userDocRef);
-                let userDocData: UserDocument;
-                
-                if (userDocSnap.exists()) {
-                  await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-                  userDocData = userDocSnap.data() as UserDocument;
-                } else {
-                  userDocData = {
-                    displayName: authUser.displayName || '',
-                    photoURL: authUser.photoURL || '',
-                    measurementSystem: 'imperial',
-                    shoeSizeSystem: 'us',
-                    distanceUnit: 'km',
-                    dateFormat: 'MM/DD/YYYY',
-                    createdAt: serverTimestamp(),
-                    lastLogin: serverTimestamp(),
-                  };
-                  await setDoc(userDocRef, userDocData);
-                }
-                
-                const safeProfile = createSafeUserProfile(authUser, userDocData);
-                setUser(safeProfile);
-
+            const userDocSnap = await getDoc(userDocRef);
+            let userDocData: UserDocument;
+            
+            if (userDocSnap.exists()) {
+              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+              userDocData = userDocSnap.data() as UserDocument;
             } else {
-                // User is logged in but email is not verified. Still create a session and basic profile.
-                const userDocSnap = await getDoc(userDocRef);
-                const safeProfile = createSafeUserProfile(authUser, userDocSnap.data());
-                setUser(safeProfile);
+              userDocData = {
+                displayName: authUser.displayName || '',
+                photoURL: authUser.photoURL || '',
+                measurementSystem: 'imperial',
+                shoeSizeSystem: 'us',
+                distanceUnit: 'km',
+                dateFormat: 'MM/DD/YYYY',
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp(),
+              };
+              await setDoc(userDocRef, userDocData);
             }
+            
+            const safeProfile = createSafeUserProfile(authUser, userDocData);
+            setUser(safeProfile);
 
-        } catch (error) {
-            handleAuthError(error, 'Authentication Failed');
-            await firebaseSignOut(auth); // Sign out on session error
+        } catch (error: any) {
+            // THIS IS THE NEW LOGIC
+            // If setting the session fails (e.g., stale token), sign the user out
+            // to clear the invalid client-side state.
+            console.error("Session creation failed, forcing logout:", error.message);
+            toast({
+              variant: 'destructive',
+              title: 'Session Expired',
+              description: 'Your session has expired. Please sign in again.',
+            });
+            await firebaseSignOut(auth);
+            setUser(null);
+            await clearSessionCookie();
         }
       } else {
         // User is logged out.
         setUser(null);
-        await clearSessionCookie();
       }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [handleAuthError]);
+  }, [toast]);
 
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
@@ -246,7 +246,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const firestoreUpdateData: { [key: string]: any } = {};
         for (const key in data) {
             const typedKey = key as keyof typeof data;
-            const value = data[typedKey];
+            let value = data[typedKey];
             
             // This logic correctly handles 0 as a valid value
             if (value === null || value === undefined || value === '') {
