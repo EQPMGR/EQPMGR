@@ -1,3 +1,4 @@
+
 # Settings for Cloud Run (your backend instance)
 runConfig:
   cpu: 1
@@ -17,6 +18,11 @@ env:
       - RUNTIME
   - variable: MAPMYRIDE_CLIENT_SECRET
     secret: MAPMYRIDE_CLIENT_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: FIREBASE_CONFIG
+    secret: FIREBASE_CONFIG
     availability:
       - BUILD
       - RUNTIME
