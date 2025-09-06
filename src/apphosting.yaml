@@ -21,13 +21,7 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    secret: FIREBASE_API_KEY
+  - variable: FIREBASE_CONFIG
+    secret: FIREBASE_CONFIG
     availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    secret: FIREBASE_PROJECT_ID
-    availability:
-      - BUILD
       - RUNTIME

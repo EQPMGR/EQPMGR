@@ -7,22 +7,33 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 
 let firebaseConfig: FirebaseOptions;
 
-// This block is for local development or other environments where NEXT_PUBLIC_ variables are set.
-// It dynamically constructs the config, which is necessary because the full
-// config object isn't exposed to the client directly for security.
-const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+// This is the standard pattern for Next.js.
+// It checks for the server-injected FIREBASE_CONFIG first.
+// If that's not present (e.g., in a different environment), it falls back
+// to the public env variables.
+if (process.env.FIREBASE_CONFIG) {
+  try {
+    firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+  } catch (e) {
+    console.error("Failed to parse FIREBASE_CONFIG. Check your environment variables.", e);
+    throw new Error("Invalid FIREBASE_CONFIG environment variable.");
+  }
+} else {
+  // This block is for local development or other environments where NEXT_PUBLIC_ variables are set.
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-if (!apiKey || !projectId) {
-  throw new Error("Missing Firebase API Key or Project ID. Make sure NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set in your environment.");
+  if (!apiKey || !projectId) {
+    throw new Error("Missing Firebase API Key or Project ID. Make sure FIREBASE_CONFIG or individual NEXT_PUBLIC_FIREBASE_ vars are set.");
+  }
+
+  firebaseConfig = {
+    apiKey: apiKey,
+    authDomain: `${projectId}.firebaseapp.com`,
+    projectId: projectId,
+    storageBucket: `${projectId}.appspot.com`,
+  };
 }
-
-firebaseConfig = {
-  apiKey: apiKey,
-  authDomain: `${projectId}.firebaseapp.com`,
-  projectId: projectId,
-  storageBucket: `${projectId}.appspot.com`,
-};
 
 
 // Initialize Firebase
@@ -36,7 +47,10 @@ if (typeof window !== 'undefined') {
   isSupported().then(supported => {
     if (supported) {
       try {
-        getAnalytics(app);
+        // Check if measurementId is available in the config before initializing
+        if (firebaseConfig.measurementId) {
+          getAnalytics(app);
+        }
       } catch (e) {
         console.warn("Firebase Analytics could not be initialized.", e);
       }
