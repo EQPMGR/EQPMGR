@@ -5,8 +5,8 @@ import { getStorage } from "firebase/storage";
 import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-// This configuration uses environment variables that are set during the build process.
-// It's the standard and most reliable way for Next.js on App Hosting.
+// This configuration uses environment variables that are set during the build process
+// by apphosting.yaml. This is the most reliable way for Next.js on App Hosting.
 const firebaseConfig: FirebaseOptions = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com`,
@@ -14,10 +14,10 @@ const firebaseConfig: FirebaseOptions = {
     storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`,
 };
 
+// A basic check to ensure the essential variables are present.
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-    throw new Error("Missing Firebase config. Ensure NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set.");
+    throw new Error("Missing Firebase config from environment variables. Ensure NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set in apphosting.yaml and their corresponding secrets exist.");
 }
-
 
 // Initialize Firebase
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
