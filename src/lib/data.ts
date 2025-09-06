@@ -11,7 +11,7 @@ export const equipmentData: Equipment[] = [
     modelYear: 2023,
     serialNumber: 'WSBC604285542S',
     purchaseCondition: 'new',
-    purchaseDate: '2023-01-15',
+    purchaseDate: '2023-01-16',
     purchasePrice: 14000,
     totalDistance: 2540,
     totalHours: 85,
