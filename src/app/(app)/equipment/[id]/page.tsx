@@ -503,13 +503,13 @@ export default function EquipmentDetailPage() {
                 </CardHeader>
                 <CardContent className="grid gap-2">
                     <Button asChild>
-                        <Link href="https://project529.com/garage" target="_blank" rel="noopener noreferrer">
-                            Register with Project 529
+                        <Link href="/insurance">
+                            Get Insurance Quote
                         </Link>
                     </Button>
                     <Button asChild variant="secondary">
-                        <Link href="#" target="_blank" rel="noopener noreferrer">
-                            Get Insurance Quote
+                        <Link href="https://project529.com/garage" target="_blank" rel="noopener noreferrer">
+                            Register with Project 529
                         </Link>
                     </Button>
                 </CardContent>
