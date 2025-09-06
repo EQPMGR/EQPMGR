@@ -6,9 +6,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput, Building, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { ServiceProviderSeeder } from './service-provider-seeder';
-import { PedalSeeder } from './pedal-seeder';
-import { ShoeSeeder } from './shoe-seeder';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -110,9 +107,6 @@ export default function AdminPage() {
                         </Button>
                     </CardHeader>
                 </Card>
-                 <ServiceProviderSeeder />
-                 <PedalSeeder />
-                 <ShoeSeeder />
             </CardContent>
         </Card>
     );
