@@ -7,18 +7,17 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 
 let firebaseConfig: FirebaseOptions;
 
-// In a server-side environment (like a build process or server component),
-// process.env.FIREBASE_CONFIG will be a JSON string.
-// On the client-side, this variable will be undefined.
-if (process.env.FIREBASE_CONFIG) {
+// In a Firebase App Hosting environment, the FIREBASE_WEBAPP_CONFIG is automatically
+// populated with the correct client-side configuration. We prioritize this.
+if (process.env.FIREBASE_WEBAPP_CONFIG) {
     try {
-        firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+        firebaseConfig = JSON.parse(process.env.FIREBASE_WEBAPP_CONFIG);
     } catch (e) {
-        console.error("Failed to parse FIREBASE_CONFIG. Check your environment variables.", e);
-        throw new Error("Invalid FIREBASE_CONFIG environment variable.");
+        console.error("Failed to parse FIREBASE_WEBAPP_CONFIG. Check your environment variables.", e);
+        throw new Error("Invalid FIREBASE_WEBAPP_CONFIG environment variable.");
     }
 } else {
-    // This block is for the client-side, where NEXT_PUBLIC_ variables are available.
+    // This block is for local development or other environments where NEXT_PUBLIC_ variables are set.
     // It dynamically constructs the config, which is necessary because the full
     // config object isn't exposed to the client directly for security.
     firebaseConfig = {
