@@ -1,38 +1,9 @@
-# This file is for configuring the App Hosting backend.
-# For more information, see the documentation:
-# https://firebase.google.com/docs/app-hosting/configure
-
-# The name of the backend. This is the value you would use in the --backend flag
-# for the Firebase CLI.
-name: eqpmgr
-
-# The region to deploy the backend.
-region: us-central1
-
-# The Firebase features to automatically discover and connect to this backend.
-# The following values are supported:
-#
-# - "auth" (Firebase Authentication)
-# - "firestore" (Cloud Firestore)
-# - "storage" (Cloud Storage for Firebase)
-# - "database" (Firebase Realtime Database)
-firebase:
-  - auth
-  - firestore
-  - storage
-
-# The App Hosting backend's runtime. The following values are supported:
-#
-# - "nodejs18"
-# - "nodejs20"
-runtime: nodejs20
-
 # Settings for Cloud Run (your backend instance)
 runConfig:
   cpu: 1
   memoryMiB: 1024
 
-# Environment variables and secrets for your runtime.
+# Environment variables and secrets for your runtime (they are NOT under runConfig)
 env:
   - variable: GEMINI_API_KEY
     secret: GEMINI_API_KEY
@@ -46,6 +17,16 @@ env:
       - RUNTIME
   - variable: MAPMYRIDE_CLIENT_SECRET
     secret: MAPMYRIDE_CLIENT_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: FIREBASE_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: ${GCLOUD_PROJECT}
     availability:
       - BUILD
       - RUNTIME
