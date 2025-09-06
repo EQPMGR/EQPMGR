@@ -5,34 +5,17 @@ import { getStorage } from "firebase/storage";
 import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-let firebaseConfig: FirebaseOptions;
+// This configuration uses environment variables that are set during the build process.
+// It's the standard and most reliable way for Next.js on App Hosting.
+const firebaseConfig: FirebaseOptions = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`,
+};
 
-// This is the standard pattern for Next.js.
-// It checks for the server-injected FIREBASE_CONFIG first.
-// If that's not present (e.g., in a different environment), it falls back
-// to the public env variables.
-if (process.env.FIREBASE_CONFIG) {
-  try {
-    firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
-  } catch (e) {
-    console.error("Failed to parse FIREBASE_CONFIG. Check your environment variables.", e);
-    throw new Error("Invalid FIREBASE_CONFIG environment variable.");
-  }
-} else {
-  // This block is for local development or other environments where NEXT_PUBLIC_ variables are set.
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-
-  if (!apiKey || !projectId) {
-    throw new Error("Missing Firebase API Key or Project ID. Make sure FIREBASE_CONFIG or individual NEXT_PUBLIC_FIREBASE_ vars are set.");
-  }
-
-  firebaseConfig = {
-    apiKey: apiKey,
-    authDomain: `${projectId}.firebaseapp.com`,
-    projectId: projectId,
-    storageBucket: `${projectId}.appspot.com`,
-  };
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    throw new Error("Missing Firebase config. Ensure NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set.");
 }
 
 
