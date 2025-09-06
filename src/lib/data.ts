@@ -4,7 +4,7 @@ import type { Equipment } from './types';
 export const equipmentData: Equipment[] = [
   {
     id: 'specialized-tarmac-1',
-    name: 'Tarmac SL7',
+    name: 'Tarmac SL8',
     type: 'Road Bike',
     brand: 'Specialized',
     model: 'S-Works Tarmac SL7',
