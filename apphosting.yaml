@@ -31,3 +31,15 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: EMAIL_HOST
+    secret: EMAIL_HOST
+    availability:
+      - RUNTIME
+  - variable: EMAIL_USER
+    secret: EMAIL_USER
+    availability:
+      - RUNTIME
+  - variable: EMAIL_PASS
+    secret: EMAIL_PASS
+    availability:
+      - RUNTIME
