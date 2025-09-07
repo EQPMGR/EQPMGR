@@ -10,13 +10,13 @@ const client = new SecretManagerServiceClient();
  * @returns The secret value as a string.
  */
 export async function accessSecret(secretName: string): Promise<string> {
-    if (!process.env.FIREBASE_PROJECT_ID) {
-        throw new Error('FIREBASE_PROJECT_ID environment variable is not set.');
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+        throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID environment variable is not set.');
     }
   
   try {
     const [version] = await client.accessSecretVersion({
-      name: `projects/${process.env.FIREBASE_PROJECT_ID}/secrets/${secretName}/versions/latest`,
+      name: `projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/secrets/${secretName}/versions/latest`,
     });
 
     const payload = version.payload?.data?.toString();

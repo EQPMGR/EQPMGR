@@ -43,3 +43,4 @@ env:
     secret: EMAIL_PASS
     availability:
       - RUNTIME
+
