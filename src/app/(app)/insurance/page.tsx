@@ -30,8 +30,8 @@ const yesNoQuestions = [
     { id: 'competes', label: 'Do you compete in competitive events?' },
     { id: 'hasIllness', label: 'Does the operator suffer from any illness, medical condition, or mental or physical disability which might affect the safe operation of a bicycle?' },
     { id: 'hasPolicyRefused', label: 'Have you ever had a recreational vehicle policy refused, restricted or cancelled?' },
-    { id: 'unitsInCanada', label: 'Are your units kept in Canada?', default: true },
-    { id: 'hasCanadianAddress', label: 'Do you have a Canadian mailing address?', default: true },
+    { id: 'unitsInCanada', label: 'Are your units kept in Canada?' },
+    { id: 'hasCanadianAddress', label: 'Do you have a Canadian mailing address?' },
     { id: 'hasPastClaims', label: 'Have you had any bike thefts or claims in the past 3 years?' },
     { id: 'isBusinessUse', label: 'Will any of the units added on this application be used for business use?' },
     { id: 'isGasPowered', label: 'Are any of the units to be insured under this policy gas powered?' },
@@ -52,29 +52,14 @@ export default function InsurancePage() {
     const form = useForm<InsuranceFormValues>({
         resolver: zodResolver(insuranceFormSchema),
         defaultValues: {
-            // Pre-fill from user profile if available
             owner1FirstName: user?.displayName?.split(' ')[0] || '',
             owner1LastName: user?.displayName?.split(' ').slice(1).join(' ') || '',
             email: user?.email || '',
             phone: user?.phone || '',
-            // Set defaults for eligibility questions
-            competes: false,
-            hasIllness: false,
-            hasPolicyRefused: false,
-            unitsInCanada: true,
-            hasCanadianAddress: true,
-            hasPastClaims: false,
-            isBusinessUse: false,
-            isGasPowered: false,
-            isElectricAssisted: false,
-            isOver500w: false,
-            isTravelOutside: false,
-            isTravelUsaLong: false,
-            isScooter: false,
-            isAgeOutOfRange: false,
-            isNearThreat: false,
         },
     });
+
+    const hasPastClaims = form.watch('hasPastClaims');
 
     async function onSubmit(values: InsuranceFormValues) {
         setIsSubmitting(true);
@@ -128,17 +113,26 @@ export default function InsurancePage() {
                                             <FormControl>
                                                 <RadioGroup
                                                     onValueChange={(val) => field.onChange(val === 'true')}
-                                                    value={String(field.value)}
+                                                    value={field.value === undefined ? undefined : String(field.value)}
                                                     className="flex space-x-4 mt-2 sm:mt-0"
                                                 >
                                                     <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="true" /></FormControl><FormLabel>Yes</FormLabel></FormItem>
                                                     <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="false" /></FormControl><FormLabel>No</FormLabel></FormItem>
                                                 </RadioGroup>
                                             </FormControl>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
                             ))}
+                             {hasPastClaims && (
+                                <div className="p-4 border rounded-lg space-y-4 bg-muted/50">
+                                    <h4 className="font-semibold">Claim Details</h4>
+                                     <FormField control={form.control} name="claims.0.dateOfLoss" render={({ field }) => (<FormItem><FormLabel>Date of Loss</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal bg-background", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+                                     <FormField control={form.control} name="claims.0.typeOfClaim" render={({ field }) => (<FormItem><FormLabel>Type of Claim</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="theft" /></FormControl><FormLabel className="font-normal">Theft</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="collision" /></FormControl><FormLabel className="font-normal">Collision</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="liability" /></FormControl><FormLabel className="font-normal">Liability</FormLabel></FormItem></RadioGroup><FormMessage /></FormItem>)} />
+                                     <FormField control={form.control} name="claims.0.payoutAmount" render={({ field }) => (<FormItem><FormLabel>Payout Amount ($)</FormLabel><FormControl><Input type="number" {...field} className="bg-background" /></FormControl><FormMessage /></FormItem>)} />
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -165,9 +159,12 @@ export default function InsurancePage() {
                     <Card>
                         <CardHeader><CardTitle>Unit Information</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
-                            <FormField control={form.control} name="unitType" render={({ field }) => ( <FormItem><FormLabel>Unit Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select unit type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="bicycle">Bicycle</SelectItem><SelectItem value="ebike">E-Bike</SelectItem><SelectItem value="scooter">Scooter</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <FormField control={form.control} name="unitType" render={({ field }) => ( <FormItem><FormLabel>Unit Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select unit type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="bicycle">Bicycle</SelectItem><SelectItem value="ebike">E-Bike</SelectItem><SelectItem value="scooter">Scooter</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="unitYear" render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                 <FormField control={form.control} name="unit.purchasePrice" render={({ field }) => (<FormItem><FormLabel>Purchase Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="unitMake" render={({ field }) => (<FormItem><FormLabel>Make</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="unitModel" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
@@ -181,9 +178,9 @@ export default function InsurancePage() {
                         <CardHeader><CardTitle>Coverage Information</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                              <FormField control={form.control} name="effectiveDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Proposed Effective Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date()} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )}/>
-                             <FormField control={form.control} name="liability" render={({ field }) => ( <FormItem><FormLabel>Third Party Liability</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select amount" /></SelectTrigger></FormControl><SelectContent><SelectItem value="1m">$1,000,000</SelectItem><SelectItem value="2m">$2,000,000</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
-                             <FormField control={form.control} name="accidentBenefits" render={({ field }) => ( <FormItem><FormLabel>Accident Benefits</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select amount" /></SelectTrigger></FormControl><SelectContent><SelectItem value="10k">$10,000</SelectItem><SelectItem value="20k">$20,000</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
-                             <FormField control={form.control} name="physicalDamage" render={({ field }) => ( <FormItem><FormLabel>Physical Damage</FormLabel><FormControl><Input placeholder="Enter current market value" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                             <FormField control={form.control} name="liability" render={({ field }) => ( <FormItem><FormLabel>Third Party Liability</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select amount" /></SelectTrigger></FormControl><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="1m">$1,000,000</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+                             <FormField control={form.control} name="accidentBenefits" render={({ field }) => ( <FormItem><FormLabel>Accident Benefits</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select amount" /></SelectTrigger></FormControl><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="basic">Basic</SelectItem><SelectItem value="enhanced">Enhanced</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+                             <FormField control={form.control} name="physicalDamage" render={({ field }) => ( <FormItem><FormLabel>Physical Damage</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select amount" /></SelectTrigger></FormControl><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="all-perils">All Perils</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
                         </CardContent>
                     </Card>
                     
