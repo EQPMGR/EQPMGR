@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -10,7 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import type { WorkOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wrench, ArrowUpRight, PlusCircle } from 'lucide-react';
+import { Wrench, ArrowUpRight } from 'lucide-react';
 import { formatDate, toDate } from '@/lib/date-utils';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -149,11 +150,6 @@ export function DashboardPage() {
                 <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-2">
-                <Button asChild>
-                    <Link href="/equipment">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Equipment
-                    </Link>
-                </Button>
                 <Button variant="secondary" asChild>
                      <Link href="/service-providers">
                         <Wrench className="mr-2 h-4 w-4" /> Request Service
