@@ -5,6 +5,7 @@ import { getDoc } from 'firebase/firestore';
 import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { textEmbedding004 } from '@genkit-ai/googleai';
+import { accessSecret } from '@/lib/secrets';
 
 export async function getComponentForDebug(componentId: string): Promise<string> {
     if (!componentId) {
@@ -83,5 +84,23 @@ export async function testIdTokenVerification(idToken: string): Promise<string> 
     } catch (error: any) {
         console.error("[Debug Action] ID Token Verification failed:", error);
         return `Verification Failed: ${error.message} (Code: ${error.code})`;
+    }
+}
+
+export async function testSecret(secretName: string): Promise<string> {
+    if (!secretName) {
+        return "Error: No secret name provided.";
+    }
+    try {
+        const secretValue = await accessSecret(secretName);
+        if (secretValue) {
+            // Return a masked version for security
+            const maskedValue = `${secretValue.substring(0, 4)}...${secretValue.slice(-4)}`;
+            return `Successfully accessed secret '${secretName}'. Value: ${maskedValue}`;
+        }
+        return `Accessed secret '${secretName}', but it appears to be empty.`;
+    } catch (error: any) {
+        console.error(`[Debug Action] Failed to access secret ${secretName}:`, error);
+        return `Failed to access secret '${secretName}': ${error.message}`;
     }
 }

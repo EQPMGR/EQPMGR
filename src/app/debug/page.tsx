@@ -22,8 +22,17 @@ import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getComponentForDebug, testVertexAIConnection, getEnvironmentStatus, testIdTokenVerification } from './actions';
+import { getComponentForDebug, testVertexAIConnection, getEnvironmentStatus, testIdTokenVerification, testSecret } from './actions';
 import { Separator } from '../ui/separator';
+
+type SecretTestState = {
+    [key: string]: {
+        isLoading: boolean;
+        result: string | null;
+    }
+}
+
+const secretsToTest = ['GEMINI_API_KEY', 'FIREBASE_API_KEY', 'FIREBASE_PROJECT_ID'];
 
 export default function DebugPage() {
   const { toast } = useToast();
@@ -35,13 +44,21 @@ export default function DebugPage() {
   const [testUserEmail, setTestUserEmail] = useState('');
   const [testUserPassword, setTestUserPassword] = useState('');
 
-  // State for other tests
+  // State for component inspector
   const [isLoadingComponent, setIsLoadingComponent] = useState(false);
   const [componentId, setComponentId] = useState('');
   const [componentResult, setComponentResult] = useState<string | null>(null);
   
+  // State for Vertex AI test
   const [isLoadingVertexTest, setIsLoadingVertexTest] = useState(false);
   const [vertexTestResult, setVertexTestResult] = useState<string | null>(null);
+  
+  // State for individual secret tests
+  const initialSecretState: SecretTestState = secretsToTest.reduce((acc, secret) => {
+    acc[secret] = { isLoading: false, result: null };
+    return acc;
+  }, {} as SecretTestState);
+  const [secretTestStates, setSecretTestStates] = useState<SecretTestState>(initialSecretState);
 
   const handleIdTokenTest = async () => {
     if (!testUserEmail || !testUserPassword) {
@@ -115,6 +132,23 @@ export default function DebugPage() {
       setIsLoadingVertexTest(false);
     }
   };
+  
+  const handleSecretTest = async (secretName: string) => {
+    setSecretTestStates(prev => ({ ...prev, [secretName]: { isLoading: true, result: null } }));
+    try {
+        const result = await testSecret(secretName);
+        setSecretTestStates(prev => ({ ...prev, [secretName]: { isLoading: false, result: result } }));
+        if (result.startsWith('Success')) {
+            toast({ title: 'Success!', description: result });
+        } else {
+            toast({ variant: 'destructive', title: 'Test Failed', description: result, duration: 9000 });
+        }
+    } catch (error: any) {
+        const msg = `An unexpected client-side error occurred: ${error.message}`;
+        setSecretTestStates(prev => ({ ...prev, [secretName]: { isLoading: false, result: msg } }));
+        toast({ variant: 'destructive', title: 'Test Failed', description: msg });
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -166,6 +200,30 @@ export default function DebugPage() {
             <p className="text-sm text-muted-foreground break-all">{vertexTestResult}</p>
           </CardFooter>
         )}
+      </Card>
+
+      <Card className="max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>3. Cloud Secret Access Test</CardTitle>
+          <CardDescription>
+            Test if the backend has permission to access individual secrets from Secret Manager.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            {secretsToTest.map(secretName => (
+                <div key={secretName}>
+                    <div className="flex items-center gap-4">
+                        <Button onClick={() => handleSecretTest(secretName)} disabled={secretTestStates[secretName]?.isLoading} variant="outline" size="sm">
+                             {secretTestStates[secretName]?.isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Test {secretName}
+                        </Button>
+                        {secretTestStates[secretName]?.result && (
+                            <p className="text-sm text-muted-foreground break-all">{secretTestStates[secretName].result}</p>
+                        )}
+                    </div>
+                </div>
+            ))}
+        </CardContent>
       </Card>
       
       <Card className="max-w-md mx-auto">
