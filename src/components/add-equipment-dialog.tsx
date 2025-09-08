@@ -6,7 +6,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import { CalendarIcon, PlusCircle, Loader2, Bike } from 'lucide-react';
+import { CalendarIcon, Loader2, Bike, FileInput, FilePlus } from 'lucide-react';
+import Link from 'next/link';
 import { format } from 'date-fns';
 import { collection, getDocs } from 'firebase/firestore';
 
@@ -24,7 +25,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { db } from '@/lib/firebase';
 import type { Equipment } from '@/lib/types';
+import { Separator } from './ui/separator';
 
 
 const equipmentFormSchema = z.object({
@@ -308,6 +309,21 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                   )}
                 />
             </div>
+            
+            <div className="pt-4 space-y-2">
+                <Separator />
+                <p className="text-sm text-center text-muted-foreground">Can't find your bike?</p>
+                <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="w-full" asChild>
+                        <Link href="/admin/import-text"><FileInput className="mr-2 h-4 w-4" /> Import from Text</Link>
+                    </Button>
+                     <Button type="button" variant="outline" className="w-full" asChild>
+                        <Link href="/admin/add-bike-model"><FilePlus className="mr-2 h-4 w-4" /> Add Manually</Link>
+                    </Button>
+                </div>
+                <Separator />
+            </div>
+
 
             <FormField
               control={form.control}

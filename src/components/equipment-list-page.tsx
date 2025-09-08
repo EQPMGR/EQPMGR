@@ -3,8 +3,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Activity, Footprints, Bike, FileInput, FilePlus } from 'lucide-react';
-import Link from 'next/link';
+import { Activity, Footprints, Bike } from 'lucide-react';
 import { doc, getDocs, updateDoc, collection, query, where, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toDate, toNullableDate } from '@/lib/date-utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 export function EquipmentListPage() {
   const [data, setData] = useState<Equipment[]>([]);
@@ -353,33 +351,7 @@ export function EquipmentListPage() {
             <Activity className="mr-2 h-4 w-4" />
             Sync Activity
           </Button>
-           <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button>
-                        <Bike className="mr-2 h-4 w-4" /> Add Bike
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                     <AddEquipmentDialog onAddEquipment={handleAddEquipment}>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            <Bike className="mr-2 h-4 w-4" />
-                            Add Bike From Our Database
-                        </DropdownMenuItem>
-                    </AddEquipmentDialog>
-                    <DropdownMenuItem asChild>
-                        <Link href="/admin/import-text">
-                             <FileInput className="mr-2 h-4 w-4" />
-                            Import Text From Bike Spec Page
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <Link href="/admin/add-bike-model">
-                            <FilePlus className="mr-2 h-4 w-4" />
-                            Manually Enter Bike Data
-                        </Link>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-           </DropdownMenu>
+           <AddEquipmentDialog onAddEquipment={handleAddEquipment} />
            <AddShoesDialog onAddShoes={handleAddShoes} allBikes={bikes} />
         </div>
       </div>
