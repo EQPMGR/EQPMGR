@@ -60,6 +60,7 @@ import { BikeFitDialog } from '@/components/bike-fit-dialog';
 import { EBIKE_TYPES } from '@/lib/constants';
 import { CockpitIcon } from '@/components/icons/cockpit-icon';
 import { AddWheelsetDialog } from '@/components/add-wheelset-dialog';
+import { InsuranceQuoteButton } from '@/components/insurance-quote-button';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -502,11 +503,7 @@ export default function EquipmentDetailPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-2">
-                    <Button asChild>
-                        <Link href="/insurance">
-                            Get Insurance Quote
-                        </Link>
-                    </Button>
+                    <InsuranceQuoteButton />
                     <Button asChild variant="secondary">
                         <Link href="https://project529.com/garage" target="_blank" rel="noopener noreferrer">
                             Register with Project 529
