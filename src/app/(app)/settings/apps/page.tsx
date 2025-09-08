@@ -11,13 +11,15 @@ import {
 } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 import React, { useEffect, useState, Suspense } from "react";
-import { doc, onSnapshot, updateDoc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, setDoc, deleteField } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Bike, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { fetchRecentStravaActivities, type StravaActivity } from './actions';
+import { fetchRecentStravaActivities, fetchUserBikes, type StravaActivity } from './actions';
 import { useSearchParams, useRouter } from "next/navigation";
+import type { Equipment } from "@/lib/types";
+import { ActivityCard } from "@/components/activity-card";
 
 interface StravaData {
   id: number;
@@ -32,6 +34,19 @@ function StravaActivitySyncer() {
     const { toast } = useToast();
     const [isSyncing, setIsSyncing] = useState(false);
     const [activities, setActivities] = useState<StravaActivity[]>([]);
+    const [bikes, setBikes] = useState<Equipment[]>([]);
+
+    useEffect(() => {
+        const getBikes = async () => {
+            const { bikes, error } = await fetchUserBikes();
+            if (error) {
+                toast({ variant: 'destructive', title: 'Could not fetch bikes', description: error });
+            } else {
+                setBikes(bikes || []);
+            }
+        }
+        getBikes();
+    }, [toast]);
 
     const handleSync = async () => {
         if (!user) return;
@@ -57,7 +72,7 @@ function StravaActivitySyncer() {
             <CardHeader>
                 <CardTitle>Activity Sync</CardTitle>
                 <CardDescription>
-                    Manually sync your recent Strava activities. In the future, this will happen automatically.
+                    Manually sync your recent Strava activities to log wear and tear on your equipment.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -71,20 +86,13 @@ function StravaActivitySyncer() {
                 </Button>
             </CardContent>
             {activities.length > 0 && (
-                <CardFooter className="flex-col items-start gap-2">
+                <CardFooter className="flex-col items-start gap-4">
                     <h4 className="font-semibold">Synced Activities:</h4>
-                    <ul className="list-disc pl-5 w-full">
+                    <div className="grid w-full gap-4 md:grid-cols-2">
                         {activities.map(activity => (
-                            <li key={activity.id} className="text-sm flex justify-between items-center">
-                                <span>{activity.name} - {(activity.distance / 1000).toFixed(2)} km</span>
-                                <Button variant="ghost" size="sm" asChild>
-                                    <a href={`https://strava.com/activities/${activity.id}`} target="_blank" rel="noopener noreferrer">
-                                        View <ExternalLink className="ml-2 h-3 w-3" />
-                                    </a>
-                                </Button>
-                            </li>
+                            <ActivityCard key={activity.id} activity={activity} bikes={bikes} />
                         ))}
-                    </ul>
+                    </div>
                 </CardFooter>
             )}
         </Card>
@@ -130,43 +138,6 @@ function ConnectedAppsManager() {
   }
 
   useEffect(() => {
-    // This effect runs on the settings page to check if it's being loaded
-    // with an auth code from an OAuth provider.
-    const service = searchParams.get('service');
-    const code = searchParams.get('code');
-
-    if (user && code && service === 'strava') {
-        fetch('/api/strava/token-exchange', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code }),
-        })
-        .then(res => res.ok ? res.json() : res.json().then(err => { throw new Error(err.error || 'Token exchange failed') }))
-        .then(async (data) => {
-            const userDocRef = doc(db, 'users', user.uid);
-            await setDoc(userDocRef, {
-                strava: {
-                    id: data.athlete.id,
-                    accessToken: data.access_token,
-                    refreshToken: data.refresh_token,
-                    expiresAt: data.expires_at,
-                    scope: searchParams.get('scope'),
-                    connectedAt: new Date().toISOString(),
-                }
-            }, { merge: true });
-            
-            toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
-        })
-        .catch((err) => {
-            toast({ variant: 'destructive', title: 'Connection Failed', description: err.message });
-        })
-        .finally(() => {
-            router.replace('/settings/apps'); // Clean URL after processing
-        });
-    }
-  }, [searchParams, user, router, toast]);
-
-  useEffect(() => {
     if (user) {
       const userDocRef = doc(db, 'users', user.uid);
       const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
@@ -187,7 +158,7 @@ function ConnectedAppsManager() {
     if (user) {
         const userDocRef = doc(db, "users", user.uid);
         await updateDoc(userDocRef, {
-            strava: null
+            strava: deleteField()
         });
         toast({ title: 'Strava Disconnected' });
     }

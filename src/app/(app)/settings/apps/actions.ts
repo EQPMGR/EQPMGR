@@ -2,9 +2,11 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getAdminAuth } from '@/lib/firebase-admin';
+import type { Equipment } from '@/lib/types';
+import { toDate } from '@/lib/date-utils';
 
 export interface StravaActivity {
   id: number;
@@ -119,4 +121,39 @@ export async function fetchRecentStravaActivities(): Promise<{ activities?: Stra
         console.error("Error fetching Strava activities:", error);
         return { error: error.message || 'An unknown error occurred.' };
     }
+}
+
+export async function fetchUserBikes(): Promise<{ bikes?: Equipment[]; error?: string; }> {
+    const session = cookies().get('__session')?.value || '';
+    if (!session) {
+        return { error: 'User not authenticated.' };
+    }
+
+    try {
+        const adminAuth = await getAdminAuth();
+        const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
+
+        const q = query(collection(db, `users/${decodedIdToken.uid}/equipment`), where('type', '!=', 'Cycling Shoes'));
+        const querySnapshot = await getDocs(q);
+        
+        const bikes = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            // Ensure dates are converted correctly, as they are not serialized over the wire.
+            purchaseDate: toDate(doc.data().purchaseDate)
+        } as Equipment));
+        
+        return { bikes };
+
+    } catch(error: any) {
+        console.error("Error fetching user bikes: ", error);
+        return { error: error.message || "An unknown error occurred." };
+    }
+}
+
+async function assignActivityToEquipment(activity: StravaActivity, equipmentId: string): Promise<{success: boolean; error?: string;}> {
+    // This is a placeholder for the next step. We will implement the logic to
+    // call the wear simulation AI and update the component data here.
+    console.log(`Assigning activity ${activity.id} to equipment ${equipmentId}`);
+    return { success: true };
 }
