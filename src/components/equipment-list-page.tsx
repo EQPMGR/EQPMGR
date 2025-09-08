@@ -146,7 +146,7 @@ export function EquipmentListPage() {
             purchasePrice: formData.purchasePrice,
             purchaseCondition: formData.purchaseCondition,
             imageUrl: bikeFromDb.imageUrl,
-            totalDistance: 0,
+            totalDistance: formData.estimatedMileage || 0,
             totalHours: 0,
             maintenanceLog: [],
             serialNumber: formData.serialNumber || '',

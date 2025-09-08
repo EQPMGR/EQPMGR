@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { CalendarIcon, Loader2, Bike, FileInput, FilePlus } from 'lucide-react';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { collection, getDocs } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -62,6 +61,7 @@ const equipmentFormSchema = z.object({
   serialNumber: z.string().optional(),
   frameSize: z.string().optional(),
   purchaseCondition: z.enum(['new', 'used']),
+  estimatedMileage: z.coerce.number().min(0, { message: 'Mileage must be a positive number.' }).optional(),
 });
 
 
@@ -103,6 +103,15 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
       control: form.control,
       name: 'brand'
   });
+  
+  const purchaseCondition = useWatch({ control: form.control, name: 'purchaseCondition' });
+  const purchaseDate = useWatch({ control: form.control, name: 'purchaseDate' });
+
+  const showEstimatedMileage = useMemo(() => {
+    if (purchaseCondition === 'used') return true;
+    if (purchaseDate && purchaseDate < subDays(new Date(), 7)) return true;
+    return false;
+  }, [purchaseCondition, purchaseDate]);
 
   useEffect(() => {
     async function fetchBikeModels() {
@@ -396,6 +405,21 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                 )}
               />
             </div>
+            {showEstimatedMileage && (
+              <FormField
+                control={form.control}
+                name="estimatedMileage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estimated Current Mileage (km)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="e.g., 1500" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                   control={form.control}
