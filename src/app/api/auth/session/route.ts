@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'success' });
 
     } catch (error: any) {
-      console.error('Error creating session cookie:', error);
+      // Log the full error object for better debugging on the server
+      console.error('Error creating session cookie:', JSON.stringify(error, null, 2));
 
       // Provide a more specific error message based on the Firebase error code.
       let errorMessage = 'An unexpected error occurred while creating the session.';

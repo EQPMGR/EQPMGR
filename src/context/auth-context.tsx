@@ -194,11 +194,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // After creating the user, we immediately sign them out.
-      // This forces them to log in, which avoids race conditions with session creation.
-      await firebaseSignOut(auth); 
-      
       await sendEmailVerification(userCredential.user);
+      await firebaseSignOut(auth);
       
       toast({
         title: 'Account Created!',
