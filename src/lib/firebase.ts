@@ -16,7 +16,7 @@ const firebaseConfig: FirebaseOptions = {
 
 // A basic check to ensure the essential variables are present.
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-    throw new Error("Missing Firebase config from environment variables. Ensure NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set.");
+    console.warn("Missing Firebase config from environment variables. This may be expected during the build process.");
 }
 
 // Initialize Firebase
