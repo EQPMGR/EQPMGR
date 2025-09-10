@@ -1,4 +1,3 @@
-
 # Settings for Cloud Run (your backend instance)
 runConfig:
   cpu: 1
@@ -30,4 +29,16 @@ env:
     secret: FIREBASE_PROJECT_ID
     availability:
       - BUILD
+      - RUNTIME
+  - variable: EMAIL_HOST
+    secret: EMAIL_HOST
+    availability:
+      - RUNTIME
+  - variable: EMAIL_USER
+    secret: EMAIL_USER
+    availability:
+      - RUNTIME
+  - variable: EMAIL_PASS
+    secret: EMAIL_PASS
+    availability:
       - RUNTIME

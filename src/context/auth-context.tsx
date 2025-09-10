@@ -195,8 +195,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
-      await firebaseSignOut(auth);
       
+      // After creating the account, sign the user out immediately.
+      // This forces them to verify their email before they can log in for the first time.
+      await firebaseSignOut(auth);
+
       toast({
         title: 'Account Created!',
         description: "Please check your inbox to verify your email, then sign in.",
