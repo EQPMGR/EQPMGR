@@ -85,30 +85,6 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
   };
 };
 
-const setSessionCookie = async (user: User) => {
-    // Force a token refresh to ensure we have a valid token for the new session.
-    const idToken = await user.getIdToken(true);
-    const response = await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ idToken }),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        // Use the detailed error from the server, or a fallback.
-        throw new Error(errorData.error || 'Failed to set session cookie.');
-    }
-};
-
-const clearSessionCookie = async () => {
-    await fetch('/api/auth/session', {
-      method: 'DELETE',
-    });
-}
-
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,64 +100,40 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     throw error;
   }, [toast]);
   
-  const signOutHandler = useCallback(async () => {
-    try {
-        await firebaseSignOut(auth);
-        await clearSessionCookie();
-    } catch (error) {
-        handleAuthError(error, 'Sign Out Failed');
-    }
-  }, [handleAuthError]);
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       if (authUser) {
-        try {
-            await setSessionCookie(authUser);
-
-            const userDocRef = doc(db, 'users', authUser.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            let userDocData: UserDocument;
-            
-            if (userDocSnap.exists()) {
-              await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-              userDocData = userDocSnap.data() as UserDocument;
-            } else {
-              userDocData = {
-                displayName: authUser.displayName || '',
-                photoURL: authUser.photoURL || '',
-                measurementSystem: 'imperial',
-                shoeSizeSystem: 'us',
-                distanceUnit: 'km',
-                dateFormat: 'MM/DD/YYYY',
-                createdAt: serverTimestamp(),
-                lastLogin: serverTimestamp(),
-              };
-              await setDoc(userDocRef, userDocData);
-            }
-            
-            const safeProfile = createSafeUserProfile(authUser, userDocData);
-            setUser(safeProfile);
-
-        } catch (error: any) {
-            // If setting the session fails (e.g., stale token), sign the user out
-            // to clear the invalid client-side state.
-            console.error("Session creation failed, forcing logout:", error.message);
-            toast({
-              variant: 'destructive',
-              title: 'Session Expired',
-              description: 'Your session has expired. Please sign in again.',
-            });
-            await signOutHandler();
-        }
+          const userDocRef = doc(db, 'users', authUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          let userDocData: UserDocument;
+          
+          if (userDocSnap.exists()) {
+            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+            userDocData = userDocSnap.data() as UserDocument;
+          } else {
+            userDocData = {
+              displayName: authUser.displayName || '',
+              photoURL: authUser.photoURL || '',
+              measurementSystem: 'imperial',
+              shoeSizeSystem: 'us',
+              distanceUnit: 'km',
+              dateFormat: 'MM/DD/YYYY',
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp(),
+            };
+            await setDoc(userDocRef, userDocData);
+          }
+          
+          const safeProfile = createSafeUserProfile(authUser, userDocData);
+          setUser(safeProfile);
       } else {
         setUser(null);
       }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [toast, signOutHandler]);
+  }, []);
 
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
@@ -195,9 +147,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
-      
-      // After creating the account, sign the user out immediately.
-      // This forces them to verify their email before they can log in for the first time.
       await firebaseSignOut(auth);
 
       toast({
@@ -210,6 +159,14 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
      handleAuthError(error, 'Sign Up Failed');
    }
  };
+
+  const signOutHandler = useCallback(async () => {
+    try {
+        await firebaseSignOut(auth);
+    } catch (error) {
+        handleAuthError(error, 'Sign Out Failed');
+    }
+  }, [handleAuthError]);
   
   const resendVerificationEmailHandler = async () => {
     const currentUser = auth.currentUser;
@@ -251,7 +208,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             const typedKey = key as keyof typeof data;
             let value = data[typedKey];
             
-            // This logic correctly handles 0 as a valid value
             if (value === null || value === undefined || value === '') {
                 firestoreUpdateData[key] = deleteField();
             } else {
@@ -329,3 +285,5 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 };
 
 export { AuthContext };
+
+    
