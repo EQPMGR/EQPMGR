@@ -38,6 +38,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Explicitly expose environment variables to the client-side application.
+  // This is the standard and safest way to handle public keys in Next.js.
+  env: {
+    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  },
   webpack: (config, { isServer }) => {
     // Fix for Genkit's dependency on handlebars
     config.module.rules.push({
