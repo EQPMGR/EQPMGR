@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs, query } from 'firebase/firestore';
-import { auth, storage, db } from '@/lib/firebase';
+import { auth, db, storage, initializeFirebase } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 export interface UserProfile {
@@ -101,39 +101,53 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [toast]);
   
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-      setLoading(true);
-      if (authUser) {
-          const userDocRef = doc(db, 'users', authUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          let userDocData: UserDocument;
-          
-          if (userDocSnap.exists()) {
-            await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-            userDocData = userDocSnap.data() as UserDocument;
-          } else {
-            userDocData = {
-              displayName: authUser.displayName || '',
-              photoURL: authUser.photoURL || '',
-              measurementSystem: 'imperial',
-              shoeSizeSystem: 'us',
-              distanceUnit: 'km',
-              dateFormat: 'MM/DD/YYYY',
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp(),
-            };
-            await setDoc(userDocRef, userDocData);
-          }
-          
-          const safeProfile = createSafeUserProfile(authUser, userDocData);
-          setUser(safeProfile);
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    const initialize = async () => {
+        try {
+            await initializeFirebase(); // Ensure Firebase is initialized
+            const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+              setLoading(true);
+              if (authUser) {
+                  const userDocRef = doc(db, 'users', authUser.uid);
+                  const userDocSnap = await getDoc(userDocRef);
+                  let userDocData: UserDocument;
+                  
+                  if (userDocSnap.exists()) {
+                    await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+                    userDocData = userDocSnap.data() as UserDocument;
+                  } else {
+                    userDocData = {
+                      displayName: authUser.displayName || '',
+                      photoURL: authUser.photoURL || '',
+                      measurementSystem: 'imperial',
+                      shoeSizeSystem: 'us',
+                      distanceUnit: 'km',
+                      dateFormat: 'MM/DD/YYYY',
+                      createdAt: serverTimestamp(),
+                      lastLogin: serverTimestamp(),
+                    };
+                    await setDoc(userDocRef, userDocData);
+                  }
+                  
+                  const safeProfile = createSafeUserProfile(authUser, userDocData);
+                  setUser(safeProfile);
+              } else {
+                setUser(null);
+              }
+              setLoading(false);
+            });
+            return () => unsubscribe();
+        } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            setLoading(false);
+            toast({
+                variant: 'destructive',
+                title: 'Application Error',
+                description: 'Could not initialize required services. Please refresh the page.',
+            });
+        }
+    };
+    initialize();
+  }, [toast]);
 
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
@@ -285,5 +299,3 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 };
 
 export { AuthContext };
-
-    

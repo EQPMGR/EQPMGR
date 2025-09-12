@@ -5,40 +5,63 @@ import { getStorage } from "firebase/storage";
 import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-// This configuration uses environment variables that are set during the build process
-// by next.config.js. This is the most reliable way for Next.js.
-const firebaseConfig: FirebaseOptions = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`,
-};
+// This file is being refactored to fetch its configuration from a server endpoint
+// to ensure consistency between client and server environments.
 
-// A more robust check to ensure the essential variables are present before initialization.
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-    console.error("CRITICAL: Firebase config is missing. Environment variables NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID must be set in next.config.js.");
-}
+let app = getApps().length ? getApp() : null;
 
-// Initialize Firebase
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const db = getFirestore(app);
-
-// Initialize Analytics only on the client side if supported
-if (typeof window !== 'undefined') {
-  isSupported().then(supported => {
-    if (supported) {
-      try {
-        // Check if measurementId is available in the config before initializing
-        if (firebaseConfig.measurementId) {
-          getAnalytics(app);
-        }
-      } catch (e) {
-        console.warn("Firebase Analytics could not be initialized.", e);
-      }
+async function getFirebaseConfig(): Promise<FirebaseOptions> {
+    // Fetch the configuration from our own API route.
+    // This is more reliable than relying on client-side environment variables.
+    const response = await fetch('/api/config');
+    if (!response.ok) {
+        throw new Error("Failed to fetch Firebase config from server.");
     }
-  });
+    return response.json();
 }
 
-export { app, auth, storage, db };
+async function initializeFirebase() {
+    if (!app) {
+        const firebaseConfig = await getFirebaseConfig();
+        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+            console.error("CRITICAL: Firebase config fetched from server is invalid.", firebaseConfig);
+            throw new Error("Invalid Firebase config received from server.");
+        }
+        app = initializeApp(firebaseConfig);
+        
+        // Initialize Analytics only on the client side if supported
+        if (typeof window !== 'undefined') {
+          isSupported().then(supported => {
+            if (supported) {
+              getAnalytics(app!);
+            }
+          });
+        }
+    }
+    return app;
+}
+
+// Export a function that ensures initialization before returning services.
+async function getFirebaseServices() {
+    const initializedApp = await initializeFirebase();
+    return {
+        app: initializedApp,
+        auth: getAuth(initializedApp),
+        storage: getStorage(initializedApp),
+        db: getFirestore(initializedApp),
+    };
+}
+
+// For components that need direct access, we can export the initialized services.
+// Note: These will be initialized asynchronously.
+let auth, storage, db;
+if (typeof window !== 'undefined') {
+    getFirebaseServices().then(services => {
+        auth = services.auth;
+        storage = services.storage;
+        db = services.db;
+    });
+}
+
+// We re-export the services for use in the app, but now they are initialized reliably.
+export { app, auth, storage, db, getFirebaseServices, initializeFirebase };

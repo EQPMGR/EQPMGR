@@ -9,19 +9,10 @@ const initializeAdminApp = () => {
     return admin.app();
   }
 
-  // When running on Google Cloud (like Cloud Run), the GAE_RUNTIME environment variable will be set.
-  // In this case, initializeApp() with no arguments will automatically use the runtime's
-  // service account credentials, which is the most reliable method.
-  if (process.env.GAE_RUNTIME) {
-    return admin.initializeApp();
-  } else {
-    // For local development, we explicitly provide the projectId to ensure the Admin SDK
-    // targets the correct Firebase project ("eqpmgr-test") and avoids defaulting to a
-    // placeholder project like "monospace-2".
-    return admin.initializeApp({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    });
-  }
+  // When running on Google Cloud (like Cloud Run), initializeApp() with no arguments 
+  // will automatically use the runtime's service account credentials. This is the
+  // most reliable method for production.
+  return admin.initializeApp();
 };
 
 export async function getAdminDb() {
