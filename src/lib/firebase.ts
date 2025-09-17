@@ -1,67 +1,68 @@
 
-import { initializeApp, getApps, getApp, type FirebaseOptions } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, type FirebaseOptions, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-// This file is being refactored to fetch its configuration from a server endpoint
-// to ensure consistency between client and server environments.
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let storage: FirebaseStorage | null = null;
+let db: Firestore | null = null;
 
-let app = getApps().length ? getApp() : null;
+interface FirebaseServices {
+    app: FirebaseApp;
+    auth: Auth;
+    storage: FirebaseStorage;
+    db: Firestore;
+}
 
-async function getFirebaseConfig(): Promise<FirebaseOptions> {
-    // Fetch the configuration from our own API route.
-    // This is more reliable than relying on client-side environment variables.
+// This promise will be initialized once and then reused.
+let firebaseServicesPromise: Promise<FirebaseServices> | null = null;
+
+async function _initializeFirebase(): Promise<FirebaseServices> {
     const response = await fetch('/api/config');
     if (!response.ok) {
         throw new Error("Failed to fetch Firebase config from server.");
     }
-    return response.json();
+    const firebaseConfig: FirebaseOptions = await response.json();
+    
+    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+        console.error("CRITICAL: Firebase config fetched from server is invalid.", firebaseConfig);
+        throw new Error("Invalid Firebase config received from server.");
+    }
+    
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    storage = getStorage(app);
+    db = getFirestore(app);
+
+    if (typeof window !== 'undefined') {
+        isSupported().then(supported => {
+            if (supported) {
+                getAnalytics(app!);
+            }
+        });
+    }
+
+    return { app, auth, storage, db };
 }
 
-async function initializeFirebase() {
-    if (!app) {
-        const firebaseConfig = await getFirebaseConfig();
-        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-            console.error("CRITICAL: Firebase config fetched from server is invalid.", firebaseConfig);
-            throw new Error("Invalid Firebase config received from server.");
-        }
-        app = initializeApp(firebaseConfig);
-        
-        // Initialize Analytics only on the client side if supported
-        if (typeof window !== 'undefined') {
-          isSupported().then(supported => {
-            if (supported) {
-              getAnalytics(app!);
-            }
-          });
+function getFirebaseServices(): Promise<FirebaseServices> {
+    if (!firebaseServicesPromise) {
+        if (getApps().length) {
+            app = getApp();
+            auth = getAuth(app);
+            storage = getStorage(app);
+            db = getFirestore(app);
+            firebaseServicesPromise = Promise.resolve({ app, auth, storage, db });
+        } else {
+            firebaseServicesPromise = _initializeFirebase();
         }
     }
-    return app;
+    return firebaseServicesPromise;
 }
 
-// Export a function that ensures initialization before returning services.
-async function getFirebaseServices() {
-    const initializedApp = await initializeFirebase();
-    return {
-        app: initializedApp,
-        auth: getAuth(initializedApp),
-        storage: getStorage(initializedApp),
-        db: getFirestore(initializedApp),
-    };
-}
-
-// For components that need direct access, we can export the initialized services.
-// Note: These will be initialized asynchronously.
-let auth, storage, db;
-if (typeof window !== 'undefined') {
-    getFirebaseServices().then(services => {
-        auth = services.auth;
-        storage = services.storage;
-        db = services.db;
-    });
-}
-
-// We re-export the services for use in the app, but now they are initialized reliably.
-export { app, auth, storage, db, getFirebaseServices, initializeFirebase };
+// We re-export the initialized services for use in the app.
+// Note: Direct access should be within components that await getFirebaseServices.
+export { app, auth, storage, db, getFirebaseServices };

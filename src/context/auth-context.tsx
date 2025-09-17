@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs, query } from 'firebase/firestore';
-import { auth, db, storage, initializeFirebase } from '@/lib/firebase';
+import { getFirebaseServices } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 export interface UserProfile {
@@ -101,11 +101,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [toast]);
   
   useEffect(() => {
-    const initialize = async () => {
+    const initializeAuth = async () => {
         try {
-            await initializeFirebase(); // Ensure Firebase is initialized
+            const { auth, db } = await getFirebaseServices();
             const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-              setLoading(true);
               if (authUser) {
                   const userDocRef = doc(db, 'users', authUser.uid);
                   const userDocSnap = await getDoc(userDocRef);
@@ -137,7 +136,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             });
             return () => unsubscribe();
         } catch (error) {
-            console.error("Firebase initialization failed:", error);
+            console.error("Firebase auth initialization failed:", error);
             setLoading(false);
             toast({
                 variant: 'destructive',
@@ -146,11 +145,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             });
         }
     };
-    initialize();
+    initializeAuth();
   }, [toast]);
 
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
+      const { auth } = await getFirebaseServices();
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
       handleAuthError(error, 'Sign In Failed');
@@ -159,6 +159,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
+      const { auth } = await getFirebaseServices();
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
       await firebaseSignOut(auth);
@@ -176,6 +177,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const signOutHandler = useCallback(async () => {
     try {
+        const { auth } = await getFirebaseServices();
         await firebaseSignOut(auth);
     } catch (error) {
         handleAuthError(error, 'Sign Out Failed');
@@ -183,25 +185,27 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [handleAuthError]);
   
   const resendVerificationEmailHandler = async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to resend a verification email.' });
-      return;
-    }
-    if (currentUser.emailVerified) {
-       toast({ title: 'Already Verified', description: 'Your email is already verified.' });
-       return;
-    }
     try {
-      await sendEmailVerification(currentUser);
-      toast({ title: 'Verification Email Sent', description: 'Please check your inbox (and spam folder).' });
+        const { auth } = await getFirebaseServices();
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to resend a verification email.' });
+          return;
+        }
+        if (currentUser.emailVerified) {
+           toast({ title: 'Already Verified', description: 'Your email is already verified.' });
+           return;
+        }
+        await sendEmailVerification(currentUser);
+        toast({ title: 'Verification Email Sent', description: 'Please check your inbox (and spam folder).' });
     } catch (error) {
-      handleAuthError(error, 'Failed to send verification email');
+        handleAuthError(error, 'Failed to send verification email');
     }
   };
 
 
   const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'>) => {
+      const { auth, db } = await getFirebaseServices();
       const currentUser = auth.currentUser;
       if (!currentUser) {
           throw new Error('Not Authenticated');
@@ -210,13 +214,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const userDocRef = doc(db, 'users', currentUser.uid);
 
       try {
-        // Sync with Firebase Auth service
         await updateProfile(currentUser, {
             displayName: data.displayName || undefined,
             photoURL: data.photoURL || undefined,
         });
 
-        // Sync with Firestore document
         const firestoreUpdateData: { [key: string]: any } = {};
         for (const key in data) {
             const typedKey = key as keyof typeof data;
@@ -242,6 +244,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [toast, handleAuthError]);
 
   const updateUserPreferencesHandler = useCallback(async (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit' | 'dateFormat'>>) => {
+      const { auth, db } = await getFirebaseServices();
       const currentUser = auth.currentUser;
       if (!currentUser) {
           throw new Error('Not Authenticated');
@@ -259,6 +262,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [handleAuthError, toast]);
   
   const updateProfilePhotoHandler = useCallback(async (photoDataUrl: string): Promise<boolean> => {
+    const { auth, db, storage } = await getFirebaseServices();
     const currentUser = auth.currentUser;
     if (!currentUser) {
         toast({ variant: 'destructive', title: 'Not Authenticated' });
