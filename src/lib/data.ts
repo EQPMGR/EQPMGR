@@ -7,7 +7,7 @@ export const equipmentData: Equipment[] = [
     name: 'Tarmac SL8',
     type: 'Road Bike',
     brand: 'Specialized',
-    model: 'S-Works Tarmac SL8',
+    model: 'S-Works Tarmac SL9',
     modelYear: 2023,
     serialNumber: 'WSBC604285542S',
     purchaseCondition: 'new',
