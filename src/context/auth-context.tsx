@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC, useCallback, useMemo } from 'react';
@@ -225,8 +226,14 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             const typedKey = key as keyof typeof data;
             let value = data[typedKey];
             
-            if (value === null || value === undefined || value === '') {
-                firestoreUpdateData[key] = deleteField();
+            // Correctly handle fields that should be deleted if empty/null/undefined
+            if (value === undefined || value === '' || value === null) {
+                // For 'birthdate', we explicitly want to allow null to be stored
+                if (key === 'birthdate' && value === null) {
+                    firestoreUpdateData[key] = null;
+                } else {
+                    firestoreUpdateData[key] = deleteField();
+                }
             } else if (value instanceof Date) {
                 firestoreUpdateData[key] = Timestamp.fromDate(value);
             } else {
@@ -306,3 +313,4 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 };
 
 export { AuthContext };
+

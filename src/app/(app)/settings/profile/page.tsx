@@ -167,7 +167,7 @@ const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile
 
     return {
         displayName: formData.name || null,
-        phone: formData.phone,
+        phone: formData.phone || undefined,
         birthdate: formData.birthdate,
         height: height,
         weight: weight,
@@ -240,7 +240,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Your name" {...field} />
+                          <Input placeholder="Your name" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
