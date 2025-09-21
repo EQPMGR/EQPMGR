@@ -12,9 +12,10 @@ import {
   sendEmailVerification,
 } from 'firebase/auth';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs, query } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs, query, Timestamp } from 'firebase/firestore';
 import { getFirebaseServices } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { toDate } from '@/lib/date-utils';
 
 export interface UserProfile {
   uid: string;
@@ -26,9 +27,9 @@ export interface UserProfile {
   height?: number; 
   weight?: number; 
   shoeSize?: number; 
-  age?: number; 
+  birthdate?: Date | null;
   measurementSystem: 'metric' | 'imperial';
-  shoeSizeSystem: 'us' | 'uk' | 'eu';
+  shoeSizeSystem: 'us-womens' | 'us-mens' | 'uk' | 'eu';
   distanceUnit: 'km' | 'miles';
   dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
   getIdToken: (forceRefresh?: boolean) => Promise<string>;
@@ -41,9 +42,9 @@ interface UserDocument {
     height?: number;
     weight?: number;
     shoeSize?: number;
-    age?: number;
+    birthdate?: Timestamp;
     measurementSystem?: 'metric' | 'imperial';
-    shoeSizeSystem?: 'us' | 'uk' | 'eu';
+    shoeSizeSystem?: 'us-womens' | 'us-mens' | 'uk' | 'eu';
     distanceUnit?: 'km' | 'miles';
     dateFormat?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
     createdAt?: FieldValue;
@@ -74,13 +75,13 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     phone: data.phone || null,
     photoURL: authUser.photoURL || data.photoURL || null,
     measurementSystem: data.measurementSystem || 'imperial',
-    shoeSizeSystem: data.shoeSizeSystem || 'us',
+    shoeSizeSystem: data.shoeSizeSystem || 'us-mens',
     distanceUnit: data.distanceUnit || 'km',
     dateFormat: data.dateFormat || 'MM/DD/YYYY',
     height: data.height,
     weight: data.weight,
     shoeSize: data.shoeSize,
-    age: data.age,
+    birthdate: data.birthdate ? toDate(data.birthdate) : null,
     getIdToken: (forceRefresh?: boolean) => authUser.getIdToken(forceRefresh),
   };
 };
@@ -118,7 +119,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                       displayName: authUser.displayName || '',
                       photoURL: authUser.photoURL || '',
                       measurementSystem: 'imperial',
-                      shoeSizeSystem: 'us',
+                      shoeSizeSystem: 'us-mens',
                       distanceUnit: 'km',
                       dateFormat: 'MM/DD/YYYY',
                       createdAt: serverTimestamp(),
@@ -226,6 +227,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             
             if (value === null || value === undefined || value === '') {
                 firestoreUpdateData[key] = deleteField();
+            } else if (value instanceof Date) {
+                firestoreUpdateData[key] = Timestamp.fromDate(value);
             } else {
                 firestoreUpdateData[key] = value;
             }

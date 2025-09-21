@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { Loader2 } from "lucide-react"
+import { CalendarIcon, Loader2 } from "lucide-react"
 import React from "react"
 
 import { Button } from "@/components/ui/button"
@@ -24,8 +24,14 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useAuth, type UserProfile } from "@/hooks/use-auth"
+import { toDate } from "@/lib/date-utils"
+import { format } from "date-fns"
+
 
 // --- Zod Schema with Preprocessing ---
 const emptyStringToUndefined = z.preprocess(
@@ -53,9 +59,9 @@ const profileFormSchema = z.object({
   inches: inchesSchema,
   weight: optionalPositiveNumber,
   shoeSize: optionalPositiveNumber,
-  age: optionalPositiveNumber,
+  birthdate: z.date().optional(),
   measurementSystem: z.enum(['metric', 'imperial']),
-  shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
+  shoeSizeSystem: z.enum(['us-mens', 'us-womens', 'uk', 'eu']),
   distanceUnit: z.enum(['km', 'miles']),
   dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY/MM/DD']),
 })
@@ -70,23 +76,25 @@ const IN_TO_CM = 1 / CM_TO_IN;
 
 const convertShoeSize = (
   size: number | undefined, 
-  fromSystem: 'us' | 'uk' | 'eu', 
-  toSystem: 'us' | 'uk' | 'eu'
+  fromSystem: 'us-mens' | 'us-womens' | 'uk' | 'eu', 
+  toSystem: 'us-mens' | 'us-womens' | 'uk' | 'eu'
 ): number | undefined => {
     if (fromSystem === toSystem || size === undefined) return size;
 
-    let usSize: number;
+    let usMensSize: number;
     switch (fromSystem) {
-        case 'uk': usSize = size + 1; break;
-        case 'eu': usSize = size - 33; break;
-        default: usSize = size; break;
+        case 'us-womens': usMensSize = size - 1.5; break;
+        case 'uk': usMensSize = size + 1; break;
+        case 'eu': usMensSize = size - 33; break;
+        default: usMensSize = size; break;
     }
 
     let newSize: number;
     switch (toSystem) {
-        case 'uk': newSize = usSize - 1; break;
-        case 'eu': newSize = usSize + 33; break;
-        default: newSize = usSize; break;
+        case 'us-womens': newSize = usMensSize + 1.5; break;
+        case 'uk': newSize = usMensSize - 1; break;
+        case 'eu': newSize = usMensSize + 33; break;
+        default: newSize = usMensSize; break;
     }
     
     return Math.round(newSize * 2) / 2;
@@ -118,13 +126,13 @@ const mapProfileToForm = (profile: UserProfile): ProfileFormValues => {
 
     // Convert shoe size for display
     if (profile.shoeSize) {
-        shoeSize = convertShoeSize(profile.shoeSize, 'us', profile.shoeSizeSystem);
+        shoeSize = convertShoeSize(profile.shoeSize, 'us-mens', profile.shoeSizeSystem);
     }
 
     return {
         name: profile.displayName || '',
         phone: profile.phone || '',
-        age: profile.age,
+        birthdate: profile.birthdate ? toDate(profile.birthdate) : undefined,
         measurementSystem: profile.measurementSystem,
         shoeSizeSystem: profile.shoeSizeSystem,
         distanceUnit: profile.distanceUnit,
@@ -137,7 +145,7 @@ const mapProfileToForm = (profile: UserProfile): ProfileFormValues => {
     };
 };
 
-const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile>, 'uid' | 'email' | 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit'> => {
+const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'> => {
     let height, weight, shoeSize;
 
     if (formData.measurementSystem === 'imperial') {
@@ -154,13 +162,13 @@ const mapFormToProfile = (formData: ProfileFormValues): Omit<Partial<UserProfile
     }
 
     if (formData.shoeSize) {
-        shoeSize = convertShoeSize(formData.shoeSize, formData.shoeSizeSystem, 'us');
+        shoeSize = convertShoeSize(formData.shoeSize, formData.shoeSizeSystem, 'us-mens');
     }
 
     return {
         displayName: formData.name || null,
         phone: formData.phone,
-        age: formData.age,
+        birthdate: formData.birthdate,
         height: height,
         weight: weight,
         shoeSize: shoeSize,
@@ -175,12 +183,12 @@ export default function ProfilePage() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       measurementSystem: 'imperial',
-      shoeSizeSystem: 'us',
+      shoeSizeSystem: 'us-mens',
       distanceUnit: 'km',
       dateFormat: 'MM/DD/YYYY',
       name: '',
       phone: '',
-      age: undefined,
+      birthdate: undefined,
       height: undefined,
       feet: undefined,
       inches: undefined,
@@ -252,6 +260,52 @@ export default function ProfilePage() {
                     )}
                   />
                 </div>
+
+                 <FormField
+                  control={form.control}
+                  name="birthdate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Birthdate</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-[240px] pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            captionLayout="dropdown-buttons"
+                            fromYear={1920}
+                            toYear={new Date().getFullYear()}
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                <FormField
                 control={form.control}
                 name="measurementSystem"
@@ -341,19 +395,6 @@ export default function ProfilePage() {
                     )}
                   />
               </div>
-              <FormField
-                  control={form.control}
-                  name="age"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Age</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="32" {...field} value={field.value ?? ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               
               <FormField
                   control={form.control}
@@ -365,14 +406,18 @@ export default function ProfilePage() {
                             <RadioGroup
                                 onValueChange={(value) => {
                                     field.onChange(value);
-                                    updateUserPreferences({ shoeSizeSystem: value as 'us' | 'uk' | 'eu' });
+                                    updateUserPreferences({ shoeSizeSystem: value as 'us-mens' | 'us-womens' | 'uk' | 'eu' });
                                 }}
                                 value={field.value}
                                 className="flex space-x-4"
                             >
                                 <FormItem className="flex items-center space-x-2 space-y-0">
-                                    <FormControl><RadioGroupItem value="us" /></FormControl>
-                                    <FormLabel className="font-normal">US</FormLabel>
+                                    <FormControl><RadioGroupItem value="us-mens" /></FormControl>
+                                    <FormLabel className="font-normal">US (Men's)</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="us-womens" /></FormControl>
+                                    <FormLabel className="font-normal">US (Women's)</FormLabel>
                                 </FormItem>
                                 <FormItem className="flex items-center space-x-2 space-y-0">
                                     <FormControl><RadioGroupItem value="uk" /></FormControl>
@@ -393,7 +438,7 @@ export default function ProfilePage() {
                   name="shoeSize"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Shoe Size ({shoeSizeSystem?.toUpperCase()})</FormLabel>
+                      <FormLabel>Shoe Size</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.5" placeholder="10.5" {...field} value={field.value ?? ''} />
                       </FormControl>
