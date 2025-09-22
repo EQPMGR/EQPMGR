@@ -216,31 +216,22 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const userDocRef = doc(db, 'users', currentUser.uid);
 
       try {
+        // This object will only contain fields that have a valid value.
+        const firestoreUpdateData: { [key: string]: any } = {};
+
+        // Explicitly check each field from the form data.
+        if (data.displayName) firestoreUpdateData.displayName = data.displayName;
+        if (data.phone) firestoreUpdateData.phone = data.phone;
+        if (data.height) firestoreUpdateData.height = data.height;
+        if (data.weight) firestoreUpdateData.weight = data.weight;
+        if (data.shoeSize) firestoreUpdateData.shoeSize = data.shoeSize;
+        if (data.birthdate) firestoreUpdateData.birthdate = Timestamp.fromDate(data.birthdate);
+        
         await updateProfile(currentUser, {
             displayName: data.displayName || undefined,
             photoURL: data.photoURL || undefined,
         });
 
-        const firestoreUpdateData: { [key: string]: any } = {};
-        for (const key in data) {
-            const typedKey = key as keyof typeof data;
-            let value = data[typedKey];
-            
-            // Correctly handle fields that should be deleted if empty/null/undefined
-            if (value === undefined || value === '' || value === null) {
-                // For 'birthdate', we explicitly want to allow null to be stored
-                if (key === 'birthdate' && value === null) {
-                    firestoreUpdateData[key] = null;
-                } else {
-                    firestoreUpdateData[key] = deleteField();
-                }
-            } else if (value instanceof Date) {
-                firestoreUpdateData[key] = Timestamp.fromDate(value);
-            } else {
-                firestoreUpdateData[key] = value;
-            }
-        }
-        
         await updateDoc(userDocRef, firestoreUpdateData);
 
         const updatedDoc = await getDoc(userDocRef);
