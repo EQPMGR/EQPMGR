@@ -345,7 +345,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Height (cm)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="any" placeholder="180" {...field} value={field.value ?? ''} />
+                          <Input type="number" step="any" placeholder="180" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -360,7 +360,7 @@ export default function ProfilePage() {
                           <FormItem>
                             <FormLabel>Height (ft)</FormLabel>
                             <FormControl>
-                              <Input type="number" step="any" placeholder="5" {...field} value={field.value ?? ''} />
+                              <Input type="number" step="any" placeholder="5" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={field.value ?? ''} />
                             </FormControl>
                              <FormMessage />
                           </FormItem>
@@ -373,7 +373,7 @@ export default function ProfilePage() {
                           <FormItem>
                             <FormLabel>(in)</FormLabel>
                             <FormControl>
-                              <Input type="number" step="any" placeholder="11" {...field} value={field.value ?? ''} />
+                              <Input type="number" step="any" placeholder="11" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={field.value ?? ''} />
                             </FormControl>
                              <FormMessage />
                           </FormItem>
@@ -388,7 +388,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Weight ({measurementSystem === 'metric' ? 'kg' : 'lbs'})</FormLabel>
                         <FormControl>
-                          <Input type="number" step="any" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} value={field.value ?? ''} />
+                          <Input type="number" step="any" placeholder={measurementSystem === 'metric' ? "75" : "165"} {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -440,7 +440,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Shoe Size</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.5" placeholder="10.5" {...field} value={field.value ?? ''} />
+                        <Input type="number" step="0.5" placeholder="10.5" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
