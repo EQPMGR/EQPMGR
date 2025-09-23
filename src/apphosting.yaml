@@ -26,7 +26,7 @@ env:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    secret: FIREBASE_PROJECT_ID
+    value: ${GCLOUD_PROJECT} # Use the built-in variable instead of a secret
     availability:
       - BUILD
       - RUNTIME

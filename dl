@@ -1,0 +1,104 @@
+[33me77960b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m AAARRRRGGGHHHH!!!! It built. Right at line 493 it shows the wrong API ke
+[33m8d57964[m Same exact problem. Way longer build that passed but had lots of notes a
+[33m0c44b3c[m The build passed, but it's still trying to activate the wrong API at the
+[33m521d3a8[m Build failed. Here are the notes. starting build "e4ba951f-4fcb-41ed-9a8
+[33m543eaa8[m From the console, it's still trying to sign in with the wrong API key. h
+[33m9298831[m one thing
+[33mdfb7bb2[m rewind
+[33m63c1ae5[m Ugh. That build caused a new error. Auth-API-Key-Expired. Which, like, i
+[33m8b85eb9[m One of us is taking crazy pills and I'm pretty sure it's not me. This is
+[33mccf85c3[m I'm looking at the yaml and I've still seeing   NEXT_PUBLIC_STRAVA_CLIEN
+[33md363c51[m This looks like the same mistake, but I can't actually tell. starting b
+[33md76cf72[m Uhoh. Build boo boo.
+[33m78fb37f[m Sick, that totally worked. Next (massive) bug: In the production environ
+[33m0c59ec9[m OK. I'm down for a firebase rules update, but it has to be a surgical ch
+[33m067dc34[m That didn't work. I figured we'd enlist Gemini Pro for some info on this
+[33m050cc01[m I pushed the build with your code changes, but the problem of writing th
+[33m77fd81a[m I see what you're saying, but this error existed prior to the calendar f
+[33m4673e74[m OK, pretty cool. From here on out, I think I need to tell you what I'm s
+[33m839b0b9[m Howdy! So, it's live! Celebration all around, you've been fantastic. The
+[33me817fcb[m jonah
+[33m3daaa6e[m Try fixing this error: `Runtime Error: ChunkLoadError: Loading chunk app
+[33m990b1f2[m I think the credential used to initialize the Admin SDK has insufficient
+[33m980031d[m yamlmama
+[33m4535307[m That's not it. Couple of reasons. First, the dev and production environm
+[33m24dd4da[m That causes the auth in the dev environment debug to fail with the follo
+[33m273134e[m It wiped out with a 400 error instead of a 500 error. Console Gemini sai
+[33m370bb1b[m wts
+[33mf21a9ef[m scorched auth
+[33mb41a8f3[m Google support thinks we need to start over on the Auth front. From Aldo
+[33mbcd62f1[m This looks like a super subtle difference, but it might be a clue. Conso
+[33m34b9a72[m Is this the same error? 7c86ec74-875533ae017ddced.js:1  POST https://id
+[33me8fd120[m There's more info about the auth error. 7c86ec74-875533ae017ddced.js:1
+[33m785f674[m That changed things a little in the production environment. Here is the
+[33mb3d6d44[m authchange
+[33m15e2088[m javachange
+[33mb3fd4ea[m Support got back to me and their experience with the auth issue was diff
+[33m607d502[m We won't be able to test that until we get the production environment fu
+[33m1dbecc5[m Strava/MapMyRide Activity Processing:
+[33m643bf04[m I'm actually super happy with the email output of the form. I have sent
+[33mf8daa0e[m Can we put the Add Equipment button back on the Dashboard? It looked nic
+[33m27207f1[m That's not intuitive. It would be better if the previous Add Bike form c
+[33m4dd2167[m Well, that worked like a charm! All three secrets passed in the producti
+[33m3f5873b[m It worked like a charm. Is there a way to test every single cloud secret
+[33mbc6dfe3[m OK. I added the secrets, same names you used. Are there any other config
+[33mdabb447[m Love it! Let's wire up sending an email to sage@eqpmgr.com for now, for
+[33m0e3115c[m Wow, you really got a lot of that on the first go. There are some quick
+[33m353ef5d[m Try fixing this error: `Build Error: Error: x Server Actions must be asy
+[33mcee41de[m We have a placeholder button for Get an Insurance Quote. This function n
+[33m33a9163[m sheesh
+[33mab04eb8[m ugh
+[33m4e7c1bc[m the password is 1234
+[33m00bca43[m It failed pretty late again. Gemini Pro says: Of course. I can absolutel
+[33m09e559d[m Well, it got further before it wiped out: When enabled, log entries whic
+[33m83b4bda[m Here's the new build log. I don't really understand any of what is happe
+[33mcf6f3d5[m That change resulted in a build fail. I think the FIREBASE_CONFIG is eit
+[33m37edd32[m I feel like it looks like the same error, but I am merely a caveman. 7c8
+[33mbeaaac2[m The build passed, but the auth/invalid-credential persists.
+[33me56b4ba[m Uh oh, it bombed again. From https://github.com/EQPMGR/EQPMGR  * branch
+[33m8ff043b[m OK. The build passes, but we are still at auth/invalid-credential when I
+[33ma7dbfb6[m OK. I still see the -data.ts files in the tree. Should I delete those ma
+[33m16bdc33[m Oh, can we undo that addition and instead remove the references to those
+[33m753475d[m The build failed a lot later. Do we need authDomain for authorization to
+[33m1c15886[m Firebase auth domain doens't exist as a secret. Here is a list of what d
+[33m22558b6[m Here is the build log from that attempt. I do know that the secrets exis
+[33m3724baf[m The problem is that you can compile a code that passes the build, but th
+[33m401104e[m It didn't like that. Looks like the same error. Verification Failed: Cre
+[33m0da678c[m Sweet. It's a different error, but at least monospace-2 isn't part of it
+[33mdeeefed[m Is there anywhere at all in our code that refers to monospace-2? Please
+[33m898a87a[m There's another instance of monospace-2 gumming up the works. A few week
+[33mf1f39a1[m What is monospace-2? It has popped up somewhere before and caused a prob
+[33m3658472[m Oh, hang on. I thought you wanted to try a new user. Here is the result
+[33m65ae1d0[m We're trying to log in an existing user. Your logic about the embedding
+[33m1535a52[m That's still not working to set the cookie. Are you positive you don't w
+[33m4c971b3[m Try fixing this error: `Console Error: Session creation failed, forcing
+[33m9194a1e[m C'mon, it's been saying it's malformed this whole time. Console Error
+[33m422c179[m There's a problem with your test. It needs a logged in user and we can't
+[33m171c40a[m Result of the environment test is: {   "geminiApiKeyStatus": "Loaded (AI
+[33m01197ff[m Well, that didn't work. Can we try doing one thing at a time? Maybe with
+[33mcb31cc7[m Hey, we're just running in a circle with the exact same error. I install
+[33m6457201[m Is this a clue?Uncaught (in promise) Error: A listener indicated an asyn
+[33m42f93a5[m It's failing to create the session. Are we sure it's not a backend issue
+[33me68fa4f[m Same problem. Here is the info from the console log instead. Maybe there
+[33m5fcc25d[m On sign in, I get a "session expired" notice. Here is the error info: Co
+[33mcdef4b5[m Try fixing this error: `Console Error: Session creation failed, forcing
+[33m55416c4[m same exact problem. Can we force logout? Like, if the cookie is stale, i
+[33mb5cf6a9[m Try fixing this error: `Console Error: Error: The ID token is malformed
+[33mc3972c2[m That also didn't work. I checked with Firebase Console gemini and it thi
+[33m9eff42b[m It still has the same error. Do you think it's maybe a configuration err
+[33m45140bd[m Try fixing this error: `Console Error: Error: The ID token is malformed
+[33m35a1614[m Is this the same error? Console Error
+[33m4096064[m Console Error
+[33me482a98[m data delete
+[33mf7e770d[m sageyaml
+[33m57a719f[m This looks like a similar error, but a little further down the line. sta
+[33mba54e75[m Starting Step #0 - "ubuntu" Pulling image: ubuntu Using default tag: lat
+[33m31e6811[m OK. It doesn't like that, either. I think I see the problem. All of my s
+[33m9ee6bab[m I did all that and it did end up failing differently, earlier. Here is t
+[33m294d9a9[m OK, Scooby, we have some mysteries to solve. I granted Secret Manager an
+[33mdb15420[m update yaml
+[33m17e358b[m Unfortunately, that's not the issue, still get the same auth error. I al
+[33me587a49[m I see this error with the app, reported by NextJS, please fix it. The er
+[33mdbe3e9a[m The build passed! When I try to log in, I get Firebase: error (auth/inva
+[33mfbf2d26[m OK. Let's imagine that I'm ready for another round of heartbreak trying
+[33m9695af4[m I see this error w
