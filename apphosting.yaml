@@ -43,6 +43,16 @@ env:
     secret: EMAIL_PASS
     availability:
       - RUNTIME
+  - variable: NEXT_PUBLIC_STRAVA_CLIENT_ID
+    secret: NEXT_PUBLIC_STRAVA_CLIENT_ID
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID
+    secret: NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID
+    availability:
+      - BUILD
+      - RUNTIME    
 
 # Arguments to pass to the build command
 buildArgs:
