@@ -12,7 +12,7 @@ export const equipmentData: Equipment[] = [
     serialNumber: 'WSBC604285542S',
     purchaseCondition: 'new',
     purchaseDate: '2023-01-16',
-    purchasePrice: 14000,
+    purchasePrice: 14500,
     totalDistance: 2540,
     totalHours: 85,
     imageUrl: 'https://placehold.co/600x400.png',
