@@ -113,9 +113,8 @@ function ConnectedAppsManager() {
 
   const getStravaAuthUrl = () => {
     if (!stravaClientId) return '#';
-    // Per Strava's docs for local dev, we redirect to localhost.
     // The page at /exchange-token will handle the code.
-    const redirectUri = 'http://localhost:6000/exchange-token';
+    const redirectUri = 'https://athletes.eqpmgr.com/exchange-token';
     const params = new URLSearchParams({
       client_id: stravaClientId,
       redirect_uri: redirectUri,
