@@ -3,6 +3,7 @@
 runConfig:
   cpu: 1
   memoryMiB: 1024
+  ingress: ALL
 
 # Environment variables and secrets for your runtime (they are NOT under runConfig)
 env:
