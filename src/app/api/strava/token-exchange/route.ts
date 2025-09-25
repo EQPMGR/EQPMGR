@@ -2,8 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(req: NextRequest) {
-  console.log('API Route /api/strava/token-exchange has been hit.');
+export async function POST(req: NextRequest) { // Changed from GET to POST
+  console.log('API Route POST /api/strava/token-exchange has been hit.');
 
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
   const clientSecret = process.env.STRAVA_CLIENT_SECRET;
@@ -12,22 +12,18 @@ export async function GET(req: NextRequest) {
     console.error('CRITICAL ERROR: Missing Strava Client ID or Secret.');
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
   }
-  console.log('Successfully loaded Strava credentials.');
-
-  const code = req.nextUrl.searchParams.get('code');
-
-  if (!code) {
-    console.error('ERROR: No authorization code from Strava.');
-    return NextResponse.json({ error: 'Missing authorization code.' }, { status: 400 });
-  }
-  console.log(`Received authorization code: ${code}`);
 
   try {
+    const { code } = await req.json(); // Read the code from the request body
+
+    if (!code) {
+      console.error('ERROR: No authorization code provided in the POST body.');
+      return NextResponse.json({ error: 'Missing authorization code.' }, { status: 400 });
+    }
+
     const response = await fetch('https://www.strava.com/api/v3/oauth/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         client_id: clientId,
         client_secret: clientSecret,
@@ -35,22 +31,20 @@ export async function GET(req: NextRequest) {
         grant_type: 'authorization_code',
       }),
     });
-
+    
     const data = await response.json();
 
     if (!response.ok) {
       console.error('ERROR: Strava API rejected token exchange.', data);
-      return NextResponse.redirect(new URL('/settings?strava=error', req.nextUrl.origin));
+      return NextResponse.json({ error: 'Strava API error', details: data }, { status: response.status });
     }
-
-    console.log('Successfully received access token from Strava:', data);
-
-    // TODO: Save the access_token (data.access_token) to Firestore.
-
-    return NextResponse.redirect(new URL('/settings?strava=success', req.nextUrl.origin));
+    
+    // TODO: Save the token to the user's profile
+    
+    return NextResponse.json(data);
 
   } catch (error) {
-    console.error('FATAL ERROR during fetch to Strava.', error);
-    return NextResponse.redirect(new URL('/settings?strava=error', req.nextUrl.origin));
+    console.error('FATAL ERROR during token exchange.', error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.' }, { status: 500 });
   }
 }
