@@ -2,18 +2,15 @@
 
 import React from 'react';
 import { StravaConnectButton } from '@/components/strava-connect-button';
-import { useUserProfile } from '@/hooks/useUserProfile'; // Assumes you have a hook to get profile data
-import { useAuth } from '@/hooks/useAuth'; // Assumes you have a hook to get the current user
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAuth } from '@/hooks/use-auth'; // Use your existing use-auth hook
 
 function AppsSettingsPage() {
-  const { user } = useAuth();
-  const { profile, loading } = useUserProfile(user?.uid); // Pass the user's ID to the hook
+  const { user } = useAuth(); // Your existing hook provides the user object
+  const { profile, loading } = useUserProfile(user?.uid); // Pass the user's ID to the new hook
 
-  // This function builds the Strava URL and redirects the user
   const handleStravaConnect = () => {
     const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-    
-    // Construct the redirect URI using the current window's location (origin)
     const redirectUri = `${window.location.origin}/exchange-token`;
 
     if (!clientId) {
@@ -26,11 +23,9 @@ function AppsSettingsPage() {
       redirectUri
     )}&response_type=code&approval_prompt=force&scope=read,activity:read_all`;
 
-    // Redirect the user to the Strava authorization page
     window.location.href = stravaAuthUrl;
   };
   
-  // Determine if Strava is connected by checking for the accessToken in the profile
   const isStravaConnected = !loading && profile?.strava?.accessToken;
 
   return (
@@ -49,7 +44,6 @@ function AppsSettingsPage() {
             Connect your Strava account to automatically import your rides.
           </p>
           
-          {/* This block handles the display logic */}
           {loading ? (
             <p className="text-sm animate-pulse">Loading status...</p>
           ) : isStravaConnected ? (
