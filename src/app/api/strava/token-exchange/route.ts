@@ -2,23 +2,22 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Assuming db is exported from your firebase init file
-import { getAuth } from 'firebase-admin/auth';
-import { adminApp } from '@/lib/firebase-admin'; // You'll need a firebase-admin setup
+import { db } from '@/lib/firebase';
+import { getAdminAuth } from '@/lib/firebase-admin'; // Use your existing admin auth function
 
 export async function POST(req: NextRequest) {
   console.log('API Route POST /api/strava/token-exchange has been hit.');
 
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
   const clientSecret = process.env.STRAVA_CLIENT_SECRET;
-  
+
   if (!clientId || !clientSecret) {
     console.error('CRITICAL ERROR: Missing Strava credentials on server.');
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
   }
 
   try {
-    const { code, idToken } = await req.json(); // Get code and user's ID token from request
+    const { code, idToken } = await req.json();
 
     if (!code || !idToken) {
       const missing = !code ? 'authorization code' : 'ID token';
@@ -26,8 +25,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Missing ${missing}.` }, { status: 400 });
     }
 
-    // Verify the user's ID token to get their UID securely on the backend
-    const decodedToken = await getAuth(adminApp).verifyIdToken(idToken);
+    // Get the admin auth instance from your utility function
+    const adminAuth = await getAdminAuth();
+    
+    // Securely verify the user's ID token
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
     const userId = decodedToken.uid;
     
     console.log(`Verified user: ${userId}. Exchanging Strava code...`);
