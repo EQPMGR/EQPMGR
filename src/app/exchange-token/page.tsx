@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth'; // Assuming you have a custom auth hook
+import { useAuth } from '@/hooks/use-auth'; // Assuming you have a custom auth hook
 
 export default function ExchangeTokenPage() {
   const [status, setStatus] = useState('Exchanging token, please wait...');
