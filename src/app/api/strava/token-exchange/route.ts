@@ -3,14 +3,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getAdminAuth } from '@/lib/firebase-admin'; // Use your existing admin auth function
+// --- START: MODIFIED LINES ---
+import { adminAuth } from '@/lib/firebase-admin'; // Import adminAuth directly
+// --- END: MODIFIED LINES ---
 
 export async function POST(req: NextRequest) {
   console.log('API Route POST /api/strava/token-exchange has been hit.');
 
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
   const clientSecret = process.env.STRAVA_CLIENT_SECRET;
-
+  
   if (!clientId || !clientSecret) {
     console.error('CRITICAL ERROR: Missing Strava credentials on server.');
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
@@ -25,12 +27,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Missing ${missing}.` }, { status: 400 });
     }
 
-    // Get the admin auth instance from your utility function
-    const adminAuth = await getAdminAuth();
-    
-    // Securely verify the user's ID token
+    // --- START: MODIFIED LINES ---
+    // Verify the user's ID token using the imported adminAuth instance
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const userId = decodedToken.uid;
+    // --- END: MODIFIED LINES ---
     
     console.log(`Verified user: ${userId}. Exchanging Strava code...`);
 
@@ -49,26 +50,4 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       console.error('ERROR: Strava API rejected token exchange.', data);
-      return NextResponse.json({ error: 'Strava API error', details: data }, { status: response.status });
-    }
-
-    console.log(`Saving Strava tokens for user: ${userId}`);
-    const userProfileRef = doc(db, 'profiles', userId);
-
-    await updateDoc(userProfileRef, {
-      strava: {
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
-        expiresAt: data.expires_at,
-        athleteId: data.athlete.id,
-      },
-    });
-    
-    console.log('Successfully saved tokens to Firestore.');
-    return NextResponse.json({ success: true, athlete: data.athlete });
-
-  } catch (error) {
-    console.error('FATAL ERROR during token exchange.', error);
-    return NextResponse.json({ error: 'An unexpected server error occurred.' }, { status: 500 });
-  }
-}
+      return NextResponse.json({

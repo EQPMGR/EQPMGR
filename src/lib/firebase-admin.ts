@@ -1,25 +1,20 @@
-
 // src/lib/firebase-admin.ts
 
 import * as admin from 'firebase-admin';
 
-// Check if an app is already initialized to prevent errors
+// Check if an app is already initialized to prevent re-initialization errors
 if (!admin.apps.length) {
-  // When running on Google Cloud, we can initialize with default credentials.
-  // For other environments, you might need to provide a service account key file.
   try {
-    admin.initializeApp({
-      // This tells the Admin SDK to use the application's default service account credentials
-      // which are automatically available in the App Hosting/Cloud Run environment.
-      credential: admin.credential.applicationDefault(),
-    });
+    // When running on App Hosting, this automatically finds the correct
+    // service account credentials without any extra configuration.
+    admin.initializeApp();
     console.log("Firebase Admin SDK initialized successfully.");
   } catch (error) {
-    console.error("Firebase Admin SDK initialization error:", error);
+    // This log is crucial. If initialization fails, it will now appear in your logs.
+    console.error("CRITICAL: Firebase Admin SDK initialization failed:", error);
   }
 }
 
-// Export the initialized app and its services
-export const adminApp = admin.app();
-export const adminAuth = admin.auth(adminApp);
-export const adminDb = admin.firestore(adminApp);
+// Export the initialized services directly
+export const adminAuth = admin.auth();
+export const adminDb = admin.firestore();
