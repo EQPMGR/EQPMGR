@@ -5,9 +5,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -23,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
-import { getAvailableBrands, saveBikeModelAction } from './actions';
+import { saveBikeModelAction } from './actions';
 
 interface TrainingData {
     rawText: string;
@@ -67,6 +69,23 @@ const addBikeModelSchema = z.object({
 });
 
 export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
+
+async function getAvailableBrands(): Promise<string[]> {
+    try {
+        const querySnapshot = await getDocs(collection(db, "bikeModels"));
+        const brands = new Set<string>();
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.brand) {
+                brands.add(data.brand);
+            }
+        });
+        return Array.from(brands).sort();
+    } catch (error) {
+        console.error("Client-side: Error fetching brands", error);
+        throw new Error("Could not fetch bike brands from the server. This might be a database permission issue.");
+    }
+}
 
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
@@ -181,18 +200,19 @@ function AddBikeModelFormComponent() {
     
     const showIntegratedBrakeLevers = DROP_BAR_BIKE_TYPES.includes(bikeType as any) && bikeType !== 'TT/Triathlon';
 
-    useEffect(() => {
-      async function fetchBrands() {
+    const fetchBrands = useCallback(async () => {
         try {
-          const brands = await getAvailableBrands();
-          setAvailableBrands(brands);
+            const brands = await getAvailableBrands();
+            setAvailableBrands(brands);
         } catch (error) {
-          console.error("Error fetching brands: ", error);
-          toast({ variant: 'destructive', title: "Error", description: "Could not fetch bike brands." });
+            console.error("Error fetching brands: ", error);
+            toast({ variant: 'destructive', title: "Error", description: (error as Error).message });
         }
-      }
-      fetchBrands();
     }, [toast]);
+
+    useEffect(() => {
+      fetchBrands();
+    }, [fetchBrands]);
 
     const getComponentIndex = (name: string) => fields.findIndex(f => f.name === name);
 

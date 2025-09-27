@@ -33,24 +33,6 @@ interface TrainingData {
 }
 
 
-export async function getAvailableBrands(): Promise<string[]> {
-    try {
-        const adminDb = await getAdminDb();
-        const querySnapshot = await adminDb.collection("bikeModels").get();
-        const brands = new Set<string>();
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            if (data.brand) {
-                brands.add(data.brand);
-            }
-        });
-        return Array.from(brands).sort();
-    } catch (error) {
-        console.error("Server Action: Error fetching brands", error);
-        throw new Error("Could not fetch bike brands from the server. This might be a database permission issue.");
-    }
-}
-
 export async function saveBikeModelAction({
     values,
     importedTrainingData,
