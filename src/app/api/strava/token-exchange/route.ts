@@ -1,16 +1,15 @@
 // src/app/api/strava/token-exchange/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { adminAuth } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebase-admin'; // Use the direct import
 
 export async function POST(req: NextRequest) {
   console.log('API Route POST /api/strava/token-exchange has been hit.');
 
   const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
   const clientSecret = process.env.STRAVA_CLIENT_SECRET;
-  
+
   if (!clientId || !clientSecret) {
     console.error('CRITICAL ERROR: Missing Strava credentials on server.');
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
@@ -20,11 +19,10 @@ export async function POST(req: NextRequest) {
     const { code, idToken } = await req.json();
 
     if (!code || !idToken) {
-      const missing = !code ? 'authorization code' : 'ID token';
-      console.error(`ERROR: Missing ${missing} in the POST body.`);
-      return NextResponse.json({ error: `Missing ${missing}.` }, { status: 400 });
+      return NextResponse.json({ error: 'Missing code or idToken.' }, { status: 400 });
     }
 
+    // Use the directly imported adminAuth service to securely verify the user
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const userId = decodedToken.uid;
     
@@ -48,9 +46,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Strava API error', details: data }, { status: response.status });
     }
 
-    console.log(`Saving Strava tokens for user: ${userId}`);
     const userProfileRef = doc(db, 'profiles', userId);
-
     await updateDoc(userProfileRef, {
       strava: {
         accessToken: data.access_token,
@@ -61,7 +57,7 @@ export async function POST(req: NextRequest) {
     });
     
     console.log('Successfully saved tokens to Firestore.');
-    return NextResponse.json({ success: true, athlete: data.athlete });
+    return NextResponse.json({ success: true });
 
   } catch (error) {
     console.error('FATAL ERROR during token exchange.', error);
