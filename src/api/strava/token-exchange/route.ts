@@ -1,6 +1,5 @@
 // src/app/api/strava/token-exchange/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { setDoc } from 'firebase/firestore';
 import { adminDb, getAdminAuth } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
@@ -49,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userDocRef = adminDb.collection('users').doc(userId);
-    await setDoc(userDocRef, {
+    await userDocRef.set({
       strava: {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
