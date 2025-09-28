@@ -45,13 +45,11 @@ export async function saveBikeModelAction({
     try {
         const session = cookies().get('__session')?.value;
         if (!session) {
-            throw new Error('User not authenticated.');
+            throw new Error('You must be logged in to save a bike model.');
         }
         
-        const decodedIdToken = await getAdminAuth().verifySessionCookie(session, true);
-        if (decodedIdToken.email !== 'sagelovestheforest@gmail.com') {
-             throw new Error('Permission Denied: You are not authorized to perform this action.');
-        }
+        // Verify the session is valid.
+        await getAdminAuth().verifySessionCookie(session, true);
 
         const batch = adminDb.batch();
 
