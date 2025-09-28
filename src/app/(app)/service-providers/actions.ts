@@ -2,13 +2,12 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import type { ServiceProvider, WorkOrder } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export async function getServiceProviders(): Promise<ServiceProvider[]> {
   try {
-    const adminDb = await getAdminDb();
     const providersSnapshot = await adminDb.collection('serviceProviders').get();
     const providers = providersSnapshot.docs.map(doc => ({
       id: doc.id,
@@ -31,7 +30,6 @@ export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' 
   }
   
   try {
-    const adminDb = await getAdminDb();
     const workOrdersCollection = adminDb.collection('workOrders');
     const newWorkOrderRef = workOrdersCollection.doc();
 

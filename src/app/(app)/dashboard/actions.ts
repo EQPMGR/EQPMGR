@@ -1,8 +1,8 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebase-admin';
 import type { WorkOrder } from '@/lib/types';
 import { cookies } from 'next/headers';
 import { toDate } from '@/lib/date-utils';
@@ -19,12 +19,9 @@ export async function getDashboardData(): Promise<DashboardData> {
             throw new Error('User not authenticated.');
         }
         
-        const adminAuth = await getAdminAuth();
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
         const userId = decodedIdToken.uid;
         
-        const adminDb = await getAdminDb();
-
         const workOrdersQuery = adminDb.collection('workOrders')
             .where('userId', '==', userId)
             .where('status', '!=', 'Completed');

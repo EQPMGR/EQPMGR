@@ -2,7 +2,7 @@
 'use server';
 
 import { getDoc } from 'firebase/firestore';
-import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
+import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 import { accessSecret } from '@/lib/secrets';
@@ -12,7 +12,6 @@ export async function getComponentForDebug(componentId: string): Promise<string>
         return "Please provide a component ID.";
     }
     try {
-        const adminDb = await getAdminDb();
         const docRef = adminDb.doc(`masterComponents/${componentId}`);
         const docSnap = await docRef.get();
 
@@ -78,7 +77,6 @@ export async function testIdTokenVerification(idToken: string): Promise<string> 
         return "Error: No ID token provided to server action.";
     }
     try {
-        const adminAuth = await getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken, true);
         return `Success! Token verified for UID: ${decodedToken.uid}, Email: ${decodedToken.email}`;
     } catch (error: any) {

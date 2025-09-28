@@ -3,7 +3,7 @@
 'use server';
 
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { getAdminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import type { UserComponent, MasterComponent, MaintenanceLog } from '@/lib/types';
 
 
@@ -50,7 +50,6 @@ export async function replaceUserComponentAction({
         throw new Error("Either a selected component or manual component data must be provided.");
     }
     
-    const adminDb = await getAdminDb();
     const batch = adminDb.batch();
     
     try {
@@ -203,7 +202,6 @@ export async function deleteUserComponentAction({
     if (!userId || !equipmentId || !userComponentId) {
         throw new Error("Missing required parameters for component deletion.");
     }
-    const adminDb = await getAdminDb();
     const batch = adminDb.batch();
     try {
         const componentRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}/components/${userComponentId}`);
@@ -247,7 +245,6 @@ export async function addUserComponentAction({
     let finalMasterComponentId: string;
     let newComponentSize: string | undefined;
 
-    const adminDb = await getAdminDb();
     const batch = adminDb.batch();
 
     // Logic to handle manual entry vs. selection from DB

@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import type { AddProviderFormValues } from './page';
 
 const createProviderId = (name: string, city: string) => {
@@ -18,7 +18,6 @@ export async function addServiceProviderAction({
 }): Promise<{ success: boolean; message: string }> {
 
     const providerId = createProviderId(values.name, values.city);
-    const adminDb = await getAdminDb();
 
     try {
         const providerDocRef = adminDb.collection('serviceProviders').doc(providerId);

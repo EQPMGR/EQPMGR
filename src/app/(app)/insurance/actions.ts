@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { InsuranceFormValues } from './schema';
 import { accessSecret } from '@/lib/secrets';
@@ -109,7 +109,6 @@ export async function submitInsuranceApplication(
     await sendEmail(values);
 
     // Increment a counter for billing/tracking purposes
-    const adminDb = await getAdminDb();
     const counterRef = adminDb.collection('counters').doc('insuranceApplications');
     await counterRef.set({
       count: FieldValue.increment(1)

@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 /**
@@ -10,7 +10,6 @@ import { FieldValue } from 'firebase-admin/firestore';
  */
 export async function removeAllEmbeddingsAction(): Promise<{ success: boolean; message: string }> {
   try {
-    const adminDb = await getAdminDb();
     const componentsRef = adminDb.collection('masterComponents');
     let totalProcessed = 0;
     let totalUpdated = 0;

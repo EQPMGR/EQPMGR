@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import type { MasterComponent } from '@/lib/types';
 
 export interface DuplicateGroup {
@@ -16,7 +16,6 @@ export interface DuplicateGroup {
  */
 export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]> {
   try {
-    const adminDb = await getAdminDb();
     const componentsSnapshot = await adminDb.collection('masterComponents').get();
     const ignoredSnapshot = await adminDb.collection('ignoredDuplicates').get();
     const ignoredKeys = new Set(ignoredSnapshot.docs.map(doc => doc.id));

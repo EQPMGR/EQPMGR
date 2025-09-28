@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent } from '@/lib/types';
 import { z } from 'zod';
@@ -40,7 +40,6 @@ export async function saveBikeModelAction({
     values: AddBikeModelFormValues;
     importedTrainingData: Omit<TrainingData, 'userCorrectedOutput'> | null;
 }): Promise<{ success: boolean; message: string }> {
-    const adminDb = await getAdminDb();
     const batch = adminDb.batch();
 
     try {
