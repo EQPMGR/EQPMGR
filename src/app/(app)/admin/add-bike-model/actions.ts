@@ -1,10 +1,11 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, getAdminAuth } from '@/lib/firebase-admin';
 import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent } from '@/lib/types';
 import { z } from 'zod';
+import { cookies } from 'next/headers';
 
 const createComponentId = (component: Partial<z.infer<any>>) => {
     const idString = [component.brand, component.name, component.model]
@@ -40,9 +41,20 @@ export async function saveBikeModelAction({
     values: AddBikeModelFormValues;
     importedTrainingData: Omit<TrainingData, 'userCorrectedOutput'> | null;
 }): Promise<{ success: boolean; message: string }> {
-    const batch = adminDb.batch();
 
     try {
+        const session = cookies().get('__session')?.value;
+        if (!session) {
+            throw new Error('User not authenticated.');
+        }
+        
+        const decodedIdToken = await getAdminAuth().verifySessionCookie(session, true);
+        if (decodedIdToken.email !== 'sagelovestheforest@gmail.com') {
+             throw new Error('Permission Denied: You are not authorized to perform this action.');
+        }
+
+        const batch = adminDb.batch();
+
         // --- 1. Process and save master components ---
         const componentReferences: string[] = [];
         for (const originalComponent of values.components) {
