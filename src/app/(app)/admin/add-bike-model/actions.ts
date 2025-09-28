@@ -1,11 +1,12 @@
 
+
 'use server';
 
-import { adminDb, getAdminAuth } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
+import { getAdminAuth } from '@/lib/firebase-admin';
 import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent } from '@/lib/types';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 
 const createComponentId = (component: Partial<z.infer<any>>) => {
     const idString = [component.brand, component.name, component.model]
@@ -35,21 +36,22 @@ interface TrainingData {
 
 
 export async function saveBikeModelAction({
+    idToken,
     values,
     importedTrainingData,
 }: {
+    idToken: string;
     values: AddBikeModelFormValues;
     importedTrainingData: Omit<TrainingData, 'userCorrectedOutput'> | null;
 }): Promise<{ success: boolean; message: string }> {
 
     try {
-        const session = cookies().get('__session')?.value;
-        if (!session) {
+        if (!idToken) {
             throw new Error('You must be logged in to save a bike model.');
         }
         
         // Verify the session is valid.
-        await getAdminAuth().verifySessionCookie(session, true);
+        await getAdminAuth().verifyIdToken(idToken, true);
 
         const batch = adminDb.batch();
 
@@ -148,3 +150,5 @@ export async function saveBikeModelAction({
         };
     }
 }
+
+    

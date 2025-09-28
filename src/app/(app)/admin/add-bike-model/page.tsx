@@ -10,6 +10,7 @@ import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/hooks/use-auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -89,6 +90,7 @@ async function getAvailableBrands(): Promise<string[]> {
 
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
+    const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
@@ -217,9 +219,14 @@ function AddBikeModelFormComponent() {
     const getComponentIndex = (name: string) => fields.findIndex(f => f.name === name);
 
     async function onSubmit(values: AddBikeModelFormValues) {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to save a bike model.' });
+            return;
+        }
         setIsSubmitting(true);
         try {
-            const result = await saveBikeModelAction({ values, importedTrainingData });
+            const idToken = await user.getIdToken(true);
+            const result = await saveBikeModelAction({ idToken, values, importedTrainingData });
             
             if (result.success) {
                 toast({
@@ -531,3 +538,5 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
+
+    
