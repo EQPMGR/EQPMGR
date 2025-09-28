@@ -1,6 +1,6 @@
 // src/app/api/strava/token-exchange/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, getAdminAuth } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
   console.log('API Route POST /api/strava/token-exchange has been hit.');
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     }
 
     const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb(); // Explicitly get the initialized instance here.
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const userId = decodedToken.uid;
     
