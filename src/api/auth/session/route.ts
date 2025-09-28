@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
     try {
-      const adminAuth = await getAdminAuth();
+      const adminAuth = getAdminAuth();
       // Verify the ID token first
       await adminAuth.verifyIdToken(idToken);
 

@@ -1,7 +1,9 @@
+
 # Settings for Cloud Run (your backend instance)
 runConfig:
   cpu: 1
   memoryMiB: 1024
+  ingress: ALL
 
 # Environment variables and secrets for your runtime (they are NOT under runConfig)
 env:
@@ -42,3 +44,18 @@ env:
     secret: EMAIL_PASS
     availability:
       - RUNTIME
+  - variable: NEXT_PUBLIC_STRAVA_CLIENT_ID
+    secret: NEXT_PUBLIC_STRAVA_CLIENT_ID
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID
+    secret: NEXT_PUBLIC_MAPMYRIDE_CLIENT_ID
+    availability:
+      - BUILD
+      - RUNTIME    
+
+# Arguments to pass to the build command
+buildArgs:
+  NEXT_PUBLIC_FIREBASE_API_KEY: ${secret:FIREBASE_API_KEY}
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${GCLOUD_PROJECT}

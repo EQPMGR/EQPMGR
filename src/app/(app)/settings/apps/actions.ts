@@ -2,7 +2,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getAdminAuth } from '@/lib/firebase-admin';
 import type { Equipment } from '@/lib/types';
@@ -34,7 +34,7 @@ async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
     }
 
     try {
-        const adminAuth = await getAdminAuth();
+        const adminAuth = getAdminAuth();
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
         const userDocRef = doc(db, 'users', decodedIdToken.uid);
         const userDocSnap = await getDoc(userDocRef);
@@ -130,7 +130,7 @@ export async function fetchUserBikes(): Promise<{ bikes?: Equipment[]; error?: s
     }
 
     try {
-        const adminAuth = await getAdminAuth();
+        const adminAuth = getAdminAuth();
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
 
         const q = query(collection(db, `users/${decodedIdToken.uid}/equipment`), where('type', '!=', 'Cycling Shoes'));

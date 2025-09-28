@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { adminAuth } from '@/lib/firebase-admin'; // Use the direct import
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
   console.log('API Route POST /api/strava/token-exchange has been hit.');
@@ -14,24 +14,27 @@ export async function POST(req: NextRequest) {
     console.error('CRITICAL ERROR: Missing Strava credentials on server.');
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
   }
+  
+  console.log('Successfully loaded Strava credentials.');
 
   try {
     const { code, idToken } = await req.json();
 
     if (!code || !idToken) {
+      console.error('ERROR: Missing authorization code or idToken in request body.');
       return NextResponse.json({ error: 'Missing code or idToken.' }, { status: 400 });
     }
 
-    // Use the directly imported adminAuth service to securely verify the user
+    const adminAuth = getAdminAuth();
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const userId = decodedToken.uid;
     
-    console.log(`Verified user: ${userId}. Exchanging Strava code...`);
+    console.log(`Verified user: ${userId}. Exchanging Strava code: ${code}`);
 
     const response = await fetch('https://www.strava.com/api/v3/oauth/token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
         code: code,
@@ -59,8 +62,12 @@ export async function POST(req: NextRequest) {
     console.log('Successfully saved tokens to Firestore.');
     return NextResponse.json({ success: true });
 
-  } catch (error) {
-    console.error('FATAL ERROR during token exchange.', error);
-    return NextResponse.json({ error: 'An unexpected server error occurred.' }, { status: 500 });
+  } catch (error: any) {
+    console.error('FATAL ERROR during token exchange.', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
+    return NextResponse.json({ error: 'An unexpected server error occurred.', details: error.message }, { status: 500 });
   }
 }
