@@ -5,9 +5,24 @@ let adminAuth: admin.auth.Auth;
 let adminDb: admin.firestore.Firestore;
 
 function initializeAdminApp() {
+  // Only initialize if it hasn't been already.
   if (!admin.apps.length) {
-    admin.initializeApp();
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+    if (!projectId) {
+      throw new Error(
+        'CRITICAL: NEXT_PUBLIC_FIREBASE_PROJECT_ID environment variable is not set. ' +
+        'Admin SDK cannot be initialized.'
+      );
+    }
+    
+    // Explicitly initialize with the correct project ID.
+    // This resolves the "Incorrect audience claim" error in development environments.
+    admin.initializeApp({
+      projectId: projectId,
+    });
   }
+  
   adminAuth = admin.auth();
   adminDb = admin.firestore();
 }
