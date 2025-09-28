@@ -1,74 +1,86 @@
-// src/app/exchange-token/page.tsx
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { exchangeStravaToken } from './actions';
+import { Loader2 } from 'lucide-react';
 
-export default function ExchangeTokenPage() {
+function ExchangeToken() {
   const [status, setStatus] = useState('Initializing...');
+  const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth(); // Also get the loading state from your auth hook
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    // Wait until the auth state is fully loaded
     if (authLoading) {
-      setStatus('Waiting for user authentication...');
+      setStatus('Verifying user session...');
       return;
     }
-    
-    // Check if the user is logged in
+
     if (!user) {
-      setStatus('Error: User is not authenticated. Redirecting...');
-      setTimeout(() => router.push('/login'), 3000);
+      setStatus('User not authenticated. Redirecting to login...');
+      router.push('/login');
       return;
     }
 
     const code = searchParams.get('code');
-    if (!code) {
-      setStatus('Error: Invalid request from Strava. No authorization code found.');
+    const stravaError = searchParams.get('error');
+
+    if (stravaError) {
+      setError(`Strava returned an error: ${stravaError}.`);
+      setStatus('Connection failed.');
       return;
     }
 
-    setStatus('Exchanging token, please wait...');
+    if (!code) {
+      setError('No authorization code provided by Strava.');
+      setStatus('Connection failed.');
+      return;
+    }
 
-    // Now we are sure we have a user, get their ID token
-    user.getIdToken(true) // Pass true to force a refresh, ensuring a valid token
-      .then(idToken => {
-        return fetch('/api/strava/token-exchange', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, idToken }),
-        });
-      })
-      .then(res => {
-        if (!res.ok) {
-          // Try to get more details from the server's response
-          return res.json().then(err => {
-             throw new Error(err.error || 'Token exchange on our server failed.');
-          });
+    setStatus('Exchanging token with Strava...');
+    exchangeStravaToken(code)
+      .then(result => {
+        if (result.success) {
+          setStatus('Successfully connected! Redirecting...');
+          setTimeout(() => router.push('/settings/apps'), 2000);
+        } else {
+          throw new Error(result.error);
         }
-        return res.json();
-      })
-      .then(data => {
-        console.log('Success:', data);
-        setStatus('Successfully connected to Strava! Redirecting...');
-        setTimeout(() => router.push('/settings/apps'), 2000);
       })
       .catch(err => {
-        console.error(err);
-        setStatus(`Failed to connect to Strava: ${err.message}. Redirecting...`);
-        setTimeout(() => router.push('/settings/apps'), 4000);
+        console.error('Token exchange failed:', err);
+        setError(err.message || 'An unknown error occurred during token exchange.');
+        setStatus('Connection failed.');
       });
-
-  }, [authLoading, user, searchParams, router]);
+      
+  }, [user, authLoading, searchParams, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
+    <div className="flex flex-col items-center justify-center min-h-screen text-center p-4">
       <h1 className="text-2xl font-bold mb-4">Connecting to Strava...</h1>
-      <p>{status}</p>
+      <div className="flex items-center gap-2 text-muted-foreground">
+        {error ? (
+           <span className="text-destructive">{status}</span>
+        ) : (
+          <>
+            <Loader2 className="animate-spin" />
+            <p>{status}</p>
+          </>
+        )}
+      </div>
+      {error && <p className="mt-2 text-sm text-destructive-foreground bg-destructive p-3 rounded-md">{error}</p>}
     </div>
   );
+}
+
+export default function ExchangeTokenPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+            <ExchangeToken />
+        </Suspense>
+    )
 }
