@@ -1,9 +1,7 @@
-
 // src/app/api/strava/token-exchange/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { setDoc } from 'firebase/firestore';
+import { adminDb, getAdminAuth } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
   console.log('API Route POST /api/strava/token-exchange has been hit.');
@@ -50,7 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Strava API error', details: data }, { status: response.status });
     }
 
-    const userDocRef = doc(db, 'users', userId);
+    const userDocRef = adminDb.collection('users').doc(userId);
     await setDoc(userDocRef, {
       strava: {
         accessToken: data.access_token,
