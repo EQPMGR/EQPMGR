@@ -2,7 +2,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { collection, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
@@ -23,24 +23,33 @@ interface StravaTokenData {
     expiresAt: number;
 }
 
-// This function gets the current user's Strava token from Firestore.
-// It also handles refreshing the token if it's expired.
-async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
-    const session = cookies().get('__session')?.value;
-    if (!session) {
-        console.error("No session cookie found. User is not authenticated.");
-        return null;
-    }
+// This function now takes an optional ID token to authenticate server-side when needed
+async function getStravaTokenForUser(idToken?: string): Promise<StravaTokenData | null> {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
+    let userId: string;
 
-    try {
-        const adminAuth = getAdminAuth();
-        const adminDb = getAdminDb();
+    if (idToken) {
+        // Authenticate using the provided ID token
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        userId = decodedToken.uid;
+    } else {
+        // Fallback to session cookie for calls from other server components
+        const session = cookies().get('__session')?.value;
+        if (!session) {
+            console.error("No session cookie or ID token. User is not authenticated.");
+            return null;
+        }
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
-        const userDocRef = adminDb.collection('users').doc(decodedIdToken.uid);
+        userId = decodedIdToken.uid;
+    }
+    
+    try {
+        const userDocRef = adminDb.collection('users').doc(userId);
         const userDocSnap = await userDocRef.get();
 
         if (!userDocSnap.exists() || !userDocSnap.data()?.strava) {
-            console.error("User document or Strava data not found.");
+            console.log("User document or Strava data not found.");
             return null;
         }
 
@@ -89,7 +98,7 @@ async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
         return { accessToken, refreshToken, expiresAt };
 
     } catch (error) {
-        console.error("Error verifying session or getting token:", error);
+        console.error("Error verifying identity or getting token:", error);
         return null;
     }
 }
@@ -112,7 +121,7 @@ export async function fetchRecentStravaActivities(): Promise<{ activities?: Stra
 
         if (!response.ok) {
             const errorBody = await response.json();
-            return { error: `Failed to fetch from Strava: ${errorBody.message}` };
+            return { error: `Failed to fetch from Strava: ${errorBody.message || JSON.stringify(errorBody)}` };
         }
 
         const activities: StravaActivity[] = await response.json();
@@ -140,7 +149,6 @@ export async function fetchUserBikes(): Promise<{ bikes?: Equipment[]; error?: s
         const bikes = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
-            // Ensure dates are converted correctly, as they are not serialized over the wire.
             purchaseDate: toDate(doc.data().purchaseDate)
         } as Equipment));
         
@@ -153,9 +161,8 @@ export async function fetchUserBikes(): Promise<{ bikes?: Equipment[]; error?: s
 }
 
 
-export async function exchangeStravaToken(code: string): Promise<{ success: boolean; error?: string }> {
-  const session = cookies().get('__session')?.value;
-  if (!session) {
+export async function exchangeStravaToken({ code, idToken }: { code: string; idToken: string }): Promise<{ success: boolean; error?: string }> {
+  if (!idToken) {
     return { success: false, error: 'User is not authenticated.' };
   }
 
@@ -171,7 +178,8 @@ export async function exchangeStravaToken(code: string): Promise<{ success: bool
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     
-    const decodedToken = await adminAuth.verifySessionCookie(session, true);
+    // Verify the ID token to securely get the user's UID
+    const decodedToken = await adminAuth.verifyIdToken(idToken, true);
     const userId = decodedToken.uid;
     
     const response = await fetch('https://www.strava.com/api/v3/oauth/token', {
@@ -193,7 +201,7 @@ export async function exchangeStravaToken(code: string): Promise<{ success: bool
     }
 
     const userDocRef = adminDb.collection('users').doc(userId);
-    await userDocRef.set({
+    await setDoc(userDocRef, {
       strava: {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
