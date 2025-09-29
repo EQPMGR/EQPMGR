@@ -20,13 +20,18 @@ function AppsSettings() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
   const [userBikes, setUserBikes] = useState<Equipment[]>([]);
 
   const isStravaConnected = !loading && !!user?.strava?.accessToken;
 
   const handleStravaConnect = () => {
+    setIsConnecting(true);
     const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+    
+    // Use a relative path for the redirect URI. The browser will resolve this
+    // to the full, publicly accessible URL.
     const redirectUri = `${window.location.origin}/exchange-token`;
 
     if (!clientId) {
@@ -36,6 +41,7 @@ function AppsSettings() {
         title: 'Configuration Error',
         description: 'Strava integration is not configured correctly.',
       });
+      setIsConnecting(false);
       return;
     }
 
@@ -51,7 +57,6 @@ function AppsSettings() {
     setIsSyncing(true);
     setRecentActivities([]);
     try {
-        const idToken = await user.getIdToken();
         const [{ activities, error: activityError }, { bikes, error: bikeError }] = await Promise.all([
             fetchRecentStravaActivities(),
             fetchUserBikes()
@@ -84,7 +89,7 @@ function AppsSettings() {
       toast({ variant: 'destructive', title: 'Connection Failed', description: decodeURIComponent(error) });
       router.replace('/settings/apps');
     }
-    if (success) {
+    if (success === 'true') {
       toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
       handleSyncActivities();
       router.replace('/settings/apps');
