@@ -8,9 +8,15 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const error = searchParams.get('error');
 
-  // This is the fix: Use a reliable, public base URL for redirects.
-  // The previous dynamic method was resolving to an internal, inaccessible address.
-  const baseUrl = `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.web.app`;
+  // Dynamically construct the base URL from the Firebase Project ID environment variable.
+  // This is the robust way to ensure we always redirect to the public-facing URL.
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) {
+    console.error('CRITICAL: NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set on the server.');
+    // Fallback to a generic error if the project ID is missing
+    return new Response('Server configuration error.', { status: 500 });
+  }
+  const baseUrl = `https://${projectId}.web.app`;
   const settingsUrl = new URL('/settings/apps', baseUrl);
 
   if (error) {
