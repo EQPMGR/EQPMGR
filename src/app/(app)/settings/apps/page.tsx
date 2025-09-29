@@ -1,21 +1,76 @@
+
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { StravaConnectButton } from '@/components/strava-connect-button';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useAuth } from '@/hooks/use-auth'; // Use your existing use-auth hook
+import { useAuth } from '@/hooks/use-auth';
+import { exchangeStravaToken } from './actions';
+import { useToast } from '@/hooks/use-toast';
 
-function AppsSettingsPage() {
-  const { user } = useAuth(); // Your existing hook provides the user object
-  const { profile, loading } = useUserProfile(user?.uid); // Pass the user's ID to the new hook
+function AppsSettings() {
+  const { user } = useAuth();
+  const { profile, loading } = useUserProfile(user?.uid);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isExchanging, setIsExchanging] = useState(false);
+
+  useEffect(() => {
+    const code = searchParams.get('code');
+    const error = searchParams.get('error');
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Strava Connection Failed',
+        description: `Strava returned an error: ${error}`,
+      });
+      // Clean the URL
+      router.replace('/settings/apps');
+    } else if (code) {
+      setIsExchanging(true);
+      exchangeStravaToken(code)
+        .then((result) => {
+          if (result.success) {
+            toast({
+              title: 'Strava Connected!',
+              description: 'Your account has been successfully linked.',
+            });
+          } else {
+            throw new Error(result.error);
+          }
+        })
+        .catch((err) => {
+          console.error('Token exchange failed:', err);
+          toast({
+            variant: 'destructive',
+            title: 'Connection Failed',
+            description: err.message || 'An unknown error occurred during token exchange.',
+          });
+        })
+        .finally(() => {
+          setIsExchanging(false);
+          // Clean the URL after processing
+          router.replace('/settings/apps');
+        });
+    }
+  }, [searchParams, router, toast]);
 
   const handleStravaConnect = () => {
     const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/exchange-token`;
+    // IMPORTANT: Redirect back to this page
+    const redirectUri = `${window.location.origin}/settings/apps`;
 
     if (!clientId) {
       console.error('Strava Client ID is not configured.');
-      alert('Strava integration is not configured correctly.');
+      toast({
+        variant: 'destructive',
+        title: 'Configuration Error',
+        description: 'Strava integration is not configured correctly.',
+      });
       return;
     }
 
@@ -25,7 +80,7 @@ function AppsSettingsPage() {
 
     window.location.href = stravaAuthUrl;
   };
-  
+
   const isStravaConnected = !loading && profile?.strava?.accessToken;
 
   return (
@@ -44,8 +99,11 @@ function AppsSettingsPage() {
             Connect your Strava account to automatically import your rides.
           </p>
           
-          {loading ? (
-            <p className="text-sm animate-pulse">Loading status...</p>
+          {loading || isExchanging ? (
+             <div className="text-sm font-medium text-muted-foreground flex items-center">
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              {isExchanging ? 'Connecting...' : 'Loading...'}
+            </div>
           ) : isStravaConnected ? (
             <div className="text-sm font-medium text-green-600 flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -62,4 +120,11 @@ function AppsSettingsPage() {
   );
 }
 
-export default AppsSettingsPage;
+// Wrap with Suspense because useSearchParams() requires it.
+export default function AppsSettingsPage() {
+  return (
+    <Suspense fallback={<div>Loading settings...</div>}>
+      <AppsSettings />
+    </Suspense>
+  );
+}

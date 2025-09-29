@@ -3,8 +3,7 @@
 
 import { cookies } from 'next/headers';
 import { collection, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 
@@ -27,7 +26,7 @@ interface StravaTokenData {
 // This function gets the current user's Strava token from Firestore.
 // It also handles refreshing the token if it's expired.
 async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
-    const session = cookies().get('__session')?.value || '';
+    const session = cookies().get('__session')?.value;
     if (!session) {
         console.error("No session cookie found. User is not authenticated.");
         return null;
@@ -35,16 +34,17 @@ async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
 
     try {
         const adminAuth = getAdminAuth();
+        const adminDb = getAdminDb();
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
-        const userDocRef = doc(db, 'users', decodedIdToken.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        const userDocRef = adminDb.collection('users').doc(decodedIdToken.uid);
+        const userDocSnap = await userDocRef.get();
 
         if (!userDocSnap.exists() || !userDocSnap.data()?.strava) {
             console.error("User document or Strava data not found.");
             return null;
         }
 
-        let { accessToken, refreshToken, expiresAt } = userDocSnap.data().strava;
+        let { accessToken, refreshToken, expiresAt } = userDocSnap.data()?.strava;
 
         // Check if the token is expired (or close to expiring)
         if (Date.now() / 1000 > expiresAt - 300) {
@@ -71,13 +71,13 @@ async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
 
             const newTokens = await response.json();
             const newStravaData = {
-                ...userDocSnap.data().strava,
+                ...userDocSnap.data()?.strava,
                 accessToken: newTokens.access_token,
                 refreshToken: newTokens.refresh_token,
                 expiresAt: newTokens.expires_at,
             };
             
-            await setDoc(userDocRef, { strava: newStravaData }, { merge: true });
+            await userDocRef.set({ strava: newStravaData }, { merge: true });
 
             return {
                 accessToken: newTokens.access_token,
@@ -124,17 +124,18 @@ export async function fetchRecentStravaActivities(): Promise<{ activities?: Stra
 }
 
 export async function fetchUserBikes(): Promise<{ bikes?: Equipment[]; error?: string; }> {
-    const session = cookies().get('__session')?.value || '';
+    const session = cookies().get('__session')?.value;
     if (!session) {
         return { error: 'User not authenticated.' };
     }
 
     try {
         const adminAuth = getAdminAuth();
+        const adminDb = getAdminDb();
         const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
 
-        const q = query(collection(db, `users/${decodedIdToken.uid}/equipment`), where('type', '!=', 'Cycling Shoes'));
-        const querySnapshot = await getDocs(q);
+        const q = query(adminDb.collection(`users/${decodedIdToken.uid}/equipment`), where('type', '!=', 'Cycling Shoes'));
+        const querySnapshot = await q.get();
         
         const bikes = querySnapshot.docs.map(doc => ({
             id: doc.id,
@@ -151,9 +152,64 @@ export async function fetchUserBikes(): Promise<{ bikes?: Equipment[]; error?: s
     }
 }
 
-async function assignActivityToEquipment(activity: StravaActivity, equipmentId: string): Promise<{success: boolean; error?: string;}> {
-    // This is a placeholder for the next step. We will implement the logic to
-    // call the wear simulation AI and update the component data here.
-    console.log(`Assigning activity ${activity.id} to equipment ${equipmentId}`);
+
+export async function exchangeStravaToken(code: string): Promise<{ success: boolean; error?: string }> {
+  const session = cookies().get('__session')?.value;
+  if (!session) {
+    return { success: false, error: 'User is not authenticated.' };
+  }
+
+  const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+  const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.error('CRITICAL ERROR: Missing Strava credentials on server.');
+    return { success: false, error: 'Server configuration error for Strava connection.' };
+  }
+  
+  try {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
+    
+    const decodedToken = await adminAuth.verifySessionCookie(session, true);
+    const userId = decodedToken.uid;
+    
+    const response = await fetch('https://www.strava.com/api/v3/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('ERROR: Strava API rejected token exchange.', data);
+      throw new Error(data.message || 'Failed to exchange code with Strava.');
+    }
+
+    const userDocRef = adminDb.collection('users').doc(userId);
+    await userDocRef.set({
+      strava: {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: data.expires_at,
+        athleteId: data.athlete.id,
+      },
+    }, { merge: true });
+
     return { success: true };
+
+  } catch (error: any) {
+    console.error('FATAL ERROR during server-side token exchange.', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
+    return { success: false, error: error.message || 'An unexpected server error occurred.' };
+  }
 }
