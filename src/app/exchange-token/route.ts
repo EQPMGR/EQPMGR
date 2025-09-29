@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const error = searchParams.get('error');
 
-  const settingsUrl = new URL('/settings/apps', request.url);
+  // Hardcode the base URL for the redirect. This is more robust than trying to construct it dynamically.
+  const baseUrl = request.nextUrl.protocol + "//" + request.nextUrl.host;
+  const settingsUrl = new URL('/settings/apps', baseUrl);
 
   if (error) {
     settingsUrl.searchParams.set('error', error);
