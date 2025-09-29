@@ -4,8 +4,7 @@
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
-import { query, collection, getDocs, where } from 'firebase/firestore';
-
+import { cookies } from 'next/headers';
 
 export interface StravaActivity {
   id: number;
@@ -24,18 +23,16 @@ interface StravaTokenData {
 }
 
 // This function now takes an optional ID token to authenticate server-side when needed
-async function getStravaTokenForUser(idToken?: string): Promise<StravaTokenData | null> {
+async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
-    let userId: string;
-
-    if (idToken) {
-        // Authenticate using the provided ID token
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
-        userId = decodedToken.uid;
-    } else {
-        throw new Error("User authentication token is required.");
+    
+    const session = cookies().get('__session')?.value;
+    if (!session) {
+      throw new Error("User not authenticated.");
     }
+    const decodedToken = await adminAuth.verifySessionCookie(session, true);
+    const userId = decodedToken.uid;
     
     try {
         const userDocRef = adminDb.collection('users').doc(userId);
@@ -97,8 +94,8 @@ async function getStravaTokenForUser(idToken?: string): Promise<StravaTokenData 
 }
 
 
-export async function fetchRecentStravaActivities(idToken: string): Promise<{ activities?: StravaActivity[]; error?: string }> {
-    const tokenData = await getStravaTokenForUser(idToken);
+export async function fetchRecentStravaActivities(): Promise<{ activities?: StravaActivity[]; error?: string }> {
+    const tokenData = await getStravaTokenForUser();
 
     if (!tokenData) {
         return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
@@ -125,15 +122,16 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
     }
 }
 
-export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipment[]; error?: string; }> {
-    if (!idToken) {
+export async function fetchUserBikes(): Promise<{ bikes?: Equipment[]; error?: string; }> {
+    const session = cookies().get('__session')?.value;
+    if (!session) {
         return { error: 'User not authenticated.' };
     }
 
     try {
         const adminAuth = getAdminAuth();
         const adminDb = getAdminDb();
-        const decodedIdToken = await adminAuth.verifyIdToken(idToken, true);
+        const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
 
         const q = adminDb.collection(`users/${decodedIdToken.uid}/equipment`).where('type', '!=', 'Cycling Shoes');
         const querySnapshot = await q.get();
@@ -150,66 +148,4 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
         console.error("Error fetching user bikes: ", error);
         return { error: error.message || "An unknown error occurred." };
     }
-}
-
-
-export async function exchangeStravaToken({ code, idToken }: { code: string; idToken: string }): Promise<{ success: boolean; error?: string }> {
-  if (!idToken) {
-    return { success: false, error: 'User is not authenticated.' };
-  }
-
-  const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-  const clientSecret = process.env.STRAVA_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    console.error('CRITICAL ERROR: Missing Strava credentials on server.');
-    return { success: false, error: 'Server configuration error for Strava connection.' };
-  }
-  
-  try {
-    const adminAuth = getAdminAuth();
-    const adminDb = getAdminDb();
-    
-    // Verify the ID token to securely get the user's UID
-    const decodedToken = await adminAuth.verifyIdToken(idToken, true);
-    const userId = decodedToken.uid;
-    
-    const response = await fetch('https://www.strava.com/api/v3/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        grant_type: 'authorization_code',
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('ERROR: Strava API rejected token exchange.', data);
-      throw new Error(data.message || 'Failed to exchange code with Strava.');
-    }
-
-    const userDocRef = adminDb.collection('users').doc(userId);
-    await userDocRef.set({
-      strava: {
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
-        expiresAt: data.expires_at,
-        athleteId: data.athlete.id,
-      },
-    }, { merge: true });
-
-    return { success: true };
-
-  } catch (error: any) {
-    console.error('FATAL ERROR during server-side token exchange.', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-    });
-    return { success: false, error: error.message || 'An unexpected server error occurred.' };
-  }
 }

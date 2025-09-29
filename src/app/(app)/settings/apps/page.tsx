@@ -1,13 +1,11 @@
 
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { StravaConnectButton } from '@/components/strava-connect-button';
-import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuth } from '@/hooks/use-auth';
-import { exchangeStravaToken } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { ActivityCard } from '@/components/activity-card';
@@ -17,65 +15,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 
 function AppsSettings() {
-  const { user } = useAuth();
-  const { profile, loading } = useUserProfile(user?.uid);
+  const { user, loading } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
-  const [isExchanging, setIsExchanging] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
   const [userBikes, setUserBikes] = useState<Equipment[]>([]);
 
-  useEffect(() => {
-    const code = searchParams.get('code');
-    const error = searchParams.get('error');
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Strava Connection Failed',
-        description: `Strava returned an error: ${error}`,
-      });
-      router.replace('/settings/apps');
-    } else if (code && user) {
-      setIsExchanging(true);
-      
-      const performTokenExchange = async () => {
-        try {
-          // Get the ID token from the currently logged-in user
-          const idToken = await user.getIdToken(true);
-          const result = await exchangeStravaToken({ code, idToken });
-
-          if (result.success) {
-            toast({
-              title: 'Strava Connected!',
-              description: 'Your account has been successfully linked.',
-            });
-            // Re-fetch activities after successful connection
-            handleSyncActivities();
-          } else {
-            throw new Error(result.error);
-          }
-        } catch (err: any) {
-          console.error('Token exchange failed:', err);
-          toast({
-            variant: 'destructive',
-            title: 'Connection Failed',
-            description: err.message || 'An unknown error occurred during token exchange.',
-          });
-        } finally {
-          setIsExchanging(false);
-          router.replace('/settings/apps');
-        }
-      }
-      performTokenExchange();
-    }
-  }, [searchParams, router, toast, user]); // Added user to dependency array
+  const isStravaConnected = !loading && !!user?.strava?.accessToken;
 
   const handleStravaConnect = () => {
     const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/settings/apps`;
+    const redirectUri = `${window.location.origin}/exchange-token`;
 
     if (!clientId) {
       console.error('Strava Client ID is not configured.');
@@ -94,35 +46,58 @@ function AppsSettings() {
     window.location.href = stravaAuthUrl;
   };
   
-  const handleSyncActivities = async () => {
+  const handleSyncActivities = useCallback(async () => {
+    if (!user) return;
     setIsSyncing(true);
     setRecentActivities([]);
     try {
-      const [{ activities, error: activityError }, { bikes, error: bikeError }] = await Promise.all([
-          fetchRecentStravaActivities(),
-          fetchUserBikes()
-      ]);
+        const idToken = await user.getIdToken();
+        const [{ activities, error: activityError }, { bikes, error: bikeError }] = await Promise.all([
+            fetchRecentStravaActivities(),
+            fetchUserBikes()
+        ]);
+        
+        if (activityError) throw new Error(activityError);
+        if (bikeError) throw new Error(bikeError);
       
-      if (activityError) throw new Error(activityError);
-      if (bikeError) throw new Error(bikeError);
+        setRecentActivities(activities || []);
+        setUserBikes(bikes || []);
       
-      setRecentActivities(activities || []);
-      setUserBikes(bikes || []);
-      
-      if ((activities || []).length > 0) {
-        toast({ title: "Sync Complete!", description: `Found ${activities?.length} recent activities.` });
-      } else {
-        toast({ title: "Nothing to sync", description: "No new activities found on Strava." });
-      }
+        if ((activities || []).length > 0) {
+            toast({ title: "Sync Complete!", description: `Found ${activities?.length} recent activities.` });
+        } else {
+            toast({ title: "Nothing to sync", description: "No new activities found on Strava." });
+        }
 
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Sync Failed', description: err.message });
     } finally {
       setIsSyncing(false);
     }
-  }
+  }, [user, toast]);
 
-  const isStravaConnected = !loading && profile?.strava?.accessToken;
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const success = searchParams.get('success');
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Connection Failed', description: decodeURIComponent(error) });
+      router.replace('/settings/apps');
+    }
+    if (success) {
+      toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
+      handleSyncActivities();
+      router.replace('/settings/apps');
+    }
+  }, [searchParams, router, toast, handleSyncActivities]);
+  
+  // Automatically fetch activities if connected
+  useEffect(() => {
+    if(isStravaConnected) {
+        handleSyncActivities();
+    }
+  }, [isStravaConnected, handleSyncActivities]);
+
 
   return (
     <div className="space-y-6">
@@ -137,10 +112,10 @@ function AppsSettings() {
             <div className="flex items-center justify-between">
             <h4 className="text-md font-medium">Strava</h4>
             
-            {loading || isExchanging ? (
+            {loading ? (
                 <div className="text-sm font-medium text-muted-foreground flex items-center">
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                {isExchanging ? 'Connecting...' : 'Loading...'}
+                Loading...
                 </div>
             ) : isStravaConnected ? (
                 <div className="text-sm font-medium text-green-600 flex items-center">
