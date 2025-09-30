@@ -195,12 +195,19 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
         const q = adminDb.collection(`users/${decodedIdToken.uid}/equipment`).where('type', '!=', 'Cycling Shoes');
         const querySnapshot = await q.get();
         
-        const bikes = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            // Convert Timestamp to Date object before returning to client.
-            purchaseDate: toDate(doc.data().purchaseDate) 
-        } as Equipment));
+        const bikes = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            // Convert all timestamp fields to plain Date objects before returning
+            return {
+                id: doc.id,
+                ...data,
+                purchaseDate: toDate(data.purchaseDate),
+                maintenanceLog: (data.maintenanceLog || []).map((log: any) => ({
+                    ...log,
+                    date: toDate(log.date)
+                })),
+            } as Equipment
+        });
         
         return { bikes };
 
@@ -209,5 +216,6 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
         return { error: error.message || "An unknown error occurred." };
     }
 }
+
 
 
