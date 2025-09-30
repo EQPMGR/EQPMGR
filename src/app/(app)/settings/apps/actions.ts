@@ -4,7 +4,6 @@
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
-import { cookies } from 'next/headers';
 
 export interface StravaActivity {
   id: number;
@@ -84,15 +83,15 @@ export async function exchangeStravaToken(code: string, idToken: string): Promis
 }
 
 
-async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
+async function getStravaTokenForUser(idToken: string): Promise<StravaTokenData | null> {
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
-    
-    const session = cookies().get('__session')?.value;
-    if (!session) {
-      throw new Error("User not authenticated.");
+
+    if (!idToken) {
+        throw new Error("User not authenticated.");
     }
-    const decodedToken = await adminAuth.verifySessionCookie(session, true);
+    
+    const decodedToken = await adminAuth.verifyIdToken(idToken, true);
     const userId = decodedToken.uid;
     
     try {
@@ -155,8 +154,8 @@ async function getStravaTokenForUser(): Promise<StravaTokenData | null> {
 }
 
 
-export async function fetchRecentStravaActivities(): Promise<{ activities?: StravaActivity[]; error?: string }> {
-    const tokenData = await getStravaTokenForUser();
+export async function fetchRecentStravaActivities(idToken: string): Promise<{ activities?: StravaActivity[]; error?: string }> {
+    const tokenData = await getStravaTokenForUser(idToken);
 
     if (!tokenData) {
         return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
@@ -183,16 +182,15 @@ export async function fetchRecentStravaActivities(): Promise<{ activities?: Stra
     }
 }
 
-export async function fetchUserBikes(): Promise<{ bikes?: Equipment[]; error?: string; }> {
-    const session = cookies().get('__session')?.value;
-    if (!session) {
+export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipment[]; error?: string; }> {
+    if (!idToken) {
         return { error: 'User not authenticated.' };
     }
 
     try {
         const adminAuth = getAdminAuth();
         const adminDb = getAdminDb();
-        const decodedIdToken = await adminAuth.verifySessionCookie(session, true);
+        const decodedIdToken = await adminAuth.verifyIdToken(idToken, true);
 
         const q = adminDb.collection(`users/${decodedIdToken.uid}/equipment`).where('type', '!=', 'Cycling Shoes');
         const querySnapshot = await q.get();

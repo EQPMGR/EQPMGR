@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
@@ -23,12 +24,13 @@ function AppsSettings() {
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
   const [userBikes, setUserBikes] = useState<Equipment[]>([]);
 
-  const isStravaConnected = !loading && !!user?.strava?.accessToken;
+  const isStravaConnected = !loading && user?.strava?.accessToken;
 
   const handleStravaConnect = () => {
     setIsConnecting(true);
     const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
     
+    // Use a relative path for the redirect URI
     const redirectUri = `${window.location.origin}/settings/apps`;
 
     if (!clientId) {
@@ -54,9 +56,10 @@ function AppsSettings() {
     setIsSyncing(true);
     setRecentActivities([]);
     try {
+        const idToken = await user.getIdToken(true);
         const [{ activities, error: activityError }, { bikes, error: bikeError }] = await Promise.all([
-            fetchRecentStravaActivities(),
-            fetchUserBikes()
+            fetchRecentStravaActivities(idToken),
+            fetchUserBikes(idToken)
         ]);
         
         if (activityError) throw new Error(activityError);
@@ -94,7 +97,7 @@ function AppsSettings() {
 
                 if (result.success) {
                     toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
-                    // Re-fetch user or let auth context handle it
+                    // After successful connection, immediately sync activities.
                     await handleSyncActivities();
                 } else {
                     throw new Error(result.error);
@@ -103,8 +106,8 @@ function AppsSettings() {
                 toast({ variant: 'destructive', title: 'Token exchange failed', description: err.message });
             } finally {
                 setIsConnecting(false);
-                // Clean the URL
-                router.replace('/settings/apps');
+                // Clean the URL by removing the code and scope parameters.
+                router.replace('/settings/apps', { scroll: false });
             }
         };
         processToken();
@@ -116,7 +119,8 @@ function AppsSettings() {
     if(isStravaConnected && !isConnecting) {
         handleSyncActivities();
     }
-  }, [isStravaConnected, isConnecting, handleSyncActivities]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStravaConnected]);
 
 
   return (
