@@ -33,8 +33,9 @@ export async function getDashboardData(): Promise<DashboardData> {
             
             // This is the new, safer serialization logic.
             // Convert all date objects to ISO strings before returning.
-            const userConsentTimestamp = data.userConsent?.timestamp ? toDate(data.userConsent.timestamp).toISOString() : new Date().toISOString();
             const createdAtTimestamp = data.createdAt ? toDate(data.createdAt).toISOString() : new Date().toISOString();
+            const userConsentTimestamp = data.userConsent?.timestamp ? toDate(data.userConsent.timestamp).toISOString() : new Date().toISOString();
+
 
             return {
                 ...data,
