@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { ActivityCard } from '@/components/activity-card';
-import { exchangeStravaToken, fetchRecentStravaActivities, fetchUserBikes, type StravaActivity } from './actions';
+import { fetchRecentStravaActivities, fetchUserBikes, type StravaActivity } from './actions';
 import type { Equipment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -23,32 +23,53 @@ function AppsSettings() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
   const [userBikes, setUserBikes] = useState<Equipment[]>([]);
+  const [isStravaConnected, setIsStravaConnected] = useState(false);
 
-  const isStravaConnected = !loading && user?.strava?.accessToken;
+  useEffect(() => {
+    // Check for connection status on component mount and when user object changes.
+    // This is a simple check; a more robust solution might involve checking token validity.
+    if (user) {
+        // A simple check on a user sub-property is not robust.
+        // Instead, we can check if a successful connection flag is set.
+        const connected = localStorage.getItem('strava_connected') === 'true';
+        setIsStravaConnected(connected);
+    }
+  }, [user]);
 
-  const handleStravaConnect = () => {
-    setIsConnecting(true);
-    const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-    
-    // Use a relative path for the redirect URI
-    const redirectUri = `${window.location.origin}/settings/apps`;
 
-    if (!clientId) {
-      console.error('Strava Client ID is not configured.');
+  const handleStravaConnect = async () => {
+    if (!user) {
       toast({
         variant: 'destructive',
-        title: 'Configuration Error',
-        description: 'Strava integration is not configured correctly.',
+        title: 'Authentication Error',
+        description: 'You must be logged in to connect to Strava.',
       });
-      setIsConnecting(false);
       return;
     }
+    setIsConnecting(true);
 
-    const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&response_type=code&approval_prompt=force&scope=read,activity:read_all`;
+    try {
+        const idToken = await user.getIdToken();
+        const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+        const redirectUri = `${window.location.origin}/exchange-token`;
+        
+        // Pass the idToken in the state parameter
+        const state = `idToken=${idToken}`;
 
-    window.location.href = stravaAuthUrl;
+        if (!clientId) {
+          throw new Error('Strava Client ID is not configured.');
+        }
+
+        const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+          redirectUri
+        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${state}`;
+
+        window.location.href = stravaAuthUrl;
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Connection Error', description: error.message });
+        setIsConnecting(false);
+    }
   };
   
   const handleSyncActivities = useCallback(async () => {
@@ -82,45 +103,21 @@ function AppsSettings() {
   }, [user, toast]);
 
   useEffect(() => {
-    const error = searchParams.get('error');
-    const code = searchParams.get('code');
-
-    if (error) {
-      toast({ variant: 'destructive', title: 'Connection Failed', description: decodeURIComponent(error) });
-      router.replace('/settings/apps');
-    } else if (code && user) {
-        setIsConnecting(true);
-        const processToken = async () => {
-            try {
-                const idToken = await user.getIdToken(true);
-                const result = await exchangeStravaToken(code, idToken);
-
-                if (result.success) {
-                    toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
-                    // After successful connection, immediately sync activities.
-                    await handleSyncActivities();
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (err: any) {
-                toast({ variant: 'destructive', title: 'Token exchange failed', description: err.message });
-            } finally {
-                setIsConnecting(false);
-                // Clean the URL by removing the code and scope parameters.
-                router.replace('/settings/apps', { scroll: false });
-            }
-        };
-        processToken();
-    }
-  }, [searchParams, router, toast, user, handleSyncActivities]);
-  
-  // Automatically fetch activities if connected and not currently connecting
-  useEffect(() => {
-    if(isStravaConnected && !isConnecting) {
+    // This effect handles the initial sync after a successful connection.
+    const justConnected = searchParams.get('strava_connected') === 'true';
+    if (justConnected && user) {
+        localStorage.setItem('strava_connected', 'true');
+        setIsStravaConnected(true);
+        toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
+        handleSyncActivities();
+        // Clean the URL
+        router.replace('/settings/apps', { scroll: false });
+    } else if (isStravaConnected && !isConnecting) {
+        // Automatically fetch activities if already connected
         handleSyncActivities();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStravaConnected]);
+  }, [isStravaConnected, user]);
 
 
   return (
