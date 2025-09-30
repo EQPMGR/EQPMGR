@@ -1,8 +1,7 @@
-
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
-import type { Equipment } from '@/lib/types';
+import type { Equipment, MaintenanceLog } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 
 export interface StravaActivity {
@@ -202,7 +201,7 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
                 id: doc.id,
                 ...data,
                 purchaseDate: toDate(data.purchaseDate),
-                maintenanceLog: (data.maintenanceLog || []).map((log: any) => ({
+                maintenanceLog: (data.maintenanceLog || []).map((log: MaintenanceLog) => ({
                     ...log,
                     date: toDate(log.date)
                 })),
