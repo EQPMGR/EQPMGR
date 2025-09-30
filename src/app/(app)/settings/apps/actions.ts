@@ -1,4 +1,3 @@
-
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
@@ -154,5 +153,6 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
         return { error: error.message || "An unknown error occurred." };
     }
 }
+
 
 

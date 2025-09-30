@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { StravaConnectButton } from '@/components/strava-connect-button';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,7 @@ import { ActivityCard } from '@/components/activity-card';
 import { fetchRecentStravaActivities, fetchUserBikes, type StravaActivity } from './actions';
 import type { Equipment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 
 function AppsSettings() {
@@ -160,7 +161,7 @@ function AppsSettings() {
                         <CardTitle>Recent Strava Activities</CardTitle>
                         <CardDescription>Assign your recent rides to a bike to track wear.</CardDescription>
                     </div>
-                    <button onClick={handleSyncActivities} disabled={isSyncing} className="flex items-center text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50">
+                    <Button onClick={handleSyncActivities} disabled={isSyncing} variant="outline" size="sm">
                         {isSyncing ? (
                            <>
                              <Loader2 className="h-4 w-4 mr-2 animate-spin"/>
@@ -168,13 +169,11 @@ function AppsSettings() {
                            </>
                         ) : (
                            <>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M20 4h-5v5M4 20h5v-5" />
-                            </svg>
+                            <RefreshCw className="h-4 w-4 mr-2" />
                             Sync Now
                            </>
                         )}
-                    </button>
+                    </Button>
                 </div>
             </CardHeader>
             <CardContent>
