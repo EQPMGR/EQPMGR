@@ -198,7 +198,8 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
         const bikes = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
-            purchaseDate: toDate(doc.data().purchaseDate)
+            // Convert Timestamp to Date object before returning to client.
+            purchaseDate: toDate(doc.data().purchaseDate) 
         } as Equipment));
         
         return { bikes };
@@ -208,4 +209,5 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
         return { error: error.message || "An unknown error occurred." };
     }
 }
+
 
