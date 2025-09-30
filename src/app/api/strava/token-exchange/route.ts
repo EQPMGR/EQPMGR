@@ -52,8 +52,10 @@ export async function POST(request: NextRequest) {
         athleteId: data.athlete.id,
       },
     }, { merge: true });
-
-    return NextResponse.json({ success: true });
+    
+    const redirectUrl = new URL('/settings/apps', request.nextUrl.origin);
+    redirectUrl.searchParams.set('strava_connected', 'true');
+    return NextResponse.redirect(redirectUrl);
 
   } catch (err: any) {
     console.error('FATAL ERROR during server-side token exchange.', {

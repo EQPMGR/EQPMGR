@@ -26,6 +26,7 @@ export default function ExchangeTokenPage() {
     const idToken = state ? new URLSearchParams(state).get('idToken') : null;
 
     if (code && idToken) {
+      // The API route now handles the redirect on success.
       fetch('/api/strava/token-exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -36,12 +37,14 @@ export default function ExchangeTokenPage() {
               const errorData = await res.json();
               throw new Error(errorData.error || 'Token exchange failed on server.');
           }
-          return res.json();
-      })
-      .then(data => {
-        setStatus('Successfully connected to Strava! Redirecting...');
-        // Redirect back to settings page with a success indicator
-        router.push('/settings/apps?strava_connected=true');
+          // The server will handle the redirect, but if it doesn't for some reason,
+          // we will navigate from the client.
+          if (res.redirected) {
+             window.location.href = res.url;
+          } else {
+             // Fallback navigation
+             router.push('/settings/apps?strava_connected=true');
+          }
       })
       .catch(err => {
         console.error("Token exchange failed:", err);
@@ -71,3 +74,4 @@ export default function ExchangeTokenPage() {
     </div>
   );
 }
+
