@@ -1,3 +1,4 @@
+
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
@@ -20,29 +21,27 @@ interface StravaTokenData {
     expiresAt: number;
 }
 
-async function getStravaTokenForUser(idToken: string): Promise<StravaTokenData | null> {
-    const adminAuth = getAdminAuth();
-    const adminDb = getAdminDb();
 
+export async function fetchRecentStravaActivities(idToken: string): Promise<{ activities?: StravaActivity[]; error?: string }> {
     if (!idToken) {
-        throw new Error("User not authenticated.");
+        return { error: 'User not authenticated.' };
     }
-    
-    const decodedToken = await adminAuth.verifyIdToken(idToken, true);
-    const userId = decodedToken.uid;
-    
+
     try {
+        const adminAuth = getAdminAuth();
+        const adminDb = getAdminDb();
+        const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+        const userId = decodedToken.uid;
+        
         const userDocRef = adminDb.collection('users').doc(userId);
         const userDocSnap = await userDocRef.get();
 
         if (!userDocSnap.exists() || !userDocSnap.data()?.strava) {
-            console.log("User document or Strava data not found.");
-            return null;
+             return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
         }
 
         let { accessToken, refreshToken, expiresAt } = userDocSnap.data()?.strava;
 
-        // Check if the token is expired (or close to expiring)
         if (Date.now() / 1000 > expiresAt - 300) {
             console.log("Strava token expired, refreshing...");
             const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
@@ -74,34 +73,13 @@ async function getStravaTokenForUser(idToken: string): Promise<StravaTokenData |
             };
             
             await userDocRef.set({ strava: newStravaData }, { merge: true });
-
-            return {
-                accessToken: newTokens.access_token,
-                refreshToken: newTokens.refresh_token,
-                expiresAt: newTokens.expires_at,
-            };
+            
+            accessToken = newTokens.access_token;
         }
 
-        return { accessToken, refreshToken, expiresAt };
-
-    } catch (error) {
-        console.error("Error verifying identity or getting token:", error);
-        return null;
-    }
-}
-
-
-export async function fetchRecentStravaActivities(idToken: string): Promise<{ activities?: StravaActivity[]; error?: string }> {
-    const tokenData = await getStravaTokenForUser(idToken);
-
-    if (!tokenData) {
-        return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
-    }
-
-    try {
         const response = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=10', {
             headers: {
-                'Authorization': `Bearer ${tokenData.accessToken}`,
+                'Authorization': `Bearer ${accessToken}`,
             },
             cache: 'no-store',
         });
@@ -113,6 +91,7 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
 
         const activities: StravaActivity[] = await response.json();
         return { activities };
+
     } catch (error: any) {
         console.error("Error fetching Strava activities:", error);
         return { error: error.message || 'An unknown error occurred.' };
@@ -134,7 +113,6 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
         
         const bikes = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            // Convert all timestamp fields to plain Date objects before returning
             return {
                 id: doc.id,
                 ...data,
@@ -153,6 +131,3 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
         return { error: error.message || "An unknown error occurred." };
     }
 }
-
-
-
