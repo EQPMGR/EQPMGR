@@ -117,7 +117,7 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
                 id: doc.id,
                 ...data,
                 purchaseDate: toDate(data.purchaseDate),
-                maintenanceLog: (data.maintenanceLog || []).map((log: MaintenanceLog) => ({
+                maintenanceLog: (data.maintenanceLog || []).map((log: any) => ({
                     ...log,
                     date: toDate(log.date)
                 })),
