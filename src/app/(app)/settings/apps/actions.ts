@@ -42,17 +42,22 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
 
         let { accessToken, refreshToken, expiresAt } = userDocSnap.data()?.strava;
 
+        // Refresh token if it's about to expire in the next 5 minutes
         if (Date.now() / 1000 > expiresAt - 300) {
             console.log("Strava token expired, refreshing...");
             const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
             const clientSecret = process.env.STRAVA_CLIENT_SECRET;
 
+            if (!clientId || !clientSecret) {
+                throw new Error('Server is not configured for Strava integration.');
+            }
+
             const response = await fetch('https://www.strava.com/oauth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    client_id: clientId!,
-                    client_secret: clientSecret!,
+                    client_id: clientId,
+                    client_secret: clientSecret,
                     grant_type: 'refresh_token',
                     refresh_token: refreshToken,
                 }),
@@ -61,7 +66,7 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             if (!response.ok) {
                 const errorBody = await response.json();
                 console.error("Strava token refresh failed:", errorBody);
-                throw new Error('Could not refresh Strava token.');
+                throw new Error('Could not refresh Strava token. Please reconnect.');
             }
 
             const newTokens = await response.json();
@@ -77,19 +82,19 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             accessToken = newTokens.access_token;
         }
 
-        const response = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=10', {
+        const activitiesResponse = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=10', {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
             },
-            cache: 'no-store',
+            cache: 'no-store', // This is critical to prevent hanging requests
         });
 
-        if (!response.ok) {
-            const errorBody = await response.json();
+        if (!activitiesResponse.ok) {
+            const errorBody = await activitiesResponse.json();
             return { error: `Failed to fetch from Strava: ${errorBody.message || JSON.stringify(errorBody)}` };
         }
 
-        const activities: StravaActivity[] = await response.json();
+        const activities: StravaActivity[] = await activitiesResponse.json();
         return { activities };
 
     } catch (error: any) {
