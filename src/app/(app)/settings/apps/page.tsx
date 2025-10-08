@@ -50,12 +50,12 @@ function AppsSettings() {
     setIsConnecting(true);
 
     try {
-        const idToken = await user.getIdToken();
         const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
         const redirectUri = `${window.location.origin}/exchange-token`;
-        
-        // Pass the idToken in the state parameter
-        const state = `idToken=${idToken}`;
+
+        // Generate a secure random state for CSRF protection
+        const state = crypto.randomUUID();
+        sessionStorage.setItem('strava_oauth_state', state);
 
         if (!clientId) {
           throw new Error('Strava Client ID is not configured.');

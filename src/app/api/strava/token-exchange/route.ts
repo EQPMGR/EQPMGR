@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Server configuration error for Strava connection.' }, { status: 500 });
     }
 
-    const response = await fetch('https://www.strava.com/api/v3/oauth/token', {
+    const response = await fetch('https://www.strava.com/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
