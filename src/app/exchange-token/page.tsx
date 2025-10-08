@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -19,14 +20,24 @@ export default function ExchangeTokenPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, idToken }),
       })
-      .then(res => res.ok ? res.json() : Promise.reject('Token exchange failed'))
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(err => Promise.reject(err.error || 'Token exchange failed'));
+        }
+        return res.json();
+      })
       .then(data => {
-        setStatus('Successfully connected to Strava! Redirecting...');
-        setTimeout(() => router.push('/settings/apps'), 2000);
+        if (data.success) {
+            setStatus('Successfully connected to Strava! Redirecting...');
+            // Redirect to settings page with a success flag
+            router.push('/settings/apps?strava_connected=true');
+        } else {
+            throw new Error(data.error || 'Unknown error during token exchange.');
+        }
       })
       .catch(err => {
-        setStatus('Failed to connect to Strava. Redirecting...');
-        setTimeout(() => router.push('/settings/apps'), 3000);
+        setStatus(`Failed to connect to Strava: ${err}. Redirecting...`);
+        setTimeout(() => router.push('/settings/apps'), 4000);
       });
     } else {
       setStatus('Invalid request. Missing code or user token.');

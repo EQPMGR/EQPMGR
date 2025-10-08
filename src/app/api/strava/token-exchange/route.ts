@@ -53,9 +53,9 @@ export async function POST(request: NextRequest) {
       },
     }, { merge: true });
     
-    const redirectUrl = new URL('/settings/apps', request.nextUrl.origin);
-    redirectUrl.searchParams.set('strava_connected', 'true');
-    return NextResponse.redirect(redirectUrl);
+    // Instead of a full redirect, we return a success response.
+    // The client-side page will handle the redirect.
+    return NextResponse.json({ success: true });
 
   } catch (err: any) {
     console.error('FATAL ERROR during server-side token exchange.', {
