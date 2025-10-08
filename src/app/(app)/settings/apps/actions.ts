@@ -36,7 +36,7 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
         const userDocRef = adminDb.collection('users').doc(userId);
         const userDocSnap = await userDocRef.get();
 
-        if (!userDocSnap.exists() || !userDocSnap.data()?.strava) {
+        if (!userDocSnap.exists || !userDocSnap.data()?.strava) {
              return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
         }
 
