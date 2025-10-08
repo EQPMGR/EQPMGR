@@ -1,19 +1,21 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { Loader2 } from 'lucide-react';
 
 export default function ExchangeTokenPage() {
-  const [status, setStatus] = useState('Exchanging token, please wait...');
+  const [status, setStatus] = useState('Connecting to Strava...');
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, loading } = useAuth();
+  const hasExecuted = useRef(false);
 
   useEffect(() => {
-    // Wait for auth to load
-    if (loading) return;
+    // Prevent double execution
+    if (hasExecuted.current) return;
 
     const code = searchParams.get('code');
     const state = searchParams.get('state');
@@ -24,6 +26,7 @@ export default function ExchangeTokenPage() {
     if (!code) {
       setStatus('Invalid request. Missing authorization code.');
       setTimeout(() => router.push('/settings/apps'), 3000);
+      hasExecuted.current = true;
       return;
     }
 
@@ -31,17 +34,30 @@ export default function ExchangeTokenPage() {
       setStatus('Security error. Invalid state parameter. Redirecting...');
       sessionStorage.removeItem('strava_oauth_state');
       setTimeout(() => router.push('/settings/apps'), 3000);
+      hasExecuted.current = true;
       return;
     }
 
     // Clear the state from session storage
     sessionStorage.removeItem('strava_oauth_state');
 
+    // If auth is still loading, show loading state but don't block
+    if (loading) {
+      setStatus('Verifying your identity...');
+      return;
+    }
+
     if (!user) {
       setStatus('Authentication error. Please log in and try again.');
       setTimeout(() => router.push('/settings/apps'), 3000);
+      hasExecuted.current = true;
       return;
     }
+
+    // Mark as executed to prevent double runs
+    hasExecuted.current = true;
+
+    setStatus('Exchanging authorization code...');
 
     // Get fresh ID token and exchange authorization code for access token
     user.getIdToken()
@@ -74,8 +90,9 @@ export default function ExchangeTokenPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-2xl font-bold mb-4">Connecting to Strava...</h1>
-      <p>{status}</p>
+      <Loader2 className="h-12 w-12 animate-spin mb-4 text-primary" />
+      <h1 className="text-2xl font-bold mb-2">Connecting to Strava</h1>
+      <p className="text-muted-foreground">{status}</p>
     </div>
   );
 }

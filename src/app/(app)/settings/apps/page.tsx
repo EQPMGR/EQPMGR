@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState, Suspense, useCallback } from 'react';
+import React, { useEffect, useState, Suspense, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { StravaConnectButton } from '@/components/strava-connect-button';
@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { ActivityCard } from '@/components/activity-card';
-import { fetchRecentStravaActivities, fetchUserBikes, type StravaActivity } from './actions';
+import { fetchRecentStravaActivities, fetchUserBikes, checkStravaConnection, type StravaActivity } from './actions';
 import type { Equipment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -25,17 +25,32 @@ function AppsSettings() {
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
   const [userBikes, setUserBikes] = useState<Equipment[]>([]);
   const [isStravaConnected, setIsStravaConnected] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(true);
+  const initialSyncDone = useRef(false);
 
+  // Check actual Strava connection from backend
   useEffect(() => {
-    // Check for connection status on component mount and when user object changes.
-    // This is a simple check; a more robust solution might involve checking token validity.
-    if (user) {
-        // A simple check on a user sub-property is not robust.
-        // Instead, we can check if a successful connection flag is set.
-        const connected = localStorage.getItem('strava_connected') === 'true';
-        setIsStravaConnected(connected);
-    }
-  }, [user]);
+    if (!user || loading) return;
+
+    setCheckingConnection(true);
+    user.getIdToken()
+      .then(idToken => checkStravaConnection(idToken))
+      .then(result => {
+        setIsStravaConnected(result.connected);
+        if (result.connected) {
+          localStorage.setItem('strava_connected', 'true');
+        } else {
+          localStorage.removeItem('strava_connected');
+        }
+      })
+      .catch(() => {
+        setIsStravaConnected(false);
+        localStorage.removeItem('strava_connected');
+      })
+      .finally(() => {
+        setCheckingConnection(false);
+      });
+  }, [user, loading]);
 
 
   const handleStravaConnect = async () => {
@@ -106,19 +121,17 @@ function AppsSettings() {
   useEffect(() => {
     // This effect handles the initial sync after a successful connection.
     const justConnected = searchParams.get('strava_connected') === 'true';
-    if (justConnected && user) {
+
+    if (justConnected && user && !initialSyncDone.current) {
+        initialSyncDone.current = true;
         localStorage.setItem('strava_connected', 'true');
         setIsStravaConnected(true);
         toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
         handleSyncActivities();
         // Clean the URL
         router.replace('/settings/apps', { scroll: false });
-    } else if (isStravaConnected && !isConnecting) {
-        // Automatically fetch activities if already connected
-        handleSyncActivities();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStravaConnected, user]);
+  }, [searchParams, user, router, handleSyncActivities, toast]);
 
 
   return (
@@ -134,10 +147,10 @@ function AppsSettings() {
             <div className="flex items-center justify-between">
             <h4 className="text-md font-medium">Strava</h4>
             
-            {loading || isConnecting ? (
+            {loading || isConnecting || checkingConnection ? (
                 <div className="text-sm font-medium text-muted-foreground flex items-center">
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                {isConnecting ? 'Connecting...' : 'Loading...'}
+                {isConnecting ? 'Connecting...' : checkingConnection ? 'Checking connection...' : 'Loading...'}
                 </div>
             ) : isStravaConnected ? (
                 <div className="text-sm font-medium text-green-600 flex items-center">

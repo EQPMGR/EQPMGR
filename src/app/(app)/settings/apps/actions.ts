@@ -115,7 +115,7 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
 
         const q = adminDb.collection(`users/${decodedIdToken.uid}/equipment`).where('type', '!=', 'Cycling Shoes');
         const querySnapshot = await q.get();
-        
+
         const bikes = querySnapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -128,11 +128,41 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
                 })),
             } as Equipment
         });
-        
+
         return { bikes };
 
     } catch(error: any) {
         console.error("Error fetching user bikes: ", error);
         return { error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function checkStravaConnection(idToken: string): Promise<{ connected: boolean; error?: string }> {
+    if (!idToken) {
+        return { connected: false, error: 'User not authenticated.' };
+    }
+
+    try {
+        const adminAuth = getAdminAuth();
+        const adminDb = getAdminDb();
+        const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+        const userId = decodedToken.uid;
+
+        const userDocRef = adminDb.collection('users').doc(userId);
+        const userDocSnap = await userDocRef.get();
+
+        if (!userDocSnap.exists || !userDocSnap.data()?.strava) {
+            return { connected: false };
+        }
+
+        // Check if token exists and is valid
+        const stravaData = userDocSnap.data()?.strava;
+        const hasRequiredFields = stravaData.accessToken && stravaData.refreshToken && stravaData.expiresAt;
+
+        return { connected: !!hasRequiredFields };
+
+    } catch (error: any) {
+        console.error("Error checking Strava connection:", error);
+        return { connected: false, error: error.message || 'An unknown error occurred.' };
     }
 }
