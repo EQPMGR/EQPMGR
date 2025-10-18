@@ -55,7 +55,7 @@ env:
       - BUILD
       - RUNTIME    
 
-# Arguments to pass to the build command
+# Arguments to pass to a build command
 buildArgs:
   NEXT_PUBLIC_FIREBASE_API_KEY: ${secret:FIREBASE_API_KEY}
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${secret:FIREBASE_PROJECT_ID}
