@@ -13,6 +13,7 @@ import { fetchRecentStravaActivities, fetchUserBikes, checkStravaConnection, typ
 import type { Equipment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import Cookies from 'js-cookie';
 
 
 function AppsSettings() {
@@ -66,15 +67,12 @@ function AppsSettings() {
 
     try {
         const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-        // The API route will handle the redirect back to this page
         const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
 
-        // Generate a secure random state for CSRF protection
-        const state = crypto.randomUUID();
-        // Store the state and the user's ID token in sessionStorage to be used by the API route
         const idToken = await user.getIdToken();
-        sessionStorage.setItem('strava_oauth_state', JSON.stringify({state, idToken}));
-
+        // Use a short-lived cookie to pass the ID token to the API route.
+        // This is more reliable than sessionStorage.
+        Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'Lax' }); // Expires in 10 minutes
 
         if (!clientId) {
           throw new Error('Strava Client ID is not configured.');
@@ -82,7 +80,7 @@ function AppsSettings() {
 
         const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
           redirectUri
-        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${state}`;
+        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all`;
 
         window.location.href = stravaAuthUrl;
 
