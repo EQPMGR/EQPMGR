@@ -66,11 +66,15 @@ function AppsSettings() {
 
     try {
         const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-        const redirectUri = `${window.location.origin}/exchange-token`;
+        // The API route will handle the redirect back to this page
+        const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
 
         // Generate a secure random state for CSRF protection
         const state = crypto.randomUUID();
-        sessionStorage.setItem('strava_oauth_state', state);
+        // Store the state and the user's ID token in sessionStorage to be used by the API route
+        const idToken = await user.getIdToken();
+        sessionStorage.setItem('strava_oauth_state', JSON.stringify({state, idToken}));
+
 
         if (!clientId) {
           throw new Error('Strava Client ID is not configured.');

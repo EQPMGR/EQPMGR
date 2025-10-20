@@ -1,15 +1,39 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { cookies } from 'next/headers';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get('code');
+  const state = searchParams.get('state');
+  const error = searchParams.get('error');
+
+  // If the user denied the connection on Strava's page
+  if (error) {
+    console.error('Strava OAuth Error:', error);
+    const redirectUrl = new URL('/settings/apps', request.url);
+    redirectUrl.searchParams.set('strava_error', 'access_denied');
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // Check for required parameters from Strava
+  if (!code || !state) {
+    return NextResponse.json({ error: 'Missing authorization code or state.' }, { status: 400 });
+  }
+
+  // The ID token is now passed via a temporary cookie set by the client
+  const cookieStore = cookies();
+  const idToken = cookieStore.get('strava_id_token')?.value;
+
+  if (!idToken) {
+      return NextResponse.json({ error: 'Authentication token not found. Please try connecting again.' }, { status: 400 });
+  }
+
+  // Clear the temporary cookie
+  cookieStore.delete('strava_id_token');
+
   try {
-    const { code, idToken } = await request.json();
-
-    if (!code || !idToken) {
-      return NextResponse.json({ error: 'Missing authorization code or ID token.' }, { status: 400 });
-    }
-    
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     
@@ -22,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (!clientId || !clientSecret) {
       console.error('CRITICAL ERROR: Missing Strava credentials on server.');
-      return NextResponse.json({ error: 'Server configuration error for Strava connection.' }, { status: 500 });
+      throw new Error('Server configuration error for Strava connection.');
     }
 
     const response = await fetch('https://www.strava.com/oauth/token', {
@@ -53,16 +77,19 @@ export async function POST(request: NextRequest) {
       },
     }, { merge: true });
     
-    // Instead of a full redirect, we return a success response.
-    // The client-side page will handle the redirect.
-    return NextResponse.json({ success: true });
+    // Redirect the user back to the settings page with a success indicator
+    const redirectUrl = new URL('/settings/apps', request.url);
+    redirectUrl.searchParams.set('strava_connected', 'true');
+    return NextResponse.redirect(redirectUrl);
 
   } catch (err: any) {
     console.error('FATAL ERROR during server-side token exchange.', {
       message: err.message,
       code: err.code,
-      stack: err.stack,
     });
-    return NextResponse.json({ success: false, error: err.message || 'An unexpected server error occurred.' }, { status: 500 });
+    // Redirect back with an error message
+    const redirectUrl = new URL('/settings/apps', request.url);
+    redirectUrl.searchParams.set('strava_error', err.message || 'An unexpected server error occurred.');
+    return NextResponse.redirect(redirectUrl);
   }
 }
