@@ -77,10 +77,12 @@ function AppsSettings() {
         if (!clientId) {
           throw new Error('Strava Client ID is not configured.');
         }
+        
+        const state = crypto.randomUUID();
 
         const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
           redirectUri
-        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all`;
+        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${state}`;
 
         window.location.href = stravaAuthUrl;
 
