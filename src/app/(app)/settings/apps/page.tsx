@@ -38,15 +38,9 @@ function AppsSettings() {
       .then(idToken => checkStravaConnection(idToken))
       .then(result => {
         setIsStravaConnected(result.connected);
-        if (result.connected) {
-          localStorage.setItem('strava_connected', 'true');
-        } else {
-          localStorage.removeItem('strava_connected');
-        }
       })
       .catch(() => {
         setIsStravaConnected(false);
-        localStorage.removeItem('strava_connected');
       })
       .finally(() => {
         setCheckingConnection(false);
@@ -71,7 +65,6 @@ function AppsSettings() {
 
         const idToken = await user.getIdToken();
         // Use a short-lived cookie to pass the ID token to the API route.
-        // This is more reliable than sessionStorage.
         Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'Lax' }); // Expires in 10 minutes
 
         if (!clientId) {
@@ -128,7 +121,6 @@ function AppsSettings() {
 
     if (justConnected && user && !initialSyncDone.current) {
         initialSyncDone.current = true;
-        localStorage.setItem('strava_connected', 'true');
         setIsStravaConnected(true);
         toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
         handleSyncActivities();
@@ -136,6 +128,10 @@ function AppsSettings() {
         router.replace('/settings/apps', { scroll: false });
     }
   }, [searchParams, user, router, handleSyncActivities, toast]);
+
+  const onActivityAssigned = (activityId: number) => {
+      setRecentActivities(prev => prev.filter(a => a.id !== activityId));
+  }
 
 
   return (
@@ -203,7 +199,7 @@ function AppsSettings() {
                 ) : recentActivities.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {recentActivities.map(activity => (
-                           <ActivityCard key={activity.id} activity={activity} bikes={userBikes} />
+                           <ActivityCard key={activity.id} activity={activity} bikes={userBikes} onActivityAssigned={onActivityAssigned} />
                         ))}
                     </div>
                 ) : (

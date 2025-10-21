@@ -24,6 +24,7 @@ export interface UserComponent {
   id: string; // Unique ID for this specific instance (document ID in the subcollection)
   parentUserComponentId?: string | null; // ID of the parent UserComponent, if this is a sub-component
   masterComponentId: string; // Reference to the MasterComponent
+  name: string; // Denormalized for easier querying/display
   wearPercentage: number;
   lastServiceDate: Date | null;
   purchaseDate: Date;

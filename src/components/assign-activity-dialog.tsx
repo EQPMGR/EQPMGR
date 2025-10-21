@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { StravaActivity } from '@/app/(app)/settings/apps/actions';
+import { assignStravaActivityToAction, type StravaActivity } from '@/app/(app)/settings/apps/actions';
 import type { Equipment } from '@/lib/types';
 import {
   Dialog,
@@ -18,38 +18,63 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 interface AssignActivityDialogProps {
   activity: StravaActivity;
   bikes: Equipment[];
   children: React.ReactNode;
+  onAssigned: (activityId: number) => void;
 }
 
-export function AssignActivityDialog({ activity, bikes, children }: AssignActivityDialogProps) {
+export function AssignActivityDialog({ activity, bikes, children, onAssigned }: AssignActivityDialogProps) {
   const [open, setOpen] = useState(false);
   const [selectedBikeId, setSelectedBikeId] = useState<string | null>(
-    bikes.length === 1 ? bikes[0].id : null
+    activity.gear_id || (bikes.length === 1 ? bikes[0].id : null)
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleAssign = async () => {
     if (!selectedBikeId) {
         toast({ variant: 'destructive', title: 'No bike selected', description: 'Please choose a bike to assign this activity to.' });
         return;
     }
-    setIsSubmitting(true);
-    // In the next step, we will call a server action here.
-    // For now, we'll simulate an API call.
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-        title: "Activity Assigned (Simulated)",
-        description: `Your ride "${activity.name}" has been assigned. Wear will be calculated shortly.`
-    });
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You are not logged in.' });
+        return;
+    }
 
-    setIsSubmitting(false);
-    setOpen(false);
+    setIsSubmitting(true);
+    try {
+        const idToken = await user.getIdToken(true);
+        const result = await assignStravaActivityToAction({
+            idToken,
+            activity,
+            equipmentId: selectedBikeId,
+        });
+
+        if (result.success) {
+            toast({
+                title: "Activity Assigned!",
+                description: result.message
+            });
+            onAssigned(activity.id);
+            setOpen(false);
+        } else {
+            throw new Error(result.message);
+        }
+
+    } catch(error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Assignment Failed',
+            description: error.message || 'An unexpected error occurred.'
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,7 +88,7 @@ export function AssignActivityDialog({ activity, bikes, children }: AssignActivi
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          {bikes.length > 1 ? (
+          {bikes.length > 0 ? (
             <RadioGroup onValueChange={setSelectedBikeId} value={selectedBikeId || ''}>
               {bikes.map(bike => (
                 <Label
@@ -79,8 +104,6 @@ export function AssignActivityDialog({ activity, bikes, children }: AssignActivi
                 </Label>
               ))}
             </RadioGroup>
-          ) : bikes.length === 1 ? (
-            <p>This ride will be assigned to your only bike: <strong>{bikes[0].name}</strong>.</p>
           ) : (
             <p>You don't have any bikes in your equipment locker. Please add a bike first.</p>
           )}

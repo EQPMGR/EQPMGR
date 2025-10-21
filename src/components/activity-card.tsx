@@ -11,10 +11,11 @@ import { AssignActivityDialog } from "./assign-activity-dialog";
 interface ActivityCardProps {
     activity: StravaActivity;
     bikes: Equipment[];
+    onActivityAssigned: (activityId: number) => void;
 }
 
-export function ActivityCard({ activity, bikes }: ActivityCardProps) {
-    const isRide = activity.type === 'Ride' || activity.type === 'VirtualRide';
+export function ActivityCard({ activity, bikes, onActivityAssigned }: ActivityCardProps) {
+    const isRide = activity.type === 'Ride' || activity.type === 'VirtualRide' || activity.type === 'EBikeRide';
 
     return (
         <Card>
@@ -31,7 +32,7 @@ export function ActivityCard({ activity, bikes }: ActivityCardProps) {
                     </a>
                 </Button>
                 {isRide && (
-                    <AssignActivityDialog activity={activity} bikes={bikes}>
+                    <AssignActivityDialog activity={activity} bikes={bikes} onAssigned={onActivityAssigned}>
                         <Button size="sm">Assign to Bike</Button>
                     </AssignActivityDialog>
                 )}

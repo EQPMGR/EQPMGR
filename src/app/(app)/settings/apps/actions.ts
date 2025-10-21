@@ -2,8 +2,9 @@
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
-import type { Equipment, MaintenanceLog } from '@/lib/types';
-import { toDate } from '@/lib/date-utils';
+import type { Equipment, UserComponent, Component, MasterComponent } from '@/lib/types';
+import { toDate, toNullableDate } from '@/lib/date-utils';
+import { simulateWear } from '@/ai/flows/simulate-wear';
 
 export interface StravaActivity {
   id: number;
@@ -13,6 +14,7 @@ export interface StravaActivity {
   elapsed_time: number;
   type: string;
   start_date: string;
+  gear_id: string | null;
 }
 
 interface StravaTokenData {
@@ -40,7 +42,7 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
              return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
         }
 
-        let { accessToken, refreshToken, expiresAt } = userDocSnap.data()?.strava;
+        let { accessToken, refreshToken, expiresAt, processedActivities } = userDocSnap.data()?.strava;
 
         // Refresh token if it's about to expire in the next 5 minutes
         if (Date.now() / 1000 > expiresAt - 300) {
@@ -82,7 +84,7 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             accessToken = newTokens.access_token;
         }
 
-        const activitiesResponse = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=10', {
+        const activitiesResponse = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=30', {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
             },
@@ -94,7 +96,11 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             return { error: `Failed to fetch from Strava: ${errorBody.message || JSON.stringify(errorBody)}` };
         }
 
-        const activities: StravaActivity[] = await activitiesResponse.json();
+        const allActivities: StravaActivity[] = await activitiesResponse.json();
+        const processedActivityIds = new Set(processedActivities || []);
+
+        const activities = allActivities.filter(a => !processedActivityIds.has(String(a.id)));
+        
         return { activities };
 
     } catch (error: any) {
@@ -164,5 +170,80 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
     } catch (error: any) {
         console.error("Error checking Strava connection:", error);
         return { connected: false, error: error.message || 'An unknown error occurred.' };
+    }
+}
+
+export async function assignStravaActivityToAction({
+    idToken,
+    activity,
+    equipmentId,
+}: {
+    idToken: string;
+    activity: StravaActivity;
+    equipmentId: string;
+}): Promise<{ success: boolean; message: string; }> {
+    if (!idToken || !activity || !equipmentId) {
+        return { success: false, message: 'Missing required data.' };
+    }
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
+
+    try {
+        const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+        const userId = decodedToken.uid;
+
+        // 1. Get the equipment and its components
+        const equipmentRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
+        const componentsSnapshot = await equipmentRef.collection('components').get();
+        
+        const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
+        
+        // 2. Run wear simulation
+        const wearAndTearData = JSON.stringify(userComponents.map(c => ({ name: c.name, wear: `${c.wearPercentage}%` })));
+
+        const simulationResult = await simulateWear({
+            equipmentType: 'Road Bike', // This could be dynamic later
+            workoutType: activity.type,
+            distance: activity.distance / 1000, // convert meters to km
+            duration: activity.moving_time / 60, // convert seconds to minutes
+            intensity: 'medium', // Placeholder, could be derived from activity data
+            environmentalConditions: 'mixed', // Placeholder
+            wearAndTearData,
+        });
+
+        // 3. Prepare batch write
+        const batch = adminDb.batch();
+
+        // 4. Update equipment totals
+        batch.update(equipmentRef, {
+            totalDistance: admin.firestore.FieldValue.increment(activity.distance / 1000),
+            totalHours: admin.firestore.FieldValue.increment(activity.moving_time / 3600),
+        });
+
+        // 5. Update component wear
+        simulationResult.componentWear.forEach(simulatedComp => {
+            const componentToUpdate = userComponents.find(c => c.name === simulatedComp.componentName);
+            if (componentToUpdate) {
+                const componentRef = equipmentRef.collection('components').doc(componentToUpdate.id);
+                batch.update(componentRef, { wearPercentage: simulatedComp.wearPercentage });
+            }
+        });
+        
+        // 6. Mark activity as processed
+        const userRef = adminDb.doc(`users/${userId}`);
+        batch.set(userRef, {
+            strava: {
+                processedActivities: admin.firestore.FieldValue.arrayUnion(String(activity.id))
+            }
+        }, { merge: true });
+
+        // 7. Commit batch
+        await batch.commit();
+
+        return { success: true, message: `Activity assigned and wear calculated for ${activity.name}.` };
+
+    } catch (error: any) {
+        console.error("Error assigning Strava activity:", error);
+        return { success: false, message: error.message || "An unknown server error occurred." };
     }
 }
