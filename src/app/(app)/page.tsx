@@ -1,7 +1,7 @@
 
-import { DashboardPage } from '@/components/dashboard-page';
+import DashboardPage from '@/app/(app)/dashboard/page';
 
-export default function Dashboard() {
+export default function Home() {
   return (
     <DashboardPage />
   );

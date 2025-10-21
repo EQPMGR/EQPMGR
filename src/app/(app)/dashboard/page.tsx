@@ -14,8 +14,9 @@ import { Wrench, PlusCircle } from 'lucide-react';
 import { formatDate } from '@/lib/date-utils';
 import { useToast } from '@/hooks/use-toast';
 import { getDashboardData } from './actions';
+import { RecentActivities } from '@/components/recent-activities';
 
-export function DashboardPage() {
+export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [workOrders, setWorkOrders] = useState<any[]>([]); // Use any[] because of serialized dates
@@ -65,8 +66,12 @@ export function DashboardPage() {
                   <Skeleton className="h-4 w-72" />
                 </div>
               </div>
-              <div className="mt-6">
-                <Skeleton className="h-64 w-full" />
+              <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                </div>
+                <Skeleton className="h-48 w-full" />
               </div>
           </>
       )
@@ -84,49 +89,52 @@ export function DashboardPage() {
       </div>
       
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Open Work Orders</CardTitle>
-            <CardDescription>
-              Track the status of your current service requests.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Equipment</TableHead>
-                  <TableHead>Service</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {workOrders && workOrders.length > 0 ? (
-                  workOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.providerName}</TableCell>
-                      <TableCell>{order.equipmentName}</TableCell>
-                      <TableCell className="capitalize">{order.serviceType.replace('-', ' ')}</TableCell>
-                       <TableCell>{formatDate(new Date(order.createdAt), user?.dateFormat)}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadgeVariant(order.status)} className="capitalize">{order.status}</Badge>
-                      </TableCell>
+        <div className="lg:col-span-2 space-y-6">
+            <Card>
+            <CardHeader>
+                <CardTitle>Open Work Orders</CardTitle>
+                <CardDescription>
+                Track the status of your current service requests.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Provider</TableHead>
+                    <TableHead>Equipment</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No open work orders.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <Card>
+                </TableHeader>
+                <TableBody>
+                    {workOrders && workOrders.length > 0 ? (
+                    workOrders.map((order) => (
+                        <TableRow key={order.id}>
+                        <TableCell className="font-medium">{order.providerName}</TableCell>
+                        <TableCell>{order.equipmentName}</TableCell>
+                        <TableCell className="capitalize">{order.serviceType.replace('-', ' ')}</TableCell>
+                        <TableCell>{formatDate(new Date(order.createdAt), user?.dateFormat)}</TableCell>
+                        <TableCell>
+                            <Badge variant={getStatusBadgeVariant(order.status)} className="capitalize">{order.status}</Badge>
+                        </TableCell>
+                        </TableRow>
+                    ))
+                    ) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                        No open work orders.
+                        </TableCell>
+                    </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+            </CardContent>
+            </Card>
+            <RecentActivities showTitle={true} />
+        </div>
+        <Card className="h-fit">
             <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
             </CardHeader>

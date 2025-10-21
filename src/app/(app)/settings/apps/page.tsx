@@ -3,17 +3,14 @@
 
 import React, { useEffect, useState, Suspense, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { StravaConnectButton } from '@/components/strava-connect-button';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ActivityCard } from '@/components/activity-card';
-import { fetchRecentStravaActivities, fetchUserBikes, checkStravaConnection, type StravaActivity } from './actions';
-import type { Equipment } from '@/lib/types';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
+import { checkStravaConnection } from './actions';
 import Cookies from 'js-cookie';
+import { RecentActivities } from '@/components/recent-activities';
 
 
 function AppsSettings() {
@@ -21,13 +18,9 @@ function AppsSettings() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
-  const [userBikes, setUserBikes] = useState<Equipment[]>([]);
   const [isStravaConnected, setIsStravaConnected] = useState(false);
   const [checkingConnection, setCheckingConnection] = useState(true);
-  const initialSyncDone = useRef(false);
 
   // Check actual Strava connection from backend
   useEffect(() => {
@@ -38,6 +31,14 @@ function AppsSettings() {
       .then(idToken => checkStravaConnection(idToken))
       .then(result => {
         setIsStravaConnected(result.connected);
+        if (result.connected) {
+          // If we are connected, remove the query param from the URL
+          const justConnected = searchParams.get('strava_connected') === 'true';
+          if(justConnected) {
+             toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
+             router.replace('/settings/apps', { scroll: false });
+          }
+        }
       })
       .catch(() => {
         setIsStravaConnected(false);
@@ -45,7 +46,7 @@ function AppsSettings() {
       .finally(() => {
         setCheckingConnection(false);
       });
-  }, [user, loading]);
+  }, [user, loading, searchParams, router, toast]);
 
 
   const handleStravaConnect = async () => {
@@ -84,55 +85,6 @@ function AppsSettings() {
         setIsConnecting(false);
     }
   };
-  
-  const handleSyncActivities = useCallback(async () => {
-    if (!user) return;
-    setIsSyncing(true);
-    setRecentActivities([]);
-    try {
-        const idToken = await user.getIdToken(true);
-        const [{ activities, error: activityError }, { bikes, error: bikeError }] = await Promise.all([
-            fetchRecentStravaActivities(idToken),
-            fetchUserBikes(idToken)
-        ]);
-        
-        if (activityError) throw new Error(activityError);
-        if (bikeError) throw new Error(bikeError);
-      
-        setRecentActivities(activities || []);
-        setUserBikes(bikes || []);
-      
-        if ((activities || []).length > 0) {
-            toast({ title: "Sync Complete!", description: `Found ${activities?.length} recent activities.` });
-        } else {
-            toast({ title: "Nothing to sync", description: "No new activities found on Strava." });
-        }
-
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Sync Failed', description: err.message });
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [user, toast]);
-
-  useEffect(() => {
-    // This effect handles the initial sync after a successful connection.
-    const justConnected = searchParams.get('strava_connected') === 'true';
-
-    if (justConnected && user && !initialSyncDone.current) {
-        initialSyncDone.current = true;
-        setIsStravaConnected(true);
-        toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
-        handleSyncActivities();
-        // Clean the URL
-        router.replace('/settings/apps', { scroll: false });
-    }
-  }, [searchParams, user, router, handleSyncActivities, toast]);
-
-  const onActivityAssigned = (activityId: number) => {
-      setRecentActivities(prev => prev.filter(a => a.id !== activityId));
-  }
-
 
   return (
     <div className="space-y-6">
@@ -167,48 +119,7 @@ function AppsSettings() {
       </Card>
       
       {isStravaConnected && (
-         <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle>Recent Strava Activities</CardTitle>
-                        <CardDescription>Assign your recent rides to a bike to track wear.</CardDescription>
-                    </div>
-                    <Button onClick={handleSyncActivities} disabled={isSyncing} variant="outline" size="sm">
-                        {isSyncing ? (
-                           <>
-                             <Loader2 className="h-4 w-4 mr-2 animate-spin"/>
-                             Syncing...
-                           </>
-                        ) : (
-                           <>
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Sync Now
-                           </>
-                        )}
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                {isSyncing ? (
-                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                       <Skeleton className="h-32" />
-                       <Skeleton className="h-32" />
-                       <Skeleton className="h-32" />
-                   </div>
-                ) : recentActivities.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {recentActivities.map(activity => (
-                           <ActivityCard key={activity.id} activity={activity} bikes={userBikes} onActivityAssigned={onActivityAssigned} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                        <p>No recent activities found. Click "Sync Now" to fetch them.</p>
-                    </div>
-                )}
-            </CardContent>
-         </Card>
+        <RecentActivities />
       )}
     </div>
   );
