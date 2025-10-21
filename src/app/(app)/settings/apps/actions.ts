@@ -1,4 +1,3 @@
-
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
@@ -39,11 +38,13 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
         const userDocRef = adminDb.collection('users').doc(userId);
         const userDocSnap = await userDocRef.get();
 
-        if (!userDocSnap.exists || !userDocSnap.data()?.strava) {
+        const userData = userDocSnap.data();
+
+        if (!userDocSnap.exists || !userData?.strava) {
              return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
         }
 
-        let { accessToken, refreshToken, expiresAt, processedActivities } = userDocSnap.data()?.strava;
+        let { accessToken, refreshToken, expiresAt, processedActivities } = userData.strava;
 
         // Refresh token if it's about to expire in the next 5 minutes
         if (Date.now() / 1000 > expiresAt - 300) {
@@ -69,18 +70,25 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             if (!response.ok) {
                 const errorBody = await response.json();
                 console.error("Strava token refresh failed:", errorBody);
-                throw new Error('Could not refresh Strava token. Please reconnect.');
+                // Attempt to throw an error that is friendlier
+                throw new Error(`Strava token refresh failed: ${errorBody.message || 'Check Server Logs'}`);
             }
 
             const newTokens = await response.json();
+            
+            // --- FIX: Explicitly update the strava field ---
             const newStravaData = {
-                ...userDocSnap.data()?.strava,
+                ...userData.strava, // Preserve existing fields like processedActivities, etc.
                 accessToken: newTokens.access_token,
-                refreshToken: newTokens.refresh_token,
+                refreshToken: newTokens.refresh_token || refreshToken, // Use new refresh token if provided
                 expiresAt: newTokens.expires_at,
             };
             
-            await userDocRef.set({ strava: newStravaData }, { merge: true });
+            // Use update to specifically modify the 'strava' field, which is much safer.
+            await userDocRef.update({ 
+                strava: newStravaData 
+            });
+            // ------------------------------------------------
             
             accessToken = newTokens.access_token;
         }
@@ -94,6 +102,10 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
 
         if (!activitiesResponse.ok) {
             const errorBody = await activitiesResponse.json();
+            // Check for specific token errors and return a clean error
+            if (activitiesResponse.status === 401) {
+                return { error: 'Strava authorization failed. Please disconnect and reconnect your account.'}
+            }
             return { error: `Failed to fetch from Strava: ${errorBody.message || JSON.stringify(errorBody)}` };
         }
 
@@ -106,7 +118,8 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
 
     } catch (error: any) {
         console.error("Error fetching Strava activities:", error);
-        return { error: error.message || 'An unknown error occurred.' };
+        // Return the error message to the client component to display the toast
+        return { error: error.message || 'An unknown error occurred during Strava sync.' };
     }
 }
 
