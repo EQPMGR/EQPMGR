@@ -2,6 +2,7 @@
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import admin from 'firebase-admin';
 import type { Equipment, UserComponent, Component, MasterComponent } from '@/lib/types';
 import { toDate, toNullableDate } from '@/lib/date-utils';
 import { simulateWear } from '@/ai/flows/simulate-wear';
