@@ -1,8 +1,8 @@
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import Link from 'next/link'; // ADDED: Required for the "Connect" CTA
+import { Loader2, RefreshCw, Zap } from 'lucide-react'; // ADDED: Zap icon for the CTA
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -70,8 +70,24 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
       setRecentActivities(prev => prev.filter(a => a.id !== activityId));
   }
 
+  // MODIFIED LOGIC: Show a CTA card instead of returning null if not connected
   if (!isStravaConnected && !isSyncing) {
-      return null; // Don't show the card if not connected and not loading
+      return (
+        <Card className="h-fit">
+            <CardHeader>
+                {showTitle && <CardTitle>Recent Strava Activities</CardTitle>}
+                <CardDescription>Connect to Strava to view and assign your recent rides.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Link href="/settings/apps" passHref>
+                    <Button className="w-full">
+                        <Zap className="h-4 w-4 mr-2" />
+                        Connect Strava Now
+                    </Button>
+                </Link>
+            </CardContent>
+        </Card>
+      );
   }
 
   return (
