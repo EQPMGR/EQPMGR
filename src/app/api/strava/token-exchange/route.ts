@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   // If the user denied the connection on Strava's page
   if (error) {
     console.error('Strava OAuth Error:', error);
-    const redirectUrl = new URL('/settings/apps', request.nextUrl.origin);
+    const redirectUrl = new URL('/settings/apps', 'https://athletes.eqpmgr.com');
     redirectUrl.searchParams.set('strava_error', 'access_denied');
     return NextResponse.redirect(redirectUrl);
   }
@@ -78,9 +78,10 @@ export async function GET(request: NextRequest) {
     }, { merge: true });
     
     // Redirect the user back to the settings page with a success indicator
-    // using a relative path to ensure it works in any environment.
-    const redirectPath = `/settings/apps?strava_connected=true`;
-    return NextResponse.redirect(new URL(redirectPath, request.nextUrl.origin));
+    // using a hardcoded, absolute URL to ensure it works in any environment.
+    const redirectUrl = new URL('/settings/apps', 'https://athletes.eqpmgr.com');
+    redirectUrl.searchParams.set('strava_connected', 'true');
+    return NextResponse.redirect(redirectUrl);
 
   } catch (err: any) {
     console.error('FATAL ERROR during server-side token exchange.', {
@@ -88,7 +89,8 @@ export async function GET(request: NextRequest) {
       code: err.code,
     });
     // Redirect back with an error message
-    const errorRedirectPath = `/settings/apps?strava_error=${encodeURIComponent(err.message || 'An unexpected server error occurred.')}`;
-    return NextResponse.redirect(new URL(errorRedirectPath, request.nextUrl.origin));
+    const errorRedirectUrl = new URL('/settings/apps', 'https://athletes.eqpmgr.com');
+    errorRedirectUrl.searchParams.set('strava_error', encodeURIComponent(err.message || 'An unexpected server error occurred.'));
+    return NextResponse.redirect(errorRedirectUrl);
   }
 }
