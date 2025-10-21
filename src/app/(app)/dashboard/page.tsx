@@ -1,157 +1,159 @@
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { useAuth } from "@/hooks/use-auth";
-import type { WorkOrder } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Wrench, PlusCircle } from 'lucide-react';
-import { formatDate } from '@/lib/date-utils';
+import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link'; // ADDED: Required for the "Connect" CTA
+import { Loader2, RefreshCw, Zap } from 'lucide-react'; // ADDED: Zap icon for the CTA
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { getDashboardData } from './actions';
-import { RecentActivities } from '@/components/recent-activities';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { ActivityCard } from '@/components/activity-card';
+import { fetchRecentStravaActivities, fetchUserBikes, checkStravaConnection, type StravaActivity } from '@/app/(app)/settings/apps/actions';
+import type { Equipment } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
-export default function DashboardPage() {
+interface RecentActivitiesProps {
+    showTitle?: boolean;
+}
+
+export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [workOrders, setWorkOrders] = useState<any[]>([]); // Use any[] because of serialized dates
-  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(true);
+  const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
+  const [userBikes, setUserBikes] = useState<Equipment[]>([]);
+  const [isStravaConnected, setIsStravaConnected] = useState(false);
 
-  const fetchWorkOrders = useCallback(async () => {
-    setIsLoading(true);
-    try {
-        const { openWorkOrders } = await getDashboardData();
-        setWorkOrders(openWorkOrders);
-    } catch (error: any) {
-      console.error("Failed to fetch dashboard stats:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Error Fetching Work Orders',
-        description: error.message,
-      });
-    } finally {
-      setIsLoading(false);
+  const handleSyncActivities = useCallback(async (isInitialSync = false) => {
+    if (!user) return;
+    setIsSyncing(true);
+    if(!isInitialSync) {
+        setRecentActivities([]);
     }
-  }, [toast]);
+    try {
+        const idToken = await user.getIdToken(true);
+        const { connected } = await checkStravaConnection(idToken);
+        setIsStravaConnected(connected);
+
+        if (connected) {
+            const [{ activities, error: activityError }, { bikes, error: bikeError }] = await Promise.all([
+                fetchRecentStravaActivities(idToken),
+                fetchUserBikes(idToken)
+            ]);
+            
+            if (activityError) throw new Error(activityError);
+            if (bikeError) throw new Error(bikeError);
+        
+            setRecentActivities(activities || []);
+            setUserBikes(bikes || []);
+        
+            if (!isInitialSync) {
+                if ((activities || []).length > 0) {
+                    toast({ title: "Sync Complete!", description: `Found ${activities?.length} recent activities.` });
+                } else {
+                    toast({ title: "Nothing to sync", description: "No new activities found on Strava." });
+                }
+            }
+        }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Sync Failed', description: err.message });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [user, toast]);
 
   useEffect(() => {
+    // Check for user before attempting sync on mount
     if (user) {
-      fetchWorkOrders();
+        handleSyncActivities(true);
     } else {
-      setIsLoading(false);
+        // If user is null (not logged in or still loading auth), ensure syncing is false so we render the CTA if needed
+        // Although the user should be guaranteed on this page, this is a safety check.
+        setIsSyncing(false);
     }
-  }, [user, fetchWorkOrders]);
+  }, [handleSyncActivities, user]); // Added user to dependencies
 
-
-  const getStatusBadgeVariant = (status: WorkOrder['status']): 'secondary' | 'default' | 'outline' => {
-      switch(status) {
-          case 'pending': return 'outline';
-          case 'accepted': return 'default';
-          case 'in-progress': return 'secondary';
-          default: return 'outline';
-      }
+  const onActivityAssigned = (activityId: number) => {
+      setRecentActivities(prev => prev.filter(a => a.id !== activityId));
   }
 
-  if (isLoading) {
+  // MODIFIED LOGIC: Show a CTA card instead of returning null if not connected
+  if (!isStravaConnected && !isSyncing) {
       return (
-          <>
-            <div className="flex items-center justify-between space-y-2 mb-6">
-                <div>
-                  <Skeleton className="h-8 w-48 mb-2" />
-                  <Skeleton className="h-4 w-72" />
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Skeleton className="h-64 w-full" />
-                    <Skeleton className="h-48 w-full" />
-                </div>
-                <Skeleton className="h-48 w-full" />
-              </div>
-          </>
-      )
+        <Card className="h-fit min-h-48">
+            <CardHeader>
+                {showTitle && <CardTitle>Recent Strava Activities</CardTitle>}
+                <CardDescription>Connect to Strava to view and assign your recent rides.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Link href="/settings/apps" passHref>
+                    <Button className="w-full">
+                        <Zap className="h-4 w-4 mr-2" />
+                        Connect Strava Now
+                    </Button>
+                </Link>
+            </CardContent>
+        </Card>
+      );
+  }
+
+  // If user is still loading from useAuth, we also don't render.
+  if (!user && !isStravaConnected) {
+    return (
+        <Card className="h-fit min-h-48">
+            <CardHeader>
+                {showTitle && <CardTitle>Recent Strava Activities</CardTitle>}
+                <CardDescription>Awaiting user authentication before syncing Strava data...</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <Loader2 className="h-6 w-6 mr-2 animate-spin text-primary" />
+            </CardContent>
+        </Card>
+    )
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between space-y-2 mb-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight font-headline">Dashboard</h2>
-          <p className="text-muted-foreground">
-            A quick overview of your gear and services.
-          </p>
-        </div>
-      </div>
-      
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        <div className="lg:col-span-2 space-y-6">
-            <Card>
-            <CardHeader>
-                <CardTitle>Open Work Orders</CardTitle>
-                <CardDescription>
-                Track the status of your current service requests.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Equipment</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {workOrders && workOrders.length > 0 ? (
-                    workOrders.map((order) => (
-                        <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.providerName}</TableCell>
-                        <TableCell>{order.equipmentName}</TableCell>
-                        <TableCell className="capitalize">{order.serviceType.replace('-', ' ')}</TableCell>
-                        <TableCell>{formatDate(new Date(order.createdAt), user?.dateFormat)}</TableCell>
-                        <TableCell>
-                            <Badge variant={getStatusBadgeVariant(order.status)} className="capitalize">{order.status}</Badge>
-                        </TableCell>
-                        </TableRow>
-                    ))
+    <Card className="min-h-48"> {/* ADDED min-h-48 here */}
+        <CardHeader>
+            <div className="flex items-center justify-between">
+                <div>
+                    {showTitle && <CardTitle>Recent Strava Activities</CardTitle>}
+                    <CardDescription>Assign your recent rides to a bike to track wear.</CardDescription>
+                </div>
+                <Button onClick={() => handleSyncActivities(false)} disabled={isSyncing} variant="outline" size="sm">
+                    {isSyncing ? (
+                        <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin"/>
+                        Syncing...
+                        </>
                     ) : (
-                    <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
-                        No open work orders.
-                        </TableCell>
-                    </TableRow>
+                        <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Sync Now
+                        </>
                     )}
-                </TableBody>
-                </Table>
-            </CardContent>
-            </Card>
-            <RecentActivities showTitle={true} />
-        </div>
-        <Card className="h-fit">
-            <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-                <Button variant="secondary" asChild>
-                     <Link href="/service-providers">
-                        <Wrench className="mr-2 h-4 w-4" /> Request Service
-                    </Link>
                 </Button>
-                 <Button asChild>
-                     <Link href="/equipment">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Equipment
-                    </Link>
-                </Button>
-            </CardContent>
-        </Card>
-      </div>
-    </>
+            </div>
+        </CardHeader>
+        <CardContent>
+            {isSyncing ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <Skeleton className="h-32" />
+                    <Skeleton className="h-32" />
+                    <Skeleton className="h-32" />
+                </div>
+            ) : recentActivities.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {recentActivities.map(activity => (
+                        <ActivityCard key={activity.id} activity={activity} bikes={userBikes} onActivityAssigned={onActivityAssigned} />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                    <p>No recent unassigned activities found.</p>
+                </div>
+            )}
+        </CardContent>
+    </Card>
   );
 }
