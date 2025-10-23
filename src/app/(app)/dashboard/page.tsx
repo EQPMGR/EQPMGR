@@ -1,158 +1,132 @@
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { useAuth } from "@/hooks/use-auth";
-import type { WorkOrder } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Wrench, PlusCircle } from 'lucide-react';
-import { formatDate } from '@/lib/date-utils';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { StravaConnectButton } from '@/components/strava-connect-button';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { getDashboardData } from './actions';
-// REMOVED: import { RecentActivities } from '@/components/recent-activities';
-import { StravaDashboardWrapper } from '@/components/strava-dashboard-wrapper'; // ADDED: Import the new wrapper
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { checkStravaConnection } from '@/app/(app)/settings/apps/actions';
+import Cookies from 'js-cookie';
+import { RecentActivities } from '@/components/recent-activities';
 
-export default function DashboardPage() {
-  const { user } = useAuth();
+
+function StravaDashboard() {
+  const { user, loading } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { toast } = useToast();
-  const [workOrders, setWorkOrders] = useState<any[]>([]); // Use any[] because of serialized dates
-  const [isLoading, setIsLoading] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isStravaConnected, setIsStravaConnected] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(true);
 
-  const fetchWorkOrders = useCallback(async () => {
-    setIsLoading(true);
-    try {
-        const { openWorkOrders } = await getDashboardData();
-        setWorkOrders(openWorkOrders);
-    } catch (error: any) {
-      console.error("Failed to fetch dashboard stats:", error);
+  // Check actual Strava connection from backend
+  useEffect(() => {
+    if (!user || loading) return;
+
+    setCheckingConnection(true);
+    user.getIdToken()
+      .then(idToken => checkStravaConnection(idToken))
+      .then(result => {
+        setIsStravaConnected(result.connected);
+        if (result.connected) {
+          const justConnected = searchParams.get('strava_connected') === 'true';
+          if(justConnected) {
+             toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
+             router.replace('/dashboard', { scroll: false });
+          }
+        }
+      })
+      .catch(() => {
+        setIsStravaConnected(false);
+      })
+      .finally(() => {
+        setCheckingConnection(false);
+      });
+  }, [user, loading, searchParams, router, toast]);
+
+
+  const handleStravaConnect = async () => {
+    if (!user) {
       toast({
         variant: 'destructive',
-        title: 'Error Fetching Work Orders',
-        description: error.message,
+        title: 'Authentication Error',
+        description: 'You must be logged in to connect to Strava.',
       });
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  }, [toast]);
+    setIsConnecting(true);
 
-  useEffect(() => {
-    if (user) {
-      fetchWorkOrders();
-    } else {
-      setIsLoading(false);
+    try {
+        const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+        const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
+
+        const idToken = await user.getIdToken();
+        Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'Lax' }); // Expires in 10 minutes
+
+        if (!clientId) {
+          throw new Error('Strava Client ID is not configured.');
+        }
+        
+        const state = crypto.randomUUID();
+
+        const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+          redirectUri
+        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${state}`;
+
+        window.location.href = stravaAuthUrl;
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Connection Error', description: error.message });
+        setIsConnecting(false);
     }
-  }, [user, fetchWorkOrders]);
-
-
-  const getStatusBadgeVariant = (status: WorkOrder['status']): 'secondary' | 'default' | 'outline' => {
-      switch(status) {
-          case 'pending': return 'outline';
-          case 'accepted': return 'default';
-          case 'in-progress': return 'secondary';
-          default: return 'outline';
-      }
-  }
-
-  if (isLoading) {
-      return (
-          <>
-            <div className="flex items-center justify-between space-y-2 mb-6">
-                <div>
-                  <Skeleton className="h-8 w-48 mb-2" />
-                  <Skeleton className="h-4 w-72" />
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Skeleton className="h-64 w-full" />
-                    <Skeleton className="h-48 w-full" />
-                </div>
-                <Skeleton className="h-48 w-full" />
-              </div>
-          </>
-      )
-  }
+  };
 
   return (
-    <>
-      <div className="flex items-center justify-between space-y-2 mb-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight font-headline">Dashboard</h2>
-          <p className="text-muted-foreground">
-            A quick overview of your gear and services.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>App Integrations</CardTitle>
+          <CardDescription>
+            Connect your accounts from other services to sync your activities.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+            <h4 className="text-md font-medium">Strava</h4>
+            
+            {loading || isConnecting || checkingConnection ? (
+                <div className="text-sm font-medium text-muted-foreground flex items-center">
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                {isConnecting ? 'Connecting...' : checkingConnection ? 'Checking connection...' : 'Loading...'}
+                </div>
+            ) : isStravaConnected ? (
+                <div className="text-sm font-medium text-green-600 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Connected
+                </div>
+            ) : (
+                <StravaConnectButton onClick={handleStravaConnect} />
+            )}
+            </div>
+        </CardContent>
+      </Card>
       
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        <div className="lg:col-span-2 space-y-6">
-            <Card>
-            <CardHeader>
-                <CardTitle>Open Work Orders</CardTitle>
-                <CardDescription>
-                Track the status of your current service requests.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Equipment</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {workOrders && workOrders.length > 0 ? (
-                    workOrders.map((order) => (
-                        <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.providerName}</TableCell>
-                        <TableCell>{order.equipmentName}</TableCell>
-                        <TableCell className="capitalize">{order.serviceType.replace('-', ' ')}</TableCell>
-                        <TableCell>{formatDate(new Date(order.createdAt), user?.dateFormat)}</TableCell>
-                        <TableCell>
-                            <Badge variant={getStatusBadgeVariant(order.status)} className="capitalize">{order.status}</Badge>
-                        </TableCell>
-                        </TableRow>
-                    ))
-                    ) : (
-                    <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
-                        No open work orders.
-                        </TableCell>
-                    </TableRow>
-                    )}
-                </TableBody>
-                </Table>
-            </CardContent>
-            </Card>
-            {/* Replaced <RecentActivities showTitle={true} /> with the Server Wrapper */}
-            <StravaDashboardWrapper /> 
-        </div>
-        <Card className="h-fit">
-            <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-                <Button variant="secondary" asChild>
-                     <Link href="/service-providers">
-                        <Wrench className="mr-2 h-4 w-4" /> Request Service
-                    </Link>
-                </Button>
-                 <Button asChild>
-                     <Link href="/equipment">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Equipment
-                    </Link>
-                </Button>
-            </CardContent>
-        </Card>
-      </div>
-    </>
+      {isStravaConnected && (
+        <RecentActivities showTitle={true} />
+      )}
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <StravaDashboard />
+    </Suspense>
   );
 }
