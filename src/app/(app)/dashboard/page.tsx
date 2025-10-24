@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { checkStravaConnection } from '@/app/(app)/settings/apps/actions';
 import Cookies from 'js-cookie';
-import { RecentActivities } from '@/components/recent-activities';
+import { StravaDashboardWrapper } from '@/components/strava-dashboard-wrapper';
 
 
 function StravaDashboard() {
@@ -70,6 +70,8 @@ function StravaDashboard() {
         }
         
         const state = crypto.randomUUID();
+        sessionStorage.setItem('strava_oauth_state', state);
+        sessionStorage.setItem('strava_redirect_path', '/dashboard');
 
         const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
           redirectUri
@@ -116,7 +118,7 @@ function StravaDashboard() {
       </Card>
       
       {isStravaConnected && (
-        <RecentActivities showTitle={true} />
+        <StravaDashboardWrapper />
       )}
     </div>
   );
