@@ -1,4 +1,5 @@
 
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,11 +14,11 @@ export default function AccountSettingsPage() {
       <CardHeader>
         <CardTitle>Account Settings</CardTitle>
         <CardDescription>
-          Manage your account details here. (Placeholder)
+          Manage your billing and subscription details.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Account settings will be available here.</p>
+        <Button>Manage Billing</Button>
       </CardContent>
     </Card>
   )
