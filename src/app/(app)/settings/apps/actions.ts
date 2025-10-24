@@ -4,7 +4,6 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import admin from 'firebase-admin';
 import type { Equipment, UserComponent, Component, MasterComponent } from '@/lib/types';
 import { toDate, toNullableDate } from '@/lib/date-utils';
-import { simulateWear } from '@/ai/flows/simulate-wear';
 
 export interface StravaActivity {
   id: number;
@@ -70,25 +69,21 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             if (!response.ok) {
                 const errorBody = await response.json();
                 console.error("Strava token refresh failed:", errorBody);
-                // Attempt to throw an error that is friendlier
                 throw new Error(`Strava token refresh failed: ${errorBody.message || 'Check Server Logs'}`);
             }
 
             const newTokens = await response.json();
             
-            // --- FIX: Explicitly update the strava field ---
             const newStravaData = {
-                ...userData.strava, // Preserve existing fields like processedActivities, etc.
+                ...userData.strava,
                 accessToken: newTokens.access_token,
-                refreshToken: newTokens.refresh_token || refreshToken, // Use new refresh token if provided
+                refreshToken: newTokens.refresh_token || refreshToken,
                 expiresAt: newTokens.expires_at,
             };
             
-            // Use update to specifically modify the 'strava' field, which is much safer.
             await userDocRef.update({ 
                 strava: newStravaData 
             });
-            // ------------------------------------------------
             
             accessToken = newTokens.access_token;
         }
@@ -97,12 +92,11 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
             },
-            cache: 'no-store', // This is critical to prevent hanging requests
+            cache: 'no-store',
         });
 
         if (!activitiesResponse.ok) {
             const errorBody = await activitiesResponse.json();
-            // Check for specific token errors and return a clean error
             if (activitiesResponse.status === 401) {
                 return { error: 'Strava authorization failed. Please disconnect and reconnect your account.'}
             }
@@ -118,7 +112,6 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
 
     } catch (error: any) {
         console.error("Error fetching Strava activities:", error);
-        // Return the error message to the client component to display the toast
         return { error: error.message || 'An unknown error occurred during Strava sync.' };
     }
 }
@@ -175,7 +168,6 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
             return { connected: false };
         }
 
-        // Check if token exists and is valid
         const stravaData = userDocSnap.data()?.strava;
         const hasRequiredFields = stravaData.accessToken && stravaData.refreshToken && stravaData.expiresAt;
 
@@ -207,26 +199,25 @@ export async function assignStravaActivityToAction({
         const userId = decodedToken.uid;
 
         const equipmentRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
+        const userRef = adminDb.doc(`users/${userId}`);
+
+        // Simplified logic: Only update totals and mark as processed.
         const batch = adminDb.batch();
 
-        // Update equipment totals
         batch.update(equipmentRef, {
             totalDistance: admin.firestore.FieldValue.increment(activity.distance / 1000),
             totalHours: admin.firestore.FieldValue.increment(activity.moving_time / 3600),
         });
-        
-        // Mark activity as processed
-        const userRef = adminDb.doc(`users/${userId}`);
+
         batch.set(userRef, {
             strava: {
                 processedActivities: admin.firestore.FieldValue.arrayUnion(String(activity.id))
             }
         }, { merge: true });
 
-        // Commit batch
         await batch.commit();
 
-        return { success: true, message: `Activity assigned to ${activity.name}.` };
+        return { success: true, message: `Activity '${activity.name}' assigned.` };
 
     } catch (error: any) {
         console.error("Error assigning Strava activity:", error);
