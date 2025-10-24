@@ -8,12 +8,16 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const state = searchParams.get('state'); // The original path
 
   // If the user denied the connection on Strava's page
   if (error) {
     console.error('Strava OAuth Error:', error);
     // Return a JSON response that the client can use to show an error.
-    return NextResponse.json({ success: false, error: 'access_denied' }, { status: 400 });
+    return new Response(
+      '<html><body><h1>Authentication Canceled</h1><p>You have canceled the Strava connection. You can close this window.</p></body></html>',
+      { headers: { 'Content-Type': 'text/html' }, status: 400 }
+    );
   }
 
   // Check for required parameters from Strava
@@ -21,7 +25,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing authorization code.' }, { status: 400 });
   }
 
-  // The ID token is now passed via a temporary cookie set by the client
   const cookieStore = cookies();
   const idToken = cookieStore.get('strava_id_token')?.value;
 
@@ -29,14 +32,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication token not found. Please try connecting again.' }, { status: 400 });
   }
 
-  // Clear the temporary cookie
   cookieStore.delete('strava_id_token');
 
   try {
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
-    
-    // Securely verify the user's identity using the ID token
     const decodedToken = await adminAuth.verifyIdToken(idToken, true);
     const userId = decodedToken.uid;
 
@@ -78,10 +78,10 @@ export async function GET(request: NextRequest) {
       },
     }, { merge: true });
     
-    // Instead of redirecting, return a success response.
-    // The client will handle closing the window/tab.
+    // Instead of redirecting from the server, we just close the window.
+    // The original page will poll and detect the connection.
     return new Response(
-      '<html><body><script>window.close();</script><h1>Authentication successful!</h1><p>You can now close this tab.</p></body></html>',
+      '<html><head><script>window.close();</script></head><body><h1>Authentication successful!</h1><p>You can now close this tab.</p></body></html>',
       { headers: { 'Content-Type': 'text/html' } }
     );
 
@@ -90,8 +90,7 @@ export async function GET(request: NextRequest) {
       message: err.message,
       code: err.code,
     });
-    // Return an HTML error page
-     return new Response(
+    return new Response(
       `<html><body><h1>Authentication Failed</h1><p>${err.message || 'An unexpected server error occurred.'}</p></body></html>`,
       { headers: { 'Content-Type': 'text/html' }, status: 500 }
     );

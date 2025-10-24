@@ -24,6 +24,7 @@ interface RecentActivitiesProps {
 export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const pathname = usePathname();
   const [isSyncing, setIsSyncing] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
@@ -71,23 +72,6 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   useEffect(() => {
     handleSyncActivities(true);
   }, [handleSyncActivities]);
-  
-  useEffect(() => {
-    // Poll to check for connection status after returning from Strava
-    const interval = setInterval(() => {
-      if (!isStravaConnected) {
-        handleSyncActivities(true);
-      }
-    }, 3000);
-
-    // If connected, clear the interval
-    if (isStravaConnected) {
-      clearInterval(interval);
-    }
-
-    // Cleanup on unmount
-    return () => clearInterval(interval);
-  }, [isStravaConnected, handleSyncActivities]);
 
   const onActivityAssigned = (activityId: number) => {
       setRecentActivities(prev => prev.filter(a => a.id !== activityId));
@@ -113,9 +97,8 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
 
         const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
           redirectUri
-        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all`;
+        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${encodeURIComponent(pathname)}`;
 
-        // Open Strava auth in a new tab/window
         window.open(stravaAuthUrl, '_blank', 'noopener,noreferrer');
 
     } catch (error: any) {
