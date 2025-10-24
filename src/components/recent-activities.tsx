@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link'; // ADDED: Required for the "Connect" CTA
-import { Loader2, RefreshCw, Zap } from 'lucide-react'; // ADDED: Zap icon for the CTA
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Loader2, RefreshCw, Zap } from 'lucide-react';
+import Cookies from 'js-cookie';
+
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -11,6 +14,7 @@ import { fetchRecentStravaActivities, fetchUserBikes, checkStravaConnection, typ
 import type { Equipment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { StravaConnectButton } from './strava-connect-button';
 
 interface RecentActivitiesProps {
     showTitle?: boolean;
@@ -19,7 +23,9 @@ interface RecentActivitiesProps {
 export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const pathname = usePathname();
   const [isSyncing, setIsSyncing] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
   const [userBikes, setUserBikes] = useState<Equipment[]>([]);
   const [isStravaConnected, setIsStravaConnected] = useState(false);
@@ -69,26 +75,41 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   const onActivityAssigned = (activityId: number) => {
       setRecentActivities(prev => prev.filter(a => a.id !== activityId));
   }
+  
+  const handleStravaConnect = async () => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to connect to Strava.' });
+      return;
+    }
+    setIsConnecting(true);
 
-  // MODIFIED LOGIC: Show a CTA card instead of returning null if not connected
-  if (!isStravaConnected && !isSyncing) {
-      return (
-        <Card className="h-fit">
-            <CardHeader>
-                {showTitle && <CardTitle>Recent Strava Activities</CardTitle>}
-                <CardDescription>Connect to Strava to view and assign your recent rides.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Link href="/settings/apps" passHref>
-                    <Button className="w-full">
-                        <Zap className="h-4 w-4 mr-2" />
-                        Connect Strava Now
-                    </Button>
-                </Link>
-            </CardContent>
-        </Card>
-      );
-  }
+    try {
+        const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+        const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
+
+        const idToken = await user.getIdToken();
+        // Use a short-lived cookie to pass the ID token to the API route.
+        Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'Lax' }); // Expires in 10 minutes
+
+        if (!clientId) {
+          throw new Error('Strava Client ID is not configured.');
+        }
+        
+        // Pass the current path in the state to redirect back correctly
+        const state = `redirect_path=${pathname}`;
+
+        const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+          redirectUri
+        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${state}`;
+
+        window.location.href = stravaAuthUrl;
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Connection Error', description: error.message });
+        setIsConnecting(false);
+    }
+  };
+
 
   return (
     <Card>
@@ -98,19 +119,21 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
                     {showTitle && <CardTitle>Recent Strava Activities</CardTitle>}
                     <CardDescription>Assign your recent rides to a bike to track wear.</CardDescription>
                 </div>
-                <Button onClick={() => handleSyncActivities(false)} disabled={isSyncing} variant="outline" size="sm">
-                    {isSyncing ? (
-                        <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin"/>
-                        Syncing...
-                        </>
-                    ) : (
-                        <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Sync Now
-                        </>
-                    )}
-                </Button>
+                {isStravaConnected && (
+                    <Button onClick={() => handleSyncActivities(false)} disabled={isSyncing} variant="outline" size="sm">
+                        {isSyncing ? (
+                            <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin"/>
+                            Syncing...
+                            </>
+                        ) : (
+                            <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Sync Now
+                            </>
+                        )}
+                    </Button>
+                )}
             </div>
         </CardHeader>
         <CardContent>
@@ -119,6 +142,11 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
                     <Skeleton className="h-32" />
                     <Skeleton className="h-32" />
                     <Skeleton className="h-32" />
+                </div>
+            ) : !isStravaConnected ? (
+                 <div className="flex items-center justify-center flex-col gap-4 text-center py-8">
+                    <p className="text-muted-foreground">Connect to Strava to view and assign your recent rides.</p>
+                    <StravaConnectButton onClick={handleStravaConnect} />
                 </div>
             ) : recentActivities.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

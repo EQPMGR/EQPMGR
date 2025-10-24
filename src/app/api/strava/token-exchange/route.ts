@@ -9,10 +9,15 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state');
   const error = searchParams.get('error');
 
+  // Extract the original path from the state parameter
+  const redirectPath = state ? new URLSearchParams(state).get('redirect_path') : '/';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
+
+
   // If the user denied the connection on Strava's page
   if (error) {
     console.error('Strava OAuth Error:', error);
-    const redirectUrl = new URL('/settings/apps', 'https://athletes.eqpmgr.com');
+    const redirectUrl = new URL(redirectPath || '/settings/apps', baseUrl);
     redirectUrl.searchParams.set('strava_error', 'access_denied');
     return NextResponse.redirect(redirectUrl);
   }
@@ -77,9 +82,8 @@ export async function GET(request: NextRequest) {
       },
     }, { merge: true });
     
-    // Redirect the user back to the settings page with a success indicator
-    // using a hardcoded, absolute URL to ensure it works in any environment.
-    const redirectUrl = new URL('/settings/apps', 'https://athletes.eqpmgr.com');
+    // Redirect the user back to the correct page with a success indicator
+    const redirectUrl = new URL(redirectPath || '/settings/apps', baseUrl);
     redirectUrl.searchParams.set('strava_connected', 'true');
     return NextResponse.redirect(redirectUrl);
 
@@ -89,7 +93,7 @@ export async function GET(request: NextRequest) {
       code: err.code,
     });
     // Redirect back with an error message
-    const errorRedirectUrl = new URL('/settings/apps', 'https://athletes.eqpmgr.com');
+    const errorRedirectUrl = new URL(redirectPath || '/settings/apps', baseUrl);
     errorRedirectUrl.searchParams.set('strava_error', encodeURIComponent(err.message || 'An unexpected server error occurred.'));
     return NextResponse.redirect(errorRedirectUrl);
   }
