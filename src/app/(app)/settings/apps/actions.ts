@@ -1,9 +1,11 @@
+
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import admin from 'firebase-admin';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
+import { accessSecret } from '@/lib/secrets';
 
 export interface StravaActivity {
   id: number;
@@ -48,8 +50,10 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
         // Refresh token if it's about to expire in the next 5 minutes
         if (Date.now() / 1000 > expiresAt - 300) {
             console.log("Strava token expired, refreshing...");
-            const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-            const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+            const [clientId, clientSecret] = await Promise.all([
+              accessSecret('NEXT_PUBLIC_STRAVA_CLIENT_ID'),
+              accessSecret('STRAVA_CLIENT_SECRET'),
+            ]);
 
             if (!clientId || !clientSecret) {
                 throw new Error('Server is not configured for Strava integration.');

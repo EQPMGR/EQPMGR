@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -23,7 +24,6 @@ interface RecentActivitiesProps {
 export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const pathname = usePathname();
   const [isSyncing, setIsSyncing] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
@@ -71,6 +71,23 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   useEffect(() => {
     handleSyncActivities(true);
   }, [handleSyncActivities]);
+  
+  useEffect(() => {
+    // Poll to check for connection status after returning from Strava
+    const interval = setInterval(() => {
+      if (!isStravaConnected) {
+        handleSyncActivities(true);
+      }
+    }, 3000);
+
+    // If connected, clear the interval
+    if (isStravaConnected) {
+      clearInterval(interval);
+    }
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [isStravaConnected, handleSyncActivities]);
 
   const onActivityAssigned = (activityId: number) => {
       setRecentActivities(prev => prev.filter(a => a.id !== activityId));
@@ -85,27 +102,25 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
 
     try {
         const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-        const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
-
-        const idToken = await user.getIdToken();
-        // Use a short-lived cookie to pass the ID token to the API route.
-        Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'Lax' }); // Expires in 10 minutes
-
         if (!clientId) {
           throw new Error('Strava Client ID is not configured.');
         }
+
+        const idToken = await user.getIdToken(true);
+        Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'Lax' });
         
-        // Pass the current path in the state to redirect back correctly
-        const state = `redirect_path=${pathname}`;
+        const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
 
         const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
           redirectUri
-        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${state}`;
+        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all`;
 
-        window.location.href = stravaAuthUrl;
+        // Open Strava auth in a new tab/window
+        window.open(stravaAuthUrl, '_blank', 'noopener,noreferrer');
 
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Connection Error', description: error.message });
+    } finally {
         setIsConnecting(false);
     }
   };

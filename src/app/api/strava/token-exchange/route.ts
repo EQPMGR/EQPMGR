@@ -2,29 +2,23 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
+import { accessSecret } from '@/lib/secrets';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const state = searchParams.get('state');
   const error = searchParams.get('error');
-
-  // Extract the original path from the state parameter
-  const redirectPath = state ? new URLSearchParams(state).get('redirect_path') : '/';
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
-
 
   // If the user denied the connection on Strava's page
   if (error) {
     console.error('Strava OAuth Error:', error);
-    const redirectUrl = new URL(redirectPath || '/settings/apps', baseUrl);
-    redirectUrl.searchParams.set('strava_error', 'access_denied');
-    return NextResponse.redirect(redirectUrl);
+    // Return a JSON response that the client can use to show an error.
+    return NextResponse.json({ success: false, error: 'access_denied' }, { status: 400 });
   }
 
   // Check for required parameters from Strava
-  if (!code || !state) {
-    return NextResponse.json({ error: 'Missing authorization code or state.' }, { status: 400 });
+  if (!code) {
+    return NextResponse.json({ error: 'Missing authorization code.' }, { status: 400 });
   }
 
   // The ID token is now passed via a temporary cookie set by the client
@@ -46,8 +40,10 @@ export async function GET(request: NextRequest) {
     const decodedToken = await adminAuth.verifyIdToken(idToken, true);
     const userId = decodedToken.uid;
 
-    const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
-    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+    const [clientId, clientSecret] = await Promise.all([
+      accessSecret('NEXT_PUBLIC_STRAVA_CLIENT_ID'),
+      accessSecret('STRAVA_CLIENT_SECRET'),
+    ]);
 
     if (!clientId || !clientSecret) {
       console.error('CRITICAL ERROR: Missing Strava credentials on server.');
@@ -82,19 +78,22 @@ export async function GET(request: NextRequest) {
       },
     }, { merge: true });
     
-    // Redirect the user back to the correct page with a success indicator
-    const redirectUrl = new URL(redirectPath || '/settings/apps', baseUrl);
-    redirectUrl.searchParams.set('strava_connected', 'true');
-    return NextResponse.redirect(redirectUrl);
+    // Instead of redirecting, return a success response.
+    // The client will handle closing the window/tab.
+    return new Response(
+      '<html><body><script>window.close();</script><h1>Authentication successful!</h1><p>You can now close this tab.</p></body></html>',
+      { headers: { 'Content-Type': 'text/html' } }
+    );
 
   } catch (err: any) {
     console.error('FATAL ERROR during server-side token exchange.', {
       message: err.message,
       code: err.code,
     });
-    // Redirect back with an error message
-    const errorRedirectUrl = new URL(redirectPath || '/settings/apps', baseUrl);
-    errorRedirectUrl.searchParams.set('strava_error', encodeURIComponent(err.message || 'An unexpected server error occurred.'));
-    return NextResponse.redirect(errorRedirectUrl);
+    // Return an HTML error page
+     return new Response(
+      `<html><body><h1>Authentication Failed</h1><p>${err.message || 'An unexpected server error occurred.'}</p></body></html>`,
+      { headers: { 'Content-Type': 'text/html' }, status: 500 }
+    );
   }
 }

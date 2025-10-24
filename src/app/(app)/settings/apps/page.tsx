@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
@@ -22,17 +23,6 @@ function AppsSettings() {
   useEffect(() => {
     if (loading) return;
     setCheckingConnection(false);
-
-    const justConnected = searchParams.get('strava_connected') === 'true';
-    const error = searchParams.get('strava_error');
-
-    if (justConnected) {
-      toast({ title: 'Strava Connected!', description: 'Your account has been successfully linked.' });
-      router.replace('/settings/apps', { scroll: false });
-    } else if (error) {
-      toast({ variant: 'destructive', title: 'Connection Failed', description: decodeURIComponent(error) });
-      router.replace('/settings/apps', { scroll: false });
-    }
   }, [user, loading, searchParams, router, toast]);
 
   if (loading || checkingConnection) {
