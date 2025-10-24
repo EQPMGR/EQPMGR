@@ -2,9 +2,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Loader2, RefreshCw, Zap } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import Cookies from 'js-cookie';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -33,8 +32,8 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
 
   const handleSyncActivities = useCallback(async (isInitialSync = false) => {
     if (!user) return;
-    setIsSyncing(true);
-    if(!isInitialSync) {
+    if (!isInitialSync) {
+        setIsSyncing(true);
         setRecentActivities([]);
     }
     try {
@@ -114,7 +113,7 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
         <CardHeader>
             <div className="flex items-center justify-between">
                 <div>
-                    {showTitle && <CardTitle>Recent Strava Activities</CardTitle>}
+                    <CardTitle>{showTitle ? "Recent Strava Activities" : "App Integrations"}</CardTitle>
                     <CardDescription>Assign your recent rides to a bike to track wear.</CardDescription>
                 </div>
                 {isStravaConnected && (

@@ -78,12 +78,13 @@ export async function GET(request: NextRequest) {
       },
     }, { merge: true });
     
-    // Instead of redirecting from the server, we just close the window.
-    // The original page will poll and detect the connection.
-    return new Response(
-      '<html><head><script>window.close();</script></head><body><h1>Authentication successful!</h1><p>You can now close this tab.</p></body></html>',
-      { headers: { 'Content-Type': 'text/html' } }
-    );
+    // Redirect back to the originating page with a success indicator.
+    const redirectPath = state ? decodeURIComponent(state) : '/';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
+    const finalRedirectUrl = new URL(redirectPath, baseUrl);
+    finalRedirectUrl.searchParams.set('strava_connected', 'true');
+    
+    return NextResponse.redirect(finalRedirectUrl.toString());
 
   } catch (err: any) {
     console.error('FATAL ERROR during server-side token exchange.', {

@@ -18,13 +18,6 @@ export interface StravaActivity {
   gear_id: string | null;
 }
 
-interface StravaTokenData {
-    accessToken: string;
-    refreshToken: string;
-    expiresAt: number;
-}
-
-
 export async function fetchRecentStravaActivities(idToken: string): Promise<{ activities?: StravaActivity[]; error?: string }> {
     if (!idToken) {
         return { error: 'User not authenticated.' };
