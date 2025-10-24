@@ -12,16 +12,8 @@ const navItems = [
     title: "Profile",
   },
   {
-    href: "/settings/account",
-    title: "Account",
-  },
-  {
     href: "/settings/apps",
     title: "Connected Apps",
-  },
-  {
-    href: "/settings/notifications",
-    title: "Notifications",
   },
 ]
 
