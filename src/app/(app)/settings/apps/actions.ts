@@ -206,44 +206,16 @@ export async function assignStravaActivityToAction({
         const decodedToken = await adminAuth.verifyIdToken(idToken, true);
         const userId = decodedToken.uid;
 
-        // 1. Get the equipment and its components
         const equipmentRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
-        const componentsSnapshot = await equipmentRef.collection('components').get();
-        
-        const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
-        
-        // 2. Run wear simulation
-        const wearAndTearData = JSON.stringify(userComponents.map(c => ({ name: c.name, wear: `${c.wearPercentage}%` })));
-
-        const simulationResult = await simulateWear({
-            equipmentType: 'Road Bike', // This could be dynamic later
-            workoutType: activity.type,
-            distance: activity.distance / 1000, // convert meters to km
-            duration: activity.moving_time / 60, // convert seconds to minutes
-            intensity: 'medium', // Placeholder, could be derived from activity data
-            environmentalConditions: 'mixed', // Placeholder
-            wearAndTearData,
-        });
-
-        // 3. Prepare batch write
         const batch = adminDb.batch();
 
-        // 4. Update equipment totals
+        // Update equipment totals
         batch.update(equipmentRef, {
             totalDistance: admin.firestore.FieldValue.increment(activity.distance / 1000),
             totalHours: admin.firestore.FieldValue.increment(activity.moving_time / 3600),
         });
-
-        // 5. Update component wear
-        simulationResult.componentWear.forEach(simulatedComp => {
-            const componentToUpdate = userComponents.find(c => c.name === simulatedComp.componentName);
-            if (componentToUpdate) {
-                const componentRef = equipmentRef.collection('components').doc(componentToUpdate.id);
-                batch.update(componentRef, { wearPercentage: simulatedComp.wearPercentage });
-            }
-        });
         
-        // 6. Mark activity as processed
+        // Mark activity as processed
         const userRef = adminDb.doc(`users/${userId}`);
         batch.set(userRef, {
             strava: {
@@ -251,10 +223,10 @@ export async function assignStravaActivityToAction({
             }
         }, { merge: true });
 
-        // 7. Commit batch
+        // Commit batch
         await batch.commit();
 
-        return { success: true, message: `Activity assigned and wear calculated for ${activity.name}.` };
+        return { success: true, message: `Activity assigned to ${activity.name}.` };
 
     } catch (error: any) {
         console.error("Error assigning Strava activity:", error);
