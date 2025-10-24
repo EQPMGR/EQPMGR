@@ -2,8 +2,8 @@
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import admin from 'firebase-admin';
-import type { Equipment, UserComponent, Component, MasterComponent } from '@/lib/types';
-import { toDate, toNullableDate } from '@/lib/date-utils';
+import type { Equipment } from '@/lib/types';
+import { toDate } from '@/lib/date-utils';
 
 export interface StravaActivity {
   id: number;
@@ -201,7 +201,6 @@ export async function assignStravaActivityToAction({
         const equipmentRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
         const userRef = adminDb.doc(`users/${userId}`);
 
-        // Simplified logic: Only update totals and mark as processed.
         const batch = adminDb.batch();
 
         batch.update(equipmentRef, {
