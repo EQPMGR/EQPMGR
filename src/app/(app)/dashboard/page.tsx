@@ -1,53 +1,69 @@
 
 'use client';
 
-import React, { Suspense, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { StravaDashboardWrapper } from '@/components/strava-dashboard-wrapper';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { RecentActivities } from '@/components/recent-activities';
 
 
-function Dashboard() {
+function AppsSettings() {
   const { user, loading } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
   
+  // This page is now simpler. It only checks for connection status from the URL
+  // and displays the RecentActivities component, which contains all the logic.
+  const [checkingConnection, setCheckingConnection] = useState(true);
+
   useEffect(() => {
-    if (searchParams.get('strava_connected') === 'true') {
-      toast({
-        title: 'Strava Connected!',
-        description: 'Your Strava account has been successfully linked.',
-      });
-      // Remove the query param from the URL
-      router.replace('/dashboard');
-    }
-  }, [searchParams, router, toast]);
+    if (loading) return;
+    setCheckingConnection(false);
+  }, [user, loading, searchParams, router, toast]);
+
+  if (loading || checkingConnection) {
+      return (
+        <Card>
+            <CardHeader>
+                <CardTitle>App Integrations</CardTitle>
+                <CardDescription>
+                    Connect your accounts from other services to sync your activities.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="text-sm font-medium text-muted-foreground flex items-center">
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Checking connection...
+                </div>
+            </CardContent>
+        </Card>
+      );
+  }
 
   return (
     <div className="space-y-6">
-      <StravaDashboardWrapper />
-       {/* Future cards can be added here, e.g.
-        <Card>
-          <CardHeader>
-            <CardTitle>Open Work Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <p>Work order content...</p>
-          </CardContent>
-        </Card>
-      */}
+      <Card>
+        <CardHeader>
+          <CardTitle>App Integrations</CardTitle>
+          <CardDescription>
+            Connect your accounts from other services to sync your activities.
+          </CardDescription>
+        </CardHeader>
+        {/* The RecentActivities component now handles its own display logic */}
+      </Card>
+      <RecentActivities />
     </div>
   );
 }
 
-export default function DashboardPage() {
-  // Using Suspense is good practice for components that fetch data.
+export default function AppsSettingsPage() {
   return (
-    <Suspense fallback={<div>Loading dashboard...</div>}>
-      <Dashboard />
+    <Suspense fallback={<div>Loading settings...</div>}>
+      <AppsSettings />
     </Suspense>
   );
 }
