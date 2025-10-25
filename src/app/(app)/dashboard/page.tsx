@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
-import { StravaConnectionCard } from '@/components/strava-connection-card';
 import { fetchOpenWorkOrders } from './actions';
 import type { WorkOrder } from '@/lib/types';
 import { formatDate } from '@/lib/date-utils';
@@ -82,20 +82,17 @@ function OpenWorkOrders() {
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
-       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="col-span-1 lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Open Work Orders</CardTitle>
-              <CardDescription>
-                A summary of your equipment currently being serviced.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <OpenWorkOrders />
-            </CardContent>
-          </Card>
-          <StravaConnectionCard />
-      </div>
+       <Card>
+        <CardHeader>
+          <CardTitle>Open Work Orders</CardTitle>
+          <CardDescription>
+            A summary of your equipment currently being serviced.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <OpenWorkOrders />
+        </CardContent>
+      </Card>
     </div>
   );
 }
