@@ -1,9 +1,8 @@
-
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import admin from 'firebase-admin';
-import type { Equipment } from '@/lib/types';
+import type { Equipment, WorkOrder } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 import { accessSecret } from '@/lib/secrets';
 
@@ -225,5 +224,37 @@ export async function assignStravaActivityToAction({
     } catch (error: any) {
         console.error("Error assigning Strava activity:", error);
         return { success: false, message: error.message || "An unknown server error occurred." };
+    }
+}
+
+export async function fetchOpenWorkOrders(userId: string): Promise<WorkOrder[]> {
+    try {
+        const workOrdersRef = getAdminDb().collection('workOrders');
+        const q = workOrdersRef
+            .where('userId', '==', userId)
+            .where('status', 'in', ['pending', 'accepted', 'in-progress']);
+
+        const querySnapshot = await q.get();
+        if (querySnapshot.empty) {
+            return [];
+        }
+
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                id: doc.id,
+                createdAt: toDate(data.createdAt),
+                userConsent: {
+                    ...data.userConsent,
+                    timestamp: toDate(data.userConsent.timestamp)
+                }
+            } as WorkOrder;
+        });
+    } catch (error: any) {
+        console.error("Error fetching open work orders:", error);
+        // In a real app, you'd want more robust error handling,
+        // but for now, we'll return an empty array on failure.
+        return [];
     }
 }
