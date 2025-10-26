@@ -1,12 +1,13 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from './ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { checkStravaConnection } from '@/app/(app)/settings/apps/actions';
+import { useRouter } from 'next/navigation';
 
 export function StravaConnectionCard() {
     const { user, loading: authLoading } = useAuth();
