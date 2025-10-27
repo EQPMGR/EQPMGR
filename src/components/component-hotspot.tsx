@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query } from 'firebase/firestore';
-import type { Equipment, Component } from '@/lib/types';
+import type { Equipment, Component, MasterComponent, UserComponent } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import { AlertCircle } from 'lucide-react';
@@ -33,12 +33,36 @@ export function ComponentHotspot() {
         const equipmentData = doc.data();
         const componentsCollection = collection(doc.ref, 'components');
         const componentsSnapshot = await getDocs(componentsCollection);
-        const components = componentsSnapshot.docs.map(compDoc => ({
-          ...compDoc.data(),
-          id: compDoc.id,
-          purchaseDate: toDate(compDoc.data().purchaseDate),
-          lastServiceDate: toNullableDate(compDoc.data().lastServiceDate),
-        } as Component));
+        
+        const userComponents: UserComponent[] = componentsSnapshot.docs.map(compDoc => ({ id: compDoc.id, ...compDoc.data() } as UserComponent));
+
+        const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
+        const masterComponentsMap = new Map<string, MasterComponent>();
+
+        if (masterComponentIds.length > 0) {
+          for (let i = 0; i < masterComponentIds.length; i += 30) {
+            const batchIds = masterComponentIds.slice(i, i + 30);
+            if (batchIds.length > 0) {
+              const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
+              const masterQuerySnapshot = await getDocs(masterComponentsQuery);
+              masterQuerySnapshot.forEach(doc => {
+                masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+              });
+            }
+          }
+        }
+        
+        const components: Component[] = userComponents.map(userComp => {
+          const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+          if (!masterComp) return null;
+          return {
+            ...masterComp,
+            ...userComp,
+            userComponentId: userComp.id,
+            purchaseDate: toDate(userComp.purchaseDate),
+            lastServiceDate: toNullableDate(userComp.lastServiceDate),
+          };
+        }).filter((c): c is Component => c !== null);
 
         return {
           id: doc.id,
