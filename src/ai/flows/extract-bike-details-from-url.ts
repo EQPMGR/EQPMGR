@@ -69,11 +69,12 @@ const extractBikeDetailsFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await bikeExtractorPrompt(input);
+    
     if (!output) {
       throw new Error('Could not extract bike details from the provided text. The AI returned an empty response.');
     }
 
-    if (output.components) {
+    if (output.components && Array.isArray(output.components)) {
         // First pass: clean up invalid size fields on all components.
         output.components.forEach(component => {
             if (component.size) {
@@ -105,6 +106,9 @@ const extractBikeDetailsFlow = ai.defineFlow(
         
         // Filter out the components marked for removal
         output.components = output.components.filter(c => !componentsToRemove.includes(c));
+    } else {
+        // If components array is missing, initialize it to prevent crashes.
+        output.components = [];
     }
 
     return output;
