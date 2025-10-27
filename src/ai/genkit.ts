@@ -8,8 +8,7 @@ import { textEmbedding004 } from '@genkit-ai/googleai';
 // When running on Google Cloud (like Cloud Run), the googleAI() plugin will
 // automatically use the runtime's service account credentials.
 // For local development, it uses the credentials from `gcloud auth application-default login`.
-// By explicitly passing the apiKey, we ensure it uses the key from the secret manager.
 export const ai = genkit({
-  plugins: [googleAI({ apiKey: process.env.GEMINI_API_KEY })],
+  plugins: [googleAI()],
   embedder: textEmbedding004,
 });
