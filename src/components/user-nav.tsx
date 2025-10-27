@@ -2,7 +2,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogOut, Settings, User, MailWarning } from 'lucide-react';
+import { LogOut, Settings, User, MailWarning, Home } from 'lucide-react';
 
 import {
   Avatar,
@@ -57,6 +57,12 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard">
+              <Home />
+              Dashboard
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/settings/profile">
               <User />

@@ -9,7 +9,6 @@ import {
   Home,
   Menu,
   Settings,
-  Activity,
   Database,
 } from 'lucide-react';
 
@@ -19,12 +18,9 @@ import { UserNav } from '@/components/user-nav';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AuthProvider } from '@/context/auth-context';
 
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -101,7 +97,7 @@ export default function AppLayout({
                   <span className="sr-only">EQPMGR</span>
                 </Link>
                 <Link
-                  href="/"
+                  href="/dashboard"
                   onClick={handleLinkClick}
                   className="flex items-center gap-4 px-2.5 text-foreground"
                 >
@@ -147,4 +143,10 @@ export default function AppLayout({
   );
 }
 
-    
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <AuthenticatedLayout>{children}</AuthenticatedLayout>
+    </AuthProvider>
+  )
+}

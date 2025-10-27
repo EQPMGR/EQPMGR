@@ -1,10 +1,8 @@
-import AppLayout from "./(app)/layout";
-import DashboardPage from "@/app/(app)/dashboard/page";
 
-export default function Home() {
-  return (
-    <AppLayout>
-      <DashboardPage />
-    </AppLayout>
-  );
+import { redirect } from 'next/navigation';
+
+export default function RootPage() {
+  // Redirect to the main authenticated entry point.
+  // The (app) layout will handle redirecting to /login if not authenticated.
+  redirect('/equipment');
 }
