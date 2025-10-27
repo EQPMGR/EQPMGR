@@ -1,21 +1,23 @@
 
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Wrench, ArrowRight } from 'lucide-react';
 import type { WorkOrder } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/use-auth';
-import { formatDate } from '@/lib/date-utils';
+import { toDate } from '@/lib/date-utils';
 import { Button } from './ui/button';
 import Link from 'next/link';
+import { db } from '@/lib/firebase';
+import { Skeleton } from './ui/skeleton';
 
-interface OpenWorkOrdersProps {
-  initialWorkOrders: WorkOrder[];
-}
-
-export function OpenWorkOrders({ initialWorkOrders }: OpenWorkOrdersProps) {
-  const { user } = useAuth();
+export function OpenWorkOrders() {
+  const { user, loading: authLoading } = useAuth();
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const getStatusVariant = (status: WorkOrder['status']): 'default' | 'secondary' | 'outline' | 'destructive' => {
     switch (status) {
@@ -33,6 +35,46 @@ export function OpenWorkOrders({ initialWorkOrders }: OpenWorkOrdersProps) {
     }
   }
 
+  useEffect(() => {
+    if (!user) {
+        if (!authLoading) {
+            setIsLoading(false);
+        }
+        return;
+    };
+
+    setIsLoading(true);
+    
+    const q = query(
+        collection(db, 'workOrders'),
+        where('userId', '==', user.uid),
+        where('status', 'in', ['pending', 'accepted', 'in-progress'])
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const orders: WorkOrder[] = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            orders.push({
+                ...data,
+                id: doc.id,
+                createdAt: toDate(data.createdAt),
+                userConsent: {
+                    ...data.userConsent,
+                    timestamp: toDate(data.userConsent.timestamp)
+                }
+            } as WorkOrder);
+        });
+        setWorkOrders(orders);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching work orders: ", error);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading]);
+
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
@@ -41,14 +83,19 @@ export function OpenWorkOrders({ initialWorkOrders }: OpenWorkOrdersProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {initialWorkOrders.length > 0 ? (
+        {isLoading ? (
+            <div className="space-y-4">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+            </div>
+        ) : workOrders.length > 0 ? (
           <div className="space-y-4">
-            {initialWorkOrders.map(wo => (
+            {workOrders.map(wo => (
               <div key={wo.id} className="p-4 border rounded-lg flex justify-between items-center">
                 <div>
                   <p className="font-semibold">{wo.providerName}</p>
                   <p className="text-sm text-muted-foreground">
-                    {wo.equipmentName} - Requested {formatDate(wo.createdAt, user?.dateFormat)}
+                    {wo.equipmentName} - Requested {toDate(wo.createdAt).toLocaleDateString()}
                   </p>
                 </div>
                 <Badge variant={getStatusVariant(wo.status)} className="capitalize">{wo.status}</Badge>
