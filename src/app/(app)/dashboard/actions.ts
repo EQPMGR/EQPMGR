@@ -1,4 +1,3 @@
-
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
@@ -21,8 +20,8 @@ export async function fetchOpenWorkOrders(): Promise<WorkOrder[]> {
     const userId = decodedToken.uid;
     
     const adminDb = getAdminDb();
+    // Query for all open work orders first, then filter by user.
     const workOrdersQuery = adminDb.collection('workOrders')
-      .where('userId', '==', userId)
       .where('status', 'in', ['pending', 'accepted', 'in-progress']);
 
     const snapshot = await workOrdersQuery.get();
@@ -31,20 +30,25 @@ export async function fetchOpenWorkOrders(): Promise<WorkOrder[]> {
       return [];
     }
 
-    const workOrders = snapshot.docs.map(doc => {
+    const allOpenWorkOrders = snapshot.docs.map(doc => {
       const data = doc.data();
       return {
         ...data,
         id: doc.id,
         createdAt: toDate(data.createdAt),
+        // Ensure nested timestamps are converted as well
         userConsent: {
             ...data.userConsent,
-            timestamp: toDate(data.userConsent.timestamp)
+            timestamp: data.userConsent?.timestamp ? toDate(data.userConsent.timestamp) : new Date()
         }
       } as WorkOrder;
     });
 
-    return workOrders;
+    // Filter the results in code to match the current user
+    const userWorkOrders = allOpenWorkOrders.filter(wo => wo.userId === userId);
+
+    return userWorkOrders;
+
   } catch (error: any) {
     if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/invalid-session-cookie') {
         console.log("Session cookie invalid, returning empty array.");
