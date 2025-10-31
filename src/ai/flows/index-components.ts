@@ -101,8 +101,7 @@ export const indexComponentFlow = ai.defineFlow(
         console.error(`[SERVER ERROR] in indexComponentFlow for ${component.id}:`, e);
         // Re-throw a more informative error to the client.
         if (e.code === 7 || e.code === 'PERMISSION_DENIED') {
-            const detailedError = `The AI service call failed with a permission error. ` +
-                                  `Please ensure the service account configured in your .env.local file has the 'Vertex AI User' IAM role.`;
+            const detailedError = `The AI service call failed with a permission error. This can be caused by the server-side API key having HTTP referrer restrictions, or the service account lacking the 'Vertex AI User' IAM role.`;
             throw new Error(detailedError);
         }
         throw new Error(`Failed to generate embedding for component ${component.id}: ${e.message}`);

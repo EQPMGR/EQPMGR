@@ -68,7 +68,18 @@ const extractBikeDetailsFlow = ai.defineFlow(
     outputSchema: ExtractBikeDetailsOutputSchema,
   },
   async (input) => {
-    const { output } = await bikeExtractorPrompt(input);
+    let output: ExtractBikeDetailsOutput | undefined;
+    try {
+        const result = await bikeExtractorPrompt(input);
+        output = result.output;
+    } catch (e: any) {
+        console.error("[AI_FLOW_ERROR] in extractBikeDetailsFlow:", e);
+        if (e.message && e.message.includes('403 Forbidden')) {
+            throw new Error('AI request was blocked. This is likely due to API key restrictions. The server-side key for Genkit must not have HTTP referrer restrictions. Please check your key settings in the Google Cloud Console.');
+        }
+        throw new Error(`An unexpected error occurred while calling the AI model: ${e.message}`);
+    }
+
     
     if (!output) {
       throw new Error('Could not extract bike details from the provided text. The AI returned an empty response.');
