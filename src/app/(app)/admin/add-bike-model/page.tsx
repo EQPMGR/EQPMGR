@@ -115,73 +115,100 @@ function AddBikeModelFormComponent() {
     });
     
     useEffect(() => {
-        try {
-            const storedData = sessionStorage.getItem('importedBikeData');
-            if (storedData) {
-                const fullImportedData: { rawText: string; aiOutput: ExtractBikeDetailsOutput } = JSON.parse(storedData);
-                const importedData = fullImportedData.aiOutput;
-                
-                setImportedTrainingData({ rawText: fullImportedData.rawText, aiOutput: importedData });
-                
-                if (importedData.brand) form.setValue('brand', importedData.brand);
-                if (importedData.model) form.setValue('model', importedData.model);
-                if (importedData.modelYear) form.setValue('modelYear', importedData.modelYear);
+      try {
+        const storedData = sessionStorage.getItem('importedBikeData');
+        if (storedData) {
+          const fullImportedData: { rawText: string; aiOutput: ExtractBikeDetailsOutput } = JSON.parse(storedData);
+          const importedData = fullImportedData.aiOutput;
+          
+          setImportedTrainingData({ rawText: fullImportedData.rawText, aiOutput: importedData });
+          
+          if (importedData.brand) form.setValue('brand', importedData.brand);
+          if (importedData.model) form.setValue('model', importedData.model);
+          if (importedData.modelYear) form.setValue('modelYear', importedData.modelYear);
+          
+          // Create a mutable copy of base components to update
+          const updatedComponents = [...BASE_COMPONENTS.map(c => ({...c}))];
 
-                const updatedComponents = [...BASE_COMPONENTS];
-                importedData.components.forEach(importedComp => {
-                    let targetName = importedComp.name;
+          // --- Improved Mapping Logic ---
+          const componentMap = new Map(updatedComponents.map((comp, index) => [comp.name.toLowerCase(), index]));
 
-                    if (['Brake Caliper', 'Brake Rotor', 'Rim', 'Tire', 'Wheel'].includes(importedComp.name)) {
-                        const baseName = importedComp.name.replace(' Caliper', '');
-                        const frontName = `Front ${baseName}`;
-                        const rearName = `Rear ${baseName}`;
-                        
-                        const frontIndex = updatedComponents.findIndex(c => c.name === frontName);
-                        if (frontIndex > -1) {
-                            updatedComponents[frontIndex] = { ...updatedComponents[frontIndex], ...importedComp, name: frontName, id: updatedComponents[frontIndex].id };
-                        }
-                        
-                        const rearIndex = updatedComponents.findIndex(c => c.name === rearName);
-                        if (rearIndex > -1) {
-                            updatedComponents[rearIndex] = { ...updatedComponents[rearIndex], ...importedComp, name: rearName, id: updatedComponents[rearIndex].id };
-                        }
-                        return; // Done with this component
-                    }
+          importedData.components.forEach(importedComp => {
+              const cleanedName = importedComp.name.toLowerCase().trim();
+              
+              const componentToUpdate = {
+                  brand: importedComp.brand || '',
+                  series: importedComp.series || '',
+                  model: importedComp.model || '',
+                  size: importedComp.size || '',
+                  chainring1: importedComp.chainring1 || '',
+                  chainring2: importedComp.chainring2 || '',
+                  chainring3: importedComp.chainring3 || '',
+              };
+              
+              // Handle dual components like Wheels, Brakes, Tires etc.
+              const dualComponentMap: { [key: string]: string[] } = {
+                  'wheel': ['Front Wheel', 'Rear Wheel'],
+                  'tire': ['Front Tire', 'Rear Tire'],
+                  'rim': ['Front Rim', 'Rear Rim'],
+                  'brake': ['Front Brake', 'Rear Brake'],
+                  'brake caliper': ['Front Brake', 'Rear Brake'],
+                  'brake rotor': ['Front Rotor', 'Rear Rotor'],
+                  'hub': ['Front Hub', 'Rear Hub'],
+                  'skewer': ['Front Skewer', 'Rear Skewer'],
+                  'shifter': ['Front Shifter', 'Rear Shifter'],
+                  'shift-/ brake lever': ['Front Shifter', 'Rear Shifter']
+              };
 
-                    const componentIndex = updatedComponents.findIndex(c => c.name === targetName);
+              let wasMapped = false;
+              for (const key in dualComponentMap) {
+                  if (cleanedName.includes(key)) {
+                      dualComponentMap[key].forEach(targetName => {
+                          const index = componentMap.get(targetName.toLowerCase());
+                          if (index !== undefined) {
+                              Object.assign(updatedComponents[index], componentToUpdate);
+                          }
+                      });
+                      wasMapped = true;
+                      break;
+                  }
+              }
 
-                    if (componentIndex > -1) {
-                        updatedComponents[componentIndex] = {
-                            ...updatedComponents[componentIndex],
-                            brand: importedComp.brand || '',
-                            series: importedComp.series || '',
-                            model: importedComp.model || '',
-                            size: importedComp.size || '',
-                            chainring1: importedComp.chainring1 || '',
-                            chainring2: importedComp.chainring2 || '',
-                            chainring3: importedComp.chainring3 || '',
-                        };
-                    } else {
-                        updatedComponents.push({ ...importedComp, id: crypto.randomUUID() });
-                    }
-                });
+              if (!wasMapped) {
+                  const index = componentMap.get(cleanedName);
+                  if (index !== undefined) {
+                      Object.assign(updatedComponents[index], componentToUpdate);
+                  } else {
+                      // If it's still not found, push it as a new component
+                      updatedComponents.push({ ...importedComp, id: crypto.randomUUID() });
+                  }
+              }
+          });
+          
+          // Set chainring counts based on extracted data
+          const crankset = updatedComponents.find(c => c.name === 'Crankset');
+          if (crankset) {
+              if(crankset.chainring3) form.setValue('frontMech', '3x');
+              else if (crankset.chainring2) form.setValue('frontMech', '2x');
+              else if (crankset.chainring1) form.setValue('frontMech', '1x');
+          }
 
-                form.setValue('components', updatedComponents);
-                
-                toast({
-                    title: "Data Imported!",
-                    description: "The bike details have been populated from the import page."
-                });
-                sessionStorage.removeItem('importedBikeData');
-            }
-        } catch (error) {
-            console.error("Failed to parse imported data:", error);
-            toast({
-                variant: 'destructive',
-                title: "Import Error",
-                description: "There was an issue loading the imported data into the form."
-            });
+          form.setValue('components', updatedComponents);
+          
+          toast({
+              title: "Data Imported!",
+              description: "The bike details have been populated from the import page."
+          });
+          sessionStorage.removeItem('importedBikeData');
         }
+      } catch (error) {
+          console.error("Failed to parse imported data:", error);
+          toast({
+              variant: 'destructive',
+              title: "Import Error",
+              description: "There was an issue loading the imported data into the form."
+          });
+      }
     }, [form, toast]);
 
 
@@ -538,5 +565,7 @@ export default function AddBikeModelPage() {
         <AddBikeModelFormComponent />
     )
 }
+
+    
 
     
