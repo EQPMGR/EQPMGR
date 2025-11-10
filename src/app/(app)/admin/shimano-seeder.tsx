@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import { Database, Loader2 } from 'lucide-react';
-import { writeBatch, doc, collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { SHIMANO_COMPONENTS } from '@/lib/shimano-data';
 
 const createComponentId = (component: any) => {
@@ -24,17 +23,16 @@ const createComponentId = (component: any) => {
 };
 
 async function seedShimanoComponents() {
-    const batch = writeBatch(db);
-    const masterComponentsRef = collection(db, 'masterComponents');
+    const database = await getDb();
+    const batch = database.batch();
     let count = 0;
 
     for (const component of SHIMANO_COMPONENTS) {
         const masterId = createComponentId(component);
         if (masterId) {
-            const docRef = doc(masterComponentsRef, masterId);
             const { name, ...componentToSave } = component;
-            
-            batch.set(docRef, { ...componentToSave, name: component.name }, { merge: true });
+
+            batch.set('masterComponents', masterId, { ...componentToSave, name: component.name }, { merge: true });
             count++;
         }
     }

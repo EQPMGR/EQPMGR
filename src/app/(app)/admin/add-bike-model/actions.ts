@@ -2,8 +2,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { getServerDb, getServerAuth } from '@/backend';
 import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent } from '@/lib/types';
 import { z } from 'zod';
@@ -49,11 +48,13 @@ export async function saveBikeModelAction({
         if (!idToken) {
             throw new Error('You must be logged in to save a bike model.');
         }
-        
-        // Verify the session is valid.
-        await getAdminAuth().verifyIdToken(idToken, true);
 
-        const batch = adminDb.batch();
+        // Verify the session is valid.
+        const auth = await getServerAuth();
+        await auth.verifyIdToken(idToken, true);
+
+        const db = await getServerDb();
+        const batch = db.batch();
 
         // --- 1. Process and save master components ---
         const componentReferences: string[] = [];
@@ -73,16 +74,14 @@ export async function saveBikeModelAction({
 
             const componentId = createComponentId(componentToSave as Partial<MasterComponent>);
             if (!componentId) continue;
-            
-            const masterComponentRef = adminDb.collection('masterComponents').doc(componentId);
-            batch.set(masterComponentRef, componentToSave, { merge: true });
+
+            batch.set('masterComponents', componentId, componentToSave, { merge: true });
             componentReferences.push(`masterComponents/${componentId}`);
         }
         
         // --- 2. Process and save the main bike model ---
         const bikeModelId = createBikeModelId(values);
-        const bikeModelDocRef = adminDb.collection('bikeModels').doc(bikeModelId);
-        
+
         const { components, ...bikeModelData } = values;
 
         const bikeModelToSave: { [key: string]: any } = {};
@@ -93,8 +92,8 @@ export async function saveBikeModelAction({
                 bikeModelToSave[key] = value;
             }
         });
-        
-        batch.set(bikeModelDocRef, {
+
+        batch.set('bikeModels', bikeModelId, {
             ...bikeModelToSave,
             components: componentReferences,
             imageUrl: `https://placehold.co/600x400.png`
@@ -102,7 +101,7 @@ export async function saveBikeModelAction({
         
         // --- 3. Process and save training data if it exists ---
         if (importedTrainingData) {
-            const trainingDocRef = adminDb.collection('trainingData').doc();
+            const trainingDocId = db.generateId();
 
             // Clean the 'userCorrectedOutput' to remove undefined/null/empty values
             const cleanedValues: { [key: string]: any } = {};
@@ -131,7 +130,7 @@ export async function saveBikeModelAction({
                 ...importedTrainingData,
                 userCorrectedOutput: cleanedValues as AddBikeModelFormValues,
             };
-            batch.set(trainingDocRef, trainingData);
+            batch.set('trainingData', trainingDocId, trainingData);
         }
 
         // --- 4. Commit all writes to the database ---

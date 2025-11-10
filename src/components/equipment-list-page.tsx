@@ -4,7 +4,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Activity, Footprints, Bike } from 'lucide-react';
-import { doc, getDocs, updateDoc, collection, query, where, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import type { Equipment, MasterComponent, UserComponent, Component } from '@/lib/types';
@@ -13,7 +12,7 @@ import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-di
 import { AddShoesDialog, type ShoesFormValues } from './add-shoes-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toDate, toNullableDate } from '@/lib/date-utils';
 
@@ -26,30 +25,34 @@ export function EquipmentListPage() {
   const fetchEquipment = useCallback(async (uid: string) => {
     setIsLoading(true);
     try {
-      const equipmentQuery = query(collection(db, 'users', uid, 'equipment'));
-      const equipmentSnapshot = await getDocs(equipmentQuery);
-      
+      const db = await getDb();
+      const equipmentSnapshot = await db.getDocsFromSubcollection<Equipment>(`users/${uid}`, 'equipment');
+
       const equipmentPromises = equipmentSnapshot.docs.map(async (equipmentDoc) => {
-        const equipmentData = equipmentDoc.data();
-        
+        const equipmentData = equipmentDoc.data;
+
         // Fetch components subcollection for each equipment
-        const componentsQuery = query(collection(db, 'users', uid, 'equipment', equipmentDoc.id, 'components'));
-        const componentsSnapshot = await getDocs(componentsQuery);
-        const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
+        const componentsSnapshot = await db.getDocsFromSubcollection<UserComponent>(
+          `users/${uid}/equipment/${equipmentDoc.id}`,
+          'components'
+        );
+        const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data } as UserComponent));
 
         // Gather all unique master component IDs from this equipment's components
         const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
-        
+
         const masterComponentsMap = new Map<string, MasterComponent>();
         if (masterComponentIds.length > 0) {
-             // Firestore 'in' queries are limited to 30 values, so we batch them.
+             // 'in' queries are limited to 30 values, so we batch them.
              for (let i = 0; i < masterComponentIds.length; i += 30) {
                 const batchIds = masterComponentIds.slice(i, i + 30);
                  if (batchIds.length > 0) {
-                    const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
-                    const querySnapshot = await getDocs(masterComponentsQuery);
-                    querySnapshot.forEach(doc => {
-                        masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                    const querySnapshot = await db.getDocs<MasterComponent>(
+                      'masterComponents',
+                      { type: 'where', field: '__name__', op: 'in', value: batchIds }
+                    );
+                    querySnapshot.docs.forEach(doc => {
+                        masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data } as MasterComponent);
                     });
                 }
             }
@@ -59,7 +62,7 @@ export function EquipmentListPage() {
             const masterComp = masterComponentsMap.get(userComp.masterComponentId);
              if (!masterComp) {
                 console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
-                return null; 
+                return null;
             }
             return {
                 ...masterComp,
@@ -123,19 +126,19 @@ export function EquipmentListPage() {
     }
 
     const bikeModelId = formData.bikeIdentifier;
-    const batch = writeBatch(db);
-    
-    try {
-        const bikeModelRef = doc(db, 'bikeModels', bikeModelId);
-        const bikeModelSnap = await getDoc(bikeModelRef);
+    const db = await getDb();
+    const batch = db.batch();
 
-        if (!bikeModelSnap.exists()) {
+    try {
+        const bikeModelSnap = await db.getDoc('bikeModels', bikeModelId);
+
+        if (!bikeModelSnap.exists) {
           throw new Error('Selected bike could not be found in the database.');
         }
-        const bikeFromDb = bikeModelSnap.data();
+        const bikeFromDb = bikeModelSnap.data!;
 
         // 1. Create the main equipment document in its subcollection
-        const newEquipmentDocRef = doc(collection(db, 'users', user.uid, 'equipment'));
+        const newEquipmentId = db.generateId();
         const newEquipmentData: Omit<Equipment, 'id' | 'components'> = {
             name: formData.name,
             type: bikeFromDb.type,
@@ -152,45 +155,47 @@ export function EquipmentListPage() {
             serialNumber: formData.serialNumber || '',
             frameSize: formData.frameSize || '',
         };
-        batch.set(newEquipmentDocRef, newEquipmentData);
+        batch.setInSubcollection(`users/${user.uid}`, 'equipment', newEquipmentId, newEquipmentData);
 
 
         // 2. Fetch master components and create user components in the new components subcollection
         const masterComponentPaths = (bikeFromDb.components as string[]) || [];
         const masterComponentIds = masterComponentPaths.map(p => p.split('/').pop()!).filter(Boolean);
-        
+
         if (masterComponentIds.length > 0) {
           const masterComponentsMap = new Map<string, MasterComponent>();
 
           for (let i = 0; i < masterComponentIds.length; i += 30) {
               const batchIds = masterComponentIds.slice(i, i + 30);
               if (batchIds.length > 0) {
-                const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
-                const querySnapshot = await getDocs(masterComponentsQuery);
-                querySnapshot.forEach(doc => {
-                  masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                const querySnapshot = await db.getDocs<MasterComponent>(
+                  'masterComponents',
+                  { type: 'where', field: '__name__', op: 'in', value: batchIds }
+                );
+                querySnapshot.docs.forEach(doc => {
+                  masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data } as MasterComponent);
                 });
               }
           }
-            
+
           masterComponentIds.forEach((masterComponentId) => {
               const masterComp = masterComponentsMap.get(masterComponentId);
               if (!masterComp) {
                   console.warn(`Master component ${masterComponentId} not found when adding equipment.`);
                   return; // Skip this component if master is not found
               }
-              
-              const newComponentDocRef = doc(collection(db, 'users', user.uid, 'equipment', newEquipmentDocRef.id, 'components'));
-              
+
+              const newComponentId = db.generateId();
+
               const userComponent: Partial<UserComponent> = {
-                  id: newComponentDocRef.id,
+                  id: newComponentId,
                   masterComponentId: masterComponentId,
                   wearPercentage: 0,
                   purchaseDate: formData.purchaseDate,
                   lastServiceDate: null,
                   notes: '',
               };
-              
+
               let resolvedSize: string | undefined;
 
               if (formData.frameSize && masterComp.sizeVariants) {
@@ -200,7 +205,7 @@ export function EquipmentListPage() {
                       if (frameSizeKey) {
                         resolvedSize = variants[frameSizeKey];
                       } else {
-                        resolvedSize = masterComp.size; 
+                        resolvedSize = masterComp.size;
                       }
                   } catch (e) {
                       console.error("Could not parse sizeVariants JSON", masterComp.sizeVariants);
@@ -215,10 +220,10 @@ export function EquipmentListPage() {
                 userComponent.size = resolvedSize;
               }
 
-              batch.set(newComponentDocRef, userComponent);
+              batch.setInSubcollection(`users/${user.uid}/equipment/${newEquipmentId}`, 'components', newComponentId, userComponent);
           });
         }
-        
+
         await batch.commit();
         await fetchEquipment(user.uid);
 
@@ -247,17 +252,17 @@ export function EquipmentListPage() {
     }
 
     try {
-        const batch = writeBatch(db);
-        const masterComponentRef = doc(db, 'masterComponents', formData.shoeId);
-        const masterComponentSnap = await getDoc(masterComponentRef);
+        const db = await getDb();
+        const batch = db.batch();
+        const masterComponentSnap = await db.getDoc('masterComponents', formData.shoeId);
 
-        if (!masterComponentSnap.exists()) {
+        if (!masterComponentSnap.exists) {
           throw new Error('Selected shoes could not be found in the database.');
         }
-        const shoeFromDb = masterComponentSnap.data() as MasterComponent;
+        const shoeFromDb = masterComponentSnap.data! as MasterComponent;
 
         // 1. Create the main equipment document for the shoes
-        const newEquipmentDocRef = doc(collection(db, 'users', user.uid, 'equipment'));
+        const newEquipmentId = db.generateId();
         const newShoeData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog'> & { associatedEquipmentIds?: string[] } = {
             name: `${shoeFromDb.brand} ${shoeFromDb.model}`,
             type: 'Cycling Shoes', // Specific type for shoes
@@ -273,12 +278,12 @@ export function EquipmentListPage() {
             totalHours: 0,
             associatedEquipmentIds: formData.associatedBikeIds,
         };
-        batch.set(newEquipmentDocRef, newShoeData);
+        batch.setInSubcollection(`users/${user.uid}`, 'equipment', newEquipmentId, newShoeData);
 
         // 2. Create the single component entry for the shoes themselves in the subcollection
-        const newComponentDocRef = doc(collection(db, 'users', user.uid, 'equipment', newEquipmentDocRef.id, 'components'));
+        const newComponentId = db.generateId();
         const userComponent: UserComponent = {
-            id: newComponentDocRef.id,
+            id: newComponentId,
             masterComponentId: formData.shoeId,
             wearPercentage: 0,
             purchaseDate: formData.purchaseDate,
@@ -286,7 +291,7 @@ export function EquipmentListPage() {
             size: String(formData.size),
             notes: '',
         };
-        batch.set(newComponentDocRef, userComponent);
+        batch.setInSubcollection(`users/${user.uid}/equipment/${newEquipmentId}`, 'components', newComponentId, userComponent);
 
         await batch.commit();
         await fetchEquipment(user.uid);

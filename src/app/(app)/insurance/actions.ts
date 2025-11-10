@@ -1,8 +1,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getServerDb } from '@/backend';
 import type { InsuranceFormValues } from './schema';
 import { accessSecret } from '@/lib/secrets';
 import * as nodemailer from 'nodemailer';
@@ -109,11 +108,11 @@ export async function submitInsuranceApplication(
     await sendEmail(values);
 
     // Increment a counter for billing/tracking purposes
-    const counterRef = adminDb.collection('counters').doc('insuranceApplications');
-    await counterRef.set({
-      count: FieldValue.increment(1)
+    const db = await getServerDb();
+    await db.updateDoc('counters', 'insuranceApplications', {
+      count: db.increment(1)
     }, { merge: true });
-    
+
     return {
       success: true,
       message: 'Application submitted successfully!',

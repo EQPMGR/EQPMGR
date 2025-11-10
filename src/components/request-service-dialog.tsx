@@ -4,8 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { getDb } from '@/backend';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -49,11 +48,11 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
     if (!user) return;
     setIsLoading(true);
     try {
-        const equipmentQuery = query(collection(db, 'users', user.uid, 'equipment'));
-        const equipmentSnapshot = await getDocs(equipmentQuery);
-        const allEquipment = equipmentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Equipment));
+        const db = await getDb();
+        const equipmentSnapshot = await db.getDocsFromSubcollection<Equipment>(`users/${user.uid}`, 'equipment');
+        const allEquipment = equipmentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data } as Equipment));
         setEquipmentList(allEquipment);
-        
+
         if (allEquipment.length === 1) {
             setSelectedEquipmentId(allEquipment[0].id);
         }

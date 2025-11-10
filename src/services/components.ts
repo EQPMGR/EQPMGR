@@ -2,7 +2,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { getServerDb } from '@/backend';
 import type { MasterComponent } from '@/lib/types';
 
 
@@ -16,11 +16,12 @@ export interface MasterComponentWithOptions extends MasterComponent {
  */
 export async function fetchAllMasterComponents(): Promise<MasterComponentWithOptions[]> {
   try {
-    // Use the adminDb instance which has full privileges on the server.
-    const querySnapshot = await adminDb.collection('masterComponents').get();
+    const db = await getServerDb();
+    const querySnapshot = await db.getDocs<MasterComponent>('masterComponents');
     const components: MasterComponentWithOptions[] = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
+
+    querySnapshot.docs.forEach((doc) => {
+      const data = doc.data;
        // Data validation step to ensure documents have the basic required fields.
       if (data && typeof data.name === 'string' && typeof data.system === 'string') {
            components.push({ id: doc.id, ...data } as MasterComponentWithOptions);
@@ -30,12 +31,12 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
     });
     return components;
   } catch (error) {
-    console.error("Error fetching master components with Admin SDK:", error);
+    console.error("Error fetching master components:", error);
     // Throw a more specific error to help with debugging.
     if ((error as any).code === 'permission-denied' || (error as any).code === 7) {
-        throw new Error('Firestore permission denied on the server. This is unexpected as the Admin SDK should bypass security rules. Check service account permissions in Google Cloud IAM.');
+        throw new Error('Database permission denied on the server. Check backend configuration and permissions.');
     }
-    throw new Error("Failed to fetch master components from the database on the server.");
+    throw new Error("Failed to fetch master components from the database.");
   }
 }
 

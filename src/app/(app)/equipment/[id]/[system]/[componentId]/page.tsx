@@ -5,10 +5,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, Pencil, Trash2, Loader2, Wrench } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
-
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -47,39 +45,44 @@ export default function ComponentDetailPage() {
   const fetchComponentData = useCallback(async (uid: string, equipmentId: string, userComponentId: string) => {
     setIsLoading(true);
     try {
-      // Fetch equipment data to get the maintenance log
-      const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
-      const equipmentDocSnap = await getDoc(equipmentDocRef);
+      const database = await getDb();
 
-      if (!equipmentDocSnap.exists()) {
+      // Fetch equipment data to get the maintenance log
+      const equipmentDocSnap = await database.getDocFromSubcollection<Equipment>(`users/${uid}`, 'equipment', equipmentId);
+
+      if (!equipmentDocSnap.exists) {
           toast({ variant: 'destructive', title: 'Equipment not found' });
           setIsLoading(false);
           return;
       }
-      const eqData = equipmentDocSnap.data();
-      setEquipment({ 
-          id: equipmentDocSnap.id, 
+      const eqData = equipmentDocSnap.data;
+      setEquipment({
+          id: equipmentId,
           ...eqData,
           purchaseDate: toDate(eqData.purchaseDate),
           maintenanceLog: (eqData.maintenanceLog || []).map((l: any) => ({...l, date: toDate(l.date)})),
         } as Equipment);
 
-      const componentsCollectionRef = collection(db, 'users', uid, 'equipment', equipmentId, 'components');
-      
-      const mainComponentDocRef = doc(componentsCollectionRef, userComponentId);
-      const mainComponentDocSnap = await getDoc(mainComponentDocRef);
+      const mainComponentDocSnap = await database.getDocFromSubcollection<UserComponent>(
+        `users/${uid}/equipment/${equipmentId}`,
+        'components',
+        userComponentId
+      );
 
-      if (!mainComponentDocSnap.exists()) {
+      if (!mainComponentDocSnap.exists) {
           toast({ variant: 'destructive', title: 'Component not found' });
           setIsLoading(false);
           return;
       }
 
-      const mainUserComp = { id: mainComponentDocSnap.id, ...mainComponentDocSnap.data() } as UserComponent;
+      const mainUserComp = { id: userComponentId, ...mainComponentDocSnap.data } as UserComponent;
 
-      const subComponentsQuery = query(componentsCollectionRef, where('parentUserComponentId', '==', userComponentId));
-      const subComponentsSnap = await getDocs(subComponentsQuery);
-      const subUserComps = subComponentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
+      const subComponentsSnap = await database.getDocsFromSubcollection<UserComponent>(
+        `users/${uid}/equipment/${equipmentId}`,
+        'components',
+        { type: 'where', field: 'parentUserComponentId', op: '==', value: userComponentId }
+      );
+      const subUserComps = subComponentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data } as UserComponent));
 
       const masterIdsToFetch = [
         mainUserComp.masterComponentId,
@@ -93,9 +96,11 @@ export default function ComponentDetailPage() {
           for (let i = 0; i < uniqueMasterIds.length; i += 30) {
             const batchIds = uniqueMasterIds.slice(i, i + 30);
             if (batchIds.length > 0) {
-                const masterCompsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
-                const querySnapshot = await getDocs(masterCompsQuery);
-                querySnapshot.forEach(doc => masterCompsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent));
+                const querySnapshot = await database.getDocs<MasterComponent>(
+                  'masterComponents',
+                  { type: 'where', field: '__name__', op: 'in', value: batchIds }
+                );
+                querySnapshot.docs.forEach(doc => masterCompsMap.set(doc.id, { id: doc.id, ...doc.data } as MasterComponent));
             }
           }
       }
@@ -168,9 +173,9 @@ export default function ComponentDetailPage() {
     if (!user || !equipment) return;
     const logWithId = { ...newLog, id: crypto.randomUUID() };
     const updatedLog = [...equipment.maintenanceLog, logWithId];
-    
-    const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
-    await updateDoc(equipmentDocRef, {
+
+    const database = await getDb();
+    await database.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
       maintenanceLog: updatedLog.map(l => ({...l, date: toDate(l.date)})),
     });
 

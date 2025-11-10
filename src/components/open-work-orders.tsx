@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Wrench, ArrowRight } from 'lucide-react';
 import type { WorkOrder } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
@@ -11,7 +10,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { toDate } from '@/lib/date-utils';
 import { Button } from './ui/button';
 import Link from 'next/link';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { Skeleton } from './ui/skeleton';
 
 export function OpenWorkOrders() {
@@ -44,35 +43,51 @@ export function OpenWorkOrders() {
     };
 
     setIsLoading(true);
-    
-    const q = query(
-        collection(db, 'workOrders'),
-        where('userId', '==', user.uid),
-        where('status', 'in', ['pending', 'accepted', 'in-progress'])
-    );
+    let unsubscribe: (() => void) | undefined;
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const orders: WorkOrder[] = [];
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            orders.push({
-                ...data,
-                id: doc.id,
-                createdAt: toDate(data.createdAt),
-                userConsent: {
-                    ...data.userConsent,
-                    timestamp: toDate(data.userConsent.timestamp)
-                }
-            } as WorkOrder);
-        });
-        setWorkOrders(orders);
-        setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching work orders: ", error);
-        setIsLoading(false);
-    });
+    (async () => {
+      try {
+        const database = await getDb();
 
-    return () => unsubscribe();
+        unsubscribe = database.onSnapshotQuery<WorkOrder>(
+          'workOrders',
+          [
+            { type: 'where', field: 'userId', op: '==', value: user.uid },
+            { type: 'where', field: 'status', op: 'in', value: ['pending', 'accepted', 'in-progress'] }
+          ],
+          (querySnapshot) => {
+            const orders: WorkOrder[] = [];
+            querySnapshot.docs.forEach((doc) => {
+                const data = doc.data;
+                orders.push({
+                    ...data,
+                    id: doc.id,
+                    createdAt: toDate(data.createdAt),
+                    userConsent: {
+                        ...data.userConsent,
+                        timestamp: toDate(data.userConsent.timestamp)
+                    }
+                } as WorkOrder);
+            });
+            setWorkOrders(orders);
+            setIsLoading(false);
+          },
+          (error) => {
+            console.error("Error fetching work orders: ", error);
+            setIsLoading(false);
+          }
+        );
+      } catch (error) {
+        console.error("Error initializing work orders listener:", error);
+        setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user, authLoading]);
 
   return (

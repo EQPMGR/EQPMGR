@@ -8,8 +8,7 @@ import { z } from 'zod';
 import { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { useAuth } from '@/hooks/use-auth';
 
 import { Button } from '@/components/ui/button';
@@ -73,10 +72,11 @@ export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 
 async function getAvailableBrands(): Promise<string[]> {
     try {
-        const querySnapshot = await getDocs(collection(db, "bikeModels"));
+        const database = await getDb();
+        const querySnapshot = await database.getDocs("bikeModels");
         const brands = new Set<string>();
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
+        querySnapshot.docs.forEach((doc) => {
+            const data = doc.data;
             if (data.brand) {
                 brands.add(data.brand);
             }

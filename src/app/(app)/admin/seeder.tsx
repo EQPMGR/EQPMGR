@@ -3,12 +3,11 @@
 
 import { useState } from 'react';
 import { Database, Loader2 } from 'lucide-react';
-import { writeBatch, doc, collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { BASE_COMPONENTS } from '@/lib/constants';
 
 const createComponentId = (component: any) => {
@@ -32,8 +31,8 @@ const createComponentId = (component: any) => {
 };
 
 async function seedMasterComponents() {
-    const batch = writeBatch(db);
-    const masterComponentsRef = collection(db, 'masterComponents');
+    const database = await getDb();
+    const batch = database.batch();
     let count = 0;
 
     for (const component of BASE_COMPONENTS) {
@@ -41,9 +40,8 @@ async function seedMasterComponents() {
         // The check was too restrictive before.
         const masterId = createComponentId(component);
         if (masterId) {
-            const docRef = doc(masterComponentsRef, masterId);
             const componentToSave: { [key: string]: any } = {};
-            
+
             // Only add fields that have a non-empty value
             Object.keys(component).forEach((key) => {
                 const typedKey = key as keyof typeof component;
@@ -52,7 +50,7 @@ async function seedMasterComponents() {
                 }
             });
 
-            batch.set(docRef, componentToSave, { merge: true });
+            batch.set('masterComponents', masterId, componentToSave, { merge: true });
             count++;
         }
     }

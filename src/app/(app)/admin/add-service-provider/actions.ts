@@ -1,7 +1,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { getServerDb } from '@/backend';
 import type { AddProviderFormValues } from './page';
 
 const createProviderId = (name: string, city: string) => {
@@ -20,9 +20,9 @@ export async function addServiceProviderAction({
     const providerId = createProviderId(values.name, values.city);
 
     try {
-        const providerDocRef = adminDb.collection('serviceProviders').doc(providerId);
+        const db = await getServerDb();
 
-        const docSnap = await providerDocRef.get();
+        const docSnap = await db.getDoc('serviceProviders', providerId);
         if (docSnap.exists) {
             return {
                 success: false,
@@ -36,8 +36,8 @@ export async function addServiceProviderAction({
             ...values,
             geohash: 'c2b2q', // Placeholder for Vancouver
         };
-        
-        await providerDocRef.set(providerToSave);
+
+        await db.setDoc('serviceProviders', providerId, providerToSave);
 
         return {
             success: true,

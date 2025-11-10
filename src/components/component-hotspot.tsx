@@ -4,8 +4,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getDb } from '@/backend';
 import type { Equipment, Component, MasterComponent, UserComponent } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Skeleton } from './ui/skeleton';
@@ -26,15 +25,17 @@ export function ComponentHotspot() {
   const fetchAllEquipmentData = useCallback(async (uid: string) => {
     setIsLoading(true);
     try {
-      const q = query(collection(db, 'users', uid, 'equipment'));
-      const querySnapshot = await getDocs(q);
-      
+      const database = await getDb();
+      const querySnapshot = await database.getDocsFromSubcollection<Equipment>(`users/${uid}`, 'equipment');
+
       const equipmentPromises = querySnapshot.docs.map(async (doc) => {
-        const equipmentData = doc.data();
-        const componentsCollection = collection(doc.ref, 'components');
-        const componentsSnapshot = await getDocs(componentsCollection);
-        
-        const userComponents: UserComponent[] = componentsSnapshot.docs.map(compDoc => ({ id: compDoc.id, ...compDoc.data() } as UserComponent));
+        const equipmentData = doc.data;
+        const componentsSnapshot = await database.getDocsFromSubcollection<UserComponent>(
+          `users/${uid}/equipment/${doc.id}`,
+          'components'
+        );
+
+        const userComponents: UserComponent[] = componentsSnapshot.docs.map(compDoc => ({ id: compDoc.id, ...compDoc.data } as UserComponent));
 
         const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
         const masterComponentsMap = new Map<string, MasterComponent>();
@@ -43,15 +44,17 @@ export function ComponentHotspot() {
           for (let i = 0; i < masterComponentIds.length; i += 30) {
             const batchIds = masterComponentIds.slice(i, i + 30);
             if (batchIds.length > 0) {
-              const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
-              const masterQuerySnapshot = await getDocs(masterComponentsQuery);
-              masterQuerySnapshot.forEach(doc => {
-                masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+              const masterQuerySnapshot = await database.getDocs<MasterComponent>(
+                'masterComponents',
+                { type: 'where', field: '__name__', op: 'in', value: batchIds }
+              );
+              masterQuerySnapshot.docs.forEach(masterDoc => {
+                masterComponentsMap.set(masterDoc.id, { id: masterDoc.id, ...masterDoc.data } as MasterComponent);
               });
             }
           }
         }
-        
+
         const components: Component[] = userComponents.map(userComp => {
           const masterComp = masterComponentsMap.get(userComp.masterComponentId);
           if (!masterComp) return null;

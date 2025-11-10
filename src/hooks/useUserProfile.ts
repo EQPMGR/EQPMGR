@@ -2,11 +2,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot, DocumentData } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 
 export function useUserProfile(uid: string | undefined) {
-  const [profile, setProfile] = useState<DocumentData | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,20 +15,38 @@ export function useUserProfile(uid: string | undefined) {
       return;
     }
 
-    const profileRef = doc(db, 'profiles', uid);
-    const unsubscribe = onSnapshot(profileRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setProfile(docSnap.data());
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching user profile:", error);
-      setLoading(false);
-    });
+    let unsubscribe: (() => void) | undefined;
 
-    return () => unsubscribe();
+    (async () => {
+      try {
+        const db = await getDb();
+        unsubscribe = db.onSnapshot(
+          'profiles',
+          uid,
+          (docSnap) => {
+            if (docSnap.exists) {
+              setProfile(docSnap.data);
+            } else {
+              setProfile(null);
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Error fetching user profile:", error);
+            setLoading(false);
+          }
+        );
+      } catch (error) {
+        console.error("Error initializing profile listener:", error);
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [uid]);
 
   return { profile, loading };

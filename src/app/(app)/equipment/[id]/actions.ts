@@ -2,8 +2,7 @@
 
 'use server';
 
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase-admin';
+import { getServerDb } from '@/backend';
 import type { UserComponent, MasterComponent, MaintenanceLog } from '@/lib/types';
 
 
@@ -45,34 +44,41 @@ export async function replaceUserComponentAction({
     if (!userId || !equipmentId || !userComponentIdToReplace) {
         throw new Error("Missing required parameters for component replacement.");
     }
-    
+
     if (!newMasterComponentId && !manualNewComponentData) {
         throw new Error("Either a selected component or manual component data must be provided.");
     }
-    
-    const batch = adminDb.batch();
+
+    const db = await getServerDb();
+    const batch = db.batch();
     
     try {
-        const componentToReplaceRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}/components/${userComponentIdToReplace}`);
-        const componentToReplaceSnap = await componentToReplaceRef.get();
-        
+        const componentToReplaceSnap = await db.getDocFromSubcollection<UserComponent>(
+            `users/${userId}/equipment/${equipmentId}`,
+            'components',
+            userComponentIdToReplace
+        );
+
         if (!componentToReplaceSnap.exists) {
              throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
         }
-        const componentData = componentToReplaceSnap.data() as UserComponent;
+        const componentData = componentToReplaceSnap.data!;
 
-        const masterComponentSnap = await adminDb.doc(`masterComponents/${componentData.masterComponentId}`).get();
+        const masterComponentSnap = await db.getDoc<MasterComponent>('masterComponents', componentData.masterComponentId);
         if (!masterComponentSnap.exists) {
             throw new Error(`Master component ${componentData.masterComponentId} not found.`);
         }
-        const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data() } as MasterComponent;
-        
-        const equipmentDocRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
-        const equipmentDocSnap = await equipmentDocRef.get();
+        const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data } as MasterComponent;
+
+        const equipmentDocSnap = await db.getDocFromSubcollection(
+            `users/${userId}`,
+            'equipment',
+            equipmentId
+        );
         if (!equipmentDocSnap.exists) {
             throw new Error("Equipment not found in user data.");
         }
-        const equipmentData = equipmentDocSnap.data();
+        const equipmentData = equipmentDocSnap.data;
 
         // 1. Archive the old component data, ensuring no undefined values.
         const archivedComponent = {
@@ -83,8 +89,8 @@ export async function replaceUserComponentAction({
             system: masterComponentToReplace.system,
             size: componentData.size || masterComponentToReplace.size || null,
             wearPercentage: componentData.wearPercentage,
-            purchaseDate: (componentData.purchaseDate as any).toDate().toISOString(),
-            lastServiceDate: componentData.lastServiceDate ? (componentData.lastServiceDate as any).toDate().toISOString() : null,
+            purchaseDate: componentData.purchaseDate instanceof Date ? componentData.purchaseDate.toISOString() : new Date(componentData.purchaseDate).toISOString(),
+            lastServiceDate: componentData.lastServiceDate ? (componentData.lastServiceDate instanceof Date ? componentData.lastServiceDate.toISOString() : new Date(componentData.lastServiceDate).toISOString()) : null,
             replacedOn: new Date().toISOString(),
             finalMileage: equipmentData?.totalDistance || 0,
             replacementReason: replacementReason,
@@ -98,11 +104,11 @@ export async function replaceUserComponentAction({
         // 2. Determine the details of the new master component (either existing or manual).
         if (newMasterComponentId) {
             finalNewMasterComponentId = newMasterComponentId;
-            const newMasterCompDoc = await adminDb.doc(`masterComponents/${finalNewMasterComponentId}`).get();
+            const newMasterCompDoc = await db.getDoc<MasterComponent>('masterComponents', finalNewMasterComponentId);
             if (!newMasterCompDoc.exists) {
                 throw new Error("Selected replacement component not found in database.");
             }
-            const masterData = newMasterCompDoc.data() as MasterComponent
+            const masterData = newMasterCompDoc.data!;
             newComponentSize = masterData.size;
             newComponentDetails = {
                 name: masterData.name,
@@ -127,21 +133,20 @@ export async function replaceUserComponentAction({
             }
             finalNewMasterComponentId = generatedId;
             newComponentSize = manualNewComponentData.size;
-            
+
             // Ensure no undefined values are written for the new master component
             const cleanNewComponentDetails = Object.fromEntries(
                 Object.entries(newComponentDetails).filter(([_, v]) => v !== undefined)
             );
 
-            const newMasterComponentRef = adminDb.doc(`masterComponents/${finalNewMasterComponentId}`);
-            batch.set(newMasterComponentRef, cleanNewComponentDetails, { merge: true });
+            batch.set('masterComponents', finalNewMasterComponentId, cleanNewComponentDetails, { merge: true });
         } else {
             throw new Error("No new component data provided.");
         }
 
         // 3. Create the maintenance log entry for the replacement.
         const newLogEntry: MaintenanceLog = {
-            id: adminDb.collection('tmp').doc().id, // Generate a unique ID
+            id: db.generateId(), // Generate a unique ID
             date: new Date(),
             logType: replacementReason === 'failure' ? 'repair' : 'modification',
             description: `Replaced ${masterComponentToReplace.name}.`,
@@ -155,13 +160,15 @@ export async function replaceUserComponentAction({
 
 
         // 4. Update the equipment document with the archived component and the new log entry.
-        batch.update(equipmentDocRef, {
-            archivedComponents: FieldValue.arrayUnion(archivedComponent),
-            maintenanceLog: FieldValue.arrayUnion({
-                ...newLogEntry,
-                date: Timestamp.fromDate(newLogEntry.date), // Convert Date to Timestamp for Firestore
-            })
-        });
+        batch.updateInSubcollection(
+            `users/${userId}`,
+            'equipment',
+            equipmentId,
+            {
+                archivedComponents: db.arrayUnion(archivedComponent),
+                maintenanceLog: db.arrayUnion(newLogEntry)
+            }
+        );
 
         // 5. Update the user's component subcollection with the new component's data.
         const newUserComponentData: Omit<UserComponent, 'id'> = {
@@ -172,13 +179,18 @@ export async function replaceUserComponentAction({
             notes: `Replaced on ${new Date().toLocaleDateString()}`,
             size: newComponentSize || undefined,
         };
-        
+
         // Ensure no undefined values are written to the user component document
         const cleanData = Object.fromEntries(Object.entries(newUserComponentData).filter(([_, v]) => v !== undefined));
-        batch.set(componentToReplaceRef, cleanData);
-        
+        batch.setInSubcollection(
+            `users/${userId}/equipment/${equipmentId}`,
+            'components',
+            userComponentIdToReplace,
+            cleanData
+        );
+
         await batch.commit();
-        
+
         return { success: true, message: "Component replaced and archived successfully." };
 
     } catch (error) {
@@ -202,17 +214,23 @@ export async function deleteUserComponentAction({
     if (!userId || !equipmentId || !userComponentId) {
         throw new Error("Missing required parameters for component deletion.");
     }
-    const batch = adminDb.batch();
+
+    const db = await getServerDb();
+    const batch = db.batch();
+
     try {
-        const componentRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}/components/${userComponentId}`);
-        batch.delete(componentRef);
+        batch.deleteInSubcollection(
+            `users/${userId}/equipment/${equipmentId}`,
+            'components',
+            userComponentId
+        );
         await batch.commit();
         return { success: true, message: "Component deleted successfully." };
 
     } catch(error) {
         console.error("[SERVER ACTION ERROR] in deleteUserComponentAction:", error);
         if ((error as any).code === 'permission-denied' || (error as any).code === 7) {
-            throw new Error('A permission error occurred. This may be due to Firestore security rules.');
+            throw new Error('A permission error occurred. This may be due to backend security rules.');
         }
         throw new Error((error as Error).message || 'An unexpected error occurred.');
     }
@@ -241,11 +259,12 @@ export async function addUserComponentAction({
     if (!userId || !equipmentId || (!masterComponentId && !manualNewComponentData)) {
         throw new Error("Missing required parameters for adding a component.");
     }
-    
+
     let finalMasterComponentId: string;
     let newComponentSize: string | undefined;
 
-    const batch = adminDb.batch();
+    const db = await getServerDb();
+    const batch = db.batch();
 
     // Logic to handle manual entry vs. selection from DB
     if (manualNewComponentData && manualNewComponentData.brand) {
@@ -263,29 +282,27 @@ export async function addUserComponentAction({
         }
         finalMasterComponentId = generatedId;
         newComponentSize = manualNewComponentData.size;
-        
+
         const cleanNewComponentDetails = Object.fromEntries(
             Object.entries(newComponentDetails).filter(([_, v]) => v !== undefined && v !== '')
         );
 
-        const newMasterComponentRef = adminDb.collection('masterComponents').doc(finalMasterComponentId);
-        batch.set(newMasterComponentRef, cleanNewComponentDetails, { merge: true });
+        batch.set('masterComponents', finalMasterComponentId, cleanNewComponentDetails, { merge: true });
 
     } else if (masterComponentId) {
         finalMasterComponentId = masterComponentId;
-        const masterComponentRef = adminDb.collection('masterComponents').doc(finalMasterComponentId);
-        const masterComponentSnap = await masterComponentRef.get();
+        const masterComponentSnap = await db.getDoc<MasterComponent>('masterComponents', finalMasterComponentId);
         if (!masterComponentSnap.exists) {
             throw new Error("The selected master component does not exist.");
         }
-        newComponentSize = masterComponentSnap.data()?.size;
+        newComponentSize = masterComponentSnap.data?.size;
     } else {
         throw new Error("No component data provided.");
     }
 
     try {
-        const newComponentRef = adminDb.collection('users').doc(userId).collection('equipment').doc(equipmentId).collection('components').doc();
-        
+        const newComponentId = db.generateId();
+
         const newComponentData: Omit<UserComponent, 'id'> = {
             masterComponentId: finalMasterComponentId,
             wearPercentage: 0,
@@ -294,18 +311,22 @@ export async function addUserComponentAction({
             size: newComponentSize,
             notes: `Added on ${new Date().toLocaleDateString()}`,
         };
-        
+
         const cleanData: {[k:string]: any} = {};
         for(const key in newComponentData) {
             if((newComponentData as any)[key] !== undefined) {
                 cleanData[key] = (newComponentData as any)[key]
             }
         }
-        cleanData.purchaseDate = Timestamp.fromDate(cleanData.purchaseDate);
 
-        batch.set(newComponentRef, cleanData);
+        batch.setInSubcollection(
+            `users/${userId}/equipment/${equipmentId}`,
+            'components',
+            newComponentId,
+            cleanData
+        );
         await batch.commit();
-        
+
         return { success: true, message: "Component added successfully." };
     } catch (error) {
         console.error("[ACTION ERROR] in addUserComponentAction:", error);

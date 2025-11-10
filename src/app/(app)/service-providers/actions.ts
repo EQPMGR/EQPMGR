@@ -2,23 +2,23 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { getServerDb } from '@/backend';
 import type { ServiceProvider, WorkOrder } from '@/lib/types';
-import { Timestamp } from 'firebase-admin/firestore';
 
 export async function getServiceProviders(): Promise<ServiceProvider[]> {
   try {
-    const providersSnapshot = await adminDb.collection('serviceProviders').get();
+    const db = await getServerDb();
+    const providersSnapshot = await db.getDocs<ServiceProvider>('serviceProviders');
     const providers = providersSnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data(),
+      ...doc.data,
     } as ServiceProvider));
     return providers;
   } catch (error) {
     console.error("Error fetching service providers:", error);
     // Be more descriptive with the error thrown
     if ((error as any).code === 'permission-denied') {
-        throw new Error('You do not have permission to access service providers. Please check your Firestore security rules.');
+        throw new Error('You do not have permission to access service providers. Please check your backend security rules.');
     }
     throw new Error("Could not fetch service providers from the database.");
   }
@@ -28,23 +28,25 @@ export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' 
   if (!workOrderData.userId || !workOrderData.serviceProviderId) {
     return { success: false, message: 'User or Service Provider ID is missing.' };
   }
-  
+
   try {
-    const workOrdersCollection = adminDb.collection('workOrders');
-    const newWorkOrderRef = workOrdersCollection.doc();
+    const db = await getServerDb();
+    const newWorkOrderId = db.generateId();
 
     const newWorkOrder: WorkOrder = {
-      id: newWorkOrderRef.id,
+      id: newWorkOrderId,
       ...workOrderData,
       status: 'pending',
-      createdAt: Timestamp.now(),
+      createdAt: new Date(),
       userConsent: {
           ...workOrderData.userConsent,
-          timestamp: Timestamp.fromDate(workOrderData.userConsent.timestamp as unknown as Date),
+          timestamp: workOrderData.userConsent.timestamp instanceof Date
+            ? workOrderData.userConsent.timestamp
+            : new Date(workOrderData.userConsent.timestamp),
       },
     };
 
-    await newWorkOrderRef.set(newWorkOrder);
+    await db.setDoc('workOrders', newWorkOrderId, newWorkOrder);
 
     return {
       success: true,

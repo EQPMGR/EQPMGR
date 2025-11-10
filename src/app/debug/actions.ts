@@ -1,8 +1,7 @@
 
 'use server';
 
-import { getDoc } from 'firebase/firestore';
-import { adminDb, adminAuth } from '@/lib/firebase-admin';
+import { getServerAuth, getServerDb } from '@/backend';
 import { ai } from '@/ai/genkit';
 import { textEmbedding004 } from '@genkit-ai/googleai';
 import { accessSecret } from '@/lib/secrets';
@@ -12,19 +11,19 @@ export async function getComponentForDebug(componentId: string): Promise<string>
         return "Please provide a component ID.";
     }
     try {
-        const docRef = adminDb.doc(`masterComponents/${componentId}`);
-        const docSnap = await docRef.get();
+        const db = await getServerDb();
+        const docSnap = await db.getDoc('masterComponents', componentId);
 
         if (!docSnap.exists) {
             return `No component found with ID: ${componentId}`;
         }
 
-        const data = docSnap.data();
+        const data = docSnap.data;
         // Check for embedding and show summary
-        const embeddingInfo = data?.embedding 
-            ? `Embedding found with ${data.embedding.length} dimensions.` 
+        const embeddingInfo = data?.embedding
+            ? `Embedding found with ${data.embedding.length} dimensions.`
             : 'No embedding field found.';
-        
+
         const returnData = {
             ...data,
             embedding: embeddingInfo, // Replace large array with summary
@@ -77,7 +76,8 @@ export async function testIdTokenVerification(idToken: string): Promise<string> 
         return "Error: No ID token provided to server action.";
     }
     try {
-        const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+        const auth = await getServerAuth();
+        const decodedToken = await auth.verifyIdToken(idToken, true);
         return `Success! Token verified for UID: ${decodedToken.uid}, Email: ${decodedToken.email}`;
     } catch (error: any) {
         console.error("[Debug Action] ID Token Verification failed:", error);

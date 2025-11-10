@@ -1,6 +1,6 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { getServerAuth, getServerDb } from '@/backend';
 import { cookies } from 'next/headers';
 import { accessSecret } from '@/lib/secrets';
 
@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
   cookieStore.delete('strava_id_token');
 
   try {
-    const adminAuth = getAdminAuth();
-    const adminDb = getAdminDb();
-    const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+    const auth = await getServerAuth();
+    const db = await getServerDb();
+    const decodedToken = await auth.verifyIdToken(idToken, true);
     const userId = decodedToken.uid;
 
     const [clientId, clientSecret] = await Promise.all([
@@ -68,8 +68,7 @@ export async function GET(request: NextRequest) {
       throw new Error(data.message || 'Failed to exchange code with Strava.');
     }
 
-    const userDocRef = adminDb.collection('users').doc(userId);
-    await userDocRef.set({
+    await db.setDoc('users', userId, {
       strava: {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,

@@ -1,25 +1,29 @@
+/**
+ * Backend Configuration API Route
+ *
+ * Returns backend configuration to the client.
+ * Uses the config loader system - no if/else switching here!
+ *
+ * The config loader automatically delegates to the correct backend
+ * based on NEXT_PUBLIC_BACKEND_PROVIDER environment variable.
+ */
 
 import { NextResponse } from 'next/server';
+import { getBackendConfig } from '@/backend/config/loader';
 
 export async function GET() {
-  const config = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-  };
+  try {
+    const config = getBackendConfig();
+    return NextResponse.json(config);
+  } catch (error) {
+    console.error('Failed to load backend configuration:', error);
 
-  // Basic validation to ensure we're not sending an empty config.
-  if (!config.apiKey || !config.projectId) {
-    console.error('Server-side Firebase config is missing. Check apphosting.yaml environment variables.');
     return NextResponse.json(
-        { error: 'Server configuration error.' }, 
-        { status: 500 }
+      {
+        error: 'Server configuration error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
     );
   }
-
-  return NextResponse.json(config);
 }

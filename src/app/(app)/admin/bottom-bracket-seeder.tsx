@@ -3,12 +3,11 @@
 
 import { useState } from 'react';
 import { Database, Loader2 } from 'lucide-react';
-import { writeBatch, doc, collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { BOTTOM_BRACKET_COMPONENTS } from '@/lib/bottom-brackets-data';
 
 const createComponentId = (component: any) => {
@@ -25,15 +24,14 @@ const createComponentId = (component: any) => {
 };
 
 async function seedBottomBracketComponents() {
-    const batch = writeBatch(db);
-    const masterComponentsRef = collection(db, 'masterComponents');
+    const database = await getDb();
+    const batch = database.batch();
     let count = 0;
 
     for (const component of BOTTOM_BRACKET_COMPONENTS) {
         const masterId = createComponentId(component);
         if (masterId) {
-            const docRef = doc(masterComponentsRef, masterId);
-            batch.set(docRef, component, { merge: true });
+            batch.set('masterComponents', masterId, component, { merge: true });
             count++;
         }
     }

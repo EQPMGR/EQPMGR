@@ -1,7 +1,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { getServerDb } from '@/backend';
 import type { MasterComponent } from '@/lib/types';
 
 export interface DuplicateGroup {
@@ -16,13 +16,14 @@ export interface DuplicateGroup {
  */
 export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]> {
   try {
-    const componentsSnapshot = await adminDb.collection('masterComponents').get();
-    const ignoredSnapshot = await adminDb.collection('ignoredDuplicates').get();
+    const db = await getServerDb();
+    const componentsSnapshot = await db.getDocs<MasterComponent>('masterComponents');
+    const ignoredSnapshot = await db.getDocs('ignoredDuplicates');
     const ignoredKeys = new Set(ignoredSnapshot.docs.map(doc => doc.id));
-    
+
     const components: MasterComponent[] = [];
-    componentsSnapshot.forEach((doc) => {
-      components.push({ id: doc.id, ...doc.data() } as MasterComponent);
+    componentsSnapshot.docs.forEach((doc) => {
+      components.push({ id: doc.id, ...doc.data } as MasterComponent);
     });
 
     // Group components by a composite key of name, brand, size, and the "base" of the model number.
@@ -32,16 +33,16 @@ export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]>
       if (!component.brand || !component.model) {
         continue;
       }
-      
+
       const baseModel = component.model.replace(/(-gs|-sgs|-long|-medium|-short|\sgs|\sgs)/i, '').trim();
       // Add size to the key to differentiate between same model, different sizes
       const key = `${component.name}|${component.brand}|${baseModel}|${component.size || 'no-size'}`;
-      
+
       // Skip groups that have been marked as ignored
       if (ignoredKeys.has(key)) {
         continue;
       }
-      
+
       if (!groups[key]) {
         groups[key] = [];
       }
@@ -52,7 +53,7 @@ export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]>
     const duplicateGroups: DuplicateGroup[] = Object.entries(groups)
       .filter(([key, componentList]) => componentList.length > 1)
       .map(([key, componentList]) => ({ key, components: componentList }));
-      
+
     return duplicateGroups;
 
   } catch (error) {

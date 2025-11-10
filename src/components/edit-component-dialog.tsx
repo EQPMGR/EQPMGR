@@ -8,9 +8,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { doc, writeBatch, collection } from 'firebase/firestore';
+import { getDb } from '@/backend';
 import type { Component } from '@/lib/types';
-import { db } from '@/lib/firebase';
 import {
   Dialog,
   DialogContent,
@@ -134,15 +133,15 @@ export function EditComponentDialog({
   const onSubmit = async (data: FormValues) => {
     setIsSaving(true);
     try {
-        const batch = writeBatch(db);
-        const componentsCollectionRef = collection(db, 'users', userId, 'equipment', equipmentId, 'components');
-        
+        const db = await getDb();
+        const batch = db.batch();
+        const componentsPath = `users/${userId}/equipment/${equipmentId}`;
+
         // Delete all existing chainring sub-components associated with this parent
         existingSubComponents
             .filter(sc => sc.name.toLowerCase().includes('chainring'))
             .forEach(sub => {
-                const subRef = doc(componentsCollectionRef, sub.userComponentId);
-                batch.delete(subRef);
+                batch.deleteInSubcollection(componentsPath, 'components', sub.userComponentId);
             });
 
         // Conditionally create new sub-components based on driveType
@@ -156,11 +155,11 @@ export function EditComponentDialog({
         if (data.driveType === '3x') {
              if (data.chainring3?.name) chainringsToAdd.push({ ...data.chainring3, name: 'Chainring 3' });
         }
-        
+
         for (const ringData of chainringsToAdd) {
-            const newSubRef = doc(componentsCollectionRef);
+            const newSubId = db.generateId();
             const masterId = `${ringData.brand}-${ringData.name}-${parentComponent.id}`.toLowerCase().replace(/\s+/g, '-');
-            
+
             const newComponent = {
                 masterComponentId: masterId, // This is a simplistic ID. A better approach might involve looking up a real master component.
                 parentUserComponentId: parentComponent.userComponentId,
@@ -173,7 +172,7 @@ export function EditComponentDialog({
                 size: ringData.name, // The teeth count, e.g. "52t"
                 system: 'Drivetrain'
             };
-            batch.set(newSubRef, newComponent);
+            batch.setInSubcollection(componentsPath, 'components', newSubId, newComponent);
         }
 
         await batch.commit();

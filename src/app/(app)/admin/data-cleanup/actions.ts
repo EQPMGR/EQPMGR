@@ -1,8 +1,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getServerDb } from '@/backend';
 
 /**
  * Iterates through all documents in the `masterComponents` collection
@@ -10,25 +9,33 @@ import { FieldValue } from 'firebase-admin/firestore';
  */
 export async function removeAllEmbeddingsAction(): Promise<{ success: boolean; message: string }> {
   try {
-    const componentsRef = adminDb.collection('masterComponents');
+    const db = await getServerDb();
     let totalProcessed = 0;
     let totalUpdated = 0;
-    let lastDoc = null;
+    let lastDocId: string | null = null;
 
     while (true) {
-        const query = componentsRef.orderBy('__name__').limit(500);
-        const snapshot = await (lastDoc ? query.startAfter(lastDoc) : query).get();
-        
-        if (snapshot.empty) {
+        const constraints = [
+            { type: 'orderBy' as const, field: '__name__' as const, direction: 'asc' as const },
+            { type: 'limit' as const, value: 500 }
+        ];
+
+        if (lastDocId) {
+            constraints.push({ type: 'startAfter' as const, value: lastDocId });
+        }
+
+        const snapshot = await db.getDocs('masterComponents', ...constraints);
+
+        if (snapshot.docs.length === 0) {
             break; // No more documents to process
         }
 
-        const batch = adminDb.batch();
+        const batch = db.batch();
         let updatedInBatch = 0;
-        
+
         snapshot.docs.forEach(doc => {
-            if (doc.data().embedding !== undefined) {
-                batch.update(doc.ref, { embedding: FieldValue.delete() });
+            if (doc.data.embedding !== undefined) {
+                batch.update('masterComponents', doc.id, { embedding: db.deleteField() });
                 updatedInBatch++;
             }
         });
@@ -39,9 +46,9 @@ export async function removeAllEmbeddingsAction(): Promise<{ success: boolean; m
         }
 
         totalProcessed += snapshot.docs.length;
-        lastDoc = snapshot.docs[snapshot.docs.length - 1];
+        lastDocId = snapshot.docs[snapshot.docs.length - 1].id;
 
-        // Small delay to be respectful to Firestore API limits
+        // Small delay to be respectful to backend API limits
         await new Promise(resolve => setTimeout(resolve, 50));
     }
 

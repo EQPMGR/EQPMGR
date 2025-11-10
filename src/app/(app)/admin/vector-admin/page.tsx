@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, DatabaseZap, Info, Terminal } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { indexComponentFlow } from '@/ai/flows/index-components';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { MasterComponent } from '@/lib/types';
@@ -15,10 +14,11 @@ import type { MasterComponent } from '@/lib/types';
 
 async function fetchAllMasterComponentsClient(): Promise<MasterComponent[]> {
   try {
-    const querySnapshot = await getDocs(collection(db, 'masterComponents'));
+    const database = await getDb();
+    const querySnapshot = await database.getDocs<MasterComponent>('masterComponents');
     const components: MasterComponent[] = [];
-    querySnapshot.forEach((doc) => {
-      components.push({ id: doc.id, ...doc.data() } as MasterComponent);
+    querySnapshot.docs.forEach((doc) => {
+      components.push({ id: doc.id, ...doc.data } as MasterComponent);
     });
     return components;
   } catch (error) {
@@ -78,8 +78,8 @@ export default function VectorAdminPage() {
           addLog(`[${i + 1}/${componentsToIndex.length}] Embedding received. Saving to Firestore...`);
 
           // 2. Write the embedding to Firestore from the CLIENT
-          const componentDocRef = doc(db, 'masterComponents', component.id);
-          await updateDoc(componentDocRef, { embedding });
+          const database = await getDb();
+          await database.updateDoc('masterComponents', component.id, { embedding });
 
           addLog(`[${i + 1}/${componentsToIndex.length}] Successfully saved embedding for ${component.id}.`);
           successCount++;

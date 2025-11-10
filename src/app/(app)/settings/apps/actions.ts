@@ -1,8 +1,7 @@
 
 'use server';
 
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
-import admin from 'firebase-admin';
+import { getServerAuth, getServerDb } from '@/backend';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 import { accessSecret } from '@/lib/secrets';
@@ -24,15 +23,14 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
     }
 
     try {
-        const adminAuth = getAdminAuth();
-        const adminDb = getAdminDb();
-        const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+        const auth = await getServerAuth();
+        const db = await getServerDb();
+        const decodedToken = await auth.verifyIdToken(idToken, true);
         const userId = decodedToken.uid;
-        
-        const userDocRef = adminDb.collection('users').doc(userId);
-        const userDocSnap = await userDocRef.get();
 
-        const userData = userDocSnap.data();
+        const userDocSnap = await db.getDoc('users', userId);
+
+        const userData = userDocSnap.data;
 
         if (!userDocSnap.exists || !userData?.strava) {
              return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
@@ -77,11 +75,11 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
                 refreshToken: newTokens.refresh_token || refreshToken,
                 expiresAt: newTokens.expires_at,
             };
-            
-            await userDocRef.update({ 
-                strava: newStravaData 
+
+            await db.updateDoc('users', userId, {
+                strava: newStravaData
             });
-            
+
             accessToken = newTokens.access_token;
         }
 
@@ -119,15 +117,18 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
     }
 
     try {
-        const adminAuth = getAdminAuth();
-        const adminDb = getAdminDb();
-        const decodedIdToken = await adminAuth.verifyIdToken(idToken, true);
+        const auth = await getServerAuth();
+        const db = await getServerDb();
+        const decodedIdToken = await auth.verifyIdToken(idToken, true);
 
-        const q = adminDb.collection(`users/${decodedIdToken.uid}/equipment`).where('type', '!=', 'Cycling Shoes');
-        const querySnapshot = await q.get();
+        const querySnapshot = await db.getDocsFromSubcollection(
+            `users/${decodedIdToken.uid}`,
+            'equipment',
+            { type: 'where', field: 'type', op: '!=', value: 'Cycling Shoes' }
+        );
 
         const bikes = querySnapshot.docs.map(doc => {
-            const data = doc.data();
+            const data = doc.data;
             return {
                 id: doc.id,
                 ...data,
@@ -153,19 +154,18 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
     }
 
     try {
-        const adminAuth = getAdminAuth();
-        const adminDb = getAdminDb();
-        const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+        const auth = await getServerAuth();
+        const db = await getServerDb();
+        const decodedToken = await auth.verifyIdToken(idToken, true);
         const userId = decodedToken.uid;
 
-        const userDocRef = adminDb.collection('users').doc(userId);
-        const userDocSnap = await userDocRef.get();
+        const userDocSnap = await db.getDoc('users', userId);
 
-        if (!userDocSnap.exists || !userDocSnap.data()?.strava) {
+        if (!userDocSnap.exists || !userDocSnap.data?.strava) {
             return { connected: false };
         }
 
-        const stravaData = userDocSnap.data()?.strava;
+        const stravaData = userDocSnap.data?.strava;
         const hasRequiredFields = stravaData.accessToken && stravaData.refreshToken && stravaData.expiresAt;
 
         return { connected: !!hasRequiredFields };
@@ -188,26 +188,24 @@ export async function assignStravaActivityToAction({
     if (!idToken || !activity || !equipmentId) {
         return { success: false, message: 'Missing required data.' };
     }
-    const adminAuth = getAdminAuth();
-    const adminDb = getAdminDb();
+
+    const auth = await getServerAuth();
+    const db = await getServerDb();
 
     try {
-        const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+        const decodedToken = await auth.verifyIdToken(idToken, true);
         const userId = decodedToken.uid;
 
-        const equipmentRef = adminDb.doc(`users/${userId}/equipment/${equipmentId}`);
-        const userRef = adminDb.doc(`users/${userId}`);
+        const batch = db.batch();
 
-        const batch = adminDb.batch();
-
-        batch.update(equipmentRef, {
-            totalDistance: admin.firestore.FieldValue.increment(activity.distance / 1000),
-            totalHours: admin.firestore.FieldValue.increment(activity.moving_time / 3600),
+        batch.updateInSubcollection(`users/${userId}`, 'equipment', equipmentId, {
+            totalDistance: db.increment(activity.distance / 1000),
+            totalHours: db.increment(activity.moving_time / 3600),
         });
 
-        batch.set(userRef, {
+        batch.set('users', userId, {
             strava: {
-                processedActivities: admin.firestore.FieldValue.arrayUnion(String(activity.id))
+                processedActivities: db.arrayUnion(String(activity.id))
             }
         }, { merge: true });
 

@@ -1,7 +1,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { getServerDb } from '@/backend';
 
 /**
  * Merges multiple master components into a single primary component.
@@ -17,21 +17,22 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
   if (!primaryComponentId || !idsToMerge || idsToMerge.length === 0) {
     return { success: false, message: 'Missing primary component ID or IDs to merge.' };
   }
-  const batch = adminDb.batch();
+
+  const db = await getServerDb();
+  const batch = db.batch();
 
   try {
     // 1. Find all users who might have the components to be merged.
-    const usersSnapshot = await adminDb.collection('users').get();
-    
+    const usersSnapshot = await db.getDocs('users');
+
     // 2. Iterate through each user and their equipment.
     for (const userDoc of usersSnapshot.docs) {
-      const equipmentCollectionRef = userDoc.ref.collection('equipment');
-      const equipmentSnapshot = await equipmentCollectionRef.get();
-      
+      const equipmentSnapshot = await db.getDocsFromSubcollection(`users/${userDoc.id}`, 'equipment');
+
       for (const equipmentDoc of equipmentSnapshot.docs) {
         let needsUpdate = false;
-        const components = equipmentDoc.data().components || [];
-        
+        const components = equipmentDoc.data.components || [];
+
         const updatedComponents = components.map((component: any) => {
           if (idsToMerge.includes(component.masterComponentId)) {
             needsUpdate = true;
@@ -41,7 +42,7 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
         });
 
         if (needsUpdate) {
-          batch.update(equipmentDoc.ref, { components: updatedComponents });
+          batch.updateInSubcollection(`users/${userDoc.id}`, 'equipment', equipmentDoc.id, { components: updatedComponents });
         }
       }
     }
@@ -49,8 +50,7 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
     // 3. Delete the old master components.
     for (const id of idsToMerge) {
         if (id !== primaryComponentId) {
-            const docRef = adminDb.collection('masterComponents').doc(id);
-            batch.delete(docRef);
+            batch.delete('masterComponents', id);
         }
     }
 
@@ -73,10 +73,10 @@ export async function ignoreDuplicateGroup(key: string): Promise<{ success: bool
     if (!key) {
         return { success: false, message: 'A group key is required to ignore duplicates.' };
     }
-    
+
     try {
-        const ignoredRef = adminDb.collection('ignoredDuplicates').doc(key);
-        await ignoredRef.set({ ignored: true, ignoredAt: new Date() });
+        const db = await getServerDb();
+        await db.setDoc('ignoredDuplicates', key, { ignored: true, ignoredAt: new Date() });
         return { success: true, message: `Group "${key}" will be ignored in future scans.` };
 
     } catch (error: any) {

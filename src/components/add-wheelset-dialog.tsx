@@ -29,8 +29,8 @@ import { Input } from './ui/input';
 import { Separator } from './ui/separator';
 import type { Equipment, MasterComponent } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { doc, writeBatch, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
+import type { IDatabase } from '@/backend/interfaces';
 import { fetchAllMasterComponents, type MasterComponentWithOptions } from '@/services/components';
 import {
   Accordion,
@@ -130,7 +130,8 @@ export function AddWheelsetDialog({
   };
   
   const createComponentEntry = (
-      batch: ReturnType<typeof writeBatch>,
+      batch: ReturnType<IDatabase['batch']>,
+      db: IDatabase,
       data: z.infer<typeof componentFieldSchema>,
       name: string,
       system: 'Drivetrain' | 'Wheelset',
@@ -139,14 +140,13 @@ export function AddWheelsetDialog({
       let masterId = data.masterComponentId;
       if (data.type === 'manual' && data.manualBrand && data.manualModel) {
           masterId = createMasterComponentId(data.manualBrand, name, data.manualModel);
-          const masterRef = doc(db, 'masterComponents', masterId);
-          batch.set(masterRef, { name, system, brand: data.manualBrand, model: data.manualModel }, { merge: true });
+          batch.set('masterComponents', masterId, { name, system, brand: data.manualBrand, model: data.manualModel }, { merge: true });
       }
 
       if (!masterId) return; // Skip if no ID could be determined
 
-      const userCompRef = doc(collection(db, 'users', user!.uid, 'equipment', equipment.id, 'components'));
-      batch.set(userCompRef, {
+      const newComponentId = db.generateId();
+      batch.setInSubcollection(`users/${user!.uid}/equipment/${equipment.id}`, 'components', newComponentId, {
           masterComponentId: masterId,
           purchaseDate: new Date(),
           wearPercentage: 0,
@@ -161,25 +161,25 @@ export function AddWheelsetDialog({
       return;
     }
     setIsSaving(true);
-    const batch = writeBatch(db);
+    const database = await getDb();
+    const batch = database.batch();
     const wheelsetId = `wheelset_${Date.now()}`;
 
     try {
       // Update equipment with the new wheelset's nickname
-      const equipmentRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
-      batch.update(equipmentRef, {
+      batch.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
         [`wheelsets.${wheelsetId}`]: data.nickname,
       });
 
       // Create components
-      createComponentEntry(batch, data.frontHub, 'Front Hub', 'Wheelset', wheelsetId);
-      createComponentEntry(batch, data.rearHub, 'Rear Hub', 'Wheelset', wheelsetId);
-      createComponentEntry(batch, data.frontRim, 'Front Rim', 'Wheelset', wheelsetId);
-      createComponentEntry(batch, data.rearRim, 'Rear Rim', 'Wheelset', wheelsetId);
-      createComponentEntry(batch, data.frontTire, 'Front Tire', 'Wheelset', wheelsetId);
-      createComponentEntry(batch, data.rearTire, 'Rear Tire', 'Wheelset', wheelsetId);
-      createComponentEntry(batch, data.cassette, 'Cassette', 'Drivetrain', wheelsetId);
-      
+      createComponentEntry(batch, database, data.frontHub, 'Front Hub', 'Wheelset', wheelsetId);
+      createComponentEntry(batch, database, data.rearHub, 'Rear Hub', 'Wheelset', wheelsetId);
+      createComponentEntry(batch, database, data.frontRim, 'Front Rim', 'Wheelset', wheelsetId);
+      createComponentEntry(batch, database, data.rearRim, 'Rear Rim', 'Wheelset', wheelsetId);
+      createComponentEntry(batch, database, data.frontTire, 'Front Tire', 'Wheelset', wheelsetId);
+      createComponentEntry(batch, database, data.rearTire, 'Rear Tire', 'Wheelset', wheelsetId);
+      createComponentEntry(batch, database, data.cassette, 'Cassette', 'Drivetrain', wheelsetId);
+
       await batch.commit();
 
       toast({ title: 'Wheelset Added!', description: `${data.nickname} has been added to your ${equipment.name}.` });

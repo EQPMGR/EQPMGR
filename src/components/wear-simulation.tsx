@@ -8,8 +8,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { simulateWear } from '@/ai/flows/simulate-wear';
 import type { SimulateWearOutput } from '@/lib/ai-types';
-import { doc, writeBatch, increment } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { useAuth } from '@/hooks/use-auth';
 
 import { Button } from '@/components/ui/button';
@@ -148,26 +147,30 @@ export function WearSimulation({ equipment, onSuccess }: WearSimulationProps) {
         manufacturerGuidelines: JSON.stringify({}), // Placeholder
       });
       setResult(output);
-      
-      // After successful simulation, update Firestore
-      const batch = writeBatch(db);
-      
+
+      // After successful simulation, update database
+      const database = await getDb();
+      const batch = database.batch();
+
       // Update totals on main equipment doc
-      const equipmentRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
-      batch.update(equipmentRef, {
-          totalDistance: increment(values.distance),
-          totalHours: increment(values.duration / 60),
+      batch.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
+          totalDistance: database.increment(values.distance),
+          totalHours: database.increment(values.duration / 60),
       });
 
       // Update individual component wear
       output.componentWear.forEach(simulatedComp => {
           const componentToUpdate = componentsToSimulate.find(c => c.name === simulatedComp.componentName);
           if (componentToUpdate) {
-              const componentRef = doc(db, 'users', user.uid, 'equipment', equipment.id, 'components', componentToUpdate.userComponentId);
-              batch.update(componentRef, { wearPercentage: simulatedComp.wearPercentage });
+              batch.updateInSubcollection(
+                `users/${user.uid}/equipment/${equipment.id}`,
+                'components',
+                componentToUpdate.userComponentId,
+                { wearPercentage: simulatedComp.wearPercentage }
+              );
           }
       });
-      
+
       await batch.commit();
 
       toast({

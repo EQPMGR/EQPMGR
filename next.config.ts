@@ -44,9 +44,29 @@ const nextConfig: NextConfig = {
       include: /node_modules/,
       type: 'javascript/auto',
     });
-    
+
     // Fix for ENOENT error with nested node_modules
     config.resolve.symlinks = false;
+
+    // Exclude server-only packages from client bundle
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        http2: false,
+        stream: false,
+        'firebase-admin': false,
+      };
+
+      // Use externals to completely exclude firebase-admin
+      config.externals = config.externals || [];
+      config.externals.push({
+        'firebase-admin': 'commonjs firebase-admin',
+      });
+    }
 
     return config;
   },

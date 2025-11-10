@@ -3,8 +3,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { applyActionCode } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getAuth } from '@/backend';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -20,15 +19,17 @@ function EmailVerificationHandler() {
     const actionCode = searchParams.get('oobCode');
 
     if (actionCode) {
-      applyActionCode(auth, actionCode)
-        .then(() => {
+      (async () => {
+        try {
+          const authProvider = await getAuth();
+          await authProvider.applyActionCode(actionCode);
           setStatus('success');
-        })
-        .catch((error) => {
+        } catch (error: any) {
           console.error("Email verification error:", error);
           setErrorMessage(error.message || 'An unknown error occurred. The link may be invalid or expired.');
           setStatus('error');
-        });
+        }
+      })();
     } else {
       setErrorMessage('No verification code found in the link. Please check the URL.');
       setStatus('error');

@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { CalendarIcon, Loader2, Bike, FileInput, FilePlus } from 'lucide-react';
 import Link from 'next/link';
 import { format, subDays } from 'date-fns';
-import { collection, getDocs } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -46,7 +45,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import type { Equipment } from '@/lib/types';
 import { Separator } from './ui/separator';
 
@@ -118,10 +117,11 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
       if (!open) return;
       setIsLoadingModels(true);
       try {
-        const querySnapshot = await getDocs(collection(db, "bikeModels"));
+        const database = await getDb();
+        const querySnapshot = await database.getDocs("bikeModels");
         const models: BikeModelOption[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
+        querySnapshot.docs.forEach((doc) => {
+          const data = doc.data;
           models.push({
             id: doc.id,
             brand: data.brand,

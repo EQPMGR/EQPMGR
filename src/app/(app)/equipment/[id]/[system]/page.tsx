@@ -5,10 +5,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChevronLeft, ArrowUpRight, PlusCircle } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,11 +32,11 @@ export default function SystemDetailPage() {
   const fetchEquipmentAndComponents = useCallback(async (uid: string, equipmentId: string) => {
     setIsLoading(true);
     try {
-      const equipmentDocRef = doc(db, 'users', uid, 'equipment', equipmentId);
-      const equipmentDocSnap = await getDoc(equipmentDocRef);
+      const database = await getDb();
+      const equipmentDocSnap = await database.getDocFromSubcollection<Equipment>(`users/${uid}`, 'equipment', equipmentId);
 
-      if (equipmentDocSnap.exists()) {
-        const equipmentData = equipmentDocSnap.data();
+      if (equipmentDocSnap.exists) {
+        const equipmentData = equipmentDocSnap.data;
         setEquipment({
           ...equipmentData,
           id: equipmentId,
@@ -55,9 +53,11 @@ export default function SystemDetailPage() {
       }
 
       // Fetch components from the subcollection
-      const componentsQuery = query(collection(db, 'users', uid, 'equipment', equipmentId, 'components'));
-      const componentsSnapshot = await getDocs(componentsQuery);
-      const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserComponent));
+      const componentsSnapshot = await database.getDocsFromSubcollection<UserComponent>(
+        `users/${uid}/equipment/${equipmentId}`,
+        'components'
+      );
+      const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data } as UserComponent));
 
       const masterComponentIds = [...new Set(userComponents.map(c => c.masterComponentId).filter(Boolean))];
       const masterComponentsMap = new Map<string, MasterComponent>();
@@ -66,10 +66,12 @@ export default function SystemDetailPage() {
            for (let i = 0; i < masterComponentIds.length; i += 30) {
               const batchIds = masterComponentIds.slice(i, i + 30);
                if (batchIds.length > 0) {
-                  const masterComponentsQuery = query(collection(db, 'masterComponents'), where('__name__', 'in', batchIds));
-                  const querySnapshot = await getDocs(masterComponentsQuery);
-                  querySnapshot.forEach(doc => {
-                      masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data() } as MasterComponent);
+                  const querySnapshot = await database.getDocs<MasterComponent>(
+                    'masterComponents',
+                    { type: 'where', field: '__name__', op: 'in', value: batchIds }
+                  );
+                  querySnapshot.docs.forEach(doc => {
+                      masterComponentsMap.set(doc.id, { id: doc.id, ...doc.data } as MasterComponent);
                   });
               }
           }
@@ -86,7 +88,7 @@ export default function SystemDetailPage() {
               lastServiceDate: toNullableDate(userComp.lastServiceDate),
           };
       }).filter((c): c is Component => c !== null);
-      
+
       setComponents(combinedComponents);
 
     } catch (error) {

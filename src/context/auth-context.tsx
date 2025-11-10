@@ -1,61 +1,19 @@
-
-
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, FC, useCallback, useMemo } from 'react';
-import type { User } from 'firebase/auth';
-import { 
-  onAuthStateChanged, 
-  signOut as firebaseSignOut,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  updateProfile,
-  sendEmailVerification,
-} from 'firebase/auth';
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, setDoc, serverTimestamp, deleteField, FieldValue, updateDoc, writeBatch, collection, getDocs, query, Timestamp } from 'firebase/firestore';
-import { getFirebaseServices } from '@/lib/firebase';
+import { getAuth, getDb, getStorage } from '@/backend';
+import type { AuthUser, IAuthProvider, IDatabase, IStorage } from '@/backend/interfaces';
+import type { UserProfile as BackendUserProfile, UserDocument as BackendUserDocument } from '@/backend/types';
 import { useToast } from '@/hooks/use-toast';
 import { toDate } from '@/lib/date-utils';
 
-export interface UserProfile {
-  uid: string;
-  email: string | null;
-  emailVerified: boolean;
-  displayName: string | null;
-  phone?: string | null;
-  photoURL: string | null;
-  height?: number; 
-  weight?: number; 
-  shoeSize?: number; 
-  birthdate?: Date | null;
-  measurementSystem: 'metric' | 'imperial';
-  shoeSizeSystem: 'us-womens' | 'us-mens' | 'uk' | 'eu';
-  distanceUnit: 'km' | 'miles';
-  dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
-  getIdToken: (forceRefresh?: boolean) => Promise<string>;
-}
-
-interface UserDocument {
-    displayName?: string;
-    phone?: string;
-    photoURL?: string;
-    height?: number;
-    weight?: number;
-    shoeSize?: number;
-    birthdate?: Timestamp;
-    measurementSystem?: 'metric' | 'imperial';
-    shoeSizeSystem?: 'us-womens' | 'us-mens' | 'uk' | 'eu';
-    distanceUnit?: 'km' | 'miles';
-    dateFormat?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
-    createdAt?: FieldValue;
-    lastLogin?: FieldValue;
-}
+// Re-export UserProfile from backend types for backward compatibility
+export type UserProfile = BackendUserProfile;
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  signInWithEmailPassword: (email: string, password:string) => Promise<void>;
+  signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
@@ -66,7 +24,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>): UserProfile => {
+/**
+ * Convert AuthUser from backend to UserProfile with document data
+ */
+const createSafeUserProfile = (authUser: AuthUser, docData?: Partial<BackendUserDocument>): UserProfile => {
   const data = docData || {};
   return {
     uid: authUser.uid,
@@ -83,7 +44,7 @@ const createSafeUserProfile = (authUser: User, docData?: Partial<UserDocument>):
     weight: data.weight,
     shoeSize: data.shoeSize,
     birthdate: data.birthdate ? toDate(data.birthdate) : null,
-    getIdToken: (forceRefresh?: boolean) => authUser.getIdToken(forceRefresh),
+    getIdToken: authUser.getIdToken,
   };
 };
 
@@ -101,59 +62,66 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     });
     throw error;
   }, [toast]);
-  
+
   useEffect(() => {
     const initializeAuth = async () => {
-        try {
-            const { auth, db } = await getFirebaseServices();
-            const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-              if (authUser) {
-                  const userDocRef = doc(db, 'users', authUser.uid);
-                  const userDocSnap = await getDoc(userDocRef);
-                  let userDocData: UserDocument;
-                  
-                  if (userDocSnap.exists()) {
-                    await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-                    userDocData = userDocSnap.data() as UserDocument;
-                  } else {
-                    userDocData = {
-                      displayName: authUser.displayName || '',
-                      photoURL: authUser.photoURL || '',
-                      measurementSystem: 'imperial',
-                      shoeSizeSystem: 'us-mens',
-                      distanceUnit: 'km',
-                      dateFormat: 'MM/DD/YYYY',
-                      createdAt: serverTimestamp(),
-                      lastLogin: serverTimestamp(),
-                    };
-                    await setDoc(userDocRef, userDocData);
-                  }
-                  
-                  const safeProfile = createSafeUserProfile(authUser, userDocData);
-                  setUser(safeProfile);
-              } else {
-                setUser(null);
-              }
-              setLoading(false);
-            });
-            return () => unsubscribe();
-        } catch (error) {
-            console.error("Firebase auth initialization failed:", error);
-            setLoading(false);
-            toast({
-                variant: 'destructive',
-                title: 'Application Error',
-                description: 'Could not initialize required services. Please refresh the page.',
-            });
-        }
+      try {
+        const auth = await getAuth();
+        const db = await getDb();
+
+        const unsubscribe = auth.onAuthStateChanged(async (authUser) => {
+          if (authUser) {
+            const userDocSnap = await db.getDoc<BackendUserDocument>('users', authUser.uid);
+            let userDocData: BackendUserDocument;
+
+            if (userDocSnap.exists && userDocSnap.data) {
+              // Update last login
+              await db.updateDoc('users', authUser.uid, {
+                lastLogin: new Date()
+              });
+              userDocData = userDocSnap.data;
+            } else {
+              // Create new user document
+              userDocData = {
+                displayName: authUser.displayName || '',
+                photoURL: authUser.photoURL || '',
+                measurementSystem: 'imperial',
+                shoeSizeSystem: 'us-mens',
+                distanceUnit: 'km',
+                dateFormat: 'MM/DD/YYYY',
+                createdAt: new Date(),
+                lastLogin: new Date(),
+              };
+              await db.setDoc('users', authUser.uid, userDocData);
+            }
+
+            const safeProfile = createSafeUserProfile(authUser, userDocData);
+            setUser(safeProfile);
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
+        });
+
+        return () => unsubscribe();
+      } catch (error) {
+        console.error("Backend auth initialization failed:", error);
+        setLoading(false);
+        toast({
+          variant: 'destructive',
+          title: 'Application Error',
+          description: 'Could not initialize required services. Please refresh the page.',
+        });
+      }
     };
+
     initializeAuth();
   }, [toast]);
 
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
-      const { auth } = await getFirebaseServices();
-      await signInWithEmailAndPassword(auth, email, password);
+      const auth = await getAuth();
+      await auth.signInWithEmailAndPassword(email, password);
     } catch (error) {
       handleAuthError(error, 'Sign In Failed');
     }
@@ -161,132 +129,150 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
-      const { auth } = await getFirebaseServices();
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await sendEmailVerification(userCredential.user);
-      await firebaseSignOut(auth);
+      const auth = await getAuth();
+      const authUser = await auth.createUserWithEmailAndPassword(email, password);
+      await auth.sendEmailVerification(authUser);
+      await auth.signOut();
 
       toast({
         title: 'Account Created!',
         description: "Please check your inbox to verify your email, then sign in.",
         duration: 9000,
       });
-
-   } catch (error) {
-     handleAuthError(error, 'Sign Up Failed');
-   }
- };
-
-  const signOutHandler = useCallback(async () => {
-    try {
-        const { auth } = await getFirebaseServices();
-        await firebaseSignOut(auth);
     } catch (error) {
-        handleAuthError(error, 'Sign Out Failed');
-    }
-  }, [handleAuthError]);
-  
-  const resendVerificationEmailHandler = async () => {
-    try {
-        const { auth } = await getFirebaseServices();
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-          toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to resend a verification email.' });
-          return;
-        }
-        if (currentUser.emailVerified) {
-           toast({ title: 'Already Verified', description: 'Your email is already verified.' });
-           return;
-        }
-        await sendEmailVerification(currentUser);
-        toast({ title: 'Verification Email Sent', description: 'Please check your inbox (and spam folder).' });
-    } catch (error) {
-        handleAuthError(error, 'Failed to send verification email');
+      handleAuthError(error, 'Sign Up Failed');
     }
   };
 
+  const signOutHandler = useCallback(async () => {
+    try {
+      const auth = await getAuth();
+      await auth.signOut();
+    } catch (error) {
+      handleAuthError(error, 'Sign Out Failed');
+    }
+  }, [handleAuthError]);
+
+  const resendVerificationEmailHandler = async () => {
+    try {
+      const auth = await getAuth();
+      const currentUser = auth.getCurrentUser();
+
+      if (!currentUser) {
+        toast({
+          variant: 'destructive',
+          title: 'Not Logged In',
+          description: 'You must be logged in to resend a verification email.'
+        });
+        return;
+      }
+
+      if (currentUser.emailVerified) {
+        toast({
+          title: 'Already Verified',
+          description: 'Your email is already verified.'
+        });
+        return;
+      }
+
+      await auth.sendEmailVerification(currentUser);
+      toast({
+        title: 'Verification Email Sent',
+        description: 'Please check your inbox (and spam folder).'
+      });
+    } catch (error) {
+      handleAuthError(error, 'Failed to send verification email');
+    }
+  };
 
   const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'>) => {
-      const { auth, db } = await getFirebaseServices();
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-          throw new Error('Not Authenticated');
-      }
-      
-      const userDocRef = doc(db, 'users', currentUser.uid);
+    const auth = await getAuth();
+    const db = await getDb();
+    const currentUser = auth.getCurrentUser();
 
-      try {
-        // This object will only contain fields that have a valid value.
-        const firestoreUpdateData: { [key: string]: any } = {};
+    if (!currentUser) {
+      throw new Error('Not Authenticated');
+    }
 
-        // Explicitly check each field from the form data.
-        if (data.displayName) firestoreUpdateData.displayName = data.displayName;
-        if (data.phone) firestoreUpdateData.phone = data.phone;
-        if (data.height) firestoreUpdateData.height = data.height;
-        if (data.weight) firestoreUpdateData.weight = data.weight;
-        if (data.shoeSize) firestoreUpdateData.shoeSize = data.shoeSize;
-        if (data.birthdate) firestoreUpdateData.birthdate = Timestamp.fromDate(data.birthdate);
-        
-        await updateProfile(currentUser, {
-            displayName: data.displayName || undefined,
-            photoURL: data.photoURL || undefined,
-        });
+    try {
+      // Build update data for database
+      const dbUpdateData: Partial<BackendUserDocument> = {};
 
-        await updateDoc(userDocRef, firestoreUpdateData);
+      if (data.displayName) dbUpdateData.displayName = data.displayName;
+      if (data.phone) dbUpdateData.phone = data.phone;
+      if (data.height) dbUpdateData.height = data.height;
+      if (data.weight) dbUpdateData.weight = data.weight;
+      if (data.shoeSize) dbUpdateData.shoeSize = data.shoeSize;
+      if (data.birthdate) dbUpdateData.birthdate = data.birthdate;
 
-        const updatedDoc = await getDoc(userDocRef);
-        const newSafeProfile = createSafeUserProfile(currentUser, updatedDoc.data());
-        setUser(newSafeProfile);
+      // Update auth profile
+      await auth.updateProfile(currentUser, {
+        displayName: data.displayName || undefined,
+        photoURL: data.photoURL || undefined,
+      });
 
-        toast({ title: "Profile updated!" });
-      } catch (error: any) {
-        handleAuthError(error, 'Profile Update Failed');
-      }
+      // Update database document
+      await db.updateDoc('users', currentUser.uid, dbUpdateData);
+
+      // Fetch updated data
+      const updatedDocSnap = await db.getDoc<BackendUserDocument>('users', currentUser.uid);
+      const newSafeProfile = createSafeUserProfile(currentUser, updatedDocSnap.data);
+      setUser(newSafeProfile);
+
+      toast({ title: "Profile updated!" });
+    } catch (error: any) {
+      handleAuthError(error, 'Profile Update Failed');
+    }
   }, [toast, handleAuthError]);
 
   const updateUserPreferencesHandler = useCallback(async (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit' | 'dateFormat'>>) => {
-      const { auth, db } = await getFirebaseServices();
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-          throw new Error('Not Authenticated');
-      }
+    const auth = await getAuth();
+    const db = await getDb();
+    const currentUser = auth.getCurrentUser();
 
-      const userDocRef = doc(db, 'users', currentUser.uid);
-
-      try {
-          await updateDoc(userDocRef, prefs);
-          setUser(prevUser => prevUser ? { ...prevUser, ...prefs } : null);
-          toast({ title: "Preference saved!" });
-      } catch (error) {
-          handleAuthError(error, 'Preference Update Failed');
-      }
-  }, [handleAuthError, toast]);
-  
-  const updateProfilePhotoHandler = useCallback(async (photoDataUrl: string): Promise<boolean> => {
-    const { auth, db, storage } = await getFirebaseServices();
-    const currentUser = auth.currentUser;
     if (!currentUser) {
-        toast({ variant: 'destructive', title: 'Not Authenticated' });
-        return false;
+      throw new Error('Not Authenticated');
     }
-    const storageRef = ref(storage, `avatars/${currentUser.uid}`);
+
     try {
-        await uploadString(storageRef, photoDataUrl, 'data_url');
-        const newPhotoURL = await getDownloadURL(storageRef);
-        await updateProfile(currentUser, { photoURL: newPhotoURL });
-        await setDoc(doc(db, 'users', currentUser.uid), { photoURL: newPhotoURL }, { merge: true });
-        setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
-        toast({ title: 'Photo updated successfully!' });
-        return true;
+      await db.updateDoc('users', currentUser.uid, prefs);
+      setUser(prevUser => prevUser ? { ...prevUser, ...prefs } : null);
+      toast({ title: "Preference saved!" });
+    } catch (error) {
+      handleAuthError(error, 'Preference Update Failed');
+    }
+  }, [handleAuthError, toast]);
+
+  const updateProfilePhotoHandler = useCallback(async (photoDataUrl: string): Promise<boolean> => {
+    const auth = await getAuth();
+    const db = await getDb();
+    const storage = await getStorage();
+    const currentUser = auth.getCurrentUser();
+
+    if (!currentUser) {
+      toast({ variant: 'destructive', title: 'Not Authenticated' });
+      return false;
+    }
+
+    try {
+      const uploadResult = await storage.uploadFromDataURL(`avatars/${currentUser.uid}`, photoDataUrl);
+      const newPhotoURL = uploadResult.url;
+
+      await auth.updateProfile(currentUser, { photoURL: newPhotoURL });
+      await db.setDoc('users', currentUser.uid, { photoURL: newPhotoURL }, true);
+
+      setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
+      toast({ title: 'Photo updated successfully!' });
+      return true;
     } catch (error: any) {
-        handleAuthError(error, 'Photo Upload Failed');
-        return false;
+      handleAuthError(error, 'Photo Upload Failed');
+      return false;
     }
   }, [toast, handleAuthError]);
 
   const value = useMemo(() => ({
-    user, 
-    loading, 
+    user,
+    loading,
     signInWithEmailPassword: signInWithEmailPasswordHandler,
     signUpWithEmailPassword: signUpWithEmailPasswordHandler,
     signOut: signOutHandler,
@@ -304,4 +290,3 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 };
 
 export { AuthContext };
-

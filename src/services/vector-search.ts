@@ -1,18 +1,17 @@
 
 'use server';
 /**
- * @fileOverview Service functions for interacting with Firestore's native vector search.
+ * @fileOverview Service functions for interacting with vector search (backend-agnostic).
  */
 
 import { ai } from '@/ai/genkit';
 import { textEmbedding004 } from '@genkit-ai/googleai';
-import { collection, query, findNearest, getDocs, limit, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getServerDb } from '@/backend';
 import type { MasterComponent } from '@/lib/types';
 
 
 /**
- * Finds components in Firestore that are semantically similar to the input text.
+ * Finds components that are semantically similar to the input text.
  * @param text The text to find similar components for (e.g., a component description).
  * @param topK The number of similar components to return.
  * @returns A promise that resolves to an array of similar components.
@@ -25,33 +24,29 @@ export async function findSimilarComponents(text: string, topK: number = 5): Pro
       content: text,
     });
 
-    // 2. Query Firestore for the nearest neighbors.
-    const componentsCollection = collection(db, 'masterComponents');
-    
-    // As of now, the Node.js SDK for Firestore requires a 'flat' index with no pre-filtering.
+    // 2. Query backend for the nearest neighbors.
+    const db = await getServerDb();
+
     // The query finds the nearest neighbors to the provided embedding vector.
-    const vectorQuery = findNearest(
-        'embedding', 
-        embedding, 
-        { 
-            limit: topK, 
-            distanceMeasure: 'COSINE' 
+    const querySnapshot = await db.findNearest<MasterComponent>(
+        'masterComponents',
+        'embedding',
+        embedding,
+        {
+            limit: topK,
+            distanceMeasure: 'COSINE'
         }
     );
 
-    const q = query(componentsCollection, vectorQuery);
-    const querySnapshot = await getDocs(q);
-    
-    const results: MasterComponent[] = [];
-    querySnapshot.forEach(doc => {
+    const results: MasterComponent[] = querySnapshot.map(doc => {
       // Note: The 'embedding' field itself is large and not needed on the client.
-      const { embedding, ...rest } = doc.data();
-      results.push({ id: doc.id, ...rest } as MasterComponent);
+      const { embedding, ...rest } = doc.data;
+      return { id: doc.id, ...rest } as MasterComponent;
     });
 
     return results;
   } catch (error) {
-    console.error("Error finding similar components in Firestore:", error);
+    console.error("Error finding similar components:", error);
     // In case of an error (e.g., index not configured), return an empty array.
     // The error is logged for debugging.
     return [];

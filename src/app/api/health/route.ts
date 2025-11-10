@@ -1,22 +1,22 @@
 // src/app/api/health/route.ts
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin'; // We'll try to import this
+import { getServerDb } from '@/backend';
 
 export async function GET() {
   console.log('Health check endpoint hit.');
   try {
-    // The real test is whether the import above crashed the server.
-    // If we get this far, the Admin SDK has initialized successfully.
-    console.log('Firebase Admin SDK seems to be initialized correctly.');
+    // Test that the backend database can be initialized successfully.
+    const db = await getServerDb();
+    console.log('Backend database initialized correctly.');
 
-    // As a final check, we can try a simple, read-only operation.
-    // This is optional but provides definitive proof.
-    await adminDb.listCollections();
-    console.log('Successfully communicated with Firestore via Admin SDK.');
+    // As a final check, try a simple operation to verify connectivity.
+    // We'll attempt to get a non-existent document to test the connection.
+    await db.getDoc('_health_check', 'test');
+    console.log('Successfully communicated with backend database.');
 
-    return NextResponse.json({ status: 'ok', adminSDK: 'initialized' });
+    return NextResponse.json({ status: 'ok', backend: 'initialized' });
   } catch (error) {
     console.error('HEALTH CHECK FAILED:', error);
-    return NextResponse.json({ status: 'error', adminSDK: 'failed' }, { status: 500 });
+    return NextResponse.json({ status: 'error', backend: 'failed' }, { status: 500 });
   }
 }

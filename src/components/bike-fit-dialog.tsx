@@ -6,10 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/backend';
 import type { Equipment, BikeFitData, CleatPosition } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -106,10 +105,10 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
       return;
     }
     setIsSaving(true);
-    
+
     try {
-      const equipmentDocRef = doc(db, 'users', user.uid, 'equipment', equipment.id);
-      
+      const database = await getDb();
+
       const cleanedData: Partial<BikeFitData> = {};
       for (const key in data) {
           const typedKey = key as keyof FitFormValues;
@@ -122,7 +121,7 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
           }
       }
 
-      await updateDoc(equipmentDocRef, {
+      await database.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
         fitData: cleanedData,
       });
 
