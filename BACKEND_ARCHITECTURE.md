@@ -87,7 +87,7 @@ Application code depends on interfaces, not implementations:
 const db = await getDb(); // Returns IDatabase
 
 // Works with ANY backend
-await db.getDoc('users', userId);
+await db.getDoc('app_users', userId);
 await db.onSnapshot('workOrders', callback);
 await db.findNearest('components', vector, options);
 ```
@@ -227,7 +227,7 @@ const CONFIG_LOADERS = {
 
 ```typescript
 // Application uses Date objects
-await db.setDoc('users', userId, {
+await db.setDoc('app_users', userId, {
   createdAt: new Date(),
   lastLogin: new Date(),
 });
@@ -242,7 +242,7 @@ await db.setDoc('users', userId, {
 ```typescript
 // Same code works with Firestore AND Postgres
 const users = await db.getDocs(
-  'users',
+  'app_users',
   { type: 'where', field: 'age', op: '>', value: 18 },
   { type: 'orderBy', field: 'name', direction: 'asc' },
   { type: 'limit', value: 10 }

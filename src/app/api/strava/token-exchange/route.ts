@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       throw new Error(data.message || 'Failed to exchange code with Strava.');
     }
 
-    await db.setDoc('users', userId, {
+    await db.setDoc('app_users', userId, {
       strava: {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,

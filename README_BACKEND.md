@@ -112,7 +112,7 @@ if (backend === 'firebase') {
 **After:**
 ```typescript
 const db = await getDb(); // Works with any backend!
-await db.getDoc('users', userId);
+await db.getDoc('app_users', userId);
 ```
 
 ### 2. Self-Contained Backends
@@ -128,7 +128,7 @@ Each backend is a complete module that knows how to:
 **Application code uses standard types:**
 ```typescript
 // Just use Date objects everywhere
-await db.setDoc('users', userId, {
+await db.setDoc('app_users', userId, {
   createdAt: new Date(),
   birthdate: new Date('1990-01-01'),
 });
@@ -144,7 +144,7 @@ await db.setDoc('users', userId, {
 ```typescript
 // Query users over 18
 const users = await db.getDocs(
-  'users',
+  'app_users',
   { type: 'where', field: 'age', op: '>', value: 18 },
   { type: 'orderBy', field: 'name', direction: 'asc' },
   { type: 'limit', value: 10 }
@@ -198,7 +198,7 @@ import { getAuth, getDb, getStorage } from '@/backend';
 
 async function myComponent() {
   const db = await getDb();
-  const users = await db.getDocs('users');
+  const users = await db.getDocs('app_users');
 }
 ```
 
@@ -209,7 +209,7 @@ import { getServerAuth, getServerDb } from '@/backend';
 export async function myAction() {
   'use server';
   const db = await getServerDb();
-  await db.setDoc('users', 'id', data);
+  await db.setDoc('app_users', 'id', data);
 }
 ```
 
@@ -328,20 +328,20 @@ const db = await getDb();
 const storage = await getStorage();
 
 // Query
-const doc = await db.getDoc('users', userId);
-const docs = await db.getDocs('users', ...constraints);
+const doc = await db.getDoc('app_users', userId);
+const docs = await db.getDocs('app_users', ...constraints);
 
 // Write
-await db.setDoc('users', userId, data);
-await db.updateDoc('users', userId, { field: value });
+await db.setDoc('app_users', userId, data);
+await db.updateDoc('app_users', userId, { field: value });
 
 // Real-time
-const unsub = db.onSnapshot('users', userId, callback);
+const unsub = db.onSnapshot('app_users', userId, callback);
 
 // Batch
 const batch = db.batch();
-batch.set('users', 'id1', data1);
-batch.update('users', 'id2', data2);
+batch.set('app_users', 'id1', data1);
+batch.update('app_users', 'id2', data2);
 await batch.commit();
 ```
 

@@ -28,7 +28,7 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
         const decodedToken = await auth.verifyIdToken(idToken, true);
         const userId = decodedToken.uid;
 
-        const userDocSnap = await db.getDoc('users', userId);
+        const userDocSnap = await db.getDoc('app_users', userId);
 
         const userData = userDocSnap.data;
 
@@ -76,7 +76,7 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
                 expiresAt: newTokens.expires_at,
             };
 
-            await db.updateDoc('users', userId, {
+            await db.updateDoc('app_users', userId, {
                 strava: newStravaData
             });
 
@@ -159,7 +159,7 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
         const decodedToken = await auth.verifyIdToken(idToken, true);
         const userId = decodedToken.uid;
 
-        const userDocSnap = await db.getDoc('users', userId);
+        const userDocSnap = await db.getDoc('app_users', userId);
 
         if (!userDocSnap.exists || !userDocSnap.data?.strava) {
             return { connected: false };
@@ -198,12 +198,12 @@ export async function assignStravaActivityToAction({
 
         const batch = db.batch();
 
-        batch.updateInSubcollection(`users/${userId}`, 'equipment', equipmentId, {
+        batch.updateInSubcollection(`app_users/${userId}`, 'equipment', equipmentId, {
             totalDistance: db.increment(activity.distance / 1000),
             totalHours: db.increment(activity.moving_time / 3600),
         });
 
-        batch.set('users', userId, {
+        batch.set('app_users', userId, {
             strava: {
                 processedActivities: db.arrayUnion(String(activity.id))
             }

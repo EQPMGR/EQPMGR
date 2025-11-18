@@ -80,7 +80,7 @@
 │              Application Code                        │
 │                                                      │
 │  const db = await getDb();  ◄─────────────┐        │
-│  await db.getDoc('users', id);             │        │
+│  await db.getDoc('app_users', id);         │        │
 │                                             │        │
 │  Works with ANY backend! ─────────────────┐│        │
 └───────────────────────────────────────────┼┼────────┘
@@ -112,7 +112,7 @@
 │ Component  │
 └─────┬──────┘
       │ const db = await getDb();
-      │ const user = await db.getDoc('users', 'id123');
+      │ const user = await db.getDoc('app_users', 'id123');
       │
 ┌─────▼──────┐
 │  Factory   │  Looks up provider in registry
@@ -151,7 +151,7 @@
 ┌────────────┐
 │ Component  │  Uses standard Date objects
 └─────┬──────┘
-      │ await db.setDoc('users', 'id', {
+      │ await db.setDoc('app_users', 'id', {
       │   createdAt: new Date(),
       │ });
       │
