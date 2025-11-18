@@ -474,6 +474,8 @@ const db = await getServerDb();
 
 ### Phase 5: Data Migration
 
+**Important Note:** The application uses a table named `app_users` (not `users`). Client-side code must query `app_users`. Do **NOT** create a `public.users` view. If your import script previously inserted into `users`, update it to insert into `app_users`.
+
 #### 5.1 Export Firebase Data
 
 **Script:** `scripts/export-firebase-data.ts`
@@ -525,8 +527,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabase = createClient(url, serviceKey);
 
 async function importUsers(users: any[]) {
+  // Note: Using 'app_users' table, not 'users'
   const { data, error } = await supabase
-    .from('users')
+    .from('app_users')
     .insert(users);
 
   if (error) console.error('Import error:', error);
