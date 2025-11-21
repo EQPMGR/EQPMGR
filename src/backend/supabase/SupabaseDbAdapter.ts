@@ -311,6 +311,25 @@ export class SupabaseDbAdapter implements IDatabase {
     return out;
   }
 
+  // Final sanitization to prevent sending objects like {} for timestamptz/date columns
+  // Recursively convert empty objects -> null, empty string -> null, Date -> ISO string
+  private sanitizePayload(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj === 'string') return obj === '' ? null : obj;
+    if (obj instanceof Date) return obj.toISOString();
+    if (Array.isArray(obj)) return obj.map(v => this.sanitizePayload(v));
+    if (typeof obj === 'object') {
+      // Empty plain object -> null
+      if (Object.keys(obj).length === 0) return null;
+      const out: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        out[k] = this.sanitizePayload(v);
+      }
+      return out;
+    }
+    return obj;
+  }
+
   constructor(isServer: boolean = false) {
     this.isServer = isServer;
     this.supabase = getSupabaseClient(isServer);
@@ -403,9 +422,12 @@ export class SupabaseDbAdapter implements IDatabase {
     const filtered = await this.filterToAllowedColumns(collection, dataWithId);
 
     try {
+      // Sanitize final payload to avoid sending {} for timestamps
+      const sanitized = this.sanitizePayload(filtered);
+
       const { error } = await this.supabase
         .from(collection)
-        .upsert(filtered, { onConflict: 'id' });
+        .upsert(sanitized as any, { onConflict: 'id' });
 
       if (error) {
         throw new Error(`Failed to set document: ${error.message}`);
@@ -433,9 +455,12 @@ export class SupabaseDbAdapter implements IDatabase {
 
     const filtered = await this.filterToAllowedColumns(subCollection, dataWithIds);
 
-    const { error } = await this.supabase
-      .from(subCollection)
-      .upsert(filtered, { onConflict: 'id' });
+      // Sanitize final payload to avoid sending {} for timestamps
+      const sanitizedSub = this.sanitizePayload(filtered);
+
+      const { error } = await this.supabase
+        .from(subCollection)
+        .upsert(sanitizedSub as any, { onConflict: 'id' });
 
     if (error) {
       throw new Error(`Failed to set subdocument: ${error.message}`);
@@ -446,9 +471,11 @@ export class SupabaseDbAdapter implements IDatabase {
     const processedData = processFieldValues(data, this.supabase);
     const filtered = await this.filterToAllowedColumns(collection, processedData);
 
+    const sanitized = this.sanitizePayload(filtered);
+
     const { error } = await this.supabase
       .from(collection)
-      .update(filtered)
+      .update(sanitized as any)
       .eq('id', docId);
 
     if (error) {
@@ -468,9 +495,11 @@ export class SupabaseDbAdapter implements IDatabase {
 
     const filtered = await this.filterToAllowedColumns(subCollection, processedData);
 
+    const sanitized = this.sanitizePayload(filtered);
+
     const { error } = await this.supabase
       .from(subCollection)
-      .update(filtered)
+      .update(sanitized as any)
       .eq('id', subDocId)
       .eq(parentIdField, parentDocId);
 
