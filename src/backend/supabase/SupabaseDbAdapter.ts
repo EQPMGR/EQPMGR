@@ -225,6 +225,65 @@ function processFieldValues(data: any, supabase: SupabaseClient): any {
 export class SupabaseDbAdapter implements IDatabase {
   private supabase: SupabaseClient;
   private isServer: boolean;
+  private columnCache: Map<string, Set<string>> = new Map();
+
+  // Fallback known columns for common tables to use when table is empty or discovery fails
+  private static DEFAULT_TABLE_COLUMNS: Record<string, string[]> = {
+    app_users: [
+      'id', 'uid', 'email', 'email_verified', 'display_name', 'phone', 'photo_url', 'avatar_url',
+      'height', 'weight', 'shoe_size', 'birthdate', 'measurement_system', 'shoe_size_system',
+      'distance_unit', 'date_format', 'created_at', 'last_login'
+    ]
+  };
+
+  private async getTableColumns(table: string): Promise<Set<string>> {
+    if (this.columnCache.has(table)) return this.columnCache.get(table)!;
+
+    // Use default mapping if available
+    const defaults = (SupabaseDbAdapter.DEFAULT_TABLE_COLUMNS || {})[table];
+    if (defaults && defaults.length > 0) {
+      const s = new Set<string>(defaults);
+      this.columnCache.set(table, s);
+      return s;
+    }
+
+    try {
+      // Try to discover columns by fetching a single row and taking its keys
+      const { data, error } = await this.supabase.from(table).select('*').limit(1);
+      if (error) {
+        // Discovery failed; cache empty set to avoid repeated attempts
+        this.columnCache.set(table, new Set<string>());
+        return new Set<string>();
+      }
+
+      if (Array.isArray(data) && data.length > 0) {
+        const cols = new Set<string>(Object.keys(data[0] || {}));
+        this.columnCache.set(table, cols);
+        return cols;
+      }
+
+      // No rows to infer columns from; cache empty set
+      this.columnCache.set(table, new Set<string>());
+      return new Set<string>();
+    } catch (err) {
+      this.columnCache.set(table, new Set<string>());
+      return new Set<string>();
+    }
+  }
+
+  private async filterToAllowedColumns(collection: string, obj: Record<string, any>): Promise<Record<string, any>> {
+    const allowed = await this.getTableColumns(collection);
+
+    // If we couldn't determine allowed columns, return original object
+    if (!allowed || allowed.size === 0) return obj;
+
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (allowed.has(k)) out[k] = v;
+    }
+
+    return out;
+  }
 
   constructor(isServer: boolean = false) {
     this.isServer = isServer;
@@ -236,7 +295,7 @@ export class SupabaseDbAdapter implements IDatabase {
       .from(collection)
       .select('*')
       .eq('id', docId)
-      .single();
+      .maybeSingle();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
       throw new Error(`Failed to get document: ${error.message}`);
@@ -263,7 +322,7 @@ export class SupabaseDbAdapter implements IDatabase {
       .select('*')
       .eq('id', subDocId)
       .eq(parentIdField, parentDocId)
-      .single();
+      .maybeSingle();
 
     if (error && error.code !== 'PGRST116') {
       throw new Error(`Failed to get subdocument: ${error.message}`);
@@ -314,24 +373,19 @@ export class SupabaseDbAdapter implements IDatabase {
     const processedData = processFieldValues(data, this.supabase);
     const dataWithId = { ...processedData, id: docId };
 
-    if (merge) {
-      // Upsert with merge
-      const { error } = await this.supabase
-        .from(collection)
-        .upsert(dataWithId, { onConflict: 'id' });
+    // Filter payload to known table columns to avoid PostgREST rejecting unknown fields
+    const filtered = await this.filterToAllowedColumns(collection, dataWithId);
 
-      if (error) {
-        throw new Error(`Failed to set document (merge): ${error.message}`);
-      }
-    } else {
-      // Full replace (upsert will replace all fields)
+    try {
       const { error } = await this.supabase
         .from(collection)
-        .upsert(dataWithId, { onConflict: 'id' });
+        .upsert(filtered, { onConflict: 'id' });
 
       if (error) {
         throw new Error(`Failed to set document: ${error.message}`);
       }
+    } catch (err: any) {
+      throw new Error(`Failed to set document: ${err.message}`);
     }
   }
 
@@ -351,9 +405,11 @@ export class SupabaseDbAdapter implements IDatabase {
       [parentIdField]: parentDocId
     };
 
+    const filtered = await this.filterToAllowedColumns(subCollection, dataWithIds);
+
     const { error } = await this.supabase
       .from(subCollection)
-      .upsert(dataWithIds, { onConflict: 'id' });
+      .upsert(filtered, { onConflict: 'id' });
 
     if (error) {
       throw new Error(`Failed to set subdocument: ${error.message}`);
@@ -362,10 +418,11 @@ export class SupabaseDbAdapter implements IDatabase {
 
   async updateDoc<T>(collection: string, docId: string, data: Partial<T>): Promise<void> {
     const processedData = processFieldValues(data, this.supabase);
+    const filtered = await this.filterToAllowedColumns(collection, processedData);
 
     const { error } = await this.supabase
       .from(collection)
-      .update(processedData)
+      .update(filtered)
       .eq('id', docId);
 
     if (error) {
@@ -383,9 +440,11 @@ export class SupabaseDbAdapter implements IDatabase {
     const parentIdField = `${parentCollection.slice(0, -1)}_id`;
     const processedData = processFieldValues(data, this.supabase);
 
+    const filtered = await this.filterToAllowedColumns(subCollection, processedData);
+
     const { error } = await this.supabase
       .from(subCollection)
-      .update(processedData)
+      .update(filtered)
       .eq('id', subDocId)
       .eq(parentIdField, parentDocId);
 
