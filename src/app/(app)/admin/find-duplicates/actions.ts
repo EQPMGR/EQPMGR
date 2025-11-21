@@ -23,11 +23,11 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
 
   try {
     // 1. Find all users who might have the components to be merged.
-    const usersSnapshot = await db.getDocs('users');
+    const usersSnapshot = await db.getDocs('app_users');
 
     // 2. Iterate through each user and their equipment.
     for (const userDoc of usersSnapshot.docs) {
-      const equipmentSnapshot = await db.getDocsFromSubcollection(`users/${userDoc.id}`, 'equipment');
+      const equipmentSnapshot = await db.getDocsFromSubcollection(`app_users/${userDoc.id}`, 'equipment');
 
       for (const equipmentDoc of equipmentSnapshot.docs) {
         let needsUpdate = false;
@@ -42,7 +42,7 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
         });
 
         if (needsUpdate) {
-          batch.updateInSubcollection(`users/${userDoc.id}`, 'equipment', equipmentDoc.id, { components: updatedComponents });
+          batch.updateInSubcollection(`app_users/${userDoc.id}`, 'equipment', equipmentDoc.id, { components: updatedComponents });
         }
       }
     }

@@ -110,20 +110,20 @@ export default function EquipmentDetailPage() {
       const database = await getDb();
 
       // Fetch all equipment to pass to dialogs
-      const allEquipmentSnapshot = await database.getDocsFromSubcollection<Equipment>(`users/${uid}`, 'equipment');
+      const allEquipmentSnapshot = await database.getDocsFromSubcollection<Equipment>(`app_users/${uid}`, 'equipment');
       const allEq = allEquipmentSnapshot.docs.map(doc => ({id: doc.id, ...doc.data}) as Equipment);
       setAllEquipment(allEq);
 
       // Fetch the specific equipment for this page
       const equipmentId = params.id as string;
-      const equipmentDocSnap = await database.getDocFromSubcollection<Equipment>(`users/${uid}`, 'equipment', equipmentId);
+      const equipmentDocSnap = await database.getDocFromSubcollection<Equipment>(`app_users/${uid}`, 'equipment', equipmentId);
 
       if (equipmentDocSnap.exists) {
         const equipmentData = equipmentDocSnap.data;
 
         // Fetch components from the subcollection
         const componentsSnapshot = await database.getDocsFromSubcollection<UserComponent>(
-          `users/${uid}/equipment/${equipmentId}`,
+          `app_users/${uid}/equipment/${equipmentId}`,
           'components'
         );
         const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data } as UserComponent));
@@ -198,7 +198,7 @@ export default function EquipmentDetailPage() {
     }
 
     const database = await getDb();
-    await database.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, data);
+    await database.updateInSubcollection(`app_users/${user.uid}`, 'equipment', equipment.id, data);
 
     // After successful update, re-fetch the data to ensure UI is in sync
     await fetchEquipment(user.uid);
@@ -216,15 +216,15 @@ export default function EquipmentDetailPage() {
 
       // Delete all component sub-documents
       const componentsSnap = await database.getDocsFromSubcollection(
-        `users/${user.uid}/equipment/${equipment.id}`,
+        `app_users/${user.uid}/equipment/${equipment.id}`,
         'components'
       );
       componentsSnap.docs.forEach(doc => {
-        batch.deleteInSubcollection(`users/${user.uid}/equipment/${equipment.id}`, 'components', doc.id);
+        batch.deleteInSubcollection(`app_users/${user.uid}/equipment/${equipment.id}`, 'components', doc.id);
       });
 
       // Delete the main equipment document
-      batch.deleteInSubcollection(`users/${user.uid}`, 'equipment', equipment.id);
+      batch.deleteInSubcollection(`app_users/${user.uid}`, 'equipment', equipment.id);
 
       await batch.commit();
 
@@ -251,7 +251,7 @@ export default function EquipmentDetailPage() {
     const updatedLog = [...equipment.maintenanceLog, logWithId];
 
     const database = await getDb();
-    await database.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
+    await database.updateInSubcollection(`app_users/${user.uid}`, 'equipment', equipment.id, {
       maintenanceLog: updatedLog.map(l => ({...l, date: toDate(l.date)})),
     });
 

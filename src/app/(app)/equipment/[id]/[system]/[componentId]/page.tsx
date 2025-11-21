@@ -48,7 +48,7 @@ export default function ComponentDetailPage() {
       const database = await getDb();
 
       // Fetch equipment data to get the maintenance log
-      const equipmentDocSnap = await database.getDocFromSubcollection<Equipment>(`users/${uid}`, 'equipment', equipmentId);
+      const equipmentDocSnap = await database.getDocFromSubcollection<Equipment>(`app_users/${uid}`, 'equipment', equipmentId);
 
       if (!equipmentDocSnap.exists) {
           toast({ variant: 'destructive', title: 'Equipment not found' });
@@ -64,7 +64,7 @@ export default function ComponentDetailPage() {
         } as Equipment);
 
       const mainComponentDocSnap = await database.getDocFromSubcollection<UserComponent>(
-        `users/${uid}/equipment/${equipmentId}`,
+        `app_users/${uid}/equipment/${equipmentId}`,
         'components',
         userComponentId
       );
@@ -78,7 +78,7 @@ export default function ComponentDetailPage() {
       const mainUserComp = { id: userComponentId, ...mainComponentDocSnap.data } as UserComponent;
 
       const subComponentsSnap = await database.getDocsFromSubcollection<UserComponent>(
-        `users/${uid}/equipment/${equipmentId}`,
+        `app_users/${uid}/equipment/${equipmentId}`,
         'components',
         { type: 'where', field: 'parentUserComponentId', op: '==', value: userComponentId }
       );
@@ -175,7 +175,7 @@ export default function ComponentDetailPage() {
     const updatedLog = [...equipment.maintenanceLog, logWithId];
 
     const database = await getDb();
-    await database.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
+    await database.updateInSubcollection(`app_users/${user.uid}`, 'equipment', equipment.id, {
       maintenanceLog: updatedLog.map(l => ({...l, date: toDate(l.date)})),
     });
 

@@ -33,7 +33,7 @@ export default function SystemDetailPage() {
     setIsLoading(true);
     try {
       const database = await getDb();
-      const equipmentDocSnap = await database.getDocFromSubcollection<Equipment>(`users/${uid}`, 'equipment', equipmentId);
+      const equipmentDocSnap = await database.getDocFromSubcollection<Equipment>(`app_users/${uid}`, 'equipment', equipmentId);
 
       if (equipmentDocSnap.exists) {
         const equipmentData = equipmentDocSnap.data;
@@ -54,7 +54,7 @@ export default function SystemDetailPage() {
 
       // Fetch components from the subcollection
       const componentsSnapshot = await database.getDocsFromSubcollection<UserComponent>(
-        `users/${uid}/equipment/${equipmentId}`,
+        `app_users/${uid}/equipment/${equipmentId}`,
         'components'
       );
       const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data } as UserComponent));

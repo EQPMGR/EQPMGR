@@ -146,7 +146,7 @@ export function AddWheelsetDialog({
       if (!masterId) return; // Skip if no ID could be determined
 
       const newComponentId = db.generateId();
-      batch.setInSubcollection(`users/${user!.uid}/equipment/${equipment.id}`, 'components', newComponentId, {
+      batch.setInSubcollection(`app_users/${user!.uid}/equipment/${equipment.id}`, 'components', newComponentId, {
           masterComponentId: masterId,
           purchaseDate: new Date(),
           wearPercentage: 0,
@@ -167,7 +167,7 @@ export function AddWheelsetDialog({
 
     try {
       // Update equipment with the new wheelset's nickname
-      batch.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
+      batch.updateInSubcollection(`app_users/${user.uid}`, 'equipment', equipment.id, {
         [`wheelsets.${wheelsetId}`]: data.nickname,
       });
 

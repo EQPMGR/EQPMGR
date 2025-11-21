@@ -121,7 +121,7 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
           }
       }
 
-      await database.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
+      await database.updateInSubcollection(`app_users/${user.uid}`, 'equipment', equipment.id, {
         fitData: cleanedData,
       });
 

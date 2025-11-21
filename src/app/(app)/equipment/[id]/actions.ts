@@ -54,7 +54,7 @@ export async function replaceUserComponentAction({
     
     try {
         const componentToReplaceSnap = await db.getDocFromSubcollection<UserComponent>(
-            `users/${userId}/equipment/${equipmentId}`,
+            `app_users/${userId}/equipment/${equipmentId}`,
             'components',
             userComponentIdToReplace
         );
@@ -71,7 +71,7 @@ export async function replaceUserComponentAction({
         const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data } as MasterComponent;
 
         const equipmentDocSnap = await db.getDocFromSubcollection(
-            `users/${userId}`,
+            `app_users/${userId}`,
             'equipment',
             equipmentId
         );
@@ -161,7 +161,7 @@ export async function replaceUserComponentAction({
 
         // 4. Update the equipment document with the archived component and the new log entry.
         batch.updateInSubcollection(
-            `users/${userId}`,
+            `app_users/${userId}`,
             'equipment',
             equipmentId,
             {
@@ -183,7 +183,7 @@ export async function replaceUserComponentAction({
         // Ensure no undefined values are written to the user component document
         const cleanData = Object.fromEntries(Object.entries(newUserComponentData).filter(([_, v]) => v !== undefined));
         batch.setInSubcollection(
-            `users/${userId}/equipment/${equipmentId}`,
+            `app_users/${userId}/equipment/${equipmentId}`,
             'components',
             userComponentIdToReplace,
             cleanData
@@ -220,7 +220,7 @@ export async function deleteUserComponentAction({
 
     try {
         batch.deleteInSubcollection(
-            `users/${userId}/equipment/${equipmentId}`,
+            `app_users/${userId}/equipment/${equipmentId}`,
             'components',
             userComponentId
         );
@@ -320,7 +320,7 @@ export async function addUserComponentAction({
         }
 
         batch.setInSubcollection(
-            `users/${userId}/equipment/${equipmentId}`,
+            `app_users/${userId}/equipment/${equipmentId}`,
             'components',
             newComponentId,
             cleanData

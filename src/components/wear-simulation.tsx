@@ -153,7 +153,7 @@ export function WearSimulation({ equipment, onSuccess }: WearSimulationProps) {
       const batch = database.batch();
 
       // Update totals on main equipment doc
-      batch.updateInSubcollection(`users/${user.uid}`, 'equipment', equipment.id, {
+      batch.updateInSubcollection(`app_users/${user.uid}`, 'equipment', equipment.id, {
           totalDistance: database.increment(values.distance),
           totalHours: database.increment(values.duration / 60),
       });
@@ -163,7 +163,7 @@ export function WearSimulation({ equipment, onSuccess }: WearSimulationProps) {
           const componentToUpdate = componentsToSimulate.find(c => c.name === simulatedComp.componentName);
           if (componentToUpdate) {
               batch.updateInSubcollection(
-                `users/${user.uid}/equipment/${equipment.id}`,
+                `app_users/${user.uid}/equipment/${equipment.id}`,
                 'components',
                 componentToUpdate.userComponentId,
                 { wearPercentage: simulatedComp.wearPercentage }

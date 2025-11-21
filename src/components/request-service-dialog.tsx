@@ -49,7 +49,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
     setIsLoading(true);
     try {
         const db = await getDb();
-        const equipmentSnapshot = await db.getDocsFromSubcollection<Equipment>(`users/${user.uid}`, 'equipment');
+        const equipmentSnapshot = await db.getDocsFromSubcollection<Equipment>(`app_users/${user.uid}`, 'equipment');
         const allEquipment = equipmentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data } as Equipment));
         setEquipmentList(allEquipment);
 

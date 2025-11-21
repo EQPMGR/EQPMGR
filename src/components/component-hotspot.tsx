@@ -26,12 +26,12 @@ export function ComponentHotspot() {
     setIsLoading(true);
     try {
       const database = await getDb();
-      const querySnapshot = await database.getDocsFromSubcollection<Equipment>(`users/${uid}`, 'equipment');
+      const querySnapshot = await database.getDocsFromSubcollection<Equipment>(`app_users/${uid}`, 'equipment');
 
       const equipmentPromises = querySnapshot.docs.map(async (doc) => {
         const equipmentData = doc.data;
         const componentsSnapshot = await database.getDocsFromSubcollection<UserComponent>(
-          `users/${uid}/equipment/${doc.id}`,
+          `app_users/${uid}/equipment/${doc.id}`,
           'components'
         );
 

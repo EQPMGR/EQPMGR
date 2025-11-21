@@ -135,7 +135,7 @@ export function EditComponentDialog({
     try {
         const db = await getDb();
         const batch = db.batch();
-        const componentsPath = `users/${userId}/equipment/${equipmentId}`;
+        const componentsPath = `app_users/${userId}/equipment/${equipmentId}`;
 
         // Delete all existing chainring sub-components associated with this parent
         existingSubComponents

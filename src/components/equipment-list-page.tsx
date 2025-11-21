@@ -26,14 +26,14 @@ export function EquipmentListPage() {
     setIsLoading(true);
     try {
       const db = await getDb();
-      const equipmentSnapshot = await db.getDocsFromSubcollection<Equipment>(`users/${uid}`, 'equipment');
+      const equipmentSnapshot = await db.getDocsFromSubcollection<Equipment>(`app_users/${uid}`, 'equipment');
 
       const equipmentPromises = equipmentSnapshot.docs.map(async (equipmentDoc) => {
         const equipmentData = equipmentDoc.data;
 
         // Fetch components subcollection for each equipment
         const componentsSnapshot = await db.getDocsFromSubcollection<UserComponent>(
-          `users/${uid}/equipment/${equipmentDoc.id}`,
+          `app_users/${uid}/equipment/${equipmentDoc.id}`,
           'components'
         );
         const userComponents: UserComponent[] = componentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data } as UserComponent));
@@ -155,7 +155,7 @@ export function EquipmentListPage() {
             serialNumber: formData.serialNumber || '',
             frameSize: formData.frameSize || '',
         };
-        batch.setInSubcollection(`users/${user.uid}`, 'equipment', newEquipmentId, newEquipmentData);
+        batch.setInSubcollection(`app_users/${user.uid}`, 'equipment', newEquipmentId, newEquipmentData);
 
 
         // 2. Fetch master components and create user components in the new components subcollection
@@ -220,7 +220,7 @@ export function EquipmentListPage() {
                 userComponent.size = resolvedSize;
               }
 
-              batch.setInSubcollection(`users/${user.uid}/equipment/${newEquipmentId}`, 'components', newComponentId, userComponent);
+              batch.setInSubcollection(`app_users/${user.uid}/equipment/${newEquipmentId}`, 'components', newComponentId, userComponent);
           });
         }
 
@@ -278,7 +278,7 @@ export function EquipmentListPage() {
             totalHours: 0,
             associatedEquipmentIds: formData.associatedBikeIds,
         };
-        batch.setInSubcollection(`users/${user.uid}`, 'equipment', newEquipmentId, newShoeData);
+        batch.setInSubcollection(`app_users/${user.uid}`, 'equipment', newEquipmentId, newShoeData);
 
         // 2. Create the single component entry for the shoes themselves in the subcollection
         const newComponentId = db.generateId();
@@ -291,7 +291,7 @@ export function EquipmentListPage() {
             size: String(formData.size),
             notes: '',
         };
-        batch.setInSubcollection(`users/${user.uid}/equipment/${newEquipmentId}`, 'components', newComponentId, userComponent);
+        batch.setInSubcollection(`app_users/${user.uid}/equipment/${newEquipmentId}`, 'components', newComponentId, userComponent);
 
         await batch.commit();
         await fetchEquipment(user.uid);

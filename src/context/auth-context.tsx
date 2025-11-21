@@ -71,12 +71,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
         const unsubscribe = auth.onAuthStateChanged(async (authUser) => {
           if (authUser) {
-            const userDocSnap = await db.getDoc<BackendUserDocument>('users', authUser.uid);
+            const userDocSnap = await db.getDoc<BackendUserDocument>('app_users', authUser.uid);
             let userDocData: BackendUserDocument;
 
             if (userDocSnap.exists && userDocSnap.data) {
               // Update last login
-              await db.updateDoc('users', authUser.uid, {
+              await db.updateDoc('app_users', authUser.uid, {
                 lastLogin: new Date()
               });
               userDocData = userDocSnap.data;
@@ -92,7 +92,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 createdAt: new Date(),
                 lastLogin: new Date(),
               };
-              await db.setDoc('users', authUser.uid, userDocData);
+              await db.setDoc('app_users', authUser.uid, userDocData);
             }
 
             const safeProfile = createSafeUserProfile(authUser, userDocData);
@@ -212,10 +212,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       });
 
       // Update database document
-      await db.updateDoc('users', currentUser.uid, dbUpdateData);
+      await db.updateDoc('app_users', currentUser.uid, dbUpdateData);
 
       // Fetch updated data
-      const updatedDocSnap = await db.getDoc<BackendUserDocument>('users', currentUser.uid);
+      const updatedDocSnap = await db.getDoc<BackendUserDocument>('app_users', currentUser.uid);
       const newSafeProfile = createSafeUserProfile(currentUser, updatedDocSnap.data);
       setUser(newSafeProfile);
 
@@ -235,7 +235,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     try {
-      await db.updateDoc('users', currentUser.uid, prefs);
+      await db.updateDoc('app_users', currentUser.uid, prefs);
       setUser(prevUser => prevUser ? { ...prevUser, ...prefs } : null);
       toast({ title: "Preference saved!" });
     } catch (error) {
@@ -259,7 +259,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const newPhotoURL = uploadResult.url;
 
       await auth.updateProfile(currentUser, { photoURL: newPhotoURL });
-      await db.setDoc('users', currentUser.uid, { photoURL: newPhotoURL }, true);
+      await db.setDoc('app_users', currentUser.uid, { photoURL: newPhotoURL }, true);
 
       setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
       toast({ title: 'Photo updated successfully!' });
