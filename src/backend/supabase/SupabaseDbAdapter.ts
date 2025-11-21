@@ -173,6 +173,30 @@ function processFieldValues(data: any, supabase: SupabaseClient): any {
   const camelToSnake = (s: string) =>
     s.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
 
+  // Normalize individual values before sending to Postgres
+  const normalizeValue = (key: string, value: any): any => {
+    if (value === undefined) return undefined;
+    if (value === '') return null; // empty string -> null for DB
+
+    // Preserve FieldValue wrapper objects untouched here
+    if (value && typeof value === 'object' && 'type' in value) return value;
+
+    // Empty object -> treat as null (prevents sending {} to timestamptz)
+    if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+      return null;
+    }
+
+    if (value instanceof Date) return value.toISOString();
+
+    const lk = key.toLowerCase();
+    if ((lk.endsWith('_at') || lk.includes('date') || lk.includes('birth')) && typeof value === 'string') {
+      const parsed = Date.parse(value);
+      return isNaN(parsed) ? null : new Date(parsed).toISOString();
+    }
+
+    return value;
+  };
+
   const transformKeysToSnake = (value: any): any => {
     if (Array.isArray(value)) return value.map(transformKeysToSnake);
     if (value && typeof value === 'object') {
@@ -183,7 +207,9 @@ function processFieldValues(data: any, supabase: SupabaseClient): any {
 
       const out: any = {};
       for (const [k, v] of Object.entries(value)) {
-        out[camelToSnake(k)] = transformKeysToSnake(v);
+        const snakeKey = camelToSnake(k);
+        const transformed = transformKeysToSnake(v);
+        out[snakeKey] = normalizeValue(snakeKey, transformed);
       }
       return out;
     }
