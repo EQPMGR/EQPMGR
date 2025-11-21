@@ -169,7 +169,28 @@ function toQuerySnapshot<T>(rows: any[], collection: string): QuerySnapshot<T> {
  * Process data for FieldValue special types
  */
 function processFieldValues(data: any, supabase: SupabaseClient): any {
-  const processed = { ...data };
+  // Convert camelCase keys to snake_case to match typical Postgres column naming
+  const camelToSnake = (s: string) =>
+    s.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+
+  const transformKeysToSnake = (value: any): any => {
+    if (Array.isArray(value)) return value.map(transformKeysToSnake);
+    if (value && typeof value === 'object') {
+      // Preserve FieldValue objects but transform their inner `value` recursively
+      if ('type' in value) {
+        return { ...value, value: transformKeysToSnake((value as any).value) };
+      }
+
+      const out: any = {};
+      for (const [k, v] of Object.entries(value)) {
+        out[camelToSnake(k)] = transformKeysToSnake(v);
+      }
+      return out;
+    }
+    return value;
+  };
+
+  const processed = transformKeysToSnake(data || {});
 
   for (const [key, value] of Object.entries(processed)) {
     if (value && typeof value === 'object' && 'type' in value) {
@@ -180,13 +201,10 @@ function processFieldValues(data: any, supabase: SupabaseClient): any {
           processed[key] = new Date().toISOString();
           break;
         case 'increment':
-          // For increment, we'd need to use SQL or RPC
-          // For now, we'll handle it as a literal value
           console.warn('increment field value not fully supported in Supabase adapter');
           processed[key] = fieldValue.value;
           break;
         case 'arrayUnion':
-          // Array union requires special SQL handling
           console.warn('arrayUnion field value not fully supported in Supabase adapter');
           processed[key] = fieldValue.value;
           break;
