@@ -220,7 +220,7 @@ import { getDb } from '@/backend';
 const db = await getDb();
 
 // Automatic type conversions
-const snap = await db.getDoc('users', id);
+const snap = await db.getDoc('app_users', id);
 // snap.data.createdAt is already a Date!
 ```
 

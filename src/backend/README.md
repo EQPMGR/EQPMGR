@@ -168,7 +168,7 @@ async function example() {
   const user = await auth.signInWithEmailAndPassword(email, password);
 
   // Query database
-  const snapshot = await db.getDoc('users', userId);
+  const snapshot = await db.getDoc('app_users', userId);
   const userData = snapshot.data;
 
   // Upload file
@@ -193,7 +193,7 @@ export async function serverAction() {
   const decodedToken = await auth.verifyIdToken(token);
 
   // Query database with elevated permissions
-  const snapshot = await db.getDoc('users', decodedToken.uid);
+  const snapshot = await db.getDoc('app_users', decodedToken.uid);
 
   return snapshot.data;
 }
@@ -238,9 +238,9 @@ async function batchUpdate() {
   const batch = db.batch();
 
   // Queue multiple operations
-  batch.set('users', 'user1', { name: 'John' });
-  batch.update('users', 'user2', { lastLogin: new Date() });
-  batch.delete('users', 'user3');
+  batch.set('app_users', 'user1', { name: 'John' });
+  batch.update('app_users', 'user2', { lastLogin: new Date() });
+  batch.delete('app_users', 'user3');
 
   // Commit all operations atomically
   await batch.commit();
@@ -255,7 +255,7 @@ import { getDb } from '@/backend/factory';
 async function useFieldValues() {
   const db = await getDb();
 
-  await db.updateDoc('users', userId, {
+  await db.updateDoc('app_users', userId, {
     lastLogin: db.serverTimestamp(),        // Server timestamp
     loginCount: db.increment(1),             // Increment counter
     roles: db.arrayUnion('admin'),           // Add to array

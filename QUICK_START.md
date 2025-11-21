@@ -257,7 +257,7 @@ const db = await getDb();
 
 ```typescript
 // ✅ Just use Date
-await db.setDoc('users', userId, {
+await db.setDoc('app_users', userId, {
   createdAt: new Date(),
   lastLogin: new Date(),
 });

@@ -83,7 +83,7 @@ export async function replaceUserComponentAction({
 
     // ✅ Use abstracted document reads
     const componentSnap = await db.getSubDoc<UserComponent>(
-        'users',
+        'app_users',
         userId,
         'equipment',
         equipmentId,
@@ -98,7 +98,7 @@ export async function replaceUserComponentAction({
     const componentData = componentSnap.data!;
 
     // ✅ Use abstracted field values (no manual conversion needed!)
-    batch.update(`users/${userId}/equipment/${equipmentId}`, equipmentId, {
+    batch.update(`app_users/${userId}/equipment/${equipmentId}`, equipmentId, {
         archivedComponents: db.arrayUnion(archivedComponent),
         maintenanceLog: db.arrayUnion({
             ...newLogEntry,
@@ -106,7 +106,7 @@ export async function replaceUserComponentAction({
         })
     });
 
-    batch.set('users', userId, 'equipment', equipmentId, 'components', userComponentIdToReplace, cleanData);
+    batch.set('app_users', userId, 'equipment', equipmentId, 'components', userComponentIdToReplace, cleanData);
     await batch.commit();
 }
 ```
@@ -155,7 +155,7 @@ export function MyComponent() {
         const db = await getDb();
 
         // ✅ Backend-agnostic operations
-        await db.updateDoc('users', userId, {
+        await db.updateDoc('app_users', userId, {
             ...data,
             lastUpdated: new Date(), // ✅ Standard Date object
         });
@@ -265,7 +265,7 @@ async function batchUpdate(updates: any[]) {
     const batch = db.batch();
 
     updates.forEach(update => {
-        batch.update('users', update.id, {
+        batch.update('app_users', update.id, {
             ...update.data,
             updatedAt: new Date()
         });
@@ -292,7 +292,7 @@ if (docSnap.exists()) {
 
 // ✅ After
 const db = await getDb();
-const docSnap = await db.getDoc('users', userId);
+const docSnap = await db.getDoc('app_users', userId);
 if (docSnap.exists) {
     const data = docSnap.data;
 }
@@ -332,7 +332,7 @@ const snapshot = await getDocs(componentsRef);
 // ✅ After
 const db = await getDb();
 const snapshot = await db.getSubDocs(
-    'users',
+    'app_users',
     userId,
     'equipment',
     equipmentId,
@@ -381,7 +381,7 @@ await updateDoc(docRef, {
 
 // ✅ After - Use database methods
 const db = await getDb();
-await db.updateDoc('users', userId, {
+await db.updateDoc('app_users', userId, {
     lastLogin: new Date(), // Or db.serverTimestamp() for server timestamp
     loginCount: db.increment(1),
     roles: db.arrayUnion('admin'),
