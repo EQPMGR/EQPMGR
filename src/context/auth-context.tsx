@@ -85,24 +85,55 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 await db.updateDoc('app_users', authUser.uid, lastLoginPayload);
                 userDocData = userDocSnap.data;
             } else {
-              // Create new user document
-              userDocData = {
-                displayName: authUser.displayName || '',
-                photoURL: authUser.photoURL || '',
-                measurementSystem: 'imperial',
-                shoeSizeSystem: 'us-mens',
-                distanceUnit: 'km',
-                dateFormat: 'MM/DD/YYYY',
-                createdAt: new Date(),
-                lastLogin: new Date(),
-                authUserId: authUser.uid,
-              };
+              // No user document exists: provision a row server-side to avoid client-side service-key exposure.
               try {
-                console.debug('[auth] setDoc payload (new user):', JSON.stringify(userDocData));
-              } catch (_) {
-                console.debug('[auth] setDoc payload (new user, raw):', userDocData);
+                const idToken = await authUser.getIdToken();
+                const provisionResp = await fetch('/api/provision', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${idToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                });
+
+                if (!provisionResp.ok) {
+                  const body = await provisionResp.text();
+                  console.error('[auth] provision failed:', provisionResp.status, body);
+                  // Fallback: create a minimal client-side doc (will only work if RLS allows it)
+                  const fallback = {
+                    displayName: authUser.displayName || '',
+                    photoURL: authUser.photoURL || '',
+                    measurementSystem: 'imperial',
+                    shoeSizeSystem: 'us-mens',
+                    distanceUnit: 'km',
+                    dateFormat: 'MM/DD/YYYY',
+                    createdAt: new Date(),
+                    lastLogin: new Date(),
+                    authUserId: authUser.uid,
+                  };
+                  try { console.debug('[auth] fallback setDoc payload:', JSON.stringify(fallback)); } catch (_) { console.debug('[auth] fallback setDoc payload (raw):', fallback); }
+                  await db.setDoc('app_users', authUser.uid, fallback);
+                } else {
+                  // fetch the created/updated row from the DB to populate the profile
+                  const created = await db.getDoc('app_users', authUser.uid);
+                  userDocData = created.data || {};
+                }
+              } catch (err) {
+                console.error('[auth] provisioning error, falling back to client setDoc', err);
+                const fallback = {
+                  displayName: authUser.displayName || '',
+                  photoURL: authUser.photoURL || '',
+                  measurementSystem: 'imperial',
+                  shoeSizeSystem: 'us-mens',
+                  distanceUnit: 'km',
+                  dateFormat: 'MM/DD/YYYY',
+                  createdAt: new Date(),
+                  lastLogin: new Date(),
+                  authUserId: authUser.uid,
+                };
+                try { console.debug('[auth] fallback setDoc payload:', JSON.stringify(fallback)); } catch (_) { console.debug('[auth] fallback setDoc payload (raw):', fallback); }
+                await db.setDoc('app_users', authUser.uid, fallback);
               }
-              await db.setDoc('app_users', authUser.uid, userDocData);
             }
 
             const safeProfile = createSafeUserProfile(authUser, userDocData);
