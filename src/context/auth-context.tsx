@@ -95,6 +95,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 dateFormat: 'MM/DD/YYYY',
                 createdAt: new Date(),
                 lastLogin: new Date(),
+                authUserId: authUser.uid,
               };
               try {
                 console.debug('[auth] setDoc payload (new user):', JSON.stringify(userDocData));
