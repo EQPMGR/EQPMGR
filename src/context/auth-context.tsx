@@ -76,10 +76,14 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
             if (userDocSnap.exists && userDocSnap.data) {
               // Update last login
-              await db.updateDoc('app_users', authUser.uid, {
-                lastLogin: new Date()
-              });
-              userDocData = userDocSnap.data;
+                const lastLoginPayload = { lastLogin: new Date() };
+                try {
+                  console.debug('[auth] updateDoc payload (lastLogin):', JSON.stringify(lastLoginPayload));
+                } catch (_) {
+                  console.debug('[auth] updateDoc payload (lastLogin, raw):', lastLoginPayload);
+                }
+                await db.updateDoc('app_users', authUser.uid, lastLoginPayload);
+                userDocData = userDocSnap.data;
             } else {
               // Create new user document
               userDocData = {
@@ -92,6 +96,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 createdAt: new Date(),
                 lastLogin: new Date(),
               };
+              try {
+                console.debug('[auth] setDoc payload (new user):', JSON.stringify(userDocData));
+              } catch (_) {
+                console.debug('[auth] setDoc payload (new user, raw):', userDocData);
+              }
               await db.setDoc('app_users', authUser.uid, userDocData);
             }
 
@@ -205,6 +214,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (data.shoeSize) dbUpdateData.shoeSize = data.shoeSize;
       if (data.birthdate) dbUpdateData.birthdate = data.birthdate;
 
+      // Debug: show db update payload
+      try {
+        console.debug('[auth] updateProfileInfo dbUpdateData:', JSON.stringify(dbUpdateData));
+      } catch (_) {
+        console.debug('[auth] updateProfileInfo dbUpdateData (raw):', dbUpdateData);
+      }
+
       // Update auth profile
       await auth.updateProfile(currentUser, {
         displayName: data.displayName || undefined,
@@ -259,6 +275,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const newPhotoURL = uploadResult.url;
 
       await auth.updateProfile(currentUser, { photoURL: newPhotoURL });
+      try {
+        console.debug('[auth] setDoc payload (photo update):', JSON.stringify({ photoURL: newPhotoURL }));
+      } catch (_) {
+        console.debug('[auth] setDoc payload (photo update, raw):', { photoURL: newPhotoURL });
+      }
       await db.setDoc('app_users', currentUser.uid, { photoURL: newPhotoURL }, true);
 
       setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
