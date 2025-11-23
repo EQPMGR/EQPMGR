@@ -85,7 +85,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 await db.updateDoc('app_users', authUser.uid, lastLoginPayload);
                 userDocData = userDocSnap.data;
             } else {
-              // No user document exists: provision a row server-side to avoid client-side service-key exposure.
+              // No user document exists: provision a row server-side (no client-side fallback).
               try {
                 const idToken = await authUser.getIdToken();
                 const provisionResp = await fetch('/api/provision', {
@@ -99,40 +99,16 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 if (!provisionResp.ok) {
                   const body = await provisionResp.text();
                   console.error('[auth] provision failed:', provisionResp.status, body);
-                  // Fallback: create a minimal client-side doc (will only work if RLS allows it)
-                  const fallback = {
-                    displayName: authUser.displayName || '',
-                    photoURL: authUser.photoURL || '',
-                    measurementSystem: 'imperial',
-                    shoeSizeSystem: 'us-mens',
-                    distanceUnit: 'km',
-                    dateFormat: 'MM/DD/YYYY',
-                    createdAt: new Date(),
-                    lastLogin: new Date(),
-                    authUserId: authUser.uid,
-                  };
-                  try { console.debug('[auth] fallback setDoc payload:', JSON.stringify(fallback)); } catch (_) { console.debug('[auth] fallback setDoc payload (raw):', fallback); }
-                  await db.setDoc('app_users', authUser.uid, fallback);
+                  // Leave userDocData empty; provisioning can be retried later
+                  userDocData = {} as BackendUserDocument;
                 } else {
                   // fetch the created/updated row from the DB to populate the profile
                   const created = await db.getDoc('app_users', authUser.uid);
                   userDocData = created.data || {};
                 }
               } catch (err) {
-                console.error('[auth] provisioning error, falling back to client setDoc', err);
-                const fallback = {
-                  displayName: authUser.displayName || '',
-                  photoURL: authUser.photoURL || '',
-                  measurementSystem: 'imperial',
-                  shoeSizeSystem: 'us-mens',
-                  distanceUnit: 'km',
-                  dateFormat: 'MM/DD/YYYY',
-                  createdAt: new Date(),
-                  lastLogin: new Date(),
-                  authUserId: authUser.uid,
-                };
-                try { console.debug('[auth] fallback setDoc payload:', JSON.stringify(fallback)); } catch (_) { console.debug('[auth] fallback setDoc payload (raw):', fallback); }
-                await db.setDoc('app_users', authUser.uid, fallback);
+                console.error('[auth] provisioning error (server), not creating client-side row:', err);
+                userDocData = {} as BackendUserDocument;
               }
             }
 
