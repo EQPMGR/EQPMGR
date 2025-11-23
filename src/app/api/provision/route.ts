@@ -43,15 +43,23 @@ export async function POST(request: Request) {
     const uid = user?.id;
     if (!uid) return NextResponse.json({ error: 'Unable to verify user id' }, { status: 401 });
 
-    // Upsert using supabase-js server client (service role key)
-    const payload = { auth_user_id: uid, email: user.email ?? null, display_name: user.user_metadata?.full_name ?? user.email ?? null };
-    const { data, error } = await supabaseAdmin.from('app_users').upsert(payload, { onConflict: 'auth_user_id', returning: 'representation' });
-    if (error) {
-      console.error('/api/provision upsert error', error);
-      return NextResponse.json({ error: 'Failed to upsert user', detail: error }, { status: 500 });
+    // Prefer calling a SECURITY DEFINER RPC to avoid table-level permission issues.
+    // Ensure you've run the SQL to create `admin_upsert_app_user(p_auth_user_id uuid, p_email text, p_display_name text)`.
+    try {
+      const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc('admin_upsert_app_user', {
+        p_auth_user_id: uid,
+        p_email: user.email ?? null,
+        p_display_name: user.user_metadata?.full_name ?? user.email ?? null,
+      });
+      if (rpcErr) {
+        console.error('/api/provision rpc error', rpcErr);
+        return NextResponse.json({ error: 'RPC upsert failed', detail: rpcErr }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, row: rpcData }, { status: 200 });
+    } catch (e: any) {
+      console.error('/api/provision rpc exception', e);
+      return NextResponse.json({ error: 'RPC exception', detail: e?.message || String(e) }, { status: 500 });
     }
-
-    return NextResponse.json({ success: true, row: data }, { status: 200 });
   } catch (err: any) {
     console.error('/api/provision error', err);
     return NextResponse.json({ error: 'Server error', detail: err?.message || String(err) }, { status: 500 });
