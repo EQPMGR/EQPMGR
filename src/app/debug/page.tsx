@@ -32,7 +32,7 @@ type SecretTestState = {
     }
 }
 
-const secretsToTest = ['GEMINI_API_KEY', 'FIREBASE_API_KEY', 'FIREBASE_PROJECT_ID'];
+const secretsToTest = ['OPENAI_API_KEY', 'FIREBASE_API_KEY', 'FIREBASE_PROJECT_ID'];
 
 export default function DebugPage() {
   const { toast } = useToast();
@@ -184,9 +184,9 @@ export default function DebugPage() {
       
       <Card className="max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>2. Embedding Model Connection Test</CardTitle>
+          <CardTitle>2. OpenAI Connection Test</CardTitle>
           <CardDescription>
-            This tests if the server can successfully authenticate with and call the Google AI API for embeddings. This confirms service account permissions for AI services.
+            This tests if the server can successfully authenticate with and call the OpenAI API for embeddings or chat. Ensure `OPENAI_API_KEY` is set in the environment.
           </CardDescription>
         </CardHeader>
         <CardContent>

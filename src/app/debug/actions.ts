@@ -3,7 +3,6 @@
 
 import { getServerAuth, getServerDb } from '@/backend';
 import { ai } from '@/ai/genkit';
-import { textEmbedding004 } from '@genkit-ai/googleai';
 import { accessSecret } from '@/lib/secrets';
 
 export async function getComponentForDebug(componentId: string): Promise<string> {
@@ -40,13 +39,10 @@ export async function getComponentForDebug(componentId: string): Promise<string>
 
 export async function testVertexAIConnection(): Promise<string> {
     try {
-        console.log('[Debug Action] Testing Vertex AI connection...');
-        await ai.embed({
-            embedder: textEmbedding004,
-            content: 'This is a test.',
-        });
-        console.log('[Debug Action] Vertex AI connection successful.');
-        return 'Successfully connected to Vertex AI and generated a test embedding.';
+        console.log('[Debug Action] Testing OpenAI connection...');
+        await ai.embed('This is a test.');
+        console.log('[Debug Action] OpenAI connection successful.');
+        return 'Successfully connected to OpenAI and generated a test embedding.';
     } catch (error: any) {
         console.error('[Debug Action] Vertex AI connection failed:', error);
         return `Connection failed: ${error.message}`;
@@ -54,15 +50,13 @@ export async function testVertexAIConnection(): Promise<string> {
 }
 
 export async function getEnvironmentStatus(): Promise<object> {
-  try {
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const gaeCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    try {
+        const openaiKey = process.env.OPENAI_API_KEY;
 
-    return {
-      geminiApiKeyStatus: geminiKey ? `Loaded (${geminiKey.substring(0, 4)}...${geminiKey.slice(-4)})` : 'NOT FOUND',
-      googleApplicationCredentialsStatus: gaeCredentials ? `Loaded (Path: ${gaeCredentials})` : 'NOT FOUND (This is expected in many environments, Admin SDK may use default credentials)',
-      nodeEnv: process.env.NODE_ENV || 'Not set'
-    };
+        return {
+            openaiApiKeyStatus: openaiKey ? `Loaded (${openaiKey.substring(0, 4)}...${openaiKey.slice(-4)})` : 'NOT FOUND',
+            nodeEnv: process.env.NODE_ENV || 'Not set'
+        };
   } catch (error: any) {
     return {
       error: 'Failed to read environment variables.',

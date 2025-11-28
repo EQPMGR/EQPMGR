@@ -18,8 +18,8 @@ export async function extractBikeDetailsFromUrlContent(input: ExtractBikeDetails
 }
 
 const bikeExtractorPrompt = ai.definePrompt({
-  name: 'bikeExtractorPrompt',
-  model: 'googleai/gemini-2.5-flash-lite',
+    name: 'bikeExtractorPrompt',
+    model: process.env.OPENAI_CHAT_MODEL || 'gpt-3.5-turbo',
   input: { schema: ExtractBikeDetailsInputSchema },
   output: { schema: ExtractBikeDetailsOutputSchema },
   config: {
@@ -75,7 +75,7 @@ const extractBikeDetailsFlow = ai.defineFlow(
     } catch (e: any) {
         console.error("[AI_FLOW_ERROR] in extractBikeDetailsFlow:", e);
         if (e.message && e.message.includes('403 Forbidden')) {
-            throw new Error('AI request was blocked. This is likely due to API key restrictions. The server-side key for Genkit must not have HTTP referrer restrictions. Please check your key settings in the Google Cloud Console.');
+            throw new Error('AI request was blocked. This is likely due to API key restrictions (e.g. HTTP referrer restrictions). Please check your provider API key settings and permissions.');
         }
         throw new Error(`An unexpected error occurred while calling the AI model: ${e.message}`);
     }

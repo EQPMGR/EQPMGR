@@ -259,7 +259,31 @@ export class SupabaseDbAdapter implements IDatabase {
       'id', 'uid', 'email', 'email_verified', 'display_name', 'phone', 'photo_url', 'avatar_url',
       'height', 'weight', 'shoe_size', 'birthdate', 'measurement_system', 'shoe_size_system',
       'distance_unit', 'date_format', 'created_at', 'last_login'
-    ]
+    ],
+    equipment: [
+      'id','app_user_id','name','type','brand','model','model_year','serial_number','frame_size','size',
+      'shoe_size_system','purchase_condition','purchase_date','purchase_price','total_distance','total_hours',
+      'image_url','wheelsets','associated_equipment_ids','maintenance_log','created_at','updated_at'
+    ],
+    components: [
+      'id','equipment_id','parent_user_component_id','master_component_id','name','wear_percentage','last_service_date',
+      'purchase_date','notes','size','wheelset_id','created_at','updated_at'
+    ],
+    master_components: [
+      'id','name','brand','series','model','system','size','size_variants','chainring1','chainring2','chainring3','embedding','created_at','updated_at'
+    ],
+    bike_models: [
+      'id','brand','model','model_year','frame_size_options','created_by','created_at','updated_at'
+    ],
+    service_providers: [
+      'id','name','shop_name','logo_url','services','address','city','province','postal_code','country','phone','website','geohash','lat','lng','average_rating','rating_count','created_at','updated_at'
+    ],
+    work_orders: [
+      'id','user_id','user_name','user_phone','user_email','service_provider_id','service_provider_auth_uid','provider_name','equipment_id','equipment_name','equipment_brand','equipment_model','service_type','status','notes','fit_data','created_at','updated_at','user_consent'
+    ],
+    counters: ['id','count','updated_at'],
+    ignored_duplicates: ['id','ignored','ignored_at'],
+    _health_check: ['id','last_checked']
   };
 
   private async getTableColumns(table: string): Promise<Set<string>> {

@@ -8,7 +8,6 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { textEmbedding004 } from '@genkit-ai/googleai';
 import type { MasterComponent } from '@/lib/types';
 
 
@@ -86,12 +85,9 @@ export const indexComponentFlow = ai.defineFlow(
         const vectorDocument = createComponentVectorDocument(component as MasterComponent);
         console.log(`[SERVER] Created vector document: "${vectorDocument}"`);
 
-        // 2. Generate the embedding.
-        console.log(`[SERVER] Calling ai.embed with text embedder...`);
-        const embedding = await ai.embed({
-            embedder: textEmbedding004,
-            content: vectorDocument,
-        });
+        // 2. Generate the embedding using OpenAI adapter.
+        console.log(`[SERVER] Calling ai.embed...`);
+        const embedding = await ai.embed(vectorDocument);
         console.log(`[SERVER] Successfully received embedding from AI service.`);
         
         // 3. Return the embedding to the client.
@@ -101,8 +97,8 @@ export const indexComponentFlow = ai.defineFlow(
         console.error(`[SERVER ERROR] in indexComponentFlow for ${component.id}:`, e);
         // Re-throw a more informative error to the client.
         if (e.code === 7 || e.code === 'PERMISSION_DENIED') {
-            const detailedError = `The AI service call failed with a permission error. This can be caused by the server-side API key having HTTP referrer restrictions, or the service account lacking the 'Vertex AI User' IAM role.`;
-            throw new Error(detailedError);
+          const detailedError = `The AI service call failed with a permission error. This can be caused by the server-side API key having HTTP referrer restrictions, or the API key lacking required permissions.`;
+          throw new Error(detailedError);
         }
         throw new Error(`Failed to generate embedding for component ${component.id}: ${e.message}`);
     }

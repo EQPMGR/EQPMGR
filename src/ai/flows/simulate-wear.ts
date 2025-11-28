@@ -20,7 +20,7 @@ export async function simulateWear(input: SimulateWearInput): Promise<SimulateWe
 
 const prompt = ai.definePrompt({
   name: 'simulateWearPrompt',
-  model: 'googleai/gemini-2.5-flash-lite',
+  model: process.env.OPENAI_CHAT_MODEL || 'gpt-3.5-turbo',
   input: {schema: SimulateWearInputSchema},
   output: {schema: SimulateWearOutputSchema},
   prompt: `You are an expert in simulating wear and tear on sports equipment.

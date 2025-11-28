@@ -5,7 +5,6 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { textEmbedding004 } from '@genkit-ai/googleai';
 import { getServerDb } from '@/backend';
 import type { MasterComponent } from '@/lib/types';
 
@@ -19,10 +18,7 @@ import type { MasterComponent } from '@/lib/types';
 export async function findSimilarComponents(text: string, topK: number = 5): Promise<MasterComponent[]> {
   try {
     // 1. Generate an embedding for the input text.
-    const embedding = await ai.embed({
-      embedder: textEmbedding004,
-      content: text,
-    });
+    const embedding = await ai.embed(text);
 
     // 2. Query backend for the nearest neighbors.
     const db = await getServerDb();

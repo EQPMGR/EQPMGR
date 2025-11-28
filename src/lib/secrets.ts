@@ -1,8 +1,5 @@
 
 'use server';
-import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-
-const client = new SecretManagerServiceClient();
 
 /**
  * Accesses the value of a secret stored in Google Cloud Secret Manager.
@@ -10,24 +7,11 @@ const client = new SecretManagerServiceClient();
  * @returns The secret value as a string.
  */
 export async function accessSecret(secretName: string): Promise<string> {
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-        throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID environment variable is not set.');
-    }
-  
-  try {
-    const [version] = await client.accessSecretVersion({
-      name: `projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/secrets/${secretName}/versions/latest`,
-    });
+  // First, prefer environment variable (convenient for Netlify / Vercel / local dev)
+  // Only support environment variables (Netlify / Vercel / local dev).
+  const val = process.env[secretName];
+  if (val) return val;
 
-    const payload = version.payload?.data?.toString();
-    if (!payload) {
-      throw new Error(`Secret [${secretName}] has no payload.`);
-    }
-    
-    return payload;
-
-  } catch (error) {
-    console.error(`Failed to access secret: ${secretName}`, error);
-    throw new Error(`Could not access secret: ${secretName}. Ensure it exists and the service account has the 'Secret Manager Secret Accessor' role.`);
-  }
+  // If not present, provide a clear error explaining what to set.
+  throw new Error(`Secret ${secretName} is not set. Please add environment variable ${secretName} to your deployment (Netlify/Vercel) or local environment.`);
 }
