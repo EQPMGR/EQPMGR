@@ -1,5 +1,4 @@
 
-'use server';
 import { embed as openaiEmbed, chat as openaiChat } from '@/lib/llm';
 
 // Minimal compatibility layer used by the app. It provides the small surface
@@ -45,4 +44,4 @@ export const ai = {
   },
 };
 
-export default ai;
+// Keep only the named export (`ai`) to avoid accidental default-imports.
