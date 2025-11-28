@@ -1,15 +1,65 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
- 
+import { useRouter } from 'next/navigation';
+import { Loader2, Sparkles, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
+
+export default function ImportTextPage() {
+    const router = useRouter();
+    const { toast } = useToast();
+    const { user } = useAuth();
+
+    const [textContent, setTextContent] = useState('');
+    const [isExtracting, setIsExtracting] = useState(false);
+    const [structuredResult, setStructuredResult] = useState<any | null>(null);
+
+    async function handleExtract() {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Not signed in', description: 'Please sign in to use this feature.' });
+            return;
+        }
+
+        setIsExtracting(true);
+
+        try {
+            const idToken = await user.getIdToken(true);
+            const resp = await fetch('/api/admin/import-text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+                body: JSON.stringify({ text: textContent }),
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to extract text');
+            }
+
+            const body = await resp.json();
+            setStructuredResult(body.result || null);
+        } catch (error: any) {
+            console.error('Import extract error:', error);
+            toast({ variant: 'destructive', title: 'Extraction failed', description: error.message || 'Unknown error' });
+        } finally {
             setIsExtracting(false);
         }
     }
-    
+
     const handleContinueToForm = () => {
         if (structuredResult) {
             try {
-                // Store all relevant data for the form and for training data collection
                 const dataToStore = {
                     rawText: textContent,
                     aiOutput: structuredResult,
@@ -18,15 +68,10 @@ import React, { useState } from 'react';
                 router.push('/admin/add-bike-model');
             } catch (error) {
                 console.error('Failed to save data to sessionStorage:', error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: 'Could not pass data to the form. Please try again.',
-                });
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not pass data to the form. Please try again.' });
             }
         }
     };
-
 
     return (
         <Card className="max-w-4xl mx-auto">
@@ -49,27 +94,25 @@ import React, { useState } from 'react';
                             rows={15}
                         />
                         <Button onClick={handleExtract} disabled={!textContent || isExtracting} className="self-start">
-                           {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                           <span className="ml-2">Extract & Structure</span>
+                            {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                            <span className="ml-2">Extract & Structure</span>
                         </Button>
                     </div>
                 </div>
 
-                 {isExtracting && (
-                     <div className="flex items-center gap-2 text-muted-foreground">
+                {isExtracting && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <p>AI is now extracting and structuring components... this may take some time.</p>
-                     </div>
-                 )}
+                    </div>
+                )}
             </CardContent>
-            
+
             {structuredResult && (
                 <CardFooter className="flex-col items-start gap-4">
-                     <div className="w-full space-y-2">
+                    <div className="w-full space-y-2">
                         <h3 className="font-semibold">Review Extracted Data:</h3>
-                        <pre className="p-4 bg-muted rounded-md text-xs overflow-auto max-h-[50vh]">
-                            {JSON.stringify(structuredResult, null, 2)}
-                        </pre>
+                        <pre className="p-4 bg-muted rounded-md text-xs overflow-auto max-h-[50vh]">{JSON.stringify(structuredResult, null, 2)}</pre>
                     </div>
                     <Button onClick={handleContinueToForm} className="self-end">
                         <Send className="mr-2 h-4 w-4" />
