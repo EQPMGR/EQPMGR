@@ -86,13 +86,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(finalRedirectUrl.toString());
 
   } catch (err: any) {
-    console.error('FATAL ERROR during server-side token exchange.', {
-      message: err.message,
-      code: err.code,
-    });
-    // Return a generic error page (do not include raw error text to avoid leaking details or XSS).
+    // Generate a short error id so the user can find the corresponding server log entry.
+    const errorId = `${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
+    console.error('FATAL ERROR during server-side token exchange.', { errorId, err });
+
+    // Return a generic error page with the error id (no internal details).
     return new Response(
-      `<html><body><h1>Authentication Failed</h1><p>An unexpected server error occurred. Please try again later.</p></body></html>`,
+      `<html><body><h1>Authentication Failed</h1><p>An unexpected server error occurred. Please try again later.</p><p>Error id: <strong>${errorId}</strong></p></body></html>`,
       { headers: { 'Content-Type': 'text/html' }, status: 500 }
     );
   }
