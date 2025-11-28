@@ -1,9 +1,6 @@
-'use server';
-
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
-if (!OPENAI_KEY) {
-  // Do not throw at import time in some environments; functions will throw when called.
-}
+"use server";
+// Simple wrapper around OpenAI HTTP APIs. Exports async functions `chat` and `embed`.
+// Export only named async functions so this file is valid as a `use server` module.
 
 export async function chat(prompt: string, model = process.env.OPENAI_CHAT_MODEL || 'gpt-3.5-turbo') {
   if (!process.env.OPENAI_API_KEY) throw new Error('Missing OPENAI_API_KEY');
@@ -52,4 +49,4 @@ export async function embed(text: string, model = process.env.OPENAI_EMBED_MODEL
   return j.data?.[0]?.embedding ?? null;
 }
 
-export default { chat, embed };
+// No default export: only named async functions are exported to satisfy Next.js server-file rules.

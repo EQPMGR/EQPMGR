@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { Bot, Loader2, Wrench } from 'lucide-react';
-import { generateMaintenanceSchedule } from '@/ai/flows/generate-maintenance-schedule';
+// generateMaintenanceSchedule is executed server-side via API to avoid bundling server-only code in the client.
 import type { GenerateMaintenanceScheduleOutput } from '@/lib/ai-types';
 
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/card';
 import type { Equipment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { Badge } from './ui/badge';
 
 interface MaintenanceScheduleProps {
@@ -32,6 +33,7 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<GenerateMaintenanceScheduleOutput | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleGenerateSchedule = async () => {
     setIsLoading(true);
@@ -51,11 +53,27 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
         suspension: 'Service every 50 hours of riding',
       });
 
-      const output = await generateMaintenanceSchedule({
-        equipmentType: equipment.type,
-        wearAndTearData,
-        manufacturerGuidelines,
+      // Call server API with ID token for authentication
+      let token: string | null = null;
+      if (user) {
+        token = await user.getIdToken(true);
+      }
+
+      const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const resp = await fetch('/api/admin/generate-maintenance-schedule', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ equipmentType: equipment.type, wearAndTearData, manufacturerGuidelines }),
       });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Schedule generation failed');
+      }
+
+      const { result: output } = await resp.json();
       setResult(output);
     } catch (error) {
       console.error('Error generating schedule:', error);

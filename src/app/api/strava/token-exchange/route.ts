@@ -90,8 +90,9 @@ export async function GET(request: NextRequest) {
       message: err.message,
       code: err.code,
     });
+    // Return a generic error page (do not include raw error text to avoid leaking details or XSS).
     return new Response(
-      `<html><body><h1>Authentication Failed</h1><p>${err.message || 'An unexpected server error occurred.'}</p></body></html>`,
+      `<html><body><h1>Authentication Failed</h1><p>An unexpected server error occurred. Please try again later.</p></body></html>`,
       { headers: { 'Content-Type': 'text/html' }, status: 500 }
     );
   }

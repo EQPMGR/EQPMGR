@@ -6,7 +6,6 @@ import { Bot, Loader2, LocateFixed } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { simulateWear } from '@/ai/flows/simulate-wear';
 import type { SimulateWearOutput } from '@/lib/ai-types';
 import { getDb } from '@/backend';
 import { useAuth } from '@/hooks/use-auth';
@@ -136,16 +135,28 @@ export function WearSimulation({ equipment, onSuccess }: WearSimulationProps) {
         }))
       );
 
-      const output = await simulateWear({
-        equipmentType: equipment.type,
-        workoutType: values.workoutType,
-        distance: values.distance,
-        duration: values.duration,
-        intensity: values.intensity,
-        environmentalConditions: values.environmentalConditions,
-        wearAndTearData,
-        manufacturerGuidelines: JSON.stringify({}), // Placeholder
+      const idToken = await user.getIdToken(true);
+      const resp = await fetch('/api/admin/simulate-wear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          equipmentType: equipment.type,
+          workoutType: values.workoutType,
+          distance: values.distance,
+          duration: values.duration,
+          intensity: values.intensity,
+          environmentalConditions: values.environmentalConditions,
+          wearAndTearData,
+          manufacturerGuidelines: JSON.stringify({}),
+        }),
       });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Simulation failed');
+      }
+
+      const { result: output } = await resp.json();
       setResult(output);
 
       // After successful simulation, update database

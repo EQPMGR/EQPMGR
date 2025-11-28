@@ -2,6 +2,7 @@
 
 import { NextResponse } from 'next/server';
 import { chat as openaiChat } from '@/lib/llm';
+import { getServerAuth } from '@/backend';
 
 type ImportRequest = {
   text?: string;
@@ -18,6 +19,14 @@ type ImportRequest = {
  */
 export async function POST(req: Request) {
   try {
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return NextResponse.json({ error: 'Missing authorization token.' }, { status: 401 });
+
+    const auth = await getServerAuth();
+    const decoded = await auth.verifyIdToken(token, true);
+    if (!decoded?.uid) return NextResponse.json({ error: 'Invalid token.' }, { status: 401 });
+
     const body: ImportRequest = await req.json().catch(() => ({} as ImportRequest));
     const text = (body.text || '').trim();
 

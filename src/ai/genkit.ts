@@ -1,4 +1,5 @@
 
+'use server';
 import { embed as openaiEmbed, chat as openaiChat } from '@/lib/llm';
 
 // Minimal compatibility layer used by the app. It provides the small surface
