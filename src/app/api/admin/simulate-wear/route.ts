@@ -1,4 +1,4 @@
-'use server';
+'use strict';
 
 import { NextResponse } from 'next/server';
 import { getServerAuth } from '@/backend';
