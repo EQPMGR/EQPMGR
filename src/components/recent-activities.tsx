@@ -107,6 +107,48 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
     }
   };
 
+    // Diagnostic UI for Strava connect (non-secret information only)
+    const [showDiag, setShowDiag] = useState(false);
+    const [diagInfo, setDiagInfo] = useState<{ hasIdToken?: boolean; maskedIdToken?: string; cookiePresent?: boolean; redirectUri?: string } | null>(null);
+
+    const runDiagnostics = async () => {
+        const info: any = {};
+        try {
+            if (user) {
+                try {
+                    const id = await user.getIdToken(true);
+                    info.hasIdToken = !!id;
+                    if (id && id.length > 8) {
+                        info.maskedIdToken = `${id.slice(0,4)}...${id.slice(-4)}`;
+                    }
+                } catch (err) {
+                    info.hasIdToken = false;
+                }
+            } else {
+                info.hasIdToken = false;
+            }
+        } catch (e) {
+            info.hasIdToken = false;
+        }
+
+        // Check cookie presence
+        try {
+            const cookie = Cookies.get('strava_id_token');
+            info.cookiePresent = !!cookie;
+        } catch (e) {
+            info.cookiePresent = false;
+        }
+
+        // Computed redirect URI
+        try {
+            info.redirectUri = `${window.location.origin}/api/strava/token-exchange`;
+        } catch (e) {
+            info.redirectUri = 'unknown';
+        }
+
+        setDiagInfo(info);
+    };
+
 
   return (
     <Card>
@@ -144,6 +186,23 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
                  <div className="flex items-center justify-center flex-col gap-4 text-center py-8">
                     <p className="text-muted-foreground">Connect to Strava to view and assign your recent rides.</p>
                     <StravaConnectButton onClick={handleStravaConnect} />
+                                        <div className="mt-4 text-left w-full">
+                                            <button
+                                                className="text-sm underline text-muted-foreground"
+                                                onClick={() => { setShowDiag(v => !v); if (!showDiag) runDiagnostics(); }}
+                                            >
+                                                {showDiag ? 'Hide' : 'Show'} Strava Diagnostics
+                                            </button>
+
+                                            {showDiag && diagInfo && (
+                                                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                                    <div><strong>ID token available:</strong> {diagInfo.hasIdToken ? 'Yes' : 'No'}</div>
+                                                    <div><strong>Masked ID token:</strong> {diagInfo.maskedIdToken ?? '—'}</div>
+                                                    <div><strong>`strava_id_token` cookie set:</strong> {diagInfo.cookiePresent ? 'Yes' : 'No'}</div>
+                                                    <div><strong>Computed redirect URI:</strong> <code className="break-all">{diagInfo.redirectUri}</code></div>
+                                                </div>
+                                            )}
+                                        </div>
                 </div>
             ) : recentActivities.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
