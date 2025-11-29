@@ -89,16 +89,40 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
           throw new Error('Strava Client ID is not configured.');
         }
 
-        const idToken = await user.getIdToken(true);
-        Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'Lax' });
-        
-        const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
+                const idToken = await user.getIdToken(true);
 
-        const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-          redirectUri
-        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${encodeURIComponent(pathname)}`;
+                // Set cookie with SameSite=None so it will be sent on cross-site OAuth redirects
+                Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'None', path: '/' });
 
-        window.open(stravaAuthUrl, '_blank', 'noopener,noreferrer');
+                const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
+
+                const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+                    redirectUri
+                )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${encodeURIComponent(pathname)}`;
+
+                // Wait briefly to ensure the cookie is written in the browser before opening the new tab.
+                // Some browsers may not include recently-set cookies on an immediate cross-site navigation unless persisted.
+                const maxWait = 500; // ms
+                const interval = 50;
+                let waited = 0;
+                while (waited < maxWait) {
+                    const check = Cookies.get('strava_id_token');
+                    if (check) break;
+                    // small sleep
+                    // eslint-disable-next-line no-await-in-loop
+                    await new Promise((res) => setTimeout(res, interval));
+                    waited += interval;
+                }
+
+                const cookieNow = Cookies.get('strava_id_token');
+                if (!cookieNow) {
+                    // If the cookie still didn't stick, show an error and abort so the user can retry.
+                    toast({ variant: 'destructive', title: 'Connection Error', description: 'Could not persist auth cookie. Please try again or use a different browser.' });
+                    setIsConnecting(false);
+                    return;
+                }
+
+                window.open(stravaAuthUrl, '_blank', 'noopener,noreferrer');
 
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Connection Error', description: error.message });
