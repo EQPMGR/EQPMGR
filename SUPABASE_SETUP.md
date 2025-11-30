@@ -209,8 +209,8 @@ You'll need to transform the data format:
 **3. Import to Supabase**
 
 ```sql
--- Example: Import users
-INSERT INTO users (uid, email, display_name, created_at)
+-- Example: Import users (note: using app_users table)
+INSERT INTO app_users (uid, email, display_name, created_at)
 VALUES
   ('firebase_uid_1', 'user@example.com', 'John Doe', '2024-01-01T00:00:00Z'),
   ('firebase_uid_2', 'user2@example.com', 'Jane Smith', '2024-01-15T00:00:00Z');
@@ -225,7 +225,7 @@ SELECT
   'Trek',
   'Domane SL7',
   '2023-06-01'
-FROM users u WHERE u.uid = 'firebase_uid_1';
+FROM app_users u WHERE u.uid = 'firebase_uid_1';
 ```
 
 ## Switching Between Backends

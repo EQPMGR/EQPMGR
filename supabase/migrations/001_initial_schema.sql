@@ -7,9 +7,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "vector";
 
 -- ============================================
--- USERS TABLE
+-- APP_USERS TABLE
 -- ============================================
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS app_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uid TEXT UNIQUE NOT NULL,  -- Firebase uid for migration compatibility
   email TEXT,
@@ -31,14 +31,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Create index on uid for faster lookups
-CREATE INDEX idx_users_uid ON users(uid);
+CREATE INDEX idx_app_users_uid ON app_users(uid);
 
 -- ============================================
 -- EQUIPMENT TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS equipment (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL,  -- BikeType | 'Running Shoes' | 'Other' | 'Cycling Shoes'
   brand TEXT NOT NULL,
@@ -177,7 +177,7 @@ CREATE INDEX idx_service_providers_lat_lng ON service_providers(lat, lng);
 -- ============================================
 CREATE TABLE IF NOT EXISTS work_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES app_users(id) ON DELETE SET NULL,
   user_name TEXT NOT NULL,
   user_phone TEXT NOT NULL,
   user_email TEXT NOT NULL,
@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS employees (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   role TEXT NOT NULL,
-  shop_owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  shop_owner_id UUID REFERENCES app_users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -254,41 +254,41 @@ CREATE TABLE IF NOT EXISTS ignored_duplicates (
 -- ============================================
 
 -- Enable RLS on all user-facing tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE components ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 
--- Users table policies
-CREATE POLICY "Users can view own profile" ON users
+-- App_users table policies
+CREATE POLICY "Users can view own profile" ON app_users
   FOR SELECT USING (auth.uid() = uid);
 
-CREATE POLICY "Users can update own profile" ON users
+CREATE POLICY "Users can update own profile" ON app_users
   FOR UPDATE USING (auth.uid() = uid);
 
-CREATE POLICY "Users can insert own profile" ON users
+CREATE POLICY "Users can insert own profile" ON app_users
   FOR INSERT WITH CHECK (auth.uid() = uid);
 
 -- Equipment table policies
 CREATE POLICY "Users can view own equipment" ON equipment
   FOR SELECT USING (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 CREATE POLICY "Users can insert own equipment" ON equipment
   FOR INSERT WITH CHECK (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 CREATE POLICY "Users can update own equipment" ON equipment
   FOR UPDATE USING (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 CREATE POLICY "Users can delete own equipment" ON equipment
   FOR DELETE USING (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 -- Components table policies
@@ -296,7 +296,7 @@ CREATE POLICY "Users can manage own components" ON components
   FOR ALL USING (
     equipment_id IN (
       SELECT id FROM equipment WHERE user_id IN (
-        SELECT id FROM users WHERE uid = auth.uid()
+        SELECT id FROM app_users WHERE uid = auth.uid()
       )
     )
   );
@@ -316,23 +316,23 @@ CREATE POLICY "Public read access to service providers" ON service_providers
 -- Work orders policies
 CREATE POLICY "Users can view own work orders" ON work_orders
   FOR SELECT USING (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 CREATE POLICY "Users can create work orders" ON work_orders
   FOR INSERT WITH CHECK (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 CREATE POLICY "Users can update own work orders" ON work_orders
   FOR UPDATE USING (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 -- Employees policies
 CREATE POLICY "Shop owners can manage employees" ON employees
   FOR ALL USING (
-    shop_owner_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    shop_owner_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 -- ============================================
@@ -414,7 +414,7 @@ $$;
 -- COMMENTS
 -- ============================================
 
-COMMENT ON TABLE users IS 'User profiles and preferences';
+COMMENT ON TABLE app_users IS 'User profiles and preferences';
 COMMENT ON TABLE equipment IS 'User-owned bikes, shoes, and other gear';
 COMMENT ON TABLE components IS 'Components attached to equipment (subcollection in Firestore)';
 COMMENT ON TABLE master_components IS 'Catalog of all available components with vector embeddings';
@@ -454,7 +454,7 @@ SELECT
   u.display_name,
   (SELECT COUNT(*) FROM equipment WHERE user_id = u.id) AS equipment_count,
   (SELECT COUNT(*) FROM work_orders WHERE user_id = u.id) AS work_order_count
-FROM users u;
+FROM app_users u;
 
 COMMENT ON VIEW equipment_summary IS 'Equipment with aggregated component counts';
 COMMENT ON VIEW user_statistics IS 'User statistics for analytics';
