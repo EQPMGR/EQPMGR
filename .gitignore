@@ -39,3 +39,6 @@ firestore-debug.log
 # IDE files
 .vscode
 .idea
+
+# TypeScript build info
+tsconfig.tsbuildinfo
