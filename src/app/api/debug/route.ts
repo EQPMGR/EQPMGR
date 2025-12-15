@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       response.cookies.set('debug_test', `test_${Date.now()}`, {
         httpOnly: true,
         secure: true,
-        sameSite: 'none',
+        sameSite: 'lax',
         path: '/',
         maxAge: 60, // 60 seconds
       });
@@ -71,7 +71,6 @@ export async function GET(request: NextRequest) {
       {
         error: 'Debug endpoint failed',
         message: error.message || 'Unknown error',
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       },
       { status: 500 }
     );
