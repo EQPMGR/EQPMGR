@@ -17,7 +17,7 @@ import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const stravaCookie = cookieStore.get('strava_id_token')?.value || null;
     const debugCookie = cookieStore.get('debug_test')?.value || null;
 
