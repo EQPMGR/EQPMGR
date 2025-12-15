@@ -89,40 +89,39 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
           throw new Error('Strava Client ID is not configured.');
         }
 
-                const idToken = await user.getIdToken(true);
+        const idToken = await user.getIdToken(true);
 
-                // Set cookie with SameSite=None so it will be sent on cross-site OAuth redirects
-                Cookies.set('strava_id_token', idToken, { expires: 1/144, secure: true, sameSite: 'None', path: '/' });
+        Cookies.set('strava_id_token', idToken, { 
+          expires: 1/144, 
+          secure: true, 
+          sameSite: 'None', 
+          path: '/' 
+        });
 
-                const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
+        const redirectUri = `${window.location.origin}/api/strava/token-exchange`;
 
-                const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-                    redirectUri
-                )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${encodeURIComponent(pathname)}`;
+        const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+            redirectUri
+        )}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${encodeURIComponent(pathname)}`;
 
-                // Wait briefly to ensure the cookie is written in the browser before opening the new tab.
-                // Some browsers may not include recently-set cookies on an immediate cross-site navigation unless persisted.
-                const maxWait = 500; // ms
-                const interval = 50;
-                let waited = 0;
-                while (waited < maxWait) {
-                    const check = Cookies.get('strava_id_token');
-                    if (check) break;
-                    // small sleep
-                    // eslint-disable-next-line no-await-in-loop
-                    await new Promise((res) => setTimeout(res, interval));
-                    waited += interval;
-                }
+        const maxWait = 500;
+        const interval = 50;
+        let waited = 0;
+        while (waited < maxWait) {
+            const check = Cookies.get('strava_id_token');
+            if (check) break;
+            await new Promise((res) => setTimeout(res, interval));
+            waited += interval;
+        }
 
-                const cookieNow = Cookies.get('strava_id_token');
-                if (!cookieNow) {
-                    // If the cookie still didn't stick, show an error and abort so the user can retry.
-                    toast({ variant: 'destructive', title: 'Connection Error', description: 'Could not persist auth cookie. Please try again or use a different browser.' });
-                    setIsConnecting(false);
-                    return;
-                }
+        const cookieNow = Cookies.get('strava_id_token');
+        if (!cookieNow) {
+            toast({ variant: 'destructive', title: 'Connection Error', description: 'Could not persist auth cookie. Please try again or use a different browser.' });
+            setIsConnecting(false);
+            return;
+        }
 
-                window.open(stravaAuthUrl, '_blank', 'noopener,noreferrer');
+        window.open(stravaAuthUrl, '_blank', 'noopener,noreferrer');
 
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Connection Error', description: error.message });
@@ -131,48 +130,44 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
     }
   };
 
-    // Diagnostic UI for Strava connect (non-secret information only)
-    const [showDiag, setShowDiag] = useState(false);
-    const [diagInfo, setDiagInfo] = useState<{ hasIdToken?: boolean; maskedIdToken?: string; cookiePresent?: boolean; redirectUri?: string } | null>(null);
+  const [showDiag, setShowDiag] = useState(false);
+  const [diagInfo, setDiagInfo] = useState<{ hasIdToken?: boolean; maskedIdToken?: string; cookiePresent?: boolean; redirectUri?: string } | null>(null);
 
-    const runDiagnostics = async () => {
-        const info: any = {};
-        try {
-            if (user) {
-                try {
-                    const id = await user.getIdToken(true);
-                    info.hasIdToken = !!id;
-                    if (id && id.length > 8) {
-                        info.maskedIdToken = `${id.slice(0,4)}...${id.slice(-4)}`;
-                    }
-                } catch (err) {
-                    info.hasIdToken = false;
-                }
-            } else {
-                info.hasIdToken = false;
-            }
-        } catch (e) {
-            info.hasIdToken = false;
-        }
+  const runDiagnostics = async () => {
+      const info: any = {};
+      try {
+          if (user) {
+              try {
+                  const id = await user.getIdToken(true);
+                  info.hasIdToken = !!id;
+                  if (id && id.length > 8) {
+                      info.maskedIdToken = `${id.slice(0,4)}...${id.slice(-4)}`;
+                  }
+              } catch (err) {
+                  info.hasIdToken = false;
+              }
+          } else {
+              info.hasIdToken = false;
+          }
+      } catch (e) {
+          info.hasIdToken = false;
+      }
 
-        // Check cookie presence
-        try {
-            const cookie = Cookies.get('strava_id_token');
-            info.cookiePresent = !!cookie;
-        } catch (e) {
-            info.cookiePresent = false;
-        }
+      try {
+          const cookie = Cookies.get('strava_id_token');
+          info.cookiePresent = !!cookie;
+      } catch (e) {
+          info.cookiePresent = false;
+      }
 
-        // Computed redirect URI
-        try {
-            info.redirectUri = `${window.location.origin}/api/strava/token-exchange`;
-        } catch (e) {
-            info.redirectUri = 'unknown';
-        }
+      try {
+          info.redirectUri = `${window.location.origin}/api/strava/token-exchange`;
+      } catch (e) {
+          info.redirectUri = 'unknown';
+      }
 
-        setDiagInfo(info);
-    };
-
+      setDiagInfo(info);
+  };
 
   return (
     <Card>
@@ -210,23 +205,23 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
                  <div className="flex items-center justify-center flex-col gap-4 text-center py-8">
                     <p className="text-muted-foreground">Connect to Strava to view and assign your recent rides.</p>
                     <StravaConnectButton onClick={handleStravaConnect} />
-                                        <div className="mt-4 text-left w-full">
-                                            <button
-                                                className="text-sm underline text-muted-foreground"
-                                                onClick={() => { setShowDiag(v => !v); if (!showDiag) runDiagnostics(); }}
-                                            >
-                                                {showDiag ? 'Hide' : 'Show'} Strava Diagnostics
-                                            </button>
+                    <div className="mt-4 text-left w-full">
+                        <button
+                            className="text-sm underline text-muted-foreground"
+                            onClick={() => { setShowDiag(v => !v); if (!showDiag) runDiagnostics(); }}
+                        >
+                            {showDiag ? 'Hide' : 'Show'} Strava Diagnostics
+                        </button>
 
-                                            {showDiag && diagInfo && (
-                                                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                                                    <div><strong>ID token available:</strong> {diagInfo.hasIdToken ? 'Yes' : 'No'}</div>
-                                                    <div><strong>Masked ID token:</strong> {diagInfo.maskedIdToken ?? '—'}</div>
-                                                    <div><strong>`strava_id_token` cookie set:</strong> {diagInfo.cookiePresent ? 'Yes' : 'No'}</div>
-                                                    <div><strong>Computed redirect URI:</strong> <code className="break-all">{diagInfo.redirectUri}</code></div>
-                                                </div>
-                                            )}
-                                        </div>
+                        {showDiag && diagInfo && (
+                            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                <div><strong>ID token available:</strong> {diagInfo.hasIdToken ? 'Yes' : 'No'}</div>
+                                <div><strong>Masked ID token:</strong> {diagInfo.maskedIdToken ?? '—'}</div>
+                                <div><strong>`strava_id_token` cookie set:</strong> {diagInfo.cookiePresent ? 'Yes' : 'No'}</div>
+                                <div><strong>Computed redirect URI:</strong> <code className="break-all">{diagInfo.redirectUri}</code></div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             ) : recentActivities.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
