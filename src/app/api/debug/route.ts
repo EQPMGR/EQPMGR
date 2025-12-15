@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * Debug endpoint for diagnosing Strava OAuth cookie / env problems on Netlify.
  *
@@ -35,7 +33,11 @@ export async function GET(request: NextRequest) {
 
     const payload = {
       cookieSeenByServer: !!stravaCookie,
-      stravaCookieMasked: stravaCookie ? `${stravaCookie.slice(0, 6)}...${stravaCookie.slice(-6)}` : null,
+      stravaCookieMasked: stravaCookie 
+        ? (stravaCookie.length >= 12 
+            ? `${stravaCookie.slice(0, 6)}...${stravaCookie.slice(-6)}` 
+            : `${stravaCookie.slice(0, 3)}...`)
+        : null,
       debugCookie: !!debugCookie,
       computedRedirectUri: (() => {
         try {
