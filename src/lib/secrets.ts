@@ -2,12 +2,11 @@
 'use server';
 
 /**
- * Accesses the value of a secret stored in Google Cloud Secret Manager.
- * @param secretName The name of the secret to access.
+ * Accesses environment variable secrets.
+ * @param secretName The name of the environment variable to access.
  * @returns The secret value as a string.
  */
 export async function accessSecret(secretName: string): Promise<string> {
-  // First, prefer environment variable (convenient for Netlify / Vercel / local dev)
   // Only support environment variables (Netlify / Vercel / local dev).
   const val = process.env[secretName];
   if (val) return val;

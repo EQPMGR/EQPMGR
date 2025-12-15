@@ -37,14 +37,14 @@ export async function getComponentForDebug(componentId: string): Promise<string>
 }
 
 
-export async function testVertexAIConnection(): Promise<string> {
+export async function testOpenAIConnection(): Promise<string> {
     try {
         console.log('[Debug Action] Testing OpenAI connection...');
         await ai.embed('This is a test.');
         console.log('[Debug Action] OpenAI connection successful.');
         return 'Successfully connected to OpenAI and generated a test embedding.';
     } catch (error: any) {
-        console.error('[Debug Action] Vertex AI connection failed:', error);
+        console.error('[Debug Action] OpenAI connection failed:', error);
         return `Connection failed: ${error.message}`;
     }
 }

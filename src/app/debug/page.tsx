@@ -22,7 +22,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getComponentForDebug, testVertexAIConnection, getEnvironmentStatus, testIdTokenVerification, testSecret } from './actions';
+import { getComponentForDebug, testOpenAIConnection, getEnvironmentStatus, testIdTokenVerification, testSecret } from './actions';
 import { Separator } from '../ui/separator';
 
 type SecretTestState = {
@@ -49,9 +49,9 @@ export default function DebugPage() {
   const [componentId, setComponentId] = useState('');
   const [componentResult, setComponentResult] = useState<string | null>(null);
   
-  // State for Vertex AI test
-  const [isLoadingVertexTest, setIsLoadingVertexTest] = useState(false);
-  const [vertexTestResult, setVertexTestResult] = useState<string | null>(null);
+  // State for OpenAI test
+  const [isLoadingOpenAITest, setIsLoadingOpenAITest] = useState(false);
+  const [openaiTestResult, setOpenAITestResult] = useState<string | null>(null);
   
   // State for individual secret tests
   const initialSecretState: SecretTestState = secretsToTest.reduce((acc, secret) => {
@@ -113,12 +113,12 @@ export default function DebugPage() {
     }
   };
 
-  const handleVertexTest = async () => {
-    setIsLoadingVertexTest(true);
-    setVertexTestResult(null);
+  const handleOpenAITest = async () => {
+    setIsLoadingOpenAITest(true);
+    setOpenAITestResult(null);
     try {
-      const result = await testVertexAIConnection();
-      setVertexTestResult(result);
+      const result = await testOpenAIConnection();
+      setOpenAITestResult(result);
       if (result.startsWith('Success')) {
         toast({ title: 'Success!', description: result });
       } else {
@@ -126,10 +126,10 @@ export default function DebugPage() {
       }
     } catch (error: any) {
       const msg = `An unexpected client-side error occurred: ${error.message}`;
-      setVertexTestResult(msg);
+      setOpenAITestResult(msg);
       toast({ variant: 'destructive', title: 'Test Failed', description: msg });
     } finally {
-      setIsLoadingVertexTest(false);
+      setIsLoadingOpenAITest(false);
     }
   };
   
@@ -190,23 +190,23 @@ export default function DebugPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleVertexTest} disabled={isLoadingVertexTest}>
-            {isLoadingVertexTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleOpenAITest} disabled={isLoadingOpenAITest}>
+            {isLoadingOpenAITest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Run Embedding Test
           </Button>
         </CardContent>
-        {vertexTestResult && (
+        {openaiTestResult && (
           <CardFooter>
-            <p className="text-sm text-muted-foreground break-all">{vertexTestResult}</p>
+            <p className="text-sm text-muted-foreground break-all">{openaiTestResult}</p>
           </CardFooter>
         )}
       </Card>
 
       <Card className="max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>3. Cloud Secret Access Test</CardTitle>
+          <CardTitle>3. Environment Variable Access Test</CardTitle>
           <CardDescription>
-            Test if the backend has permission to access individual secrets from Secret Manager.
+            Test if the backend can access environment variables properly.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
