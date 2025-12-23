@@ -58,8 +58,8 @@ Create SQL migration files to replicate Firestore structure:
 ```sql
 -- src/supabase/migrations/001_initial_schema.sql
 
--- Users table (replaces users collection)
-CREATE TABLE users (
+-- App_users table (replaces users collection)
+CREATE TABLE app_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uid TEXT UNIQUE NOT NULL,  -- Firebase uid for migration compatibility
   email TEXT,
@@ -83,7 +83,7 @@ CREATE TABLE users (
 -- Equipment table (replaces users/{uid}/equipment subcollection)
 CREATE TABLE equipment (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES app_users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   brand TEXT NOT NULL,
@@ -240,25 +240,25 @@ CREATE TABLE ignored_duplicates (
 );
 
 -- Row Level Security (RLS) Policies
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE components ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_orders ENABLE ROW LEVEL SECURITY;
 
 -- Users can read/write their own data
-CREATE POLICY "Users can manage own data" ON users
+CREATE POLICY "Users can manage own data" ON app_users
   FOR ALL USING (auth.uid() = uid);
 
 CREATE POLICY "Users can manage own equipment" ON equipment
   FOR ALL USING (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
   );
 
 CREATE POLICY "Users can manage own components" ON components
   FOR ALL USING (
     equipment_id IN (
       SELECT id FROM equipment WHERE user_id IN (
-        SELECT id FROM users WHERE uid = auth.uid()
+        SELECT id FROM app_users WHERE uid = auth.uid()
       )
     )
   );
@@ -276,7 +276,7 @@ CREATE POLICY "Public read access to service providers" ON service_providers
 -- Work orders accessible by creator and assigned provider
 CREATE POLICY "Work orders accessible by participants" ON work_orders
   FOR ALL USING (
-    user_id IN (SELECT id FROM users WHERE uid = auth.uid())
+    user_id IN (SELECT id FROM app_users WHERE uid = auth.uid())
     OR service_provider_id IN (
       SELECT id FROM service_providers WHERE id IN (
         -- Service provider access logic
@@ -474,6 +474,8 @@ const db = await getServerDb();
 
 ### Phase 5: Data Migration
 
+**Important Note:** The application uses a table named `app_users` (not `users`). Client-side code must query `app_users`. Do **NOT** create a `public.users` view. If your import script previously inserted into `users`, update it to insert into `app_users`.
+
 #### 5.1 Export Firebase Data
 
 **Script:** `scripts/export-firebase-data.ts`
@@ -525,8 +527,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabase = createClient(url, serviceKey);
 
 async function importUsers(users: any[]) {
+  // Note: Using 'app_users' table, not 'users'
   const { data, error } = await supabase
-    .from('users')
+    .from('app_users')
     .insert(users);
 
   if (error) console.error('Import error:', error);
