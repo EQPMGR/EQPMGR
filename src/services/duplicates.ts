@@ -17,8 +17,8 @@ export interface DuplicateGroup {
 export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]> {
   try {
     const db = await getServerDb();
-    const componentsSnapshot = await db.getDocs<MasterComponent>('masterComponents');
-    const ignoredSnapshot = await db.getDocs('ignoredDuplicates');
+    const componentsSnapshot = await db.getDocs<MasterComponent>('master_components');
+    const ignoredSnapshot = await db.getDocs('ignored_duplicates');
     const ignoredKeys = new Set(ignoredSnapshot.docs.map(doc => doc.id));
 
     const components: MasterComponent[] = [];

@@ -17,7 +17,7 @@ export interface MasterComponentWithOptions extends MasterComponent {
 export async function fetchAllMasterComponents(): Promise<MasterComponentWithOptions[]> {
   try {
     const db = await getServerDb();
-    const querySnapshot = await db.getDocs<MasterComponent>('masterComponents');
+    const querySnapshot = await db.getDocs<MasterComponent>('master_components');
     const components: MasterComponentWithOptions[] = [];
 
     querySnapshot.docs.forEach((doc) => {

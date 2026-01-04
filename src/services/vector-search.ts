@@ -25,7 +25,7 @@ export async function findSimilarComponents(text: string, topK: number = 5): Pro
 
     // The query finds the nearest neighbors to the provided embedding vector.
     const querySnapshot = await db.findNearest<MasterComponent>(
-        'masterComponents',
+      'master_components',
         'embedding',
         embedding,
         {
