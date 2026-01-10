@@ -118,7 +118,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
       setIsLoadingModels(true);
       try {
         const database = await getDb();
-        const querySnapshot = await database.getDocs("bikeModels");
+        const querySnapshot = await database.getDocs("bike_models");
         const models: BikeModelOption[] = [];
         querySnapshot.docs.forEach((doc) => {
           const data = doc.data;

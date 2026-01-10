@@ -10,35 +10,35 @@ import type { BikeType } from '@/lib/constants';
 export interface UserProfile {
   uid: string;
   email: string | null;
-  emailVerified: boolean;
-  displayName: string | null;
+  email_verified: boolean;
+  display_name: string | null;
   phone?: string | null;
-  photoURL: string | null;
+  photo_url: string | null;
   height?: number;
   weight?: number;
-  shoeSize?: number;
+  shoe_size?: number;
   birthdate?: Date | null;
-  measurementSystem: 'metric' | 'imperial';
-  shoeSizeSystem: 'us-womens' | 'us-mens' | 'uk' | 'eu';
-  distanceUnit: 'km' | 'miles';
-  dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
-  getIdToken: (forceRefresh?: boolean) => Promise<string>;
+  measurement_system: 'metric' | 'imperial';
+  shoe_size_system: 'us-womens' | 'us-mens' | 'uk' | 'eu';
+  distance_unit: 'km' | 'miles';
+  date_format: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
+  get_id_token: (forceRefresh?: boolean) => Promise<string>;
 }
 
 export interface UserDocument {
-  displayName?: string;
+  display_name?: string;
   phone?: string;
-  photoURL?: string;
+  photo_url?: string;
   height?: number;
   weight?: number;
-  shoeSize?: number;
+  shoe_size?: number;
   birthdate?: Date;
-  measurementSystem?: 'metric' | 'imperial';
-  shoeSizeSystem?: 'us-womens' | 'us-mens' | 'uk' | 'eu';
-  distanceUnit?: 'km' | 'miles';
-  dateFormat?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
-  createdAt?: Date;
-  lastLogin?: Date;
+  measurement_system?: 'metric' | 'imperial';
+  shoe_size_system?: 'us-womens' | 'us-mens' | 'uk' | 'eu';
+  distance_unit?: 'km' | 'miles';
+  date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
+  created_at?: Date;
+  last_login?: Date;
 }
 
 // ==================== Component Types ====================
@@ -60,19 +60,19 @@ export interface MasterComponent {
 
 export interface UserComponent {
   id: string;
-  parentUserComponentId?: string | null;
-  masterComponentId: string;
+  parent_user_component_id?: string | null;
+  master_component_id: string;
   name: string;
-  wearPercentage: number;
-  lastServiceDate: Date | null;
-  purchaseDate: Date;
+  wear_percentage: number;
+  last_service_date: Date | null;
+  purchase_date: Date;
   notes?: string;
   size?: string;
-  wheelsetId?: string;
+  wheelset_id?: string;
 }
 
-export interface Component extends MasterComponent, Omit<UserComponent, 'id' | 'masterComponentId'> {
-  userComponentId: string;
+export interface Component extends MasterComponent, Omit<UserComponent, 'id' | 'master_component_id'> {
+  user_component_id: string;
 }
 
 export interface ArchivedComponent {
@@ -82,12 +82,12 @@ export interface ArchivedComponent {
   model?: string;
   system: string;
   size?: string;
-  wearPercentage: number;
-  purchaseDate: string;
-  lastServiceDate: string | null;
-  replacedOn: string;
-  finalMileage: number;
-  replacementReason: 'failure' | 'modification' | 'upgrade';
+  wear_percentage: number;
+  purchase_date: string;
+  last_service_date: string | null;
+  replaced_on: string;
+  final_mileage: number;
+  replacement_reason: 'failure' | 'modification' | 'upgrade';
 }
 
 // ==================== Maintenance Types ====================
@@ -95,44 +95,44 @@ export interface ArchivedComponent {
 export interface MaintenanceLog {
   id: string;
   date: Date;
-  logType: 'service' | 'repair' | 'modification';
+  log_type: 'service' | 'repair' | 'modification';
   description: string;
   cost: number;
-  serviceType: 'diy' | 'shop';
-  serviceProvider?: string;
-  shopName?: string;
+  service_type: 'diy' | 'shop';
+  service_provider?: string;
+  shop_name?: string;
   technician?: string;
-  componentReplaced: boolean;
-  isOEM?: boolean;
-  replacementPart?: string;
+  component_replaced: boolean;
+  is_oem?: boolean;
+  replacement_part?: string;
   notes?: string;
 }
 
 // ==================== Bike Fit Types ====================
 
 export interface CleatPosition {
-  foreAft?: number;
+  fore_aft?: number;
   lateral?: number;
   rotational?: number;
 }
 
 export interface BikeFitData {
-  saddleHeight?: number;
-  saddleHeightOverBars?: number;
-  saddleToHandlebarReach?: number;
-  saddleAngle?: number;
-  saddleForeAft?: number;
-  saddleBrandModel?: string;
-  stemLength?: number;
-  stemAngle?: number;
-  handlebarBrandModel?: string;
-  handlebarWidth?: number;
-  handlebarAngle?: number;
-  handlebarExtension?: number;
-  brakeLeverPosition?: string;
-  crankLength?: number;
-  hasAeroBars?: boolean;
-  cleatPosition?: CleatPosition;
+  saddle_height?: number;
+  saddle_height_over_bars?: number;
+  saddle_to_handlebar_reach?: number;
+  saddle_angle?: number;
+  saddle_fore_aft?: number;
+  saddle_brand_model?: string;
+  stem_length?: number;
+  stem_angle?: number;
+  handlebar_brand_model?: string;
+  handlebar_width?: number;
+  handlebar_angle?: number;
+  handlebar_extension?: number;
+  brake_lever_position?: string;
+  crank_length?: number;
+  has_aero_bars?: boolean;
+  cleat_position?: CleatPosition;
 }
 
 // ==================== Equipment Types ====================
@@ -143,22 +143,22 @@ export interface Equipment {
   type: BikeType | 'Running Shoes' | 'Other' | 'Cycling Shoes';
   brand: string;
   model: string;
-  modelYear: number;
-  serialNumber?: string;
-  frameSize?: string;
+  model_year: number;
+  serial_number?: string;
+  frame_size?: string;
   size?: string;
-  shoeSizeSystem?: 'us' | 'uk' | 'eu';
-  purchaseCondition: 'new' | 'used';
-  purchaseDate: Date;
-  purchasePrice: number;
-  totalDistance: number;
-  totalHours: number;
-  imageUrl: string;
+  shoe_size_system?: 'us' | 'uk' | 'eu';
+  purchase_condition: 'new' | 'used';
+  purchase_date: Date;
+  purchase_price: number;
+  total_distance: number;
+  total_hours: number;
+  image_url: string;
   components: Component[];
-  maintenanceLog: MaintenanceLog[];
-  archivedComponents?: ArchivedComponent[];
-  fitData?: BikeFitData;
-  associatedEquipmentIds?: string[];
+  maintenance_log: MaintenanceLog[];
+  archived_components?: ArchivedComponent[];
+  fit_data?: BikeFitData;
+  associated_equipment_ids?: string[];
   wheelsets?: Record<string, string>;
 }
 
@@ -167,47 +167,47 @@ export interface Equipment {
 export interface ServiceProvider {
   id: string;
   name: string;
-  shopName?: string;
-  logoUrl?: string;
+  shop_name?: string;
+  logo_url?: string;
   services: ('bike-fitting' | 'repairs' | 'rental')[];
   address: string;
   city: string;
   province: string;
-  postalCode: string;
+  postal_code: string;
   country: string;
   phone?: string;
   website?: string;
   geohash?: string;
   lat?: number;
   lng?: number;
-  averageRating?: number;
-  ratingCount?: number;
+  average_rating?: number;
+  rating_count?: number;
   availability?: string;
-  dropOff?: boolean;
-  valetService?: boolean;
+  drop_off?: boolean;
+  valet_service?: boolean;
 }
 
 // ==================== Work Order Types ====================
 
 export interface WorkOrder {
   id: string;
-  userId: string;
-  userName: string;
-  userPhone: string;
-  userEmail: string;
-  serviceProviderId: string;
-  providerName: string;
-  equipmentId: string;
-  equipmentName: string;
-  equipmentBrand: string;
-  equipmentModel: string;
-  serviceType: string;
+  user_id: string;
+  user_name: string;
+  user_phone: string;
+  user_email: string;
+  service_provider_id: string;
+  provider_name: string;
+  equipment_id: string;
+  equipment_name: string;
+  equipment_brand: string;
+  equipment_model: string;
+  service_type: string;
   status: 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
   notes?: string;
-  fitData?: BikeFitData;
-  createdAt: Date;
-  userConsent: {
-    consentGiven: boolean;
+  fit_data?: BikeFitData;
+  created_at: Date;
+  user_consent: {
+    consent_given: boolean;
     timestamp: Date;
   };
 }
@@ -219,10 +219,10 @@ export interface BikeModel {
   brand: string;
   model: string;
   year?: number;
-  bikeType: BikeType;
-  frameSizes?: string[];
+  bike_type: BikeType;
+  frame_sizes?: string[];
   msrp?: number;
-  imageUrl?: string;
+  image_url?: string;
   url?: string;
 }
 
@@ -233,8 +233,8 @@ export interface Employee {
   name: string;
   email: string;
   role: string;
-  shopOwnerId: string;
-  createdAt: Date;
+  shop_owner_id: string;
+  created_at: Date;
 }
 
 // ==================== Training Data Types ====================
@@ -244,7 +244,7 @@ export interface TrainingData {
   prompt: string;
   completion: string;
   category?: string;
-  createdAt: Date;
+  created_at: Date;
 }
 
 // ==================== Counter Types ====================
@@ -258,5 +258,5 @@ export interface Counter {
 
 export interface IgnoredDuplicate {
   id: string;
-  createdAt: Date;
+  created_at: Date;
 }

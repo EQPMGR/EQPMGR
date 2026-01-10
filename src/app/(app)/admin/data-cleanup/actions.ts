@@ -24,7 +24,7 @@ export async function removeAllEmbeddingsAction(): Promise<{ success: boolean; m
             constraints.push({ type: 'startAfter' as const, value: lastDocId });
         }
 
-        const snapshot = await db.getDocs('masterComponents', ...constraints);
+        const snapshot = await db.getDocs('master_components', ...constraints);
 
         if (snapshot.docs.length === 0) {
             break; // No more documents to process

@@ -22,7 +22,7 @@ export async function addServiceProviderAction({
     try {
         const db = await getServerDb();
 
-        const docSnap = await db.getDoc('serviceProviders', providerId);
+        const docSnap = await db.getDoc('service_providers', providerId);
         if (docSnap.exists) {
             return {
                 success: false,
@@ -37,7 +37,7 @@ export async function addServiceProviderAction({
             geohash: 'c2b2q', // Placeholder for Vancouver
         };
 
-        await db.setDoc('serviceProviders', providerId, providerToSave);
+        await db.setDoc('service_providers', providerId, providerToSave);
 
         return {
             success: true,

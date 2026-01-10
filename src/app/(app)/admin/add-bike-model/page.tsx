@@ -73,7 +73,7 @@ export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema>;
 async function getAvailableBrands(): Promise<string[]> {
     try {
         const database = await getDb();
-        const querySnapshot = await database.getDocs("bikeModels");
+        const querySnapshot = await database.getDocs("bike_models");
         const brands = new Set<string>();
         querySnapshot.docs.forEach((doc) => {
             const data = doc.data;
