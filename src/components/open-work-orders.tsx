@@ -50,9 +50,9 @@ export function OpenWorkOrders() {
         const database = await getDb();
 
         unsubscribe = database.onSnapshotQuery<WorkOrder>(
-          'work_orders',
+          'workOrders',
           [
-            { type: 'where', field: 'user_id', op: '==', value: user.uid },
+            { type: 'where', field: 'userId', op: '==', value: user.uid },
             { type: 'where', field: 'status', op: 'in', value: ['pending', 'accepted', 'in-progress'] }
           ],
           (querySnapshot) => {

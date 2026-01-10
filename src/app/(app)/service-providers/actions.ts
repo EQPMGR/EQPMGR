@@ -8,7 +8,7 @@ import type { ServiceProvider, WorkOrder } from '@/lib/types';
 export async function getServiceProviders(): Promise<ServiceProvider[]> {
   try {
     const db = await getServerDb();
-    const providersSnapshot = await db.getDocs<ServiceProvider>('service_providers');
+    const providersSnapshot = await db.getDocs<ServiceProvider>('serviceProviders');
     const providers = providersSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data,
@@ -46,7 +46,7 @@ export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' 
       },
     };
 
-    await db.setDoc('work_orders', newWorkOrderId, newWorkOrder);
+    await db.setDoc('workOrders', newWorkOrderId, newWorkOrder);
 
     return {
       success: true,

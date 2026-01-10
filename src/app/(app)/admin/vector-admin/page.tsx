@@ -79,7 +79,7 @@ export default function VectorAdminPage() {
 
           // 2. Write the embedding to Firestore from the CLIENT
           const database = await getDb();
-          await database.updateDoc('master_components', component.id, { embedding });
+          await database.updateDoc('masterComponents', component.id, { embedding });
 
           addLog(`[${i + 1}/${componentsToIndex.length}] Successfully saved embedding for ${component.id}.`);
           successCount++;

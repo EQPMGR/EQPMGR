@@ -11,7 +11,7 @@ export async function getComponentForDebug(componentId: string): Promise<string>
     }
     try {
         const db = await getServerDb();
-        const docSnap = await db.getDoc('master_components', componentId);
+        const docSnap = await db.getDoc('masterComponents', componentId);
 
         if (!docSnap.exists) {
             return `No component found with ID: ${componentId}`;
