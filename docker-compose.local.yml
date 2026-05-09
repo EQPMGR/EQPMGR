@@ -1,0 +1,108 @@
+services:
+  # PostgreSQL database for Supabase
+  db:
+    image: postgres:15-alpine
+    container_name: eqpmgr_db
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - eqpmgr_network
+
+  # PostgREST API (Supabase REST API layer)
+  rest:
+    image: postgrest/postgrest:latest
+    container_name: eqpmgr_rest
+    ports:
+      - "8000:3000"
+    environment:
+      PGRST_DB_URI: postgresql://postgres:postgres@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - eqpmgr_network
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: eqpmgr_redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - eqpmgr_network
+
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: eqpmgr_app
+    ports:
+      - "3006:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_BACKEND_PROVIDER: supabase
+      
+      # Supabase Configuration (pointing to localhost services)
+      NEXT_PUBLIC_SUPABASE_URL: http://rest:3000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NzMwMDAwMDAsImV4cCI6MTk4ODYxNjAwMH0.LUC9IfxzLVoUYqHwY83I9_CggdBB2BKcr5z3g8J6N3s
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY3MzAwMDAwMCwiZXhwIjoxOTg4NjE2MDAwfQ.qsJe6sJXeEBNJP3V6yJ2B_pQ7ZrI7z5Z5Z5Z5Z5Z5Z5
+      SUPABASE_DB_URL: postgresql://postgres:postgres@db:5432/postgres
+
+      # Database
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+
+      # Optional: Add your API keys below
+      # OPENAI_API_KEY: your_key_here
+      # GEMINI_API_KEY: your_key_here
+      
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    
+    volumes:
+      - .:/app
+      - /app/node_modules
+    
+    networks:
+      - eqpmgr_network
+
+networks:
+  eqpmgr_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

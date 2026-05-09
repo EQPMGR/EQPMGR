@@ -1,0 +1,388 @@
+
+'use client';
+
+import { useState, useMemo } from 'react';
+import { Bot, Loader2, LocateFixed } from 'lucide-react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import type { SimulateWearOutput } from '@/lib/ai-types';
+import { getDb } from '@/backend';
+import { useAuth } from '@/hooks/use-auth';
+
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import type { Equipment } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+
+const formSchema = z.object({
+  workoutType: z.string().min(1, 'Workout type is required'),
+  distance: z.coerce.number().min(0.1, 'Distance must be positive'),
+  duration: z.coerce.number().min(1, 'Duration must be positive'),
+  intensity: z.enum(['low', 'medium', 'high']),
+  environmentalConditions: z.string().min(1, 'Weather conditions are required. Please fetch them using your location.'),
+  wheelsetId: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+interface WearSimulationProps {
+  equipment: Equipment;
+  onSuccess: () => void;
+}
+
+export function WearSimulation({ equipment, onSuccess }: WearSimulationProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+  const [result, setResult] = useState<SimulateWearOutput | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const isBike = equipment.type !== 'Running Shoes' && equipment.type !== 'Other';
+  const wheelsetOptions = useMemo(() => {
+    const sets = [{ id: 'default', name: 'Default Wheelset' }];
+    if (equipment.wheelsets) {
+      Object.entries(equipment.wheelsets).forEach(([id, name]) => {
+        sets.push({ id, name });
+      });
+    }
+    return sets;
+  }, [equipment.wheelsets]);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      workoutType: isBike ? 'cycling' : 'running',
+      distance: 10,
+      duration: 60,
+      intensity: 'medium',
+      environmentalConditions: '',
+      wheelsetId: 'default',
+    },
+  });
+
+  const fetchWeather = async (query: string) => {
+    const response = await fetch(`/api/weather?${query}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch weather data.');
+    }
+    return response.json();
+  };
+
+  const fetchWeatherFromIpFallback = async () => {
+    const fallbackResponse = await fetch('/api/geocode-ip');
+    const fallbackData = await fallbackResponse.json().catch(() => ({ province: null, country: null, warning: 'IP fallback service did not respond.' }));
+    const parts = [fallbackData.province, fallbackData.country].filter(Boolean);
+    const locationQuery = parts.join(', ');
+
+    if (!locationQuery) {
+      throw new Error(fallbackData.warning || 'Could not determine location from IP address.');
+    }
+
+    return fetchWeather(`q=${encodeURIComponent(locationQuery)}`);
+  };
+
+  const handleFetchWeather = () => {
+    if (!navigator.geolocation) {
+      toast({ variant: 'destructive', title: 'Geolocation not supported', description: 'Your browser does not support geolocation.' });
+      return;
+    }
+    setIsFetchingWeather(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const data = await fetchWeather(`lat=${latitude}&lon=${longitude}`);
+          form.setValue('environmentalConditions', data.conditions, { shouldValidate: true });
+          toast({ title: 'Weather fetched!', description: data.conditions });
+        } catch (error: any) {
+          toast({ variant: 'destructive', title: 'Weather Error', description: error.message });
+        } finally {
+          setIsFetchingWeather(false);
+        }
+      },
+      async (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          toast({ variant: 'destructive', title: 'Location Permission Denied', description: 'Please enable location access in your browser to fetch weather automatically.' });
+          setIsFetchingWeather(false);
+          return;
+        }
+
+        try {
+          const data = await fetchWeatherFromIpFallback();
+          form.setValue('environmentalConditions', data.conditions, { shouldValidate: true });
+          toast({ title: 'Weather fetched via IP fallback', description: data.conditions });
+        } catch (fallbackError: any) {
+          toast({ variant: 'destructive', title: 'Location Error', description: fallbackError.message || error.message });
+        } finally {
+          setIsFetchingWeather(false);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  async function onSubmit(values: FormValues) {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
+        return;
+    }
+    setIsLoading(true);
+    setResult(null);
+    try {
+      const componentsToSimulate = values.wheelsetId === 'default'
+        ? equipment.components.filter(c => !c.wheelsetId)
+        : equipment.components.filter(c => c.wheelsetId === values.wheelsetId);
+
+      const wearAndTearData = JSON.stringify(
+        componentsToSimulate.map((c) => ({
+          name: c.name,
+          wear: `${c.wearPercentage}%`,
+        }))
+      );
+
+      const idToken = await user.getIdToken(true);
+      const resp = await fetch('/api/admin/simulate-wear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          equipmentType: equipment.type,
+          workoutType: values.workoutType,
+          distance: values.distance,
+          duration: values.duration,
+          intensity: values.intensity,
+          environmentalConditions: values.environmentalConditions,
+          wearAndTearData,
+          manufacturerGuidelines: JSON.stringify({}),
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Simulation failed');
+      }
+
+      const { result: output } = await resp.json();
+      setResult(output);
+
+      // After successful simulation, update database
+      const database = await getDb();
+      const batch = database.batch();
+
+      // Update totals on main equipment doc
+      batch.updateInSubcollection(`app_users/${user.uid}`, 'equipment', equipment.id, {
+          totalDistance: database.increment(values.distance),
+          totalHours: database.increment(values.duration / 60),
+      });
+
+      // Update individual component wear
+      output.componentWear.forEach(simulatedComp => {
+          const componentToUpdate = componentsToSimulate.find(c => c.name === simulatedComp.componentName);
+          if (componentToUpdate) {
+              batch.updateInSubcollection(
+                `app_users/${user.uid}/equipment/${equipment.id}`,
+                'components',
+                componentToUpdate.userComponentId,
+                { wearPercentage: simulatedComp.wearPercentage }
+              );
+          }
+      });
+
+      await batch.commit();
+
+      toast({
+          title: 'Simulation Complete!',
+          description: 'Your equipment wear has been updated.',
+      });
+      
+      onSuccess(); // Trigger re-fetch on parent page
+
+    } catch (error) {
+      console.error('Error simulating wear:', error);
+      toast({
+        title: 'Simulation Failed',
+        description: 'Could not generate wear simulation. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <Card>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardHeader>
+            <CardTitle>Wear Simulation</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="distance"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Distance (km)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 25" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration (minutes)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 90" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="intensity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Intensity</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select intensity" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="space-y-2">
+                  <FormLabel>Weather Conditions</FormLabel>
+                  <Button type="button" variant="outline" className="w-full" onClick={handleFetchWeather} disabled={isFetchingWeather}>
+                      {isFetchingWeather ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}
+                      Get Current Weather
+                  </Button>
+                </div>
+            </div>
+             <FormField
+                control={form.control}
+                name="environmentalConditions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter weather conditions or fetch current weather above"
+                        {...field}
+                      />
+                    </FormControl>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      If location access is blocked, type in weather conditions manually (e.g. "Light rain, 12°C, 8 km/h wind").
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {isBike && wheelsetOptions.length > 1 && (
+                <FormField
+                  control={form.control}
+                  name="wheelsetId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Wheelset Used</FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select the wheelset used for this activity" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {wheelsetOptions.map(ws => (
+                            <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {result && (
+                <Alert>
+                  <AlertTitle className="font-semibold">Simulation Result</AlertTitle>
+                  <AlertDescription>
+                    <p>Estimated Total Wear: <span className="font-bold">{result.wearPercentage.toFixed(2)}%</span></p>
+                    <div className="mt-3">
+                      <h5 className="font-medium">Component Wear</h5>
+                      <ul className="list-disc pl-5 text-xs">
+                        {result.componentWear.map((item) => (
+                          <li key={item.componentName}>
+                            {item.componentName}: {item.wearPercentage.toFixed(2)}%
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="mt-3">
+                      <h5 className="font-medium">Recommendations</h5>
+                      <ul className="list-disc pl-5 text-xs">
+                        {result.recommendations.map((rec, i) => (
+                          <li key={i}>{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Bot className="mr-2 h-4 w-4" />
+              )}
+              Simulate & Save Wear
+            </Button>
+          </CardFooter>
+        </form>
+      </Form>
+    </Card>
+  );
+}

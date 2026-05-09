@@ -1,0 +1,54 @@
+_format_version: "1.1"
+
+services:
+  # PostgREST service
+  - name: postgrest
+    host: rest
+    port: 3000
+    routes:
+      - name: postgrest_route
+        paths:
+          - /rest/v1
+
+  # Realtime service
+  - name: realtime
+    host: realtime
+    port: 4000
+    routes:
+      - name: realtime_route
+        paths:
+          - /realtime/v1
+
+plugins:
+  - name: cors
+    service: postgrest
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Content-Type
+        - Authorization
+      credentials: true
+      max_age: 3600
+
+consumers:
+  - username: anon
+    plugins:
+      - name: jwt-auth
+        config:
+          key: anon
+          secret: super-secret-jwt-token-with-at-least-32-characters-long
+
+  - username: authenticated
+    plugins:
+      - name: jwt-auth
+        config:
+          key: authenticated
+          secret: super-secret-jwt-token-with-at-least-32-characters-long

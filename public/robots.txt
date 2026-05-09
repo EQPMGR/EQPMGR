@@ -1,0 +1,175 @@
+# robots.txt for EQPMGR - Equipment Manager Application
+# This file blocks bots from accessing sensitive routes and AI endpoints
+# to prevent API abuse and unauthorized data access
+
+# ============================================
+# Block AI Training Bots & Scrapers (ALL ACCESS DENIED)
+# ============================================
+
+# OpenAI GPTBot (used for ChatGPT training)
+User-agent: GPTBot
+Disallow: /
+
+# ChatGPT User Browsing
+User-agent: ChatGPT-User
+Disallow: /
+
+# Anthropic Claude Web Crawler
+User-agent: Claude-Web
+Disallow: /
+
+# Anthropic Claude Bot
+User-agent: anthropic-ai
+Disallow: /
+
+# Common Crawl
+User-agent: CCBot
+Disallow: /
+
+# Google Extended (Bard/Gemini training)
+User-agent: Google-Extended
+Disallow: /
+
+# Perplexity AI
+User-agent: PerplexityBot
+Disallow: /
+
+# Meta/Facebook AI
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+# Amazon Bot
+User-agent: Amazonbot
+Disallow: /
+
+# Bytedance/TikTok
+User-agent: Bytespider
+Disallow: /
+
+# Apple AI
+User-agent: Applebot-Extended
+Disallow: /
+
+# Cohere AI
+User-agent: cohere-ai
+Disallow: /
+
+# Diffbot
+User-agent: Diffbot
+Disallow: /
+
+# ============================================
+# Aggressive Scrapers & Bad Bots
+# ============================================
+
+# Generic scrapers
+User-agent: Scrapy
+Disallow: /
+
+User-agent: python-requests
+Disallow: /
+
+User-agent: curl
+Disallow: /
+
+User-agent: wget
+Disallow: /
+
+# SEO tools (can be aggressive)
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# ============================================
+# Legitimate Search Engines (Restricted Access)
+# ============================================
+
+# Google
+User-agent: Googlebot
+# Allow public pages
+Allow: /$
+Allow: /about$
+Allow: /pricing$
+Allow: /contact$
+# Block everything else
+Disallow: /admin/
+Disallow: /api/
+Disallow: /debug/
+Disallow: /equipment/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /service-providers/
+Disallow: /_next/data/
+Disallow: /_next/static/
+Disallow: /*?*
+
+# Bing
+User-agent: bingbot
+# Allow public pages
+Allow: /$
+Allow: /about$
+Allow: /pricing$
+Allow: /contact$
+# Block everything else
+Disallow: /admin/
+Disallow: /api/
+Disallow: /debug/
+Disallow: /equipment/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /service-providers/
+Disallow: /_next/data/
+Disallow: /_next/static/
+Disallow: /*?*
+
+# ============================================
+# All Other Bots (Strict Rules)
+# ============================================
+
+User-agent: *
+# Block all sensitive routes
+Disallow: /admin/
+Disallow: /api/
+Disallow: /debug/
+Disallow: /equipment/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /service-providers/
+Disallow: /insurance/
+Disallow: /_next/data/
+Disallow: /_next/static/
+Disallow: /_next/image/
+# Block query parameters (prevent endpoint discovery)
+Disallow: /*?*
+# Block common file types that shouldn't be crawled
+Disallow: /*.json$
+Disallow: /*.xml$
+Disallow: /*.ts$
+Disallow: /*.tsx$
+Disallow: /*.js$
+# Only allow landing page
+Allow: /$
+
+# ============================================
+# Crawl Rate Limiting
+# ============================================
+
+# Request delay for any bot that respects it (10 seconds between requests)
+Crawl-delay: 10
+
+# ============================================
+# Sitemap (Optional - create this if you want to control indexing)
+# ============================================
+
+# Sitemap: https://your-domain.com/sitemap.xml

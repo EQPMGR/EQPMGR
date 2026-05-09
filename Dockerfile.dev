@@ -1,0 +1,17 @@
+# Development Dockerfile - runs Next.js in dev mode with hot reload
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy application code
+COPY . .
+
+# Expose port for development server
+EXPOSE 3000
+
+# Run development server with host binding for Docker
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
