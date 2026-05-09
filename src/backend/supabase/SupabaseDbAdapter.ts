@@ -352,16 +352,10 @@ function processFieldValues(data: any, supabase: SupabaseClient): any {
           processed[key] = new Date().toISOString();
           break;
         case 'increment':
-          console.warn('increment field value not fully supported in Supabase adapter');
-          processed[key] = fieldValue.value;
-          break;
         case 'arrayUnion':
-          console.warn('arrayUnion field value not fully supported in Supabase adapter');
-          processed[key] = fieldValue.value;
-          break;
         case 'arrayRemove':
-          console.warn('arrayRemove field value not fully supported in Supabase adapter');
-          processed[key] = fieldValue.value;
+          // Preserve these operations for the update/updateSubDoc helpers
+          processed[key] = fieldValue;
           break;
         case 'delete':
           delete processed[key];
@@ -739,17 +733,53 @@ export class SupabaseDbAdapter implements IDatabase {
     }
   }
 
+  private applyFieldValueOperations(query: any, data: any) {
+    for (const [key, value] of Object.entries(data)) {
+      if (value && typeof value === 'object' && 'type' in value) {
+        const fieldValue = value as FieldValue;
+        switch (fieldValue.type) {
+          case 'increment':
+            query = query.increment(key, fieldValue.value);
+            break;
+          case 'arrayUnion':
+            query = query.append(key, fieldValue.value);
+            break;
+          case 'arrayRemove':
+            query = query.remove(key, fieldValue.value);
+            break;
+        }
+      }
+    }
+    return query;
+  }
+
+  private stripFieldValueFields(data: any) {
+    const copy = { ...data };
+    for (const [key, value] of Object.entries(data)) {
+      if (value && typeof value === 'object' && 'type' in value) {
+        delete copy[key];
+      }
+    }
+    return copy;
+  }
+
   async updateDoc<T>(collection: string, docId: string, data: Partial<T>): Promise<void> {
     const processedData = processFieldValues(data, this.supabase);
     const filtered = await this.filterToAllowedColumns(collection, processedData);
 
     const sanitized = this.sanitizePayload(filtered);
-
     const normalizedCollection = normalizeTableName(collection);
-    const { error } = await this.supabase
+
+    const updatePayload = this.stripFieldValueFields(sanitized);
+
+    let query = this.supabase
       .from(normalizedCollection)
-      .update(sanitized as any)
+      .update(updatePayload as any)
       .eq('id', docId);
+
+    query = this.applyFieldValueOperations(query, sanitized);
+
+    const { error } = await query;
 
     if (error) {
       throw new Error(`Failed to update document: ${error.message}`);
@@ -771,11 +801,17 @@ export class SupabaseDbAdapter implements IDatabase {
     const sanitized = this.sanitizePayload(filtered);
 
     const normalizedSubCollection = normalizeTableName(subCollection);
-    const { error } = await this.supabase
+    const updatePayload = this.stripFieldValueFields(sanitized);
+
+    let query = this.supabase
       .from(normalizedSubCollection)
-      .update(sanitized as any)
+      .update(updatePayload as any)
       .eq('id', subDocId)
       .eq(parentIdField, parentDocId);
+
+    query = this.applyFieldValueOperations(query, sanitized);
+
+    const { error } = await query;
 
     if (error) {
       throw new Error(`Failed to update subdocument: ${error.message}`);
