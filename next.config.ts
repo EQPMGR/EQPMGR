@@ -1,4 +1,5 @@
 
+import path from 'path';
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -66,6 +67,13 @@ const nextConfig: NextConfig = {
       config.externals.push({
         'firebase-admin': 'commonjs firebase-admin',
       });
+    }
+
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@': path.resolve(__dirname, 'src'),
+      };
     }
 
     return config;
