@@ -733,34 +733,40 @@ export class SupabaseDbAdapter implements IDatabase {
     }
   }
 
-  private applyFieldValueOperations(query: any, data: any) {
+  private async resolveFieldValueOperations(collection: string, docId: string, data: any): Promise<any> {
+    const existingSnapshot = await this.getDoc<any>(collection, docId);
+    const existingData = existingSnapshot.exists ? existingSnapshot.data : {};
+    const result = { ...data };
+
     for (const [key, value] of Object.entries(data)) {
       if (value && typeof value === 'object' && 'type' in value) {
         const fieldValue = value as FieldValue;
         switch (fieldValue.type) {
-          case 'increment':
-            query = query.increment(key, fieldValue.value);
+          case 'increment': {
+            const currentValue = Number(existingData[key] ?? 0);
+            result[key] = currentValue + Number(fieldValue.value || 0);
             break;
-          case 'arrayUnion':
-            query = query.append(key, fieldValue.value);
+          }
+          case 'arrayUnion': {
+            const existingArray = Array.isArray(existingData[key]) ? existingData[key] : [];
+            const additions = Array.isArray(fieldValue.value) ? fieldValue.value : [fieldValue.value];
+            result[key] = Array.from(new Set([...existingArray, ...additions]));
             break;
-          case 'arrayRemove':
-            query = query.remove(key, fieldValue.value);
+          }
+          case 'arrayRemove': {
+            const existingArray = Array.isArray(existingData[key]) ? existingData[key] : [];
+            const removals = Array.isArray(fieldValue.value) ? fieldValue.value : [fieldValue.value];
+            result[key] = existingArray.filter((item: any) => !removals.includes(item));
+            break;
+          }
+          default:
+            delete result[key];
             break;
         }
       }
     }
-    return query;
-  }
 
-  private stripFieldValueFields(data: any) {
-    const copy = { ...data };
-    for (const [key, value] of Object.entries(data)) {
-      if (value && typeof value === 'object' && 'type' in value) {
-        delete copy[key];
-      }
-    }
-    return copy;
+    return result;
   }
 
   async updateDoc<T>(collection: string, docId: string, data: Partial<T>): Promise<void> {
@@ -769,17 +775,12 @@ export class SupabaseDbAdapter implements IDatabase {
 
     const sanitized = this.sanitizePayload(filtered);
     const normalizedCollection = normalizeTableName(collection);
+    const resolvedPayload = await this.resolveFieldValueOperations(collection, docId, sanitized);
 
-    const updatePayload = this.stripFieldValueFields(sanitized);
-
-    let query = this.supabase
+    const { error } = await this.supabase
       .from(normalizedCollection)
-      .update(updatePayload as any)
+      .update(resolvedPayload as any)
       .eq('id', docId);
-
-    query = this.applyFieldValueOperations(query, sanitized);
-
-    const { error } = await query;
 
     if (error) {
       throw new Error(`Failed to update document: ${error.message}`);
@@ -799,19 +800,14 @@ export class SupabaseDbAdapter implements IDatabase {
     const filtered = await this.filterToAllowedColumns(subCollection, processedData);
 
     const sanitized = this.sanitizePayload(filtered);
-
     const normalizedSubCollection = normalizeTableName(subCollection);
-    const updatePayload = this.stripFieldValueFields(sanitized);
+    const resolvedPayload = await this.resolveFieldValueOperations(subCollection, subDocId, sanitized);
 
-    let query = this.supabase
+    const { error } = await this.supabase
       .from(normalizedSubCollection)
-      .update(updatePayload as any)
+      .update(resolvedPayload as any)
       .eq('id', subDocId)
       .eq(parentIdField, parentDocId);
-
-    query = this.applyFieldValueOperations(query, sanitized);
-
-    const { error } = await query;
 
     if (error) {
       throw new Error(`Failed to update subdocument: ${error.message}`);
