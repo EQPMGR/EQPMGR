@@ -28,7 +28,7 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
 
     // 2. Iterate through each user and their equipment.
     for (const userDoc of users) {
-      const equipmentSnapshot = await db.getDocsFromSubcollection(`app_users/${userDoc.id}`, 'equipment');
+      const equipmentSnapshot = await db.getSubDocs(`app_users/${userDoc.id}`, userDoc.id, 'equipment');
 
       for (const equipmentDoc of equipmentSnapshot.docs) {
         let needsUpdate = false;

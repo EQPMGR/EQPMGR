@@ -9,19 +9,6 @@ import { z } from 'zod';
 import { createComponentSlug, getCanonicalComponentKey, findExistingMasterComponent } from '@/lib/master-component-utils';
 
 const createBikeModelSlug = (bike: AddBikeModelFormValues) => {
-    const idString = [component.brand, component.name, component.model]
-        .filter(Boolean)
-        .join('-');
-
-    if (!idString) return null;
-
-    return idString
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-};
-
-const createBikeModelSlug = (bike: AddBikeModelFormValues) => {
     return `${bike.brand}-${bike.model}-${bike.modelYear}`
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')

@@ -94,7 +94,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8">
         {children}
       </main>
     </div>

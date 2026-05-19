@@ -111,9 +111,12 @@ create table if not exists master_components (
   size text,
   size_variants jsonb,
   embedding vector(1536),
+  created_by uuid references app_users(id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table master_components add column if not exists created_by uuid references app_users(id) on delete set null;
 
 create or replace function search_similar_components(query_embedding vector, match_count int)
 returns table(id uuid, similarity float) as $$
@@ -165,12 +168,51 @@ create policy bike_models_select_all on bike_models
 
 drop policy if exists bike_models_insert on bike_models;
 create policy bike_models_insert on bike_models
-  for insert with check (auth.uid()::uuid is not null);
+  for insert with check (
+    auth.uid()::uuid is not null
+    and auth.uid()::uuid = created_by
+  );
 
 drop policy if exists bike_models_update on bike_models;
 create policy bike_models_update on bike_models
   for update using (auth.uid()::uuid = created_by)
   with check (auth.uid()::uuid = created_by);
+
+alter table master_components enable row level security;
+drop policy if exists master_components_select_all on master_components;
+create policy master_components_select_all on master_components
+  for select using (true);
+drop policy if exists master_components_insert on master_components;
+create policy master_components_insert on master_components
+  for insert with check (
+    auth.uid()::uuid is not null
+    and auth.uid()::uuid = created_by
+  );
+drop policy if exists master_components_update on master_components;
+create policy master_components_update on master_components
+  for update using (auth.uid()::uuid = created_by)
+  with check (auth.uid()::uuid = created_by);
+
+alter table work_orders enable row level security;
+drop policy if exists work_orders_select_own on work_orders;
+create policy work_orders_select_own on work_orders
+  for select using (
+    auth.uid()::uuid = user_id or auth.uid()::uuid = service_provider_auth_uid
+  );
+drop policy if exists work_orders_insert_own on work_orders;
+create policy work_orders_insert_own on work_orders
+  for insert with check (
+    auth.uid()::uuid = user_id or auth.uid()::uuid = service_provider_auth_uid
+  );
+drop policy if exists work_orders_update_own on work_orders;
+create policy work_orders_update_own on work_orders
+  for update using (
+    auth.uid()::uuid = user_id or auth.uid()::uuid = service_provider_auth_uid
+  )
+  with check (
+    auth.uid()::uuid = user_id or auth.uid()::uuid = service_provider_auth_uid
+  );
+
 drop policy if exists components_insert_own on components;
 create policy components_insert_own on components
   for insert with check (exists (

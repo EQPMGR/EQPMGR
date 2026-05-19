@@ -9,13 +9,14 @@ import { format } from 'date-fns';
 
 async function sendEmail(formData: InsuranceFormValues) {
     const emailHost = await accessSecret('EMAIL_HOST');
+    const emailPort = Number(await accessSecret('EMAIL_PORT')) || 587;
     const emailUser = await accessSecret('EMAIL_USER');
     const emailPass = await accessSecret('EMAIL_PASS');
 
     const transporter = nodemailer.createTransport({
         host: emailHost,
-        port: 587,
-        secure: false, // true for 465, false for other ports
+        port: emailPort,
+        secure: emailPort === 465,
         auth: {
             user: emailUser,
             pass: emailPass,

@@ -53,10 +53,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // DEVELOPMENT MODE: Use mock user only when explicitly enabled via env var
-  // Set NEXT_PUBLIC_USE_MOCK_AUTH=true in .env.local to enable behavior.
-  const isDev = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
-
   const handleAuthError = useCallback((error: any, title: string) => {
     console.error(title, error);
     if (process.env.NODE_ENV !== 'development') {
@@ -98,30 +94,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      // DEVELOPMENT MODE: Skip auth and use mock user
-      if (isDev) {
-        const mockUser: UserProfile = {
-          uid: 'dev-user-1',
-          email: 'sage@printshop.local',
-          emailVerified: true,
-          displayName: 'Sage',
-          phone: null,
-          photoURL: null,
-          measurementSystem: 'imperial',
-          shoeSizeSystem: 'us-mens',
-          distanceUnit: 'km',
-          dateFormat: 'MM/DD/YYYY',
-          height: null,
-          weight: null,
-          shoeSize: null,
-          birthdate: null,
-          getIdToken: async () => 'dev-token',
-        };
-        setUser(mockUser);
-        setLoading(false);
-        return;
-      }
-
       try {
         const auth = await getAuth();
         const db = await getDb();
@@ -189,7 +161,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [toast, provisionAppUser]);
 
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
-    if (isDev) return; // No-op in dev mode
     try {
       const auth = await getAuth();
       await auth.signInWithEmailAndPassword(email, password);
@@ -199,7 +170,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
-    if (isDev) return; // No-op in dev mode
     try {
       const auth = await getAuth();
       const authUser = await auth.createUserWithEmailAndPassword(email, password);
@@ -224,23 +194,15 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const signOutHandler = useCallback(async () => {
-    if (isDev) return; // No-op in dev mode
     try {
       const auth = await getAuth();
       await auth.signOut();
     } catch (error) {
       handleAuthError(error, 'Sign Out Failed');
     }
-  }, [handleAuthError, isDev]);
+  }, [handleAuthError]);
 
   const resendVerificationEmailHandler = async () => {
-    if (isDev) {
-      toast({
-        title: 'Dev Mode',
-        description: 'Email verification skipped in development.',
-      });
-      return;
-    }
     try {
       const auth = await getAuth();
       const currentUser = auth.getCurrentUser();
@@ -273,10 +235,6 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'>) => {
-    if (isDev) {
-      toast({ title: "Profile updated! (dev mode)" });
-      return;
-    }
     const auth = await getAuth();
     const db = await getDb();
     const currentUser = auth.getCurrentUser();
@@ -340,14 +298,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     } catch (error: any) {
       handleAuthError(error, 'Profile Update Failed');
     }
-  }, [toast, handleAuthError, isDev]);
+  }, [toast, handleAuthError]);
 
   const updateUserPreferencesHandler = useCallback(async (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit' | 'dateFormat'>>) => {
-    if (isDev) {
-      setUser(prevUser => prevUser ? { ...prevUser, ...prefs } : null);
-      toast({ title: "Preference saved! (dev mode)" });
-      return;
-    }
     const auth = await getAuth();
     const db = await getDb();
     const currentUser = auth.getCurrentUser();
@@ -383,13 +336,9 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     } catch (error) {
       handleAuthError(error, 'Preference Update Failed');
     }
-  }, [handleAuthError, toast, isDev]);
+  }, [handleAuthError, toast]);
 
   const updateProfilePhotoHandler = useCallback(async (photoDataUrl: string): Promise<boolean> => {
-    if (isDev) {
-      toast({ title: 'Photo updated! (dev mode)' });
-      return true;
-    }
     const auth = await getAuth();
     const db = await getDb();
     const storage = await getStorage();
@@ -419,7 +368,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       handleAuthError(error, 'Photo Upload Failed');
       return false;
     }
-  }, [toast, handleAuthError, isDev]);
+  }, [toast, handleAuthError]);
 
   const value = useMemo(() => ({
     user,

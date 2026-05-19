@@ -20,7 +20,11 @@ export function StravaConnectionCard() {
         setIsLoading(true);
         try {
             const idToken = await user.getIdToken(true);
-            const { connected } = await checkStravaConnection(idToken);
+            const result = await checkStravaConnection(idToken);
+            const connected = result?.connected ?? false;
+            if (!result) {
+              throw new Error('Unable to verify Strava connection.');
+            }
             setIsConnected(connected);
         } catch (error) {
             console.error("Failed to check Strava connection:", error);

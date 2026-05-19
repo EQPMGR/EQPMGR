@@ -377,7 +377,7 @@ export class SupabaseDbAdapter implements IDatabase {
     app_users: [
       'id', 'uid', 'email', 'email_verified', 'display_name', 'phone', 'photo_url', 'avatar_url',
       'height', 'weight', 'shoe_size', 'birthdate', 'measurement_system', 'shoe_size_system',
-      'distance_unit', 'date_format', 'created_at', 'last_login'
+      'distance_unit', 'date_format', 'created_at', 'last_login', 'strava'
     ],
     equipment: [
       'id','user_id','app_user_id','name','type','brand','model','model_year','serial_number','frame_size','size',
@@ -609,13 +609,23 @@ export class SupabaseDbAdapter implements IDatabase {
     throw new Error(`Invalid parentCollection path: ${parentCollection}`);
   }
 
+  async getDocsFromSubcollection<T = any>(
+    parentCollectionPath: string,
+    subCollection: string,
+    ...constraints: QueryConstraint[]
+  ): Promise<QuerySnapshot<T>> {
+    const { parentDocId } = this.parseParentCollection(parentCollectionPath);
+    return this.getSubDocs<T>(parentCollectionPath, parentDocId, subCollection, ...constraints);
+  }
+
   async getSubDocs<T = any>(
     parentCollection: string,
     parentDocId: string,
     subCollection: string,
     ...constraints: QueryConstraint[]
   ): Promise<QuerySnapshot<T>> {
-    const parentIdField = this.buildParentIdField(parentCollection);
+    const parentCollectionInfo = this.parseParentCollection(parentCollection);
+    const parentIdField = this.buildParentIdField(parentCollectionInfo.collection);
 
     const normalizedSubCollection = normalizeTableName(subCollection);
     let query = this.supabase
@@ -734,35 +744,57 @@ export class SupabaseDbAdapter implements IDatabase {
   }
 
   private async resolveFieldValueOperations(collection: string, docId: string, data: any): Promise<any> {
+    if (data == null) {
+      return data;
+    }
+
     const existingSnapshot = await this.getDoc<any>(collection, docId);
     const existingData = existingSnapshot.exists ? existingSnapshot.data : {};
-    const result = { ...data };
 
-    for (const [key, value] of Object.entries(data)) {
+    const resolveValue = (currentKey: string, value: any, existing: any): any => {
       if (value && typeof value === 'object' && 'type' in value) {
         const fieldValue = value as FieldValue;
         switch (fieldValue.type) {
           case 'increment': {
-            const currentValue = Number(existingData[key] ?? 0);
-            result[key] = currentValue + Number(fieldValue.value || 0);
-            break;
+            const currentValue = Number(existing ?? 0);
+            return currentValue + Number(fieldValue.value || 0);
           }
           case 'arrayUnion': {
-            const existingArray = Array.isArray(existingData[key]) ? existingData[key] : [];
+            const existingArray = Array.isArray(existing) ? existing : [];
             const additions = Array.isArray(fieldValue.value) ? fieldValue.value : [fieldValue.value];
-            result[key] = Array.from(new Set([...existingArray, ...additions]));
-            break;
+            return Array.from(new Set([...existingArray, ...additions]));
           }
           case 'arrayRemove': {
-            const existingArray = Array.isArray(existingData[key]) ? existingData[key] : [];
+            const existingArray = Array.isArray(existing) ? existing : [];
             const removals = Array.isArray(fieldValue.value) ? fieldValue.value : [fieldValue.value];
-            result[key] = existingArray.filter((item: any) => !removals.includes(item));
-            break;
+            return existingArray.filter((item: any) => !removals.includes(item));
           }
           default:
-            delete result[key];
-            break;
+            return undefined;
         }
+      }
+
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const nestedResult: any = {};
+        for (const [nestedKey, nestedValue] of Object.entries(value)) {
+          const existingNestedValue = existing && typeof existing === 'object' ? existing[nestedKey] : undefined;
+          const resolvedNestedValue = resolveValue(nestedKey, nestedValue, existingNestedValue);
+          if (resolvedNestedValue !== undefined) {
+            nestedResult[nestedKey] = resolvedNestedValue;
+          }
+        }
+        return nestedResult;
+      }
+
+      return value;
+    };
+
+    const result: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      const existingValue = existingData && key in existingData ? existingData[key] : existingData ? existingData[snakeToCamel(key)] : undefined;
+      const resolved = resolveValue(key, value, existingValue);
+      if (resolved !== undefined) {
+        result[key] = resolved;
       }
     }
 
@@ -774,6 +806,9 @@ export class SupabaseDbAdapter implements IDatabase {
     const filtered = await this.filterToAllowedColumns(collection, processedData);
 
     const sanitized = this.sanitizePayload(filtered);
+    if (sanitized == null) {
+      return;
+    }
     const normalizedCollection = normalizeTableName(collection);
     const resolvedPayload = await this.resolveFieldValueOperations(collection, docId, sanitized);
 

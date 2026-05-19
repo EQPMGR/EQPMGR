@@ -3,11 +3,17 @@ import crypto from 'crypto';
 import { getServerAuth } from '@/backend';
 import { accessSecret } from '@/lib/secrets';
 
+function normalizeRedirectPath(path: unknown) {
+  if (typeof path !== 'string') return '/';
+  if (!path.startsWith('/') || path.startsWith('//')) return '/';
+  return path;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const idToken = body?.idToken;
-    const redirectPath = body?.redirectPath || '/';
+    const redirectPath = normalizeRedirectPath(body?.redirectPath || '/');
 
     if (!idToken) return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
 
@@ -34,7 +40,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/strava/token-exchange`;
+    const origin = new URL(request.url).origin;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || origin;
+    const redirectUri = new URL('/exchange-token', baseUrl).toString();
 
     const stravaUrl = `https://www.strava.com/oauth/authorize?client_id=${encodeURIComponent(
       clientId

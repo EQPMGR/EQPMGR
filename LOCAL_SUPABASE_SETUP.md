@@ -40,7 +40,11 @@ docker-compose -f docker-compose.supabase.yml logs -f app
 ### 4. Access Your App
 
 Visit **http://localhost:3006** and you should see the app with:
-- ✅ Mock auth enabled (auto-logged in as `sage@printshop.local`)
+- ✅ cd /Users/sage/Developer/EQPMGR-main
+docker-compose -f docker-compose.supabase.yml down -v
+cp .env.docker .env
+docker-compose -f docker-compose.supabase.yml up -d
+docker-compose -f docker-compose.supabase.yml logs -f app enabled (auto-logged in as `sage@printshop.local`)
 - ✅ Database connection to local PostgreSQL
 - ✅ All data saved locally in Docker
 
@@ -114,7 +118,6 @@ docker-compose -f docker-compose.supabase.yml up -d app
 
 ### Added:
 - ✅ Local Supabase stack
-- ✅ Mock auth (dev convenience)
 - ✅ Kong API gateway
 - ✅ PostgREST API
 - ✅ Realtime WebSocket support

@@ -167,6 +167,39 @@ export async function replaceUserComponentAction({
             notes: `Original part was ${masterComponentToReplace.brand} ${masterComponentToReplace.model}. Reason: ${replacementReason}.`
         };
 
+        // 3a. If this was a failure replacement, update the master component observed interval.
+        if (replacementReason === 'failure') {
+            const installedAtDistance = typeof componentData.installedAtDistance === 'number'
+                ? componentData.installedAtDistance
+                : undefined;
+            const currentDistance = typeof componentData.currentDistance === 'number'
+                ? componentData.currentDistance
+                : undefined;
+            const equipmentDistance = typeof equipmentData?.totalDistance === 'number'
+                ? equipmentData.totalDistance
+                : undefined;
+
+            let actualIntervalKm: number | null = null;
+            if (typeof installedAtDistance === 'number' && typeof currentDistance === 'number') {
+                actualIntervalKm = currentDistance - installedAtDistance;
+            } else if (typeof installedAtDistance === 'number' && typeof equipmentDistance === 'number') {
+                actualIntervalKm = equipmentDistance - installedAtDistance;
+            }
+
+            if (actualIntervalKm !== null && actualIntervalKm > 0) {
+                const observedCount = masterComponentToReplace.observedIntervalKmCount ?? 0;
+                const observedAvg = masterComponentToReplace.observedIntervalKmAvg ?? 0;
+                const updatedCount = observedCount + 1;
+                const updatedAvg = observedCount === 0
+                    ? actualIntervalKm
+                    : (observedAvg * observedCount + actualIntervalKm) / updatedCount;
+
+                batch.update('masterComponents', masterComponentToReplace.id, {
+                    observedIntervalKmAvg: Number(updatedAvg.toFixed(0)),
+                    observedIntervalKmCount: updatedCount,
+                });
+            }
+        }
 
         // 4. Update the equipment document with the archived component and the new log entry.
         const existingArchived = Array.isArray(equipmentData.archivedComponents) ? equipmentData.archivedComponents : [];

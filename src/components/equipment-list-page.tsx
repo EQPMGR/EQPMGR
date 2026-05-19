@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Activity, Footprints, Bike } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ export function EquipmentListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   const fetchEquipment = useCallback(async (uid: string) => {
     setIsLoading(true);
@@ -393,7 +395,7 @@ export function EquipmentListPage() {
           </p>
         </div>
         <div className="flex flex-col gap-2 md:flex-row">
-          <Button variant="secondary">
+          <Button variant="secondary" onClick={() => router.push('/settings/apps')}>
             <Activity className="mr-2 h-4 w-4" />
             Sync Activity
           </Button>
