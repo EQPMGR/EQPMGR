@@ -180,7 +180,8 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         console.warn('[auth] provisioning after signup failed:', err);
       }
 
-      await auth.sendEmailVerification(authUser);
+      // Supabase sends the verification email automatically on signup,
+      // so we should not immediately resend it and trigger the rate-limit.
       await auth.signOut();
 
       toast({
