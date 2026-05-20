@@ -255,12 +255,12 @@ export function EquipmentListPage() {
         await batch.commit();
         await fetchEquipment(user.uid);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to add equipment:", error);
         toast({
             variant: "destructive",
             title: "Failed to Add Equipment",
-            description: "There was an issue adding the equipment. Please try again.",
+            description: error?.message || "There was an issue adding the equipment. Please try again.",
         });
         // Re-throw to be caught by dialog
         throw error;
