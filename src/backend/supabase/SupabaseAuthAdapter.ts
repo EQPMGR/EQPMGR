@@ -137,7 +137,7 @@ export class SupabaseAuthAdapter implements IAuthProvider {
       email,
       password,
       options: {
-        emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/verify-email`
+        emailRedirectTo: getEmailRedirectUrl()
       }
     });
 
@@ -163,7 +163,7 @@ export class SupabaseAuthAdapter implements IAuthProvider {
       type: 'signup',
       email: user.email,
       options: {
-        emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/verify-email`
+        emailRedirectTo: getEmailRedirectUrl()
       }
     });
 
