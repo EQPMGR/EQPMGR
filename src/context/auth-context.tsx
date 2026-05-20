@@ -163,7 +163,14 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signInWithEmailPasswordHandler = async (email: string, password: string) => {
     try {
       const auth = await getAuth();
-      await auth.signInWithEmailAndPassword(email, password);
+      const authUser = await auth.signInWithEmailAndPassword(email, password);
+
+      if (!authUser.emailVerified) {
+        toast({
+          title: 'Please verify your email to continue',
+          description: 'A verification link has been sent to your inbox. If you do not see it, check your spam folder.',
+        });
+      }
     } catch (error) {
       handleAuthError(error, 'Sign In Failed');
     }
