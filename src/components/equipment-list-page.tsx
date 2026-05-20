@@ -173,12 +173,13 @@ export function EquipmentListPage() {
           equipmentId: newEquipmentId,
           ...newEquipmentData,
           userId: user.uid,
+          appUserId: user.uid,
         });
 
         batch.set('equipment', newEquipmentId, {
           ...newEquipmentData,
-          userId: user.uid,
-          appUserId: user.uid,
+          user_id: user.uid,
+          app_user_id: user.uid,
         });
 
         const bikeModelComponentsSnapshot = await db.getDocs<BikeModelComponent>(
@@ -245,8 +246,8 @@ export function EquipmentListPage() {
 
               const componentDoc: Partial<UserComponent> = {
                 ...userComponent,
-                equipmentId: newEquipmentId,
-                userId: user.uid,
+                equipment_id: newEquipmentId,
+                user_id: user.uid,
               };
               batch.set('components', newComponentId, componentDoc as any);
           });
