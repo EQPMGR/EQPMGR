@@ -16,7 +16,14 @@ function EmailVerificationHandler() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    const actionCode = searchParams.get('token_hash') || searchParams.get('oobCode');
+    const actionCode =
+      searchParams.get('token_hash') ||
+      searchParams.get('oobCode') ||
+      searchParams.get('token');
+
+    const isSupabaseRedirectOnly =
+      !actionCode &&
+      (searchParams.get('type') !== null || searchParams.has('redirect_to'));
 
     if (actionCode) {
       (async () => {
@@ -30,8 +37,13 @@ function EmailVerificationHandler() {
           setStatus('error');
         }
       })();
+    } else if (isSupabaseRedirectOnly || !searchParams.toString()) {
+      // Supabase hosted verification may redirect to this page without a token.
+      setStatus('success');
     } else {
-      setErrorMessage('No verification code found in the link. Please check the URL.');
+      setErrorMessage(
+        'No verification code found in the link. If you were redirected here after email verification, your email may already be verified. Please sign in.'
+      );
       setStatus('error');
     }
   }, [searchParams]);

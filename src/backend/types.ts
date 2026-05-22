@@ -29,6 +29,7 @@ export interface UserDocument {
   displayName?: string;
   phone?: string;
   photoURL?: string;
+  email_verified?: boolean;
   height?: number;
   weight?: number;
   shoeSize?: number;

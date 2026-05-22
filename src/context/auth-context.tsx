@@ -104,14 +104,18 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             let userDocData: BackendUserDocument;
 
             if (userDocSnap.exists && userDocSnap.data) {
-              // Update last login
-                const lastLoginPayload = { lastLogin: new Date() };
-                try {
-                  console.debug('[auth] updateDoc payload (lastLogin):', JSON.stringify(lastLoginPayload));
-                } catch (_) {
-                  console.debug('[auth] updateDoc payload (lastLogin, raw):', lastLoginPayload);
+              // Update last login and sync email verification state if needed
+                const updatePayload: Partial<BackendUserDocument> = { lastLogin: new Date() };
+                if (authUser.emailVerified && userDocSnap.data.email_verified !== true) {
+                  updatePayload.email_verified = true;
                 }
-                await db.updateDoc('app_users', authUser.uid, lastLoginPayload);
+
+                try {
+                  console.debug('[auth] updateDoc payload (lastLogin):', JSON.stringify(updatePayload));
+                } catch (_) {
+                  console.debug('[auth] updateDoc payload (lastLogin, raw):', updatePayload);
+                }
+                await db.updateDoc('app_users', authUser.uid, updatePayload);
                 userDocData = userDocSnap.data;
             } else {
               // No user document exists: provision a row server-side (no client-side fallback).

@@ -17,6 +17,7 @@ create or replace function public.admin_upsert_app_user(
   p_auth_user_id uuid,
   p_email text,
   p_display_name text,
+  p_email_verified boolean default false,
   p_phone text default null,
   p_photo_url text default null,
   p_measurement_system text default 'imperial',
@@ -33,18 +34,19 @@ language sql
 security definer
 as $$
 insert into app_users (
-  id, email, display_name, phone, photo_url,
+  id, email, display_name, email_verified, phone, photo_url,
   measurement_system, shoe_size_system, distance_unit, date_format,
   height, weight, shoe_size, birthdate, created_at, updated_at
 )
 values (
-  p_auth_user_id, p_email, p_display_name, p_phone, p_photo_url,
+  p_auth_user_id, p_email, p_display_name, p_email_verified, p_phone, p_photo_url,
   p_measurement_system, p_shoe_size_system, p_distance_unit, p_date_format,
   p_height, p_weight, p_shoe_size, p_birthdate, now(), now()
 )
 on conflict (id) do update
   set email = coalesce(excluded.email, app_users.email),
       display_name = coalesce(excluded.display_name, app_users.display_name),
+      email_verified = excluded.email_verified OR app_users.email_verified,
       phone = coalesce(excluded.phone, app_users.phone),
       photo_url = coalesce(excluded.photo_url, app_users.photo_url),
       measurement_system = coalesce(excluded.measurement_system, app_users.measurement_system),
