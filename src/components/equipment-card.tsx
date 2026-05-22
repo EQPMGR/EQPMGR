@@ -43,7 +43,7 @@ export function EquipmentCard({ equipment }: EquipmentCardProps) {
         <div className="grid grid-cols-2 text-center text-sm text-muted-foreground border-t pt-3">
           <div>
             <p className="font-semibold text-lg text-foreground">
-              {equipment.totalDistance}
+              {equipment.totalDistance.toFixed(2)}
             </p>
             <p>km</p>
           </div>

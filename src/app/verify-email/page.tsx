@@ -16,7 +16,7 @@ function EmailVerificationHandler() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    const actionCode = searchParams.get('oobCode');
+    const actionCode = searchParams.get('token_hash') || searchParams.get('oobCode');
 
     if (actionCode) {
       (async () => {

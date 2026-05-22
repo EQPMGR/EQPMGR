@@ -33,6 +33,21 @@ function toAuthUser(supabaseUser: User, accessToken?: string): AuthUser {
   };
 }
 
+function getEmailRedirectUrl(): string {
+  const redirectPath = '/verify-email';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+  if (baseUrl) {
+    return new URL(redirectPath, baseUrl).toString();
+  }
+
+  if (typeof window !== 'undefined') {
+    return new URL(redirectPath, window.location.origin).toString();
+  }
+
+  throw new Error('Unable to determine email redirect URL for Supabase. Set NEXT_PUBLIC_BASE_URL.');
+}
+
 // Singleton Supabase client instance (client-side)
 let clientInstance: SupabaseClient | null = null;
 
