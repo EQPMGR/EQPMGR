@@ -93,7 +93,9 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
   const parsedSchedule: ScheduleItem[] = result
     ? JSON.parse(result.maintenanceSchedule)
     : [];
-    
+
+  const hasRelevantWear = equipment.components.some((c) => c.wearPercentage >= 60);
+
   const getUrgencyBadgeVariant = (urgency: ScheduleItem['urgency']): 'destructive' | 'secondary' | 'outline' => {
       switch (urgency) {
         case 'High':
@@ -105,9 +107,11 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
       }
   }
 
+  if (!hasRelevantWear && !result) {
+    return null;
+  }
 
   return (
-    <Card>
       <CardHeader>
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Maintenance Schedule</CardTitle>
