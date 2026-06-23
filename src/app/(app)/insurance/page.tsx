@@ -4,7 +4,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -51,15 +51,35 @@ export default function InsurancePage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const searchParams = useSearchParams();
 
-    const form = useForm<InsuranceFormValues>({
-        resolver: zodResolver(insuranceFormSchema),
-        defaultValues: {
+    const STORAGE_KEY = 'insuranceFormState';
+
+    const initialValues = useMemo(() => {
+        let storedValues: Partial<InsuranceFormValues> | null = null;
+
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = window.localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    storedValues = JSON.parse(raw) as Partial<InsuranceFormValues>;
+                }
+            } catch (error) {
+                console.warn('Failed to parse saved insurance form state:', error);
+            }
+        }
+
+        return {
             owner1FirstName: user?.displayName?.split(' ')[0] || '',
             owner1LastName: user?.displayName?.split(' ').slice(1).join(' ') || '',
             email: user?.email || '',
             phone: user?.phone || '',
             contactWhenBrokerAvailable: false,
-        },
+            ...(storedValues ?? {}),
+        } as InsuranceFormValues;
+    }, [user]);
+
+    const form = useForm<InsuranceFormValues>({
+        resolver: zodResolver(insuranceFormSchema),
+        defaultValues: initialValues,
     });
 
     const hasPastClaims = form.watch('hasPastClaims');
@@ -73,6 +93,20 @@ export default function InsurancePage() {
       }
     }, [searchParams, form]);
 
+    useEffect(() => {
+      const subscription = form.watch((values) => {
+        if (typeof window === 'undefined') return;
+
+        try {
+          window.localStorage.setItem('insuranceFormState', JSON.stringify(values));
+        } catch (error) {
+          console.warn('Failed to save insurance form state:', error);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    }, [form]);
+
     async function onSubmit(values: InsuranceFormValues) {
         setIsSubmitting(true);
         try {
@@ -83,6 +117,9 @@ export default function InsurancePage() {
                     description: "Your insurance application has been sent. We'll be in touch shortly.",
                 });
                 form.reset();
+                if (typeof window !== 'undefined') {
+                    window.localStorage.removeItem('insuranceFormState');
+                }
             } else {
                 toast({
                     variant: 'destructive',
