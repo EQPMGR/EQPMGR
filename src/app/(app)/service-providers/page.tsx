@@ -194,7 +194,7 @@ export default function ServiceProvidersPage() {
     }
     
     if (selectedServices.length > 0) {
-        providers = providers.filter(p => selectedServices.some(s => p.services.includes(s as any)));
+        providers = providers.filter(p => Array.isArray(p.services) && selectedServices.some(s => p.services.includes(s as any)));
     }
 
     return providers;
@@ -202,7 +202,11 @@ export default function ServiceProvidersPage() {
 
   const availableServices = useMemo(() => {
       const services = new Set<string>();
-      allProviders.forEach(p => p.services.forEach(s => services.add(s as string)));
+      allProviders.forEach(p => {
+        if (Array.isArray(p.services)) {
+          p.services.forEach(s => services.add(s as string));
+        }
+      });
       return Array.from(services);
   }, [allProviders]);
 
