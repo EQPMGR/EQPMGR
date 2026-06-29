@@ -112,17 +112,18 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
   }
 
   return (
+    <Card>
       <CardHeader>
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Maintenance Schedule</CardTitle>
-            <Button onClick={handleGenerateSchedule} disabled={isLoading} size="sm" className="gap-1 w-full sm:w-auto">
-                {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Wrench className="mr-2 h-4 w-4" />
-                )}
-                Generate Schedule
-            </Button>
+          <CardTitle>Maintenance Schedule</CardTitle>
+          <Button onClick={handleGenerateSchedule} disabled={isLoading} size="sm" className="gap-1 w-full sm:w-auto">
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Wrench className="mr-2 h-4 w-4" />
+            )}
+            Generate Schedule
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -135,7 +136,9 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
                 </div>
                 <div className="flex-grow">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">{item.component}: <span className="font-normal">{item.action}</span></h4>
+                    <h4 className="font-semibold">
+                      {item.component}: <span className="font-normal">{item.action}</span>
+                    </h4>
                     <Badge variant={getUrgencyBadgeVariant(item.urgency)}>{item.urgency}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{item.reason}</p>
@@ -144,9 +147,7 @@ export function MaintenanceSchedule({ equipment }: MaintenanceScheduleProps) {
             ))}
           </div>
         ) : (
-          <div className="text-center text-muted-foreground py-8">
-            
-          </div>
+          <div className="text-center text-muted-foreground py-8" />
         )}
       </CardContent>
     </Card>
