@@ -89,10 +89,11 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
     try {
         const idToken = await user.getIdToken(true);
         window.localStorage.setItem('strava_id_token', idToken);
+        window.sessionStorage.setItem('strava_id_token', idToken);
 
         const cookieValue = encodeURIComponent(idToken);
         const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-        document.cookie = `strava_id_token=${cookieValue}; path=/; max-age=300; SameSite=Lax${secureFlag}`;
+        document.cookie = `strava_id_token=${cookieValue}; path=/; max-age=300; SameSite=None${secureFlag}`;
 
         const response = await fetch('/api/strava/start', {
           method: 'POST',

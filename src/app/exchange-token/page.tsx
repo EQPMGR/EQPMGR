@@ -19,8 +19,9 @@ export default function ExchangeTokenPage() {
     }
 
     const storedIdTokenFromStorage = window.localStorage.getItem('strava_id_token');
+    const storedIdTokenFromSession = window.sessionStorage.getItem('strava_id_token');
     const storedIdTokenFromCookieMatch = document.cookie.match('(?:^|; )strava_id_token=([^;]*)');
-    const storedIdToken = storedIdTokenFromStorage || (storedIdTokenFromCookieMatch ? decodeURIComponent(storedIdTokenFromCookieMatch[1]) : null);
+    const storedIdToken = storedIdTokenFromStorage || storedIdTokenFromSession || (storedIdTokenFromCookieMatch ? decodeURIComponent(storedIdTokenFromCookieMatch[1]) : null);
 
     const isProbablyJwt = typeof storedIdToken === 'string' && storedIdToken.split('.').length === 3;
     if (!storedIdToken || !isProbablyJwt) {
@@ -36,6 +37,7 @@ export default function ExchangeTokenPage() {
     window
       .fetch('/api/strava/token-exchange', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, state, idToken: storedIdToken }),
       })
@@ -58,7 +60,8 @@ export default function ExchangeTokenPage() {
         }
 
         window.localStorage.removeItem('strava_id_token');
-        document.cookie = 'strava_id_token=; path=/; max-age=0; SameSite=Lax';
+        window.sessionStorage.removeItem('strava_id_token');
+        document.cookie = 'strava_id_token=; path=/; max-age=0; SameSite=None; Secure';
         if (maybeRedirectUrl) {
           window.location.replace(maybeRedirectUrl);
         } else {
