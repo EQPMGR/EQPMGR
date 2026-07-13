@@ -65,24 +65,57 @@ export default function ExchangeTokenPage() {
       : null;
     const storedIdTokenFromStateKey = storedIdTokenFromStateKeyLocal || storedIdTokenFromStateKeySession;
 
-    const storedIdToken = storedIdTokenFromStorage || storedIdTokenFromSession || storedIdTokenFromStateKey || (storedIdTokenFromCookieMatch ? decodeURIComponent(storedIdTokenFromCookieMatch[1]) : null);
+    const dynamicLocalFallback = (() => {
+      for (let i = 0; i < window.localStorage.length; i += 1) {
+        const key = window.localStorage.key(i);
+        if (key && key.startsWith('strava_id_token_') && key !== 'strava_id_token') {
+          const value = window.localStorage.getItem(key);
+          if (value) return { key, value };
+        }
+      }
+      return null;
+    })();
+
+    const dynamicSessionFallback = (() => {
+      for (let i = 0; i < window.sessionStorage.length; i += 1) {
+        const key = window.sessionStorage.key(i);
+        if (key && key.startsWith('strava_id_token_') && key !== 'strava_id_token') {
+          const value = window.sessionStorage.getItem(key);
+          if (value) return { key, value };
+        }
+      }
+      return null;
+    })();
+
+    const storedIdToken = storedIdTokenFromStorage
+      || storedIdTokenFromSession
+      || storedIdTokenFromStateKey
+      || dynamicLocalFallback?.value
+      || dynamicSessionFallback?.value
+      || (storedIdTokenFromCookieMatch ? decodeURIComponent(storedIdTokenFromCookieMatch[1]) : null);
+
+    const tokenFoundIn = storedIdTokenFromStorage
+      ? 'localStorage'
+      : storedIdTokenFromSession
+        ? 'sessionStorage'
+        : storedIdTokenFromStateKeyLocal
+          ? 'stateKeyLocalStorage'
+          : storedIdTokenFromStateKeySession
+            ? 'stateKeySessionStorage'
+            : dynamicLocalFallback
+              ? `dynamicLocalStorage:${dynamicLocalFallback.key}`
+              : dynamicSessionFallback
+                ? `dynamicSessionStorage:${dynamicSessionFallback.key}`
+                : storedIdTokenFromCookieMatch
+                  ? 'cookie'
+                  : null;
 
     setDiagInfo({
       codePresent: !!code,
       statePresent: !!state,
       stateParsed: !!statePayload,
       stateTokenKey: stateTokenKey ?? null,
-      tokenFoundIn: storedIdTokenFromStorage
-        ? 'localStorage'
-        : storedIdTokenFromSession
-          ? 'sessionStorage'
-          : storedIdTokenFromStateKeyLocal
-            ? 'stateKeyLocalStorage'
-            : storedIdTokenFromStateKeySession
-              ? 'stateKeySessionStorage'
-              : storedIdTokenFromCookieMatch
-                ? 'cookie'
-                : null,
+      tokenFoundIn,
       storage: {
         local: !!storedIdTokenFromStorage,
         session: !!storedIdTokenFromSession,
@@ -151,7 +184,7 @@ export default function ExchangeTokenPage() {
         setError(err.message || 'An unknown error occurred while connecting Strava.');
         setStatus('Connection failed.');
       });
-  }, [searchParams, diagInfo]);
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
