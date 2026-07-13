@@ -3,10 +3,26 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+type StravaExchangeDiagnostics = {
+  codePresent: boolean;
+  statePresent: boolean;
+  stateParsed: boolean;
+  stateTokenKey?: string | null;
+  tokenFoundIn?: string | null;
+  storage: {
+    local: boolean;
+    session: boolean;
+    stateKeyLocal: boolean;
+    stateKeySession: boolean;
+    cookie: boolean;
+  };
+};
+
 export default function ExchangeTokenPage() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('Completing Strava connection...');
   const [error, setError] = useState<string | null>(null);
+  const [diagInfo, setDiagInfo] = useState<StravaExchangeDiagnostics | null>(null);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -21,12 +37,70 @@ export default function ExchangeTokenPage() {
     const storedIdTokenFromStorage = window.localStorage.getItem('strava_id_token');
     const storedIdTokenFromSession = window.sessionStorage.getItem('strava_id_token');
     const storedIdTokenFromCookieMatch = document.cookie.match('(?:^|; )strava_id_token=([^;]*)');
-    const storedIdToken = storedIdTokenFromStorage || storedIdTokenFromSession || (storedIdTokenFromCookieMatch ? decodeURIComponent(storedIdTokenFromCookieMatch[1]) : null);
+    const stateParam = searchParams.get('state');
+
+    const decodeBase64Url = (value: string) => {
+      const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(value.length + ((4 - value.length % 4) % 4), '=');
+      return new TextDecoder().decode(Uint8Array.from(atob(base64), c => c.charCodeAt(0)));
+    };
+
+    const parseStatePayload = (state: string | null) => {
+      if (!state) return null;
+      const [payload] = state.split('.');
+      if (!payload) return null;
+      try {
+        return JSON.parse(decodeBase64Url(payload));
+      } catch {
+        return null;
+      }
+    };
+
+    const statePayload = parseStatePayload(stateParam);
+    const stateTokenKey = statePayload?.tokenKey;
+    const storedIdTokenFromStateKeyLocal = stateTokenKey
+      ? window.localStorage.getItem(stateTokenKey)
+      : null;
+    const storedIdTokenFromStateKeySession = stateTokenKey
+      ? window.sessionStorage.getItem(stateTokenKey)
+      : null;
+    const storedIdTokenFromStateKey = storedIdTokenFromStateKeyLocal || storedIdTokenFromStateKeySession;
+
+    const storedIdToken = storedIdTokenFromStorage || storedIdTokenFromSession || storedIdTokenFromStateKey || (storedIdTokenFromCookieMatch ? decodeURIComponent(storedIdTokenFromCookieMatch[1]) : null);
+
+    setDiagInfo({
+      codePresent: !!code,
+      statePresent: !!state,
+      stateParsed: !!statePayload,
+      stateTokenKey: stateTokenKey ?? null,
+      tokenFoundIn: storedIdTokenFromStorage
+        ? 'localStorage'
+        : storedIdTokenFromSession
+          ? 'sessionStorage'
+          : storedIdTokenFromStateKeyLocal
+            ? 'stateKeyLocalStorage'
+            : storedIdTokenFromStateKeySession
+              ? 'stateKeySessionStorage'
+              : storedIdTokenFromCookieMatch
+                ? 'cookie'
+                : null,
+      storage: {
+        local: !!storedIdTokenFromStorage,
+        session: !!storedIdTokenFromSession,
+        stateKeyLocal: !!storedIdTokenFromStateKeyLocal,
+        stateKeySession: !!storedIdTokenFromStateKeySession,
+        cookie: !!storedIdTokenFromCookieMatch,
+      },
+    });
 
     const isProbablyJwt = typeof storedIdToken === 'string' && storedIdToken.split('.').length === 3;
     if (!storedIdToken || !isProbablyJwt) {
       window.localStorage.removeItem('strava_id_token');
-      document.cookie = 'strava_id_token=; path=/; max-age=0; SameSite=Lax';
+      window.sessionStorage.removeItem('strava_id_token');
+      if (stateTokenKey) {
+        window.localStorage.removeItem(stateTokenKey);
+        window.sessionStorage.removeItem(stateTokenKey);
+      }
+      document.cookie = 'strava_id_token=; path=/; max-age=0; SameSite=None; Secure';
       setError('Stored authentication token is invalid or expired. Please reconnect your Strava account.');
       setStatus('Connection cannot continue.');
       return;
@@ -61,6 +135,10 @@ export default function ExchangeTokenPage() {
 
         window.localStorage.removeItem('strava_id_token');
         window.sessionStorage.removeItem('strava_id_token');
+        if (stateTokenKey) {
+          window.localStorage.removeItem(stateTokenKey);
+          window.sessionStorage.removeItem(stateTokenKey);
+        }
         document.cookie = 'strava_id_token=; path=/; max-age=0; SameSite=None; Secure';
         if (maybeRedirectUrl) {
           window.location.replace(maybeRedirectUrl);
@@ -69,11 +147,11 @@ export default function ExchangeTokenPage() {
         }
       })
       .catch((err: Error) => {
-        console.error('Strava exchange failed:', err);
+        console.error('Strava exchange failed:', err, { diagInfo });
         setError(err.message || 'An unknown error occurred while connecting Strava.');
         setStatus('Connection failed.');
       });
-  }, [searchParams]);
+  }, [searchParams, diagInfo]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
@@ -84,6 +162,24 @@ export default function ExchangeTokenPage() {
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-left text-sm text-red-700">
             <strong>Unable to finish connection:</strong>
             <div>{error}</div>
+          </div>
+        )}
+        {diagInfo && (
+          <div className="mt-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-left text-xs text-slate-700">
+            <div className="font-semibold mb-2">Strava Exchange Diagnostics</div>
+            <div><strong>Code present:</strong> {diagInfo.codePresent ? 'Yes' : 'No'}</div>
+            <div><strong>State present:</strong> {diagInfo.statePresent ? 'Yes' : 'No'}</div>
+            <div><strong>State parsed:</strong> {diagInfo.stateParsed ? 'Yes' : 'No'}</div>
+            <div><strong>Token key from state:</strong> {diagInfo.stateTokenKey ?? '—'}</div>
+            <div><strong>Token found in:</strong> {diagInfo.tokenFoundIn ?? 'None'}</div>
+            <div><strong>Storage sources:</strong></div>
+            <ul className="list-disc ml-5">
+              <li>localStorage: {diagInfo.storage.local ? 'Yes' : 'No'}</li>
+              <li>sessionStorage: {diagInfo.storage.session ? 'Yes' : 'No'}</li>
+              <li>stateKey localStorage: {diagInfo.storage.stateKeyLocal ? 'Yes' : 'No'}</li>
+              <li>stateKey sessionStorage: {diagInfo.storage.stateKeySession ? 'Yes' : 'No'}</li>
+              <li>cookie: {diagInfo.storage.cookie ? 'Yes' : 'No'}</li>
+            </ul>
           </div>
         )}
       </div>

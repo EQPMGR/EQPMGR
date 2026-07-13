@@ -88,8 +88,11 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
 
     try {
         const idToken = await user.getIdToken(true);
+        const tokenKey = `strava_id_token_${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
         window.localStorage.setItem('strava_id_token', idToken);
         window.sessionStorage.setItem('strava_id_token', idToken);
+        window.localStorage.setItem(tokenKey, idToken);
+        window.sessionStorage.setItem(tokenKey, idToken);
 
         const cookieValue = encodeURIComponent(idToken);
         const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
@@ -98,7 +101,7 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
         const response = await fetch('/api/strava/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken, redirectPath: pathname }),
+          body: JSON.stringify({ idToken, redirectPath: pathname, tokenKey }),
         });
 
         const data = await response.json();
@@ -115,7 +118,7 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   };
 
   const [showDiag, setShowDiag] = useState(false);
-  const [diagInfo, setDiagInfo] = useState<{ hasIdToken?: boolean; maskedIdToken?: string; localStoragePresent?: boolean; cookiePresent?: boolean; redirectUri?: string } | null>(null);
+  const [diagInfo, setDiagInfo] = useState<{ hasIdToken?: boolean; maskedIdToken?: string; localStoragePresent?: boolean; sessionStoragePresent?: boolean; cookiePresent?: boolean; redirectUri?: string } | null>(null);
 
   const runDiagnostics = async () => {
       const info: any = {};
@@ -142,6 +145,13 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
           info.localStoragePresent = !!storedToken;
       } catch (e) {
           info.localStoragePresent = false;
+      }
+
+      try {
+          const storedSessionToken = window.sessionStorage.getItem('strava_id_token');
+          info.sessionStoragePresent = !!storedSessionToken;
+      } catch (e) {
+          info.sessionStoragePresent = false;
       }
 
       try {
@@ -208,6 +218,7 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
                                 <div><strong>ID token available:</strong> {diagInfo.hasIdToken ? 'Yes' : 'No'}</div>
                                 <div><strong>Masked ID token:</strong> {diagInfo.maskedIdToken ?? '—'}</div>
                                 <div><strong>Local token stored:</strong> {diagInfo.localStoragePresent ? 'Yes' : 'No'}</div>
+                                <div><strong>Session token stored:</strong> {diagInfo.sessionStoragePresent ? 'Yes' : 'No'}</div>
                                 <div><strong>Cookie present:</strong> {diagInfo.cookiePresent ? 'Yes' : 'No'}</div>
                                 <div><strong>Computed redirect URI:</strong> <code className="break-all">{diagInfo.redirectUri}</code></div>
                             </div>

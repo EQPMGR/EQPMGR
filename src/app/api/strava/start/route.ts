@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const idToken = body?.idToken;
     const redirectPath = normalizeRedirectPath(body?.redirectPath || '/');
+    const tokenKey = typeof body?.tokenKey === 'string' ? body.tokenKey : undefined;
 
     if (!idToken) return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const payload = { uid, redirect: redirectPath, iat: now, exp: now + 300 };
+    const payload = { uid, redirect: redirectPath, tokenKey, iat: now, exp: now + 300 };
     const payloadStr = JSON.stringify(payload);
     const payloadB64 = Buffer.from(payloadStr, 'utf8').toString('base64url');
     const sig = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
