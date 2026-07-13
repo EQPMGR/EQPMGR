@@ -178,11 +178,6 @@ async function executeStravaTokenExchange({
     throw new Error(`Failed to save Strava credentials: ${upsertError.message}`);
   }
 
-  const statePayload = await verifyStravaState(state);
-  if (statePayload.uid !== userId) {
-    throw new Error('OAuth state does not match authenticated user.');
-  }
-
   const redirectPath = statePayload.redirect;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
     (typeof requestOrOrigin === 'string' ? requestOrOrigin : requestOrOrigin.nextUrl.origin);
