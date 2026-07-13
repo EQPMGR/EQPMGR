@@ -94,6 +94,11 @@ async function executeStravaTokenExchange({
   const decodedToken = await auth.verifyIdToken(idToken, true);
   const userId = decodedToken.uid;
 
+  const statePayload = await verifyStravaState(state);
+  if (statePayload.uid !== userId) {
+    throw new Error('OAuth state does not match authenticated user.');
+  }
+
   const [clientId, clientSecret] = await Promise.all([
     accessSecret('NEXT_PUBLIC_STRAVA_CLIENT_ID'),
     accessSecret('STRAVA_CLIENT_SECRET'),
