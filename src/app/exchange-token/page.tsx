@@ -63,20 +63,6 @@ export default function ExchangeTokenPage() {
     const storedIdTokenFromStateKeySession = stateTokenKey
       ? window.sessionStorage.getItem(stateTokenKey)
       : null;
-
-    console.log('[Strava Exchange Page] client token diagnostic', {
-      codePresent: !!code,
-      statePresent: !!stateParam,
-      stateParsed: !!statePayload,
-      stateTokenKey,
-      localStorageHasDefault: !!storedIdTokenFromStorage,
-      sessionStorageHasDefault: !!storedIdTokenFromSession,
-      localStorageHasStateKey: !!storedIdTokenFromStateKeyLocal,
-      sessionStorageHasStateKey: !!storedIdTokenFromStateKeySession,
-      cookieHasDefault: !!storedIdTokenFromCookieMatch,
-      dynamicLocalFallbackKey: dynamicLocalFallback?.key || null,
-      dynamicSessionFallbackKey: dynamicSessionFallback?.key || null,
-    });
     const storedIdTokenFromStateKey = storedIdTokenFromStateKeyLocal || storedIdTokenFromStateKeySession;
 
     const dynamicLocalFallback = (() => {
@@ -100,6 +86,20 @@ export default function ExchangeTokenPage() {
       }
       return null;
     })();
+
+    console.log('[Strava Exchange Page] client token diagnostic', {
+      codePresent: !!code,
+      statePresent: !!stateParam,
+      stateParsed: !!statePayload,
+      stateTokenKey,
+      localStorageHasDefault: !!storedIdTokenFromStorage,
+      sessionStorageHasDefault: !!storedIdTokenFromSession,
+      localStorageHasStateKey: !!storedIdTokenFromStateKeyLocal,
+      sessionStorageHasStateKey: !!storedIdTokenFromStateKeySession,
+      cookieHasDefault: !!storedIdTokenFromCookieMatch,
+      dynamicLocalFallbackKey: dynamicLocalFallback?.key || null,
+      dynamicSessionFallbackKey: dynamicSessionFallback?.key || null,
+    });
 
     const storedIdToken = storedIdTokenFromStorage
       || storedIdTokenFromSession
