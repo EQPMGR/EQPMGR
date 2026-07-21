@@ -100,6 +100,7 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
 
         const response = await fetch('/api/strava/start', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken, redirectPath: pathname, tokenKey }),
         });
@@ -161,7 +162,7 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
       }
 
       try {
-          info.redirectUri = `${window.location.origin}/exchange-token`;
+          info.redirectUri = `${window.location.origin}/api/strava/token-exchange`;
       } catch (e) {
           info.redirectUri = 'unknown';
       }

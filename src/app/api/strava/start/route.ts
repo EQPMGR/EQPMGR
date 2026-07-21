@@ -49,7 +49,20 @@ export async function POST(request: Request) {
       clientId
     )}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${encodeURIComponent(state)}`;
 
-    return NextResponse.json({ url: stravaUrl });
+    const cookieAttributes = [
+      `strava_id_token=${encodeURIComponent(idToken)}`,
+      'Path=/',
+      'Max-Age=300',
+      'SameSite=None',
+      'HttpOnly',
+    ];
+    if (redirectUri.startsWith('https:')) {
+      cookieAttributes.push('Secure');
+    }
+
+    const response = NextResponse.json({ url: stravaUrl });
+    response.headers.append('Set-Cookie', cookieAttributes.join('; '));
+    return response;
   } catch (err: any) {
     console.error('Error building Strava start URL', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -173,6 +173,14 @@ async function executeStravaTokenExchange({
     .from('app_users')
     .upsert(insertPayload, { onConflict: 'id' });
 
+  console.log('[Strava Token Exchange] app_users upsert result', {
+    hasPayload: !!insertPayload,
+    payloadId: insertPayload.id,
+    payloadEmail: insertPayload.email,
+    hasStrava: !!insertPayload.strava,
+    upsertError: upsertError ? upsertError.message : null,
+  });
+
   if (upsertError) {
     console.error('[Strava Token Exchange] app_users upsert failed', upsertError);
     throw new Error(`Failed to save Strava credentials: ${upsertError.message}`);
@@ -199,8 +207,11 @@ export async function GET(request: NextRequest) {
     url: request.url,
     codePresent: !!code,
     statePresent: !!state,
+    errorPresent: !!error,
     cookiePresent: !!idToken,
     cookieLength: idToken?.length ?? 0,
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
   });
 
   if (error) {

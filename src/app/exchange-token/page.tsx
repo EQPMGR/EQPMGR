@@ -63,6 +63,20 @@ export default function ExchangeTokenPage() {
     const storedIdTokenFromStateKeySession = stateTokenKey
       ? window.sessionStorage.getItem(stateTokenKey)
       : null;
+
+    console.log('[Strava Exchange Page] client token diagnostic', {
+      codePresent: !!code,
+      statePresent: !!stateParam,
+      stateParsed: !!statePayload,
+      stateTokenKey,
+      localStorageHasDefault: !!storedIdTokenFromStorage,
+      sessionStorageHasDefault: !!storedIdTokenFromSession,
+      localStorageHasStateKey: !!storedIdTokenFromStateKeyLocal,
+      sessionStorageHasStateKey: !!storedIdTokenFromStateKeySession,
+      cookieHasDefault: !!storedIdTokenFromCookieMatch,
+      dynamicLocalFallbackKey: dynamicLocalFallback?.key || null,
+      dynamicSessionFallbackKey: dynamicSessionFallback?.key || null,
+    });
     const storedIdTokenFromStateKey = storedIdTokenFromStateKeyLocal || storedIdTokenFromStateKeySession;
 
     const dynamicLocalFallback = (() => {
@@ -126,7 +140,7 @@ export default function ExchangeTokenPage() {
     });
 
     const isProbablyJwt = typeof storedIdToken === 'string' && storedIdToken.split('.').length === 3;
-    if (!storedIdToken || !isProbablyJwt) {
+    if (storedIdToken && !isProbablyJwt) {
       window.localStorage.removeItem('strava_id_token');
       window.sessionStorage.removeItem('strava_id_token');
       if (stateTokenKey) {
@@ -139,14 +153,23 @@ export default function ExchangeTokenPage() {
       return;
     }
 
-    setStatus('Finishing Strava authentication...');
+    if (!storedIdToken) {
+      setStatus('No client-side stored token found; completing Strava authentication with server-side cookie fallback...');
+    } else {
+      setStatus('Finishing Strava authentication...');
+    }
+
+    const requestBody: any = { code, state };
+    if (storedIdToken) {
+      requestBody.idToken = storedIdToken;
+    }
 
     window
       .fetch('/api/strava/token-exchange', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, state, idToken: storedIdToken }),
+        body: JSON.stringify(requestBody),
       })
       .then(async (response) => {
         const text = await response.text();
