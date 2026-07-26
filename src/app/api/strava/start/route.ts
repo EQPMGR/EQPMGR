@@ -3,69 +3,80 @@ import crypto from 'crypto';
 import { getServerAuth } from '@/backend';
 import { accessSecret } from '@/lib/secrets';
 
-function normalizeRedirectPath(path: unknown) {
-  if (typeof path !== 'string') return '/';
-  if (!path.startsWith('/') || path.startsWith('//')) return '/';
-  return path;
-}
-
+/**
+ * Strava OAuth Step 1: Request Authorization
+ * 
+ * Follows https://developers.strava.com/docs/authentication/#requesting-access
+ * 
+ * Endpoint: POST /api/strava/start
+ * Body: { idToken: string, redirectPath?: string }
+ * Response: { url: string } - Redirect user to this URL
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const idToken = body?.idToken;
-    const redirectPath = normalizeRedirectPath(body?.redirectPath || '/');
+    const { idToken, redirectPath = '/' } = body;
 
-    if (!idToken) {
-      return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
+    if (!idToken || typeof idToken !== 'string') {
+      return NextResponse.json({ error: 'Missing or invalid idToken' }, { status: 400 });
     }
 
+    // Verify the user's Firebase token
     const auth = await getServerAuth();
     const decoded = await auth.verifyIdToken(idToken, true);
-    const uid = decoded.uid;
+    const userId = decoded.uid;
 
+    // Create signed state payload
     const secret = await accessSecret('STRAVA_STATE_SECRET');
     if (!secret) {
-      console.error('STRAVA_STATE_SECRET not configured');
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      console.error('[Strava] STRAVA_STATE_SECRET not configured');
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const payload = { uid, redirect: redirectPath, iat: now, exp: now + 300 };
-    const payloadStr = JSON.stringify(payload);
-    const payloadB64 = Buffer.from(payloadStr, 'utf8').toString('base64url');
-    const sig = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
-    const state = `${payloadB64}.${sig}`;
+    const statePayload = {
+      uid: userId,
+      redirect: typeof redirectPath === 'string' && redirectPath.startsWith('/') ? redirectPath : '/',
+      iat: now,
+      exp: now + 600, // 10 minute expiry
+    };
 
+    const payloadJson = JSON.stringify(statePayload);
+    const payloadB64 = Buffer.from(payloadJson).toString('base64url');
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(payloadB64);
+    const signature = hmac.digest('base64url');
+    const state = `${payloadB64}.${signature}`;
+
+    // Get Strava credentials
     const clientId = await accessSecret('NEXT_PUBLIC_STRAVA_CLIENT_ID');
     if (!clientId) {
-      console.error('Missing Strava client id');
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      console.error('[Strava] NEXT_PUBLIC_STRAVA_CLIENT_ID not configured');
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
     }
 
-    const origin = new URL(request.url).origin;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || origin;
+    // Build redirect URI
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
     const redirectUri = new URL('/api/strava/token-exchange', baseUrl).toString();
 
-    const stravaUrl = `https://www.strava.com/oauth/authorize?client_id=${encodeURIComponent(
-      clientId
-    )}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&approval_prompt=force&scope=read,activity:read_all&state=${encodeURIComponent(state)}`;
+    // Build Strava authorization URL
+    // Docs: https://developers.strava.com/docs/authentication/#requesting-access
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'activity:read_all,activity:write', // Comma-delimited or space-delimited
+      approval_prompt: 'auto',
+      state: state,
+    });
 
-    const cookieAttributes = [
-      `strava_id_token=${encodeURIComponent(idToken)}`,
-      'Path=/',
-      'Max-Age=300',
-      'SameSite=None',
-      'HttpOnly',
-    ];
-    if (redirectUri.startsWith('https:')) {
-      cookieAttributes.push('Secure');
-    }
+    const stravaUrl = `https://www.strava.com/oauth/authorize?${params.toString()}`;
 
-    const response = NextResponse.json({ url: stravaUrl });
-    response.headers.append('Set-Cookie', cookieAttributes.join('; '));
-    return response;
+    console.log('[Strava Start] Generated auth URL for user', { userId, redirectUri });
+
+    return NextResponse.json({ url: stravaUrl });
   } catch (err: any) {
-    console.error('Error building Strava start URL', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[Strava Start] Error', err?.message);
+    return NextResponse.json({ error: 'Failed to initialize Strava connection' }, { status: 500 });
   }
 }
