@@ -91,9 +91,25 @@ async function executeStravaTokenExchange({
   requestOrOrigin: NextRequest | string;
 }) {
   const auth = await getServerAuth();
-  const decodedToken = await auth.verifyIdToken(idToken, true);
-  const userId = decodedToken.uid;
+  console.log('[Strava Token Exchange] verifyIdToken start', {
+    idTokenPresent: !!idToken,
+    idTokenLength: idToken?.length ?? 0,
+  });
 
+  let decodedToken;
+  try {
+    decodedToken = await auth.verifyIdToken(idToken, true);
+    console.log('[Strava Token Exchange] verifyIdToken success', {
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      emailVerified: decodedToken.email_verified,
+    });
+  } catch (verifyError: any) {
+    console.error('[Strava Token Exchange] verifyIdToken failed', verifyError);
+    throw new Error(`Token verification failed: ${verifyError?.message || 'unknown error'}`);
+  }
+
+  const userId = decodedToken.uid;
   const statePayload = await verifyStravaState(state);
   if (statePayload.uid !== userId) {
     throw new Error('OAuth state does not match authenticated user.');
@@ -287,15 +303,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ redirectUrl });
     } catch (err: any) {
       console.error('FATAL ERROR during server-side token exchange.', err);
-      return NextResponse.json({
-        error:
-          process.env.NODE_ENV !== 'production'
-            ? err?.message || 'Strava token exchange failed. Please try again.'
-            : 'Strava token exchange failed. Please try again.',
-      }, { status: 500 });
+      const errorMessage = err?.message || 'Strava token exchange failed. Please try again.';
+      const responsePayload: { error: string; debug?: string } = { error: errorMessage };
+      if (process.env.STRAVA_DEBUG === 'true') {
+        responsePayload.debug = errorMessage;
+      }
+      return NextResponse.json(responsePayload, { status: 500 });
     }
   } catch (err: any) {
     console.error('Invalid Strava token exchange request.', err);
-    return NextResponse.json({ error: 'Invalid request payload.' }, { status: 400 });
+    const errorMessage = err?.message || 'Invalid request payload.';
+    const responsePayload: { error: string; debug?: string } = { error: errorMessage };
+    if (process.env.STRAVA_DEBUG === 'true') {
+      responsePayload.debug = errorMessage;
+    }
+    return NextResponse.json(responsePayload, { status: 400 });
   }
 }
