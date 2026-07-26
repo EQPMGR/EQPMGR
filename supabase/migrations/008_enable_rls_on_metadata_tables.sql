@@ -23,6 +23,10 @@ drop policy if exists app_users_update_own on app_users;
 create policy app_users_update_own on app_users
   for update using (auth.uid()::uuid = id)
   with check (auth.uid()::uuid = id);
+drop policy if exists app_users_service_role on app_users;
+create policy app_users_service_role on app_users
+  for all using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
 
 -- equipment policies
 drop policy if exists equipment_select_own on equipment;
