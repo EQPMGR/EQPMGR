@@ -2,8 +2,7 @@
 import crypto from 'crypto';
 import https from 'https';
 import { type NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getServerAuth } from '@/backend';
+import { getServerAuth, getServerDb } from '@/backend';
 import { cookies } from 'next/headers';
 import { accessSecret } from '@/lib/secrets';
 
@@ -171,13 +170,7 @@ async function executeStravaTokenExchange({
     console.warn('[Strava Token Exchange] No email present in decoded token, using fallback email.', { userId, fallbackEmail: email });
   }
 
-  const supabaseAdminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAdminKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseAdminUrl || !supabaseAdminKey) {
-    throw new Error('Supabase service role configuration is missing.');
-  }
-
-  const supabaseAdmin = createClient(supabaseAdminUrl, supabaseAdminKey);
+  const db = await getServerDb();
   const insertPayload = {
     id: userId,
     email,
@@ -185,21 +178,22 @@ async function executeStravaTokenExchange({
     strava: stravaPayload.strava,
   };
   console.log('[Strava Token Exchange] upserting app_users row', insertPayload);
-  const { error: upsertError } = await supabaseAdmin
-    .from('app_users')
-    .upsert(insertPayload, { onConflict: 'id' });
 
-  console.log('[Strava Token Exchange] app_users upsert result', {
-    hasPayload: !!insertPayload,
-    payloadId: insertPayload.id,
-    payloadEmail: insertPayload.email,
-    hasStrava: !!insertPayload.strava,
-    upsertError: upsertError ? upsertError.message : null,
-  });
+  try {
+    await db.updateDoc('app_users', userId, insertPayload);
+  } catch (upsertError: any) {
+    console.error('[Strava Token Exchange] app_users updateDoc failed', upsertError);
+    throw new Error(`Failed to save Strava credentials: ${upsertError?.message || 'unknown error'}`);
+  }
 
-  if (upsertError) {
-    console.error('[Strava Token Exchange] app_users upsert failed', upsertError);
-    throw new Error(`Failed to save Strava credentials: ${upsertError.message}`);
+  try {
+    const savedRow = await db.getDoc('app_users', userId);
+    console.log('[Strava Token Exchange] saved app_users row after write', {
+      exists: savedRow.exists,
+      strava: savedRow.data?.strava,
+    });
+  } catch (verifyError: any) {
+    console.error('[Strava Token Exchange] failed to verify saved row after write', verifyError);
   }
 
   const redirectPath = statePayload.redirect;
