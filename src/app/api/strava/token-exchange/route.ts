@@ -100,6 +100,10 @@ async function executeStravaTokenExchange({
     throw new Error('Server configuration error for Strava connection.');
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof requestOrOrigin === 'string' ? requestOrOrigin : requestOrOrigin.nextUrl.origin);
+  const redirectUri = new URL('/api/strava/token-exchange', baseUrl).toString();
+
   const fetchOptions: RequestInit = {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -108,6 +112,7 @@ async function executeStravaTokenExchange({
       client_secret: clientSecret,
       code: code,
       grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
     }),
   };
 
@@ -132,12 +137,45 @@ async function executeStravaTokenExchange({
     throw new Error(`${errMsg}${errDetail}`);
   }
 
+  if (process.env.STRAVA_DEBUG === 'true') {
+    console.log('[Strava Token Exchange] Strava API response (redacted)', {
+      token_type: data.token_type,
+      expires_at: data.expires_at,
+      expires_in: data.expires_in,
+      scope: data.scope,
+      athlete_id: data.athlete?.id,
+      access_token_first_8: data.access_token?.slice(0, 8),
+      refresh_token_first_8: data.refresh_token?.slice(0, 8),
+    });
+  }
+
+  if (typeof data.expires_at !== 'number' || data.expires_at <= 0) {
+    throw new Error('Invalid expires_at from Strava: expected positive number.');
+  }
+
+  if (!data.athlete || typeof data.athlete !== 'object') {
+    throw new Error('Invalid athlete object from Strava: athlete data missing.');
+  }
+
+  if (!data.athlete.id || typeof data.athlete.id !== 'number') {
+    throw new Error('Invalid athlete ID from Strava: expected numeric ID.');
+  }
+
+  if (typeof data.access_token !== 'string' || !data.access_token) {
+    throw new Error('Invalid access token from Strava: expected non-empty string.');
+  }
+
+  if (typeof data.refresh_token !== 'string' || !data.refresh_token) {
+    throw new Error('Invalid refresh token from Strava: expected non-empty string.');
+  }
+
   const stravaPayload = {
     strava: {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresAt: data.expires_at,
       athleteId: data.athlete.id,
+      scope: data.scope || '',
     },
   };
 
@@ -165,7 +203,11 @@ async function executeStravaTokenExchange({
   const savedRow = await db.getDoc('app_users', userId);
   console.log('[Strava Token Exchange] saved app_users row after write', {
     exists: savedRow.exists,
-    strava: savedRow.data?.strava,
+    strava: {
+      athleteId: savedRow.data?.strava?.athleteId,
+      expiresAt: savedRow.data?.strava?.expiresAt,
+      scope: savedRow.data?.strava?.scope,
+    },
   });
 
   if (!savedRow.exists) {
@@ -182,8 +224,6 @@ async function executeStravaTokenExchange({
   }
 
   const redirectPath = statePayload.redirect;
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-    (typeof requestOrOrigin === 'string' ? requestOrOrigin : requestOrOrigin.nextUrl.origin);
   const finalRedirectUrl = new URL(redirectPath, baseUrl);
   finalRedirectUrl.searchParams.set('strava_connected', 'true');
 
