@@ -162,14 +162,23 @@ async function executeStravaTokenExchange({
     throw new Error(`Failed to save Strava credentials: ${upsertError?.message || 'unknown error'}`);
   }
 
-  try {
-    const savedRow = await db.getDoc('app_users', userId);
-    console.log('[Strava Token Exchange] saved app_users row after write', {
-      exists: savedRow.exists,
-      strava: savedRow.data?.strava,
-    });
-  } catch (verifyError: any) {
-    console.error('[Strava Token Exchange] failed to verify saved row after write', verifyError);
+  const savedRow = await db.getDoc('app_users', userId);
+  console.log('[Strava Token Exchange] saved app_users row after write', {
+    exists: savedRow.exists,
+    strava: savedRow.data?.strava,
+  });
+
+  if (!savedRow.exists) {
+    throw new Error('Failed to verify user record after saving Strava credentials. User row missing.');
+  }
+
+  const savedStrava = savedRow.data?.strava;
+  if (
+    !savedStrava ||
+    savedStrava.athleteId !== stravaPayload.strava.athleteId ||
+    savedStrava.expiresAt !== stravaPayload.strava.expiresAt
+  ) {
+    throw new Error('Strava credentials were not persisted after token exchange. Please reconnect your account.');
   }
 
   const redirectPath = statePayload.redirect;
