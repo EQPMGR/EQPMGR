@@ -251,3 +251,45 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * POST /api/strava/token-exchange
+ * 
+ * Fallback handler for client-side requests.
+ * If the client somehow has a code, they can POST it here.
+ */
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { code, state } = body;
+
+    if (!code || !state) {
+      return NextResponse.json({ error: 'Missing code or state' }, { status: 400 });
+    }
+
+    // Verify and decode state
+    const statePayload = await verifyState(state);
+    const userId = statePayload.uid;
+
+    // Build redirect URI (must match what was sent to Strava)
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+    const redirectUri = new URL('/api/strava/token-exchange', baseUrl).toString();
+
+    // Exchange code for tokens
+    const stravaData = await exchangeCodeForToken(code, redirectUri);
+
+    // Save to database
+    await saveStravaCredentials(userId, stravaData);
+
+    // Return success with redirect URL
+    const redirectUrl = new URL(statePayload.redirect, baseUrl);
+    redirectUrl.searchParams.set('strava_connected', 'true');
+
+    console.log('[Strava Token Exchange] POST Success', { userId, athleteId: stravaData.athleteId });
+    return NextResponse.json({ redirectUrl: redirectUrl.toString() });
+  } catch (err: any) {
+    console.error('[Strava Token Exchange] POST Error', err.message);
+    return NextResponse.json({ error: err.message || 'Token exchange failed' }, { status: 500 });
+  }
+}
+
+
