@@ -90,6 +90,11 @@ async function executeStravaTokenExchange({
   const statePayload = await verifyStravaState(state);
   const userId = statePayload.uid;
 
+  console.log('[Strava Token Exchange] Parsed state and extracted userId', {
+    userId,
+    redirectPath: statePayload.redirect,
+  });
+
   const [clientId, clientSecret] = await Promise.all([
     accessSecret('NEXT_PUBLIC_STRAVA_CLIENT_ID'),
     accessSecret('STRAVA_CLIENT_SECRET'),
@@ -201,20 +206,24 @@ async function executeStravaTokenExchange({
   }
 
   const savedRow = await db.getDoc('app_users', userId);
-  console.log('[Strava Token Exchange] saved app_users row after write', {
-    exists: savedRow.exists,
-    strava: {
-      athleteId: savedRow.data?.strava?.athleteId,
-      expiresAt: savedRow.data?.strava?.expiresAt,
-      scope: savedRow.data?.strava?.scope,
-    },
+  const savedStrava = savedRow.data?.strava;
+
+  console.log('[Strava Token Exchange] VERIFICATION CHECK', {
+    userExists: savedRow.exists,
+    savedStravaExists: !!savedStrava,
+    savedAthleteId: savedStrava?.athleteId,
+    expectedAthleteId: stravaPayload.strava.athleteId,
+    savedExpiresAt: savedStrava?.expiresAt,
+    expectedExpiresAt: stravaPayload.strava.expiresAt,
+    athleteIdMatch: savedStrava?.athleteId === stravaPayload.strava.athleteId,
+    expiresAtMatch: savedStrava?.expiresAt === stravaPayload.strava.expiresAt,
+    scope: savedStrava?.scope,
   });
 
   if (!savedRow.exists) {
     throw new Error('Failed to verify user record after saving Strava credentials. User row missing.');
   }
 
-  const savedStrava = savedRow.data?.strava;
   if (
     !savedStrava ||
     savedStrava.athleteId !== stravaPayload.strava.athleteId ||
@@ -259,10 +268,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const redirectUrl = await executeStravaTokenExchange({ code, state, requestOrOrigin: request });
+    console.log('[Strava Token Exchange] GET handler successfully generated redirect URL', { redirectUrl });
     return NextResponse.redirect(redirectUrl);
   } catch (err: any) {
     const errorId = `${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
-    console.error('FATAL ERROR during server-side token exchange.', { errorId, err });
+    console.error('[Strava Token Exchange] GET handler caught error', { errorId, errorMessage: err?.message, errorStack: err?.stack });
 
     if (process.env.STRAVA_DEBUG === 'true') {
       return NextResponse.json(
