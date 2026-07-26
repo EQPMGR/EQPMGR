@@ -151,6 +151,33 @@ function convertKeysToCamelCase<T>(obj: any): T {
 }
 
 /**
+ * Recursively convert all object keys from camelCase to snake_case
+ * USED FOR: Writing data to database and converting from app format
+ * 
+ * Example input (from application):
+ *   { userId: "123", createdAt: "2024-01-01", fitData: { saddleHeight: 75 } }
+ * 
+ * Example output (for database):
+ *   { user_id: "123", created_at: "2024-01-01", fit_data: { saddle_height: 75 } }
+ */
+function convertKeysToSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToSnakeCase);
+  }
+
+  if (obj && typeof obj === 'object' && !(obj instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const snakeKey = camelToSnake(key);
+      converted[snakeKey] = convertKeysToSnakeCase(value);
+    }
+    return converted;
+  }
+
+  return obj;
+}
+
+/**
  * Apply query constraints to a Supabase query
  * Converts field names from camelCase to snake_case for database queries
  */
@@ -465,9 +492,14 @@ export class SupabaseDbAdapter implements IDatabase {
     // If we couldn't determine allowed columns, return original object
     if (!allowed || allowed.size === 0) return obj;
 
+    // First, convert camelCase keys to snake_case recursively
+    const snakeCaseObj = convertKeysToSnakeCase(obj);
+
     const out: Record<string, any> = {};
-    for (const [k, v] of Object.entries(obj)) {
-      if (allowed.has(k)) out[k] = v;
+    for (const [k, v] of Object.entries(snakeCaseObj)) {
+      if (allowed.has(k)) {
+        out[k] = v;
+      }
     }
 
     return out;
