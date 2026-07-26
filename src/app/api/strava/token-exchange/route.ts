@@ -214,6 +214,18 @@ export async function GET(request: NextRequest) {
   } catch (err: any) {
     const errorId = `${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
     console.error('FATAL ERROR during server-side token exchange.', { errorId, err });
+
+    if (process.env.STRAVA_DEBUG === 'true') {
+      return NextResponse.json(
+        {
+          error: err?.message || 'Unexpected server error during Strava token exchange.',
+          errorId,
+          debug: err?.stack || null,
+        },
+        { status: 500 }
+      );
+    }
+
     if (process.env.NODE_ENV !== 'production') {
       return NextResponse.json({ error: err?.message || 'Unexpected server error during Strava token exchange.', errorId }, { status: 500 });
     }
