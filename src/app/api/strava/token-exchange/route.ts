@@ -141,19 +141,19 @@ async function executeStravaTokenExchange({
     },
   };
 
-  const email = decodedToken.email && decodedToken.email !== '' ? decodedToken.email : `${userId}@no-email.local`;
-  if (!decodedToken.email || decodedToken.email === '') {
-    console.warn('[Strava Token Exchange] No email present in decoded token, using fallback email.', { userId, fallbackEmail: email });
+  const db = await getServerDb();
+  const existingUser = await db.getDoc('app_users', userId);
+  if (!existingUser.exists) {
+    throw new Error('Authenticated user record not found.');
   }
 
-  const db = await getServerDb();
   const insertPayload = {
-    id: userId,
-    email,
-    email_verified: decodedToken.email_verified ?? false,
     strava: stravaPayload.strava,
   };
-  console.log('[Strava Token Exchange] upserting app_users row', insertPayload);
+  console.log('[Strava Token Exchange] updating app_users row for user', {
+    userId,
+    strava: stravaPayload.strava,
+  });
 
   try {
     await db.updateDoc('app_users', userId, insertPayload);
