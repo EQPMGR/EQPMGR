@@ -81,38 +81,14 @@ async function verifyStravaState(state: string | null): Promise<StravaStatePaylo
 async function executeStravaTokenExchange({
   code,
   state,
-  idToken,
   requestOrOrigin,
 }: {
   code: string;
   state: string | null;
-  idToken: string;
   requestOrOrigin: NextRequest | string;
 }) {
-  const auth = await getServerAuth();
-  console.log('[Strava Token Exchange] verifyIdToken start', {
-    idTokenPresent: !!idToken,
-    idTokenLength: idToken?.length ?? 0,
-  });
-
-  let decodedToken;
-  try {
-    decodedToken = await auth.verifyIdToken(idToken, true);
-    console.log('[Strava Token Exchange] verifyIdToken success', {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
-      emailVerified: decodedToken.email_verified,
-    });
-  } catch (verifyError: any) {
-    console.error('[Strava Token Exchange] verifyIdToken failed', verifyError);
-    throw new Error(`Token verification failed: ${verifyError?.message || 'unknown error'}`);
-  }
-
-  const userId = decodedToken.uid;
   const statePayload = await verifyStravaState(state);
-  if (statePayload.uid !== userId) {
-    throw new Error('OAuth state does not match authenticated user.');
-  }
+  const userId = statePayload.uid;
 
   const [clientId, clientSecret] = await Promise.all([
     accessSecret('NEXT_PUBLIC_STRAVA_CLIENT_ID'),
@@ -209,17 +185,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
-  const state = searchParams.get('state'); // The original path
+  const state = searchParams.get('state');
 
-  const cookieStore = await cookies();
-  const idToken = cookieStore.get('strava_id_token')?.value;
   console.log('[Strava Token Exchange] GET entry', {
     url: request.url,
     codePresent: !!code,
     statePresent: !!state,
     errorPresent: !!error,
-    cookiePresent: !!idToken,
-    cookieLength: idToken?.length ?? 0,
     hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
   });
@@ -236,13 +208,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing authorization code.' }, { status: 400 });
   }
 
-  if (!idToken) {
-    return NextResponse.json({ error: 'Authentication token not found. Please try connecting again.' }, { status: 400 });
-  }
-
   try {
-    const redirectUrl = await executeStravaTokenExchange({ code, state, idToken, request });
-    cookieStore.delete('strava_id_token');
+    const redirectUrl = await executeStravaTokenExchange({ code, state, requestOrOrigin: request });
     return NextResponse.redirect(redirectUrl);
   } catch (err: any) {
     const errorId = `${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
@@ -294,7 +261,20 @@ export async function POST(request: Request) {
       const origin = new URL(request.url).origin;
       const redirectUrl = await executeStravaTokenExchange({ code, state, idToken, requestOrOrigin: origin });
       cookieStore.delete('strava_id_token');
-      return NextResponse.json({ redirectUrl });
+      const responsePayload: { redirectUrl: string; debug?: any; debugFlag: string | null; codeMarker: string } = {
+        redirectUrl,
+        debugFlag: process.env.STRAVA_DEBUG ?? null,
+        codeMarker: 'strava_token_exchange_v2',
+      };
+      if (process.env.STRAVA_DEBUG === 'true') {
+        const savedRow = await getServerDb().getDoc('app_users', (await getServerAuth().verifyIdToken(idToken, true)).uid);
+        responsePayload.debug = {
+          userId: savedRow.id,
+          savedStrava: savedRow.data?.strava,
+          rowExists: savedRow.exists,
+        };
+      }
+      return NextResponse.json(responsePayload);
     } catch (err: any) {
       console.error('FATAL ERROR during server-side token exchange.', err);
       const errorMessage = err?.message || 'Strava token exchange failed. Please try again.';

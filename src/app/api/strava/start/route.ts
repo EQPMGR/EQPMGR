@@ -14,9 +14,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const idToken = body?.idToken;
     const redirectPath = normalizeRedirectPath(body?.redirectPath || '/');
-    const tokenKey = typeof body?.tokenKey === 'string' ? body.tokenKey : undefined;
 
-    if (!idToken) return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
+    if (!idToken) {
+      return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
+    }
 
     const auth = await getServerAuth();
     const decoded = await auth.verifyIdToken(idToken, true);
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const payload = { uid, redirect: redirectPath, tokenKey, iat: now, exp: now + 300 };
+    const payload = { uid, redirect: redirectPath, iat: now, exp: now + 300 };
     const payloadStr = JSON.stringify(payload);
     const payloadB64 = Buffer.from(payloadStr, 'utf8').toString('base64url');
     const sig = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
     const origin = new URL(request.url).origin;
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || origin;
-    const redirectUri = new URL('/exchange-token', baseUrl).toString();
+    const redirectUri = new URL('/api/strava/token-exchange', baseUrl).toString();
 
     const stravaUrl = `https://www.strava.com/oauth/authorize?client_id=${encodeURIComponent(
       clientId

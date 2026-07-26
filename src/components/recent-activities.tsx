@@ -88,21 +88,10 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
 
     try {
         const idToken = await user.getIdToken(true);
-        const tokenKey = `strava_id_token_${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
-        window.localStorage.setItem('strava_id_token', idToken);
-        window.sessionStorage.setItem('strava_id_token', idToken);
-        window.localStorage.setItem(tokenKey, idToken);
-        window.sessionStorage.setItem(tokenKey, idToken);
-
-        const cookieValue = encodeURIComponent(idToken);
-        const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-        document.cookie = `strava_id_token=${cookieValue}; path=/; max-age=300; SameSite=None${secureFlag}`;
-
         const response = await fetch('/api/strava/start', {
           method: 'POST',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken, redirectPath: pathname, tokenKey }),
+          body: JSON.stringify({ idToken, redirectPath: pathname }),
         });
 
         const data = await response.json();
