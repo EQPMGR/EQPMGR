@@ -203,7 +203,13 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state');
   const error = searchParams.get('error');
 
-  console.log('[Strava Callback] GET', { codePresent: !!code, statePresent: !!state, errorPresent: !!error });
+  console.log('[Strava Callback] GET CALLED', { 
+    url: request.url,
+    codePresent: !!code,
+    statePresent: !!state,
+    errorPresent: !!error,
+    requestPath: new URL(request.url).pathname,
+  });
 
   // User denied authorization
   if (error) {

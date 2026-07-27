@@ -72,9 +72,16 @@ export async function POST(request: Request) {
 
     const stravaUrl = `https://www.strava.com/oauth/authorize?${params.toString()}`;
 
-    console.log('[Strava Start] Generated auth URL for user', { userId, redirectUri });
+    console.log('[Strava Start] FULL DEBUG', { 
+      userId, 
+      redirectUri,
+      baseUrl,
+      NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+      requestOrigin: new URL(request.url).origin,
+      stravaUrlFull: stravaUrl.substring(0, 200),
+    });
 
-    return NextResponse.json({ url: stravaUrl });
+    return NextResponse.json({ url: stravaUrl, debug: { redirectUri, baseUrl } });
   } catch (err: any) {
     console.error('[Strava Start] Error', err?.message);
     return NextResponse.json({ error: 'Failed to initialize Strava connection' }, { status: 500 });
