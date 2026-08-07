@@ -172,6 +172,12 @@ async function saveStravaCredentials(userId: string, stravaData: Awaited<ReturnT
     throw new Error('User record not found');
   }
 
+  console.log('[Strava] Writing credentials', {
+    userId,
+    stravaDataKeys: Object.keys(stravaData),
+    stravaData: JSON.stringify(stravaData),
+  });
+
   // Save credentials
   try {
     await db.updateDoc('app_users', userId, { strava: stravaData });
@@ -184,8 +190,15 @@ async function saveStravaCredentials(userId: string, stravaData: Awaited<ReturnT
   const savedUser = await db.getDoc('app_users', userId);
   const savedStrava = savedUser.data?.strava;
 
+  console.log('[Strava] Read back after write', {
+    userId,
+    savedStravaKeys: savedStrava ? Object.keys(savedStrava) : 'undefined',
+    savedStrava: JSON.stringify(savedStrava),
+    athleteIdMatch: savedStrava?.athleteId === stravaData.athleteId,
+  });
+
   if (!savedStrava || savedStrava.athleteId !== stravaData.athleteId) {
-    throw new Error('Failed to verify Strava credentials were saved');
+    throw new Error(`Failed to verify Strava credentials were saved. Expected athleteId: ${stravaData.athleteId}, got: ${savedStrava?.athleteId}`);
   }
 
   console.log('[Strava] Successfully saved credentials for user', { userId, athleteId: stravaData.athleteId });
