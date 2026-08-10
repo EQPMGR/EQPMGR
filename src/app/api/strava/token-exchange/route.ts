@@ -180,28 +180,37 @@ async function saveStravaCredentials(userId: string, stravaData: Awaited<ReturnT
 
   // Save credentials
   try {
+    console.log('[Strava] About to call db.updateDoc');
     await db.updateDoc('app_users', userId, { strava: stravaData });
+    console.log('[Strava] db.updateDoc completed successfully');
   } catch (err: any) {
-    console.error('[Strava] Failed to save credentials', err.message);
+    console.error('[Strava] db.updateDoc failed', err.message, err);
     throw new Error('Failed to save Strava credentials');
   }
 
   // Verify the write succeeded
-  const savedUser = await db.getDoc('app_users', userId);
-  const savedStrava = savedUser.data?.strava;
+  try {
+    console.log('[Strava] About to call db.getDoc for verification');
+    const savedUser = await db.getDoc('app_users', userId);
+    console.log('[Strava] db.getDoc completed');
+    const savedStrava = savedUser.data?.strava;
 
-  console.log('[Strava] Read back after write', {
-    userId,
-    savedStravaKeys: savedStrava ? Object.keys(savedStrava) : 'undefined',
-    savedStrava: JSON.stringify(savedStrava),
-    athleteIdMatch: savedStrava?.athleteId === stravaData.athleteId,
-  });
+    console.log('[Strava] Read back after write', {
+      userId,
+      savedStravaKeys: savedStrava ? Object.keys(savedStrava) : 'undefined',
+      savedStrava: JSON.stringify(savedStrava),
+      athleteIdMatch: savedStrava?.athleteId === stravaData.athleteId,
+    });
 
-  if (!savedStrava || savedStrava.athleteId !== stravaData.athleteId) {
-    throw new Error(`Failed to verify Strava credentials were saved. Expected athleteId: ${stravaData.athleteId}, got: ${savedStrava?.athleteId}`);
+    if (!savedStrava || savedStrava.athleteId !== stravaData.athleteId) {
+      throw new Error(`Failed to verify Strava credentials were saved. Expected athleteId: ${stravaData.athleteId}, got: ${savedStrava?.athleteId}`);
+    }
+
+    console.log('[Strava] Successfully saved credentials for user', { userId, athleteId: stravaData.athleteId });
+  } catch (err: any) {
+    console.error('[Strava] Verification failed', err.message, err);
+    throw err;
   }
-
-  console.log('[Strava] Successfully saved credentials for user', { userId, athleteId: stravaData.athleteId });
 }
 
 /**
