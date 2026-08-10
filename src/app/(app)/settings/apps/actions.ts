@@ -254,6 +254,13 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
         const userDocSnap = await db.getDoc('app_users', userId);
         const userData = userDocSnap.data;
 
+        console.log('[checkStravaConnection] User data check', {
+            userId,
+            exists: userDocSnap.exists,
+            hasStrava: !!userData?.strava,
+            stravaValue: JSON.stringify(userData?.strava),
+        });
+
         if (!userDocSnap.exists || !userData?.strava) {
             return { connected: false };
         }

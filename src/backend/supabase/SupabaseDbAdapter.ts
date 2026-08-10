@@ -566,7 +566,17 @@ export class SupabaseDbAdapter implements IDatabase {
       throw new Error(`Failed to get document: ${error.message}`);
     }
 
-    return toDocumentSnapshot<T>(data, collection);
+    const snapshot = toDocumentSnapshot<T>(data, collection);
+    
+    // Log strava field if present
+    if (collection === 'app_users' && data?.strava) {
+      console.log('[SupabaseDbAdapter] getDoc STRAVA FIELD', {
+        rawFromDb: JSON.stringify(data.strava),
+        afterConversion: JSON.stringify(snapshot.data?.strava),
+      });
+    }
+
+    return snapshot;
   }
 
   async getSubDoc<T = any>(
