@@ -843,6 +843,14 @@ export class SupabaseDbAdapter implements IDatabase {
   }
 
   async updateDoc<T>(collection: string, docId: string, data: Partial<T>): Promise<void> {
+    // CRITICAL: Block adapter from overwriting Strava credentials
+    // Strava auth is handled by direct Supabase client in token-exchange route
+    // Adapter was erasing strava=null after successful OAuth write
+    if (collection === 'app_users' && 'strava' in data) {
+      console.log('[SupabaseDbAdapter] BLOCKING adapter write to strava field - use direct client', { docId });
+      return;
+    }
+
     const processedData = processFieldValues(data, this.supabase);
     const filtered = await this.filterToAllowedColumns(collection, processedData);
 
