@@ -537,6 +537,15 @@ export class SupabaseDbAdapter implements IDatabase {
       .eq('id', docId)
       .maybeSingle();
 
+    console.log('[SupabaseDbAdapter] getDoc result', {
+      collection,
+      docId,
+      normalizedCollection,
+      dataKeys: data ? Object.keys(data) : 'null',
+      data: JSON.stringify(data),
+      error: error?.message,
+    });
+
     if (error && error.code === '42P01') {
       const fallbackCollection = normalizedCollection.endsWith('s')
         ? normalizedCollection.slice(0, -1)
@@ -844,6 +853,14 @@ export class SupabaseDbAdapter implements IDatabase {
     const normalizedCollection = normalizeTableName(collection);
     const resolvedPayload = await this.resolveFieldValueOperations(collection, docId, sanitized);
 
+    console.log('[SupabaseDbAdapter] updateDoc sending payload', {
+      collection,
+      docId,
+      normalizedCollection,
+      payloadKeys: Object.keys(resolvedPayload),
+      payload: JSON.stringify(resolvedPayload),
+    });
+
     const { error } = await this.supabase
       .from(normalizedCollection)
       .update(resolvedPayload as any)
@@ -852,6 +869,8 @@ export class SupabaseDbAdapter implements IDatabase {
     if (error) {
       throw new Error(`Failed to update document: ${error.message}`);
     }
+
+    console.log('[SupabaseDbAdapter] updateDoc completed without error', { collection, docId });
   }
 
   async updateSubDoc<T>(
