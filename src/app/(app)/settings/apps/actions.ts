@@ -25,11 +25,20 @@ async function ensureStravaTokenIsValid(
     stravaData: any
 ): Promise<{ accessToken: string; refreshToken: string; expiresAt: number; }> {
     const { accessToken, refreshToken, expiresAt } = stravaData;
+    
+    console.log('[ensureStravaTokenIsValid] Checking token expiry', {
+        userId,
+        expiresAt,
+        now: Math.floor(Date.now() / 1000),
+        expired: Math.floor(Date.now() / 1000) > expiresAt - 300,
+    });
+    
     if (!accessToken || !refreshToken || !expiresAt) {
         throw new Error('Strava credentials are missing or corrupted. Please reconnect your account.');
     }
 
-    if (Date.now() / 1000 <= expiresAt - 300) {
+    if (Math.floor(Date.now() / 1000) <= expiresAt - 300) {
+        console.log('[ensureStravaTokenIsValid] Token still valid, returning as-is');
         return { accessToken, refreshToken, expiresAt };
     }
 
@@ -155,11 +164,25 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
         const userDocSnap = await db.getDoc('app_users', userId);
         const userData = userDocSnap.data;
 
+        console.log('[fetchRecentStravaActivities] Strava data loaded', {
+            userId,
+            hasStrava: !!userData?.strava,
+            stravaKeys: userData?.strava ? Object.keys(userData.strava) : [],
+        });
+
         if (!userDocSnap.exists || !userData?.strava) {
+            console.log('[fetchRecentStravaActivities] No strava data found, returning error');
             return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
         }
 
         const { accessToken, refreshToken, expiresAt, processedActivities } = userData.strava;
+        console.log('[fetchRecentStravaActivities] About to validate token', {
+            userId,
+            hasAccessToken: !!accessToken,
+            hasRefreshToken: !!refreshToken,
+            expiresAt,
+        });
+        
         let validTokens;
 
         try {
@@ -168,7 +191,9 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
                 refreshToken,
                 expiresAt,
             });
+            console.log('[fetchRecentStravaActivities] Token validation succeeded');
         } catch (err: any) {
+            console.error('[fetchRecentStravaActivities] Token validation failed:', err.message);
             return { error: err.message || 'Your Strava connection is no longer valid. Please reconnect your account.' };
         }
 
@@ -176,10 +201,22 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             ? REGULAR_STRAVA_RIDE_LIMIT
             : INITIAL_STRAVA_RIDE_LIMIT;
 
+        console.log('[fetchRecentStravaActivities] Fetching activities', {
+            accessToken: validTokens.accessToken?.substring(0, 10) + '...',
+            maxRides,
+        });
+
         let allRideActivities: StravaActivity[];
         try {
             allRideActivities = await fetchStravaBikeActivities(validTokens.accessToken, maxRides);
+            console.log('[fetchRecentStravaActivities] Fetched activities successfully', {
+                count: allRideActivities.length,
+            });
         } catch (err: any) {
+            console.error('[fetchRecentStravaActivities] Activity fetch failed', {
+                status: err?.status,
+                message: err?.message,
+            });
             if (err?.status === 401 || err?.status === 403) {
                 await clearStravaConnection(userId, db);
                 return { error: 'Strava authorization failed. Please disconnect and reconnect your account.' };
