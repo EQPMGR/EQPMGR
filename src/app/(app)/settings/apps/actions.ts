@@ -151,7 +151,10 @@ async function clearStravaConnection(userId: string, db: any): Promise<void> {
 }
 
 export async function fetchRecentStravaActivities(idToken: string): Promise<{ activities?: StravaActivity[]; error?: string }> {
+    console.log('[fetchRecentStravaActivities] START - Called with idToken');
+    
     if (!idToken) {
+        console.log('[fetchRecentStravaActivities] No idToken provided');
         return { error: 'User not authenticated.' };
     }
 
@@ -166,8 +169,10 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
 
         console.log('[fetchRecentStravaActivities] Strava data loaded', {
             userId,
+            exists: userDocSnap.exists,
             hasStrava: !!userData?.strava,
             stravaKeys: userData?.strava ? Object.keys(userData.strava) : [],
+            stravaValue: userData?.strava ? JSON.stringify(userData.strava) : null,
         });
 
         if (!userDocSnap.exists || !userData?.strava) {
@@ -211,6 +216,7 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             allRideActivities = await fetchStravaBikeActivities(validTokens.accessToken, maxRides);
             console.log('[fetchRecentStravaActivities] Fetched activities successfully', {
                 count: allRideActivities.length,
+                activities: allRideActivities.map(a => ({ id: a.id, name: a.name })),
             });
         } catch (err: any) {
             console.error('[fetchRecentStravaActivities] Activity fetch failed', {
@@ -229,6 +235,10 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             ...activity,
             alreadySynced: processedActivityIds.has(String(activity.id)),
         }));
+
+        console.log('[fetchRecentStravaActivities] Returning activities', {
+            count: activities.length,
+        });
 
         return {
             activities,
@@ -324,8 +334,14 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
         }
 
         const verifyResponse = await fetch('https://www.strava.com/api/v3/athlete', fetchOptions);
+        console.log('[checkStravaConnection] Strava API verify response', {
+            status: verifyResponse.status,
+            ok: verifyResponse.ok,
+        });
+        
         if (!verifyResponse.ok) {
             if ([401, 403].includes(verifyResponse.status)) {
+                console.log('[checkStravaConnection] Token unauthorized, clearing connection');
                 await clearStravaConnection(userId, db);
                 return {
                     connected: false,
@@ -338,6 +354,7 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
             };
         }
 
+        console.log('[checkStravaConnection] Verification succeeded, returning connected: true');
         return { connected: true };
     } catch (error: any) {
         console.error('Error checking Strava connection:', error);

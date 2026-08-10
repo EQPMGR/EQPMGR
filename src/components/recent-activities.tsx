@@ -37,18 +37,27 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
     }
     try {
         const idToken = await user.getIdToken(true);
+        console.log('[RecentActivities] Calling checkStravaConnection');
         const result = await checkStravaConnection(idToken);
+        console.log('[RecentActivities] checkStravaConnection result:', result);
+        
         const connected = result?.connected ?? false;
+        console.log('[RecentActivities] Connected:', connected);
+        
         if (!result) {
           throw new Error('Unable to verify Strava connection.');
         }
         setIsStravaConnected(connected);
 
         if (connected) {
+            console.log('[RecentActivities] Fetching activities and bikes');
             const [{ activities, error: activityError }, { bikes, error: bikeError }] = await Promise.all([
                 fetchRecentStravaActivities(idToken),
                 fetchUserBikes(idToken)
             ]);
+            
+            console.log('[RecentActivities] Activities result:', { count: activities?.length, error: activityError });
+            console.log('[RecentActivities] Bikes result:', { count: bikes?.length, error: bikeError });
             
             if (activityError) throw new Error(activityError);
             if (bikeError) throw new Error(bikeError);
@@ -63,8 +72,11 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
                     toast({ title: "Nothing to sync", description: "No new activities found on Strava." });
                 }
             }
+        } else {
+            console.log('[RecentActivities] Not connected to Strava');
         }
     } catch (err: any) {
+      console.error('[RecentActivities] Error:', err);
       toast({ variant: 'destructive', title: 'Sync Failed', description: err.message });
     } finally {
       setIsSyncing(false);
