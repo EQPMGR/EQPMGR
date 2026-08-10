@@ -161,56 +161,74 @@ async function exchangeCodeForToken(code: string, redirectUri: string) {
 }
 
 /**
- * Save Strava credentials to database
+ * Save Strava credentials to database (direct Supabase call, bypassing adapter)
  */
 async function saveStravaCredentials(userId: string, stravaData: Awaited<ReturnType<typeof exchangeCodeForToken>>) {
-  const db = await getServerDb();
+  const { createClient } = await import('@supabase/supabase-js');
+  
+  // Use service role key for direct write
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  // Verify user exists
-  const existingUser = await db.getDoc('app_users', userId);
-  if (!existingUser.exists) {
-    throw new Error('User record not found');
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error('Missing Supabase credentials');
   }
 
-  console.log('[Strava] Writing credentials', {
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+
+  console.log('[Strava] Direct write - sending to Supabase', {
     userId,
+    userIdType: typeof userId,
+    userIdLength: userId?.length,
     stravaDataKeys: Object.keys(stravaData),
     stravaData: JSON.stringify(stravaData),
   });
 
-  // Save credentials
-  try {
-    console.log('[Strava] About to call db.updateDoc');
-    await db.updateDoc('app_users', userId, { strava: stravaData });
-    console.log('[Strava] db.updateDoc completed successfully');
-  } catch (err: any) {
-    console.error('[Strava] db.updateDoc failed', err.message, err);
-    throw new Error('Failed to save Strava credentials');
+  // Direct write - use snake_case column name
+  const { data: writeResult, error: writeError } = await supabase
+    .from('app_users')
+    .update({ strava: stravaData })
+    .eq('id', userId)
+    .select();
+
+  if (writeError) {
+    console.error('[Strava] Direct write failed', writeError);
+    throw new Error(`Failed to save Strava credentials: ${writeError.message}`);
   }
 
-  // Verify the write succeeded
-  try {
-    console.log('[Strava] About to call db.getDoc for verification');
-    const savedUser = await db.getDoc('app_users', userId);
-    console.log('[Strava] db.getDoc completed');
-    const savedStrava = savedUser.data?.strava;
+  console.log('[Strava] Direct write result', {
+    userId,
+    writeResult: JSON.stringify(writeResult),
+  });
 
-    console.log('[Strava] Read back after write', {
-      userId,
-      savedStravaKeys: savedStrava ? Object.keys(savedStrava) : 'undefined',
-      savedStrava: JSON.stringify(savedStrava),
-      athleteIdMatch: savedStrava?.athleteId === stravaData.athleteId,
-    });
+  // Verify the write succeeded with a direct read
+  const { data: readResult, error: readError } = await supabase
+    .from('app_users')
+    .select('strava')
+    .eq('id', userId)
+    .single();
 
-    if (!savedStrava || savedStrava.athleteId !== stravaData.athleteId) {
-      throw new Error(`Failed to verify Strava credentials were saved. Expected athleteId: ${stravaData.athleteId}, got: ${savedStrava?.athleteId}`);
-    }
-
-    console.log('[Strava] Successfully saved credentials for user', { userId, athleteId: stravaData.athleteId });
-  } catch (err: any) {
-    console.error('[Strava] Verification failed', err.message, err);
-    throw err;
+  if (readError) {
+    console.error('[Strava] Direct read failed', readError);
+    throw new Error(`Failed to verify Strava credentials: ${readError.message}`);
   }
+
+  console.log('[Strava] Direct read result', {
+    userId,
+    readResult: JSON.stringify(readResult),
+    athleteIdMatch: readResult?.strava?.athleteId === stravaData.athleteId,
+  });
+
+  if (!readResult?.strava || readResult.strava.athleteId !== stravaData.athleteId) {
+    throw new Error(`Failed to verify Strava credentials were saved. Expected athleteId: ${stravaData.athleteId}, got: ${readResult?.strava?.athleteId}`);
+  }
+
+  console.log('[Strava] Successfully saved credentials for user', { userId, athleteId: stravaData.athleteId });
 }
 
 /**
