@@ -25,7 +25,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
- * Convert AuthUser from backend to UserProfile with document data
+ * Convert AuthUser + raw database document to UserProfile
+ * Database uses snake_case, app uses camelCase
  */
 const createSafeUserProfile = (authUser: AuthUser, docData?: Partial<BackendUserDocument>): UserProfile => {
   const data = docData || {};
@@ -33,16 +34,16 @@ const createSafeUserProfile = (authUser: AuthUser, docData?: Partial<BackendUser
     uid: authUser.uid,
     email: authUser.email,
     emailVerified: authUser.emailVerified,
-    displayName: authUser.displayName || data.displayName || null,
+    displayName: authUser.displayName || data.display_name || null,
     phone: data.phone || null,
-    photoURL: authUser.photoURL || data.photoURL || null,
-    measurementSystem: data.measurementSystem || 'imperial',
-    shoeSizeSystem: data.shoeSizeSystem || 'us-mens',
-    distanceUnit: data.distanceUnit || 'km',
-    dateFormat: data.dateFormat || 'MM/DD/YYYY',
+    photoURL: authUser.photoURL || data.photo_url || null,
+    measurementSystem: data.measurement_system || 'imperial',
+    shoeSizeSystem: data.shoe_size_system || 'us-mens',
+    distanceUnit: data.distance_unit || 'km',
+    dateFormat: data.date_format || 'MM/DD/YYYY',
     height: data.height,
     weight: data.weight,
-    shoeSize: data.shoeSize,
+    shoeSize: data.shoe_size,
     birthdate: data.birthdate ? toDate(data.birthdate) : null,
     getIdToken: authUser.getIdToken,
   };
@@ -105,15 +106,15 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
             if (userDocSnap.exists && userDocSnap.data) {
               // Update last login and sync email verification state if needed
-                const updatePayload: Partial<BackendUserDocument> = { lastLogin: new Date() };
+                const updatePayload: Partial<BackendUserDocument> = { last_login: new Date() };
                 if (authUser.emailVerified && userDocSnap.data.email_verified !== true) {
                   updatePayload.email_verified = true;
                 }
 
                 try {
-                  console.debug('[auth] updateDoc payload (lastLogin):', JSON.stringify(updatePayload));
+                  console.debug('[auth] updateDoc payload (last_login):', JSON.stringify(updatePayload));
                 } catch (_) {
-                  console.debug('[auth] updateDoc payload (lastLogin, raw):', updatePayload);
+                  console.debug('[auth] updateDoc payload (last_login, raw):', updatePayload);
                 }
                 await db.updateDoc('app_users', authUser.uid, updatePayload);
                 userDocData = userDocSnap.data;
@@ -270,11 +271,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       }
 
       const dbUpdateData: Partial<BackendUserDocument> = {
-        displayName: data.displayName ?? undefined,
+        display_name: data.displayName ?? undefined,
         phone: data.phone ?? undefined,
         height: data.height ?? undefined,
         weight: data.weight ?? undefined,
-        shoeSize: data.shoeSize ?? undefined,
+        shoe_size: data.shoeSize ?? undefined,
         birthdate: birthdayValue,
       };
 
@@ -367,11 +368,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       await auth.updateProfile(currentUser, { photoURL: newPhotoURL });
       try {
-        console.debug('[auth] setDoc payload (photo update):', JSON.stringify({ photoURL: newPhotoURL }));
+        console.debug('[auth] setDoc payload (photo update):', JSON.stringify({ photo_url: newPhotoURL }));
       } catch (_) {
-        console.debug('[auth] setDoc payload (photo update, raw):', { photoURL: newPhotoURL });
+        console.debug('[auth] setDoc payload (photo update, raw):', { photo_url: newPhotoURL });
       }
-      await db.setDoc('app_users', currentUser.uid, { photoURL: newPhotoURL }, true);
+      await db.setDoc('app_users', currentUser.uid, { photo_url: newPhotoURL }, true);
 
       setUser(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
       toast({ title: 'Photo updated successfully!' });

@@ -26,20 +26,31 @@ export interface UserProfile {
 }
 
 export interface UserDocument {
-  displayName?: string;
+  id: string;
+  email: string;
+  email_verified: boolean;
+  display_name?: string;
   phone?: string;
-  photoURL?: string;
-  email_verified?: boolean;
+  photo_url?: string;
   height?: number;
   weight?: number;
-  shoeSize?: number;
+  shoe_size?: number;
   birthdate?: Date;
-  measurementSystem?: 'metric' | 'imperial';
-  shoeSizeSystem?: 'us-womens' | 'us-mens' | 'uk' | 'eu';
-  distanceUnit?: 'km' | 'miles';
-  dateFormat?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
-  createdAt?: Date;
-  lastLogin?: Date;
+  measurement_system?: 'metric' | 'imperial';
+  shoe_size_system?: 'us-womens' | 'us-mens' | 'uk' | 'eu';
+  distance_unit?: 'km' | 'miles';
+  date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY/MM/DD';
+  created_at?: Date;
+  last_login?: Date;
+  strava?: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    athleteId: number;
+    scope: string;
+    processedActivities?: number[];
+  };
+  onboarding_complete?: boolean;
 }
 
 // ==================== Component Types ====================
