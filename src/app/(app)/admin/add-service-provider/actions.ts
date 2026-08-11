@@ -1,8 +1,48 @@
 
 'use server';
 
-import { getServerDb } from '@/backend';
+import { createClient } from '@supabase/supabase-js';
 import type { AddProviderFormValues } from './page';
+
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Missing Supabase configuration');
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+}
+
+/**
+ * Convert camelCase to snake_case for database operations
+ */
+function camelToSnake(str: string): string {
+  return str.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+/**
+ * Recursively convert object keys from camelCase to snake_case
+ */
+function convertKeysToSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToSnakeCase);
+  }
+
+  if (obj && typeof obj === 'object' && !(obj instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const snakeKey = camelToSnake(key);
+      converted[snakeKey] = convertKeysToSnakeCase(value);
+    }
+    return converted;
+  }
+
+  return obj;
+}
 
 const createProviderId = (name: string, city: string) => {
     return `${name}-${city}`
@@ -20,24 +60,40 @@ export async function addServiceProviderAction({
     const providerId = createProviderId(values.name, values.city);
 
     try {
-        const db = await getServerDb();
+        const supabase = getSupabaseClient();
 
-        const docSnap = await db.getDoc('serviceProviders', providerId);
-        if (docSnap.exists) {
+        // Check if provider already exists
+        const { data: existingProvider, error: checkError } = await supabase
+          .from('service_providers')
+          .select('id')
+          .eq('id', providerId)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+
+        if (existingProvider) {
             return {
                 success: false,
                 message: `A service provider with this name and city already exists (ID: ${providerId}).`,
             };
         }
 
-        // For now, geohash is a placeholder. In a real app, we would use a geocoding API
-        // to convert the address to lat/lng and then generate the geohash.
-        const providerToSave = {
+        // Convert to snake_case for database
+        const providerToSave = convertKeysToSnakeCase({
             ...values,
             geohash: 'c2b2q', // Placeholder for Vancouver
-        };
+        });
 
-        await db.setDoc('serviceProviders', providerId, providerToSave);
+        const { error } = await supabase
+          .from('service_providers')
+          .insert([{
+            id: providerId,
+            ...providerToSave
+          }]);
+
+        if (error) throw error;
 
         return {
             success: true,

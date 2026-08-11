@@ -1,10 +1,81 @@
 
-
 'use server';
 
-import { getServerDb } from '@/backend';
+import { createClient } from '@supabase/supabase-js';
 import type { UserComponent, MasterComponent, MaintenanceLog } from '@/lib/types';
 import { findExistingMasterComponent, createComponentSlug } from '@/lib/master-component-utils';
+
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Missing Supabase configuration');
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+}
+
+/**
+ * Convert camelCase to snake_case for database operations
+ */
+function camelToSnake(str: string): string {
+  return str.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+/**
+ * Recursively convert object keys from camelCase to snake_case
+ */
+function convertKeysToSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToSnakeCase);
+  }
+
+  if (obj && typeof obj === 'object' && !(obj instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const snakeKey = camelToSnake(key);
+      converted[snakeKey] = convertKeysToSnakeCase(value);
+    }
+    return converted;
+  }
+
+  return obj;
+}
+
+/**
+ * Convert snake_case to camelCase for application use
+ */
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
+}
+
+/**
+ * Recursively convert object keys from snake_case to camelCase
+ */
+function convertKeysToCamelCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToCamelCase);
+  }
+
+  if (obj && typeof obj === 'object' && !(obj instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const camelKey = snakeToCamel(key);
+      converted[camelKey] = convertKeysToCamelCase(value);
+    }
+    return converted;
+  }
+
+  return obj;
+}
+
+// Helper to generate UUIDs for new records
+function generateId(): string {
+  return crypto.randomUUID();
+}
 
 export async function replaceUserComponentAction({
     userId,
@@ -34,40 +105,46 @@ export async function replaceUserComponentAction({
         throw new Error("Either a selected component or manual component data must be provided.");
     }
 
-    const db = await getServerDb();
-    const batch = db.batch();
+    const supabase = getSupabaseClient();
     
     try {
-        const componentToReplaceSnap = await db.getSubDoc<UserComponent>(
-            'equipment',
-            equipmentId,
-            'components',
-            userComponentIdToReplace
+        // 1. Fetch equipment document (contains components as JSON array)
+        const { data: equipmentData, error: equipmentError } = await supabase
+          .from('equipment')
+          .select('*')
+          .eq('id', equipmentId)
+          .single();
+
+        if (equipmentError) throw equipmentError;
+        if (!equipmentData) {
+            throw new Error("Equipment not found.");
+        }
+
+        // Find the component to replace in the array
+        const components = equipmentData.components || [];
+        const componentToReplace = components.find((c: any) => 
+          (c.id === userComponentIdToReplace || c.user_component_id === userComponentIdToReplace)
         );
 
-        if (!componentToReplaceSnap.exists) {
-             throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
+        if (!componentToReplace) {
+            throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
         }
-        const componentData = componentToReplaceSnap.data!;
 
-        const masterComponentSnap = await db.getDoc<MasterComponent>('masterComponents', componentData.masterComponentId);
-        if (!masterComponentSnap.exists) {
+        const componentData = convertKeysToCamelCase(componentToReplace);
+
+        // 2. Fetch the master component that is being replaced
+        const { data: masterComponentToReplace, error: masterError } = await supabase
+          .from('master_components')
+          .select('*')
+          .eq('id', componentData.masterComponentId || componentData.master_component_id)
+          .single();
+
+        if (masterError) throw masterError;
+        if (!masterComponentToReplace) {
             throw new Error(`Master component ${componentData.masterComponentId} not found.`);
         }
-        const masterComponentToReplace = { id: masterComponentSnap.id, ...masterComponentSnap.data } as MasterComponent;
 
-        const equipmentDocSnap = await db.getSubDoc(
-            'app_users',
-            userId,
-            'equipment',
-            equipmentId
-        );
-        if (!equipmentDocSnap.exists) {
-            throw new Error("Equipment not found in user data.");
-        }
-        const equipmentData = equipmentDocSnap.data;
-
-        // 1. Archive the old component data, ensuring no undefined values.
+        // 3. Archive the old component data
         const archivedComponent = {
             name: masterComponentToReplace.name,
             brand: masterComponentToReplace.brand || null,
@@ -75,35 +152,40 @@ export async function replaceUserComponentAction({
             model: masterComponentToReplace.model || null,
             system: masterComponentToReplace.system,
             size: componentData.size || masterComponentToReplace.size || null,
-            wearPercentage: componentData.wearPercentage,
-            purchaseDate: componentData.purchaseDate instanceof Date ? componentData.purchaseDate.toISOString() : new Date(componentData.purchaseDate).toISOString(),
-            lastServiceDate: componentData.lastServiceDate ? (componentData.lastServiceDate instanceof Date ? componentData.lastServiceDate.toISOString() : new Date(componentData.lastServiceDate).toISOString()) : null,
-            replacedOn: new Date().toISOString(),
-            finalMileage: equipmentData?.totalDistance || 0,
-            replacementReason: replacementReason,
+            wear_percentage: componentData.wearPercentage || componentData.wear_percentage || 0,
+            purchase_date: componentData.purchaseDate || componentData.purchase_date || null,
+            last_service_date: componentData.lastServiceDate || componentData.last_service_date || null,
+            replaced_on: new Date().toISOString(),
+            final_mileage: equipmentData.total_distance || equipmentData.totalDistance || 0,
+            replacement_reason: replacementReason,
         };
 
         let finalNewMasterComponentId: string;
         let newComponentSize: string | undefined;
         let newComponentDetails: Omit<MasterComponent, 'id' | 'embedding'>;
 
-
-        // 2. Determine the details of the new master component (either existing or manual).
+        // 4. Determine the details of the new master component (either existing or manual)
         if (newMasterComponentId) {
             finalNewMasterComponentId = newMasterComponentId;
-            const newMasterCompDoc = await db.getDoc<MasterComponent>('masterComponents', finalNewMasterComponentId);
-            if (!newMasterCompDoc.exists) {
+            const { data: newMasterComp, error: newMasterError } = await supabase
+              .from('master_components')
+              .select('*')
+              .eq('id', finalNewMasterComponentId)
+              .single();
+
+            if (newMasterError) throw newMasterError;
+            if (!newMasterComp) {
                 throw new Error("Selected replacement component not found in database.");
             }
-            const masterData = newMasterCompDoc.data!;
-            newComponentSize = masterData.size;
+
+            newComponentSize = newMasterComp.size;
             newComponentDetails = {
-                name: masterData.name,
-                brand: masterData.brand,
-                model: masterData.model,
-                series: masterData.series,
-                size: masterData.size,
-                system: masterData.system,
+                name: newMasterComp.name,
+                brand: newMasterComp.brand,
+                model: newMasterComp.model,
+                series: newMasterComp.series,
+                size: newMasterComp.size,
+                system: newMasterComp.system,
             };
         } else if (manualNewComponentData) {
             const manualComponentMatch = {
@@ -114,19 +196,29 @@ export async function replaceUserComponentAction({
                 size: manualNewComponentData.size,
                 system: masterComponentToReplace.system,
             };
-            const existingMaster = await findExistingMasterComponent(db, manualComponentMatch);
-            if (existingMaster) {
+
+            // Try to find existing master component
+            const { data: existingMasters } = await supabase
+              .from('master_components')
+              .select('*')
+              .eq('brand', manualNewComponentData.brand || null)
+              .eq('model', manualNewComponentData.model || null)
+              .eq('series', manualNewComponentData.series || null)
+              .eq('system', masterComponentToReplace.system)
+              .limit(1);
+
+            if (existingMasters && existingMasters.length > 0) {
+                const existingMaster = existingMasters[0];
                 finalNewMasterComponentId = existingMaster.id;
-                const masterData = existingMaster.data as MasterComponent;
                 newComponentDetails = {
-                    name: masterData.name,
-                    brand: masterData.brand,
-                    model: masterData.model,
-                    series: masterData.series,
-                    size: masterData.size,
-                    system: masterData.system,
+                    name: existingMaster.name,
+                    brand: existingMaster.brand,
+                    model: existingMaster.model,
+                    series: existingMaster.series,
+                    size: existingMaster.size,
+                    system: existingMaster.system,
                 };
-                newComponentSize = masterData.size;
+                newComponentSize = existingMaster.size;
             } else {
                 newComponentDetails = {
                     name: masterComponentToReplace.name,
@@ -136,7 +228,7 @@ export async function replaceUserComponentAction({
                     size: manualNewComponentData.size,
                     system: masterComponentToReplace.system,
                 };
-                finalNewMasterComponentId = db.generateId();
+                finalNewMasterComponentId = generateId();
                 const componentSlug = createComponentSlug(newComponentDetails);
                 newComponentSize = manualNewComponentData.size;
 
@@ -144,40 +236,41 @@ export async function replaceUserComponentAction({
                     Object.entries(newComponentDetails).filter(([_, v]) => v !== undefined)
                 );
 
-                batch.set('masterComponents', finalNewMasterComponentId, {
-                    ...cleanNewComponentDetails,
-                    slug: componentSlug || undefined,
-                }, { merge: true });
+                const { error: insertError } = await supabase
+                  .from('master_components')
+                  .insert([{
+                    id: finalNewMasterComponentId,
+                    ...convertKeysToSnakeCase({
+                      ...cleanNewComponentDetails,
+                      slug: componentSlug || undefined,
+                    })
+                  }]);
+
+                if (insertError) throw insertError;
             }
         } else {
             throw new Error("No new component data provided.");
         }
 
-        // 3. Create the maintenance log entry for the replacement.
-        const newLogEntry: MaintenanceLog = {
-            id: db.generateId(), // Generate a unique ID
-            date: new Date(),
-            logType: replacementReason === 'failure' ? 'repair' : 'modification',
+        // 5. Create the maintenance log entry for the replacement
+        const newLogEntry = {
+            id: generateId(),
+            date: new Date().toISOString(),
+            log_type: replacementReason === 'failure' ? 'repair' : 'modification',
             description: `Replaced ${masterComponentToReplace.name}.`,
             cost: 0,
-            serviceType: 'diy',
-            componentReplaced: true,
-            isOEM: newComponentDetails.brand === masterComponentToReplace.brand,
-            replacementPart: `${newComponentDetails.brand || ''} ${newComponentDetails.series || ''} ${newComponentDetails.model || ''}`.trim(),
+            service_type: 'diy',
+            component_replaced: true,
+            is_oem: newComponentDetails.brand === masterComponentToReplace.brand,
+            replacement_part: `${newComponentDetails.brand || ''} ${newComponentDetails.series || ''} ${newComponentDetails.model || ''}`.trim(),
             notes: `Original part was ${masterComponentToReplace.brand} ${masterComponentToReplace.model}. Reason: ${replacementReason}.`
         };
 
-        // 3a. If this was a failure replacement, update the master component observed interval.
+        // 5a. If this was a failure replacement, update the master component observed interval
         if (replacementReason === 'failure') {
-            const installedAtDistance = typeof componentData.installedAtDistance === 'number'
-                ? componentData.installedAtDistance
-                : undefined;
-            const currentDistance = typeof componentData.currentDistance === 'number'
-                ? componentData.currentDistance
-                : undefined;
-            const equipmentDistance = typeof equipmentData?.totalDistance === 'number'
-                ? equipmentData.totalDistance
-                : undefined;
+            const installedAtDistance = componentData.installedAtDistance || componentData.installed_at_distance;
+            const currentDistance = componentData.currentDistance || componentData.current_distance;
+            const equipmentDistance = equipmentData.total_distance || equipmentData.totalDistance;
 
             let actualIntervalKm: number | null = null;
             if (typeof installedAtDistance === 'number' && typeof currentDistance === 'number') {
@@ -187,57 +280,66 @@ export async function replaceUserComponentAction({
             }
 
             if (actualIntervalKm !== null && actualIntervalKm > 0) {
-                const observedCount = masterComponentToReplace.observedIntervalKmCount ?? 0;
-                const observedAvg = masterComponentToReplace.observedIntervalKmAvg ?? 0;
+                const observedCount = masterComponentToReplace.observed_interval_km_count ?? 0;
+                const observedAvg = masterComponentToReplace.observed_interval_km_avg ?? 0;
                 const updatedCount = observedCount + 1;
                 const updatedAvg = observedCount === 0
                     ? actualIntervalKm
                     : (observedAvg * observedCount + actualIntervalKm) / updatedCount;
 
-                batch.update('masterComponents', masterComponentToReplace.id, {
-                    observedIntervalKmAvg: Number(updatedAvg.toFixed(0)),
-                    observedIntervalKmCount: updatedCount,
-                });
+                const { error: updateMasterError } = await supabase
+                  .from('master_components')
+                  .update({
+                    observed_interval_km_avg: Number(updatedAvg.toFixed(0)),
+                    observed_interval_km_count: updatedCount,
+                  })
+                  .eq('id', masterComponentToReplace.id);
+
+                if (updateMasterError) throw updateMasterError;
             }
         }
 
-        // 4. Update the equipment document with the archived component and the new log entry.
-        const existingArchived = Array.isArray(equipmentData.archivedComponents) ? equipmentData.archivedComponents : [];
-        const existingLogs = Array.isArray(equipmentData.maintenanceLog) ? equipmentData.maintenanceLog : [];
+        // 6. Update equipment with archived component and new log entry
+        const existingArchived = equipmentData.archived_components || equipmentData.archivedComponents || [];
+        const existingLogs = equipmentData.maintenance_log || equipmentData.maintenanceLog || [];
 
-        batch.update('equipment', equipmentId, {
-            archivedComponents: [...existingArchived, archivedComponent],
-            maintenanceLog: [...existingLogs, newLogEntry]
-        });
-
-        // 5. Update the user's component subcollection with the new component's data.
-        const newUserComponentData: Omit<UserComponent, 'id'> = {
-            masterComponentId: finalNewMasterComponentId,
-            wearPercentage: 0,
-            purchaseDate: new Date(),
-            lastServiceDate: null,
+        const newUserComponentData = {
+            id: userComponentIdToReplace,
+            master_component_id: finalNewMasterComponentId,
+            wear_percentage: 0,
+            purchase_date: new Date().toISOString(),
+            last_service_date: null,
             notes: `Replaced on ${new Date().toLocaleDateString()}`,
             size: newComponentSize || undefined,
-            replacedByUser: true,
+            replaced_by_user: true,
         };
 
-        // Ensure no undefined values are written to the user component document
         const cleanData = Object.fromEntries(Object.entries(newUserComponentData).filter(([_, v]) => v !== undefined));
-        batch.setInSubcollection(
-            `app_users/${userId}/equipment/${equipmentId}`,
-            'components',
-            userComponentIdToReplace,
-            cleanData
+
+        // Update the components array
+        const updatedComponents = components.map((c: any) => 
+          (c.id === userComponentIdToReplace || c.user_component_id === userComponentIdToReplace)
+            ? cleanData
+            : c
         );
 
-        await batch.commit();
+        const { error: updateEquipmentError } = await supabase
+          .from('equipment')
+          .update({
+            archived_components: [...existingArchived, archivedComponent],
+            maintenance_log: [...existingLogs, newLogEntry],
+            components: updatedComponents
+          })
+          .eq('id', equipmentId);
+
+        if (updateEquipmentError) throw updateEquipmentError;
 
         return { success: true, message: "Component replaced and archived successfully." };
 
     } catch (error) {
         console.error("[SERVER ACTION ERROR] in replaceUserComponentAction:", error);
-        if ((error as any).code === 'permission-denied' || (error as any).code === 7) {
-            throw new Error('A permission error occurred. This may be due to Firestore security rules.');
+        if ((error as any).code === 'permission-denied' || (error as any).code === '403') {
+            throw new Error('A permission error occurred. This may be due to security rules.');
         }
         throw new Error((error as Error).message || 'An unexpected error occurred.');
     }
@@ -256,21 +358,37 @@ export async function deleteUserComponentAction({
         throw new Error("Missing required parameters for component deletion.");
     }
 
-    const db = await getServerDb();
-    const batch = db.batch();
+    const supabase = getSupabaseClient();
 
     try {
-        batch.deleteInSubcollection(
-            `app_users/${userId}/equipment/${equipmentId}`,
-            'components',
-            userComponentId
+        // Fetch equipment and remove component from array
+        const { data: equipmentData, error: fetchError } = await supabase
+          .from('equipment')
+          .select('components')
+          .eq('id', equipmentId)
+          .single();
+
+        if (fetchError) throw fetchError;
+        if (!equipmentData) {
+            throw new Error("Equipment not found.");
+        }
+
+        const components = (equipmentData.components || []).filter((c: any) => 
+          c.id !== userComponentId && c.user_component_id !== userComponentId
         );
-        await batch.commit();
+
+        const { error: updateError } = await supabase
+          .from('equipment')
+          .update({ components })
+          .eq('id', equipmentId);
+
+        if (updateError) throw updateError;
+
         return { success: true, message: "Component deleted successfully." };
 
     } catch(error) {
         console.error("[SERVER ACTION ERROR] in deleteUserComponentAction:", error);
-        if ((error as any).code === 'permission-denied' || (error as any).code === 7) {
+        if ((error as any).code === 'permission-denied' || (error as any).code === '403') {
             throw new Error('A permission error occurred. This may be due to backend security rules.');
         }
         throw new Error((error as Error).message || 'An unexpected error occurred.');
@@ -304,8 +422,7 @@ export async function addUserComponentAction({
     let finalMasterComponentId: string;
     let newComponentSize: string | undefined;
 
-    const db = await getServerDb();
-    const batch = db.batch();
+    const supabase = getSupabaseClient();
 
     // Logic to handle manual entry vs. selection from DB
     if (manualNewComponentData && manualNewComponentData.brand) {
@@ -317,10 +434,21 @@ export async function addUserComponentAction({
             size: manualNewComponentData.size,
             system,
         };
-        const existingMaster = await findExistingMasterComponent(db, manualComponentMatch);
-        if (existingMaster) {
+
+        // Try to find existing master component
+        const { data: existingMasters } = await supabase
+          .from('master_components')
+          .select('*')
+          .eq('brand', manualNewComponentData.brand)
+          .eq('model', manualNewComponentData.model || null)
+          .eq('series', manualNewComponentData.series || null)
+          .eq('system', system)
+          .limit(1);
+
+        if (existingMasters && existingMasters.length > 0) {
+            const existingMaster = existingMasters[0];
             finalMasterComponentId = existingMaster.id;
-            newComponentSize = existingMaster.data?.size;
+            newComponentSize = existingMaster.size;
         } else {
             const newComponentDetails: Omit<MasterComponent, 'id' | 'embedding'> = {
                 name: manualNewComponentData.name,
@@ -330,7 +458,7 @@ export async function addUserComponentAction({
                 size: manualNewComponentData.size,
                 system: system,
             };
-            finalMasterComponentId = db.generateId();
+            finalMasterComponentId = generateId();
             newComponentSize = manualNewComponentData.size;
 
             const cleanNewComponentDetails = Object.fromEntries(
@@ -338,49 +466,77 @@ export async function addUserComponentAction({
             );
             const componentSlug = createComponentSlug(newComponentDetails);
 
-            batch.set('masterComponents', finalMasterComponentId, {
-                ...cleanNewComponentDetails,
-                slug: componentSlug || undefined,
-            }, { merge: true });
+            const { error: insertError } = await supabase
+              .from('master_components')
+              .insert([{
+                id: finalMasterComponentId,
+                ...convertKeysToSnakeCase({
+                  ...cleanNewComponentDetails,
+                  slug: componentSlug || undefined,
+                })
+              }]);
+
+            if (insertError) throw insertError;
         }
 
     } else if (masterComponentId) {
         finalMasterComponentId = masterComponentId;
-        const masterComponentSnap = await db.getDoc<MasterComponent>('masterComponents', finalMasterComponentId);
-        if (!masterComponentSnap.exists) {
+        const { data: masterComponentSnap, error: masterError } = await supabase
+          .from('master_components')
+          .select('*')
+          .eq('id', finalMasterComponentId)
+          .single();
+
+        if (masterError) throw masterError;
+        if (!masterComponentSnap) {
             throw new Error("The selected master component does not exist.");
         }
-        newComponentSize = masterComponentSnap.data?.size;
+        newComponentSize = masterComponentSnap.size;
     } else {
         throw new Error("No component data provided.");
     }
 
     try {
-        const newComponentId = db.generateId();
+        const newComponentId = generateId();
 
-        const newComponentData: Omit<UserComponent, 'id'> = {
-            masterComponentId: finalMasterComponentId,
-            wearPercentage: 0,
-            purchaseDate: new Date(),
-            lastServiceDate: null,
+        const newComponentData = {
+            id: newComponentId,
+            master_component_id: finalMasterComponentId,
+            wear_percentage: 0,
+            purchase_date: new Date().toISOString(),
+            last_service_date: null,
             size: newComponentSize,
             notes: `Added on ${new Date().toLocaleDateString()}`,
         };
 
-        const cleanData: {[k:string]: any} = {};
+        const cleanData: any = {};
         for(const key in newComponentData) {
             if((newComponentData as any)[key] !== undefined) {
                 cleanData[key] = (newComponentData as any)[key]
             }
         }
 
-        batch.setInSubcollection(
-            `app_users/${userId}/equipment/${equipmentId}`,
-            'components',
-            newComponentId,
-            cleanData
-        );
-        await batch.commit();
+        // Fetch equipment and add component to array
+        const { data: equipmentData, error: fetchError } = await supabase
+          .from('equipment')
+          .select('components')
+          .eq('id', equipmentId)
+          .single();
+
+        if (fetchError) throw fetchError;
+        if (!equipmentData) {
+            throw new Error("Equipment not found.");
+        }
+
+        const components = equipmentData.components || [];
+        components.push(cleanData);
+
+        const { error: updateError } = await supabase
+          .from('equipment')
+          .update({ components })
+          .eq('id', equipmentId);
+
+        if (updateError) throw updateError;
 
         return { success: true, message: "Component added successfully." };
     } catch (error) {

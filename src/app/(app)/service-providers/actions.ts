@@ -2,23 +2,96 @@
 
 'use server';
 
-import { getServerDb } from '@/backend';
-import { fetchAllDocsPaginated } from '@/backend/dbPagination';
+import { createClient } from '@supabase/supabase-js';
 import type { ServiceProvider, WorkOrder } from '@/lib/types';
+
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Missing Supabase configuration');
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+}
+
+/**
+ * Convert camelCase to snake_case for database operations
+ */
+function camelToSnake(str: string): string {
+  return str.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+/**
+ * Recursively convert object keys from camelCase to snake_case
+ */
+function convertKeysToSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToSnakeCase);
+  }
+
+  if (obj && typeof obj === 'object' && !(obj instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const snakeKey = camelToSnake(key);
+      converted[snakeKey] = convertKeysToSnakeCase(value);
+    }
+    return converted;
+  }
+
+  return obj;
+}
+
+/**
+ * Convert snake_case to camelCase for application use
+ */
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
+}
+
+/**
+ * Recursively convert object keys from snake_case to camelCase
+ */
+function convertKeysToCamelCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToCamelCase);
+  }
+
+  if (obj && typeof obj === 'object' && !(obj instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const camelKey = snakeToCamel(key);
+      converted[camelKey] = convertKeysToCamelCase(value);
+    }
+    return converted;
+  }
+
+  return obj;
+}
 
 export async function getServiceProviders(): Promise<ServiceProvider[]> {
   try {
-    const db = await getServerDb();
-    const providerDocs = await fetchAllDocsPaginated<ServiceProvider>(db, 'serviceProviders', 500, 'id');
-    const providers = providerDocs.map(doc => ({
-      id: doc.id,
-      ...doc.data,
+    const supabase = getSupabaseClient();
+    
+    const { data, error } = await supabase
+      .from('service_providers')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+
+    if (!data) return [];
+
+    return data.map(row => ({
+      id: row.id,
+      ...convertKeysToCamelCase(row),
     } as ServiceProvider));
-    return providers;
   } catch (error) {
     console.error("Error fetching service providers:", error);
-    // Be more descriptive with the error thrown
-    if ((error as any).code === 'permission-denied') {
+    if ((error as any).code === 'permission-denied' || (error as any).code === '403') {
         throw new Error('You do not have permission to access service providers. Please check your backend security rules.');
     }
     throw new Error("Could not fetch service providers from the database.");
@@ -31,8 +104,11 @@ export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' 
   }
 
   try {
-    const db = await getServerDb();
-    const newWorkOrderId = db.generateId();
+    const supabase = getSupabaseClient();
+
+    // Generate a new UUID-like ID (Supabase uses UUIDs by default)
+    const { data: uuidData } = await supabase.rpc('uuid_generate_v4');
+    const newWorkOrderId = uuidData || crypto.randomUUID();
 
     const newWorkOrder: WorkOrder = {
       id: newWorkOrderId,
@@ -47,7 +123,14 @@ export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' 
       },
     };
 
-    await db.setDoc('workOrders', newWorkOrderId, newWorkOrder);
+    // Convert to snake_case for database
+    const dbData = convertKeysToSnakeCase(newWorkOrder);
+
+    const { error } = await supabase
+      .from('work_orders')
+      .insert([dbData]);
+
+    if (error) throw error;
 
     return {
       success: true,

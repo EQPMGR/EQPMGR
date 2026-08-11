@@ -1,52 +1,68 @@
 
 'use server';
 
-import { getServerDb } from '@/backend';
+import { createClient } from '@supabase/supabase-js';
+
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Missing Supabase configuration');
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+}
 
 /**
- * Iterates through all documents in the `masterComponents` collection
+ * Iterates through all documents in the `master_components` table
  * and removes the `embedding` field if it exists.
  */
 export async function removeAllEmbeddingsAction(): Promise<{ success: boolean; message: string }> {
   try {
-    const db = await getServerDb();
+    const supabase = getSupabaseClient();
     let totalProcessed = 0;
     let totalUpdated = 0;
-    let lastDocId: string | null = null;
+    let lastId: string | null = null;
+    const pageSize = 500;
 
     while (true) {
-        const constraints = [
-            { type: 'orderBy' as const, field: 'id' as const, direction: 'asc' as const },
-            { type: 'limit' as const, value: 500 }
-        ];
+        let query = supabase
+          .from('master_components')
+          .select('id, embedding')
+          .order('id', { ascending: true })
+          .limit(pageSize);
 
-        if (lastDocId) {
-            constraints.push({ type: 'startAfter' as const, value: lastDocId });
+        if (lastId) {
+            query = query.gt('id', lastId);
         }
 
-        const snapshot = await db.getDocs('masterComponents', ...constraints);
+        const { data: components, error } = await query;
+        
+        if (error) throw error;
 
-        if (snapshot.docs.length === 0) {
+        if (!components || components.length === 0) {
             break; // No more documents to process
         }
 
-        const batch = db.batch();
-        let updatedInBatch = 0;
+        // Find components that have embeddings to update
+        const componentsToUpdate = components.filter(c => c.embedding !== null && c.embedding !== undefined);
 
-        snapshot.docs.forEach(doc => {
-            if (doc.data.embedding !== undefined) {
-                batch.update('masterComponents', doc.id, { embedding: db.deleteField() });
-                updatedInBatch++;
-            }
-        });
+        // Update embeddings to null (or delete the field)
+        if (componentsToUpdate.length > 0) {
+            const { error: updateError } = await supabase
+              .from('master_components')
+              .update({ embedding: null })
+              .in('id', componentsToUpdate.map(c => c.id));
 
-        if (updatedInBatch > 0) {
-            await batch.commit();
-            totalUpdated += updatedInBatch;
+            if (updateError) throw updateError;
+            totalUpdated += componentsToUpdate.length;
         }
 
-        totalProcessed += snapshot.docs.length;
-        lastDocId = snapshot.docs[snapshot.docs.length - 1].id;
+        totalProcessed += components.length;
+        lastId = components[components.length - 1].id;
 
         // Small delay to be respectful to backend API limits
         await new Promise(resolve => setTimeout(resolve, 50));

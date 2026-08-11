@@ -253,7 +253,9 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
         }));
 
         console.log('[fetchRecentStravaActivities] Returning activities', {
-            count: activities.length,
+            totalFetched: allRideActivities.length,
+            alreadySynced: processedActivityIds.size,
+            newActivities: activities.filter(a => !a.alreadySynced).length,
         });
 
         return {

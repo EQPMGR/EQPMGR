@@ -93,7 +93,11 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   }, [handleSyncActivities]);
 
   const onActivityAssigned = (activityId: number) => {
-      setRecentActivities(prev => prev.filter(a => a.id !== activityId));
+      // Mark activity as synced instead of removing, so button greyes out
+      // Activity will disappear on page reload since it's filtered server-side
+      setRecentActivities(prev => 
+          prev.map(a => a.id === activityId ? { ...a, alreadySynced: true } : a)
+      );
   }
   
   const handleStravaConnect = async () => {

@@ -2,11 +2,52 @@
 
 'use server';
 
-import { getServerDb, getServerAuth } from '@/backend';
+import { createClient } from '@supabase/supabase-js';
+import { getServerAuth } from '@/backend';
 import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent, UserComponent } from '@/lib/types';
 import { z } from 'zod';
 import { createComponentSlug, getCanonicalComponentKey, findExistingMasterComponent } from '@/lib/master-component-utils';
+
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Missing Supabase configuration');
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+}
+
+/**
+ * Convert camelCase to snake_case for database operations
+ */
+function camelToSnake(str: string): string {
+  return str.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+/**
+ * Recursively convert object keys from camelCase to snake_case
+ */
+function convertKeysToSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToSnakeCase);
+  }
+
+  if (obj && typeof obj === 'object' && !(obj instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const snakeKey = camelToSnake(key);
+      converted[snakeKey] = convertKeysToSnakeCase(value);
+    }
+    return converted;
+  }
+
+  return obj;
+}
 
 const createBikeModelSlug = (bike: AddBikeModelFormValues) => {
     return `${bike.brand}-${bike.model}-${bike.modelYear}`
@@ -40,6 +81,11 @@ const normalizeComponentPayload = (component: Record<string, any>) => {
     return normalized;
 };
 
+// Helper to generate UUIDs for new records
+function generateId(): string {
+  return crypto.randomUUID();
+}
+
 
 export async function saveBikeModelAction({
     idToken,
@@ -62,15 +108,15 @@ export async function saveBikeModelAction({
             throw new Error('Invalid auth token.');
         }
 
-        const db = await getServerDb();
-        const batch = db.batch();
+        const supabase = getSupabaseClient();
 
-        const bikeModelId = db.generateId();
-        const equipmentId = db.generateId();
+        const bikeModelId = generateId();
+        const equipmentId = generateId();
         const bikeModelSlug = createBikeModelSlug(values);
 
         const masterComponentCache = new Map<string, string>();
         const bikeModelComponentRows: Array<{ id: string; data: Record<string, any> }> = [];
+        const masterComponentsToInsert: Array<{ id: string; data: Record<string, any> }> = [];
         const userComponentRows: Array<{ id: string; data: Record<string, any> }> = [];
 
         for (const originalComponent of values.components) {
@@ -92,24 +138,36 @@ export async function saveBikeModelAction({
             let masterComponentId = masterComponentCache.get(canonicalKey);
 
             if (!masterComponentId) {
-                const existingMaster = await findExistingMasterComponent(db, componentToSave);
-                if (existingMaster) {
-                    masterComponentId = existingMaster.id;
+                // For now, using direct Supabase query instead of findExistingMasterComponent
+                const { data: existingMasters } = await supabase
+                  .from('master_components')
+                  .select('id')
+                  .eq('brand', componentToSave.brand || null)
+                  .eq('model', componentToSave.model || null)
+                  .eq('series', componentToSave.series || null)
+                  .eq('system', componentToSave.system)
+                  .limit(1);
+
+                if (existingMasters && existingMasters.length > 0) {
+                    masterComponentId = existingMasters[0].id;
                 } else {
-                    masterComponentId = db.generateId();
+                    masterComponentId = generateId();
                     const componentSlug = createComponentSlug(componentToSave as Partial<MasterComponent>);
-                    batch.set('masterComponents', masterComponentId, {
-                        ...componentToSave,
-                        slug: componentSlug || undefined,
-                    }, { merge: true });
+                    masterComponentsToInsert.push({
+                        id: masterComponentId,
+                        data: convertKeysToSnakeCase({
+                            ...componentToSave,
+                            slug: componentSlug || undefined,
+                        })
+                    });
                 }
                 masterComponentCache.set(canonicalKey, masterComponentId);
             }
 
-            const bikeModelComponentId = db.generateId();
+            const bikeModelComponentId = generateId();
             bikeModelComponentRows.push({
                 id: bikeModelComponentId,
-                data: {
+                data: convertKeysToSnakeCase({
                     bikeModelId,
                     masterComponentId,
                     componentName: componentToSave.name,
@@ -119,45 +177,31 @@ export async function saveBikeModelAction({
                     chainring1: componentToSave.chainring1,
                     chainring2: componentToSave.chainring2,
                     chainring3: componentToSave.chainring3,
-                }
+                })
             });
 
-            const userComponentId = db.generateId();
+            const userComponentId = generateId();
             userComponentRows.push({
                 id: userComponentId,
-                data: {
-                    equipmentId,
+                data: convertKeysToSnakeCase({
                     equipment_id: equipmentId,
-                    userId: uid,
                     user_id: uid,
-                    masterComponentId,
                     master_component_id: masterComponentId,
                     name: componentToSave.name,
                     size: componentToSave.size,
-                    purchaseDate: null,
                     purchase_date: null,
                     notes: null,
-                    wearPercentage: 0,
                     wear_percentage: 0,
-                    lastServiceDate: null,
                     last_service_date: null,
-                    installedAtDistance: 0,
                     installed_at_distance: 0,
-                    currentDistance: 0,
                     current_distance: 0,
-                    expectedReplacementKm: componentToSave.recommendedIntervalKm || componentToSave.replacementIntervalKm || null,
                     expected_replacement_km: componentToSave.recommendedIntervalKm || componentToSave.replacementIntervalKm || null,
-                    isActive: true,
                     is_active: true,
-                    replacementCount: 0,
                     replacement_count: 0,
-                    installedAt: new Date().toISOString(),
                     installed_at: new Date().toISOString(),
-                    createdAt: new Date().toISOString(),
                     created_at: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
-                }
+                })
             });
         }
 
@@ -172,96 +216,100 @@ export async function saveBikeModelAction({
             }
         });
 
-        batch.set('bikeModels', bikeModelId, {
+        // Prepare all data with snake_case
+        const bikeModelInsert = convertKeysToSnakeCase({
+            id: bikeModelId,
             ...bikeModelToSave,
             slug: bikeModelSlug,
             type: values.type,
-            createdBy: uid,
             created_by: uid,
-            modelYear: values.modelYear,
             model_year: values.modelYear,
-            imageUrl: `https://placehold.co/600x400.png`,
             image_url: `https://placehold.co/600x400.png`,
-            createdAt: new Date().toISOString(),
             created_at: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         });
 
-        // Link this bike model into the user's personal equipment inventory.
-        batch.set('equipment', equipmentId, {
-            userId: uid,
+        const equipmentInsert = convertKeysToSnakeCase({
+            id: equipmentId,
             user_id: uid,
-            appUserId: uid,
             app_user_id: uid,
             name: `${values.brand || ''} ${values.model || ''}`.trim(),
             type: values.type,
             brand: values.brand,
             model: values.model,
-            modelYear: values.modelYear,
             model_year: values.modelYear,
-            serialNumber: null,
             serial_number: null,
-            frameSize: null,
             frame_size: null,
-            purchaseDate: null,
             purchase_date: null,
-            purchasePrice: null,
             purchase_price: null,
-            totalDistance: 0,
             total_distance: 0,
-            totalHours: 0,
             total_hours: 0,
-            imageUrl: `https://placehold.co/600x400.png`,
             image_url: `https://placehold.co/600x400.png`,
-            maintenanceLog: null,
             maintenance_log: null,
-            associatedEquipmentIds: null,
             associated_equipment_ids: null,
-            createdAt: new Date().toISOString(),
             created_at: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            masterBikeModelId: bikeModelId,
             master_bike_model_id: bikeModelId,
-        }, { merge: true });
+        });
 
-        for (const row of userComponentRows) {
-            batch.set('components', row.id, row.data as any, { merge: true });
+        // Insert master components if new ones were created
+        if (masterComponentsToInsert.length > 0) {
+            const { error } = await supabase
+              .from('master_components')
+              .insert(masterComponentsToInsert.map(row => ({ id: row.id, ...row.data })));
+            if (error) throw error;
         }
 
+        // Insert bike model
+        const { error: bikeModelError } = await supabase
+          .from('bike_models')
+          .insert([bikeModelInsert]);
+        if (bikeModelError) throw bikeModelError;
+
+        // Insert equipment
+        const { error: equipmentError } = await supabase
+          .from('equipment')
+          .insert([equipmentInsert]);
+        if (equipmentError) throw equipmentError;
+
+        // Insert user components
+        if (userComponentRows.length > 0) {
+            const { error: componentError } = await supabase
+              .from('components')
+              .insert(userComponentRows.map(row => ({ id: row.id, ...row.data })));
+            if (componentError) throw componentError;
+        }
+
+        // Insert import feedback if provided
         if (values.importFeedback?.rawText || values.importFeedback?.parsedOutput) {
             const { importFeedback: _, ...finalOutput } = values as any;
-            const feedbackId = db.generateId();
-            batch.set('importTextFeedback', feedbackId, {
-                userId: uid,
+            const feedbackId = generateId();
+            const feedbackInsert = convertKeysToSnakeCase({
+                id: feedbackId,
                 user_id: uid,
-                bikeModelId,
                 bike_model_id: bikeModelId,
-                equipmentId,
                 equipment_id: equipmentId,
                 source: values.importFeedback?.source || 'import-text',
-                rawText: values.importFeedback?.rawText || '',
-                parsedOutput: values.importFeedback?.parsedOutput || null,
-                finalOutput,
-                createdAt: new Date().toISOString(),
+                raw_text: values.importFeedback?.rawText || '',
+                parsed_output: values.importFeedback?.parsedOutput || null,
+                final_output: finalOutput,
                 created_at: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-            }, { merge: true });
-        }
-        
-        // --- 3. Commit the main bike model, equipment, components, and master component writes ---
-        await batch.commit();
+            });
 
-        // 4. If the normalized bike model component join table exists, write those rows too.
+            const { error: feedbackError } = await supabase
+              .from('import_text_feedback')
+              .insert([feedbackInsert]);
+            if (feedbackError) throw feedbackError;
+        }
+
+        // Insert bike model components (separate table, not critical if fails)
         if (bikeModelComponentRows.length > 0) {
-            for (const row of bikeModelComponentRows) {
-                try {
-                    await db.setDoc('bikeModelComponents', row.id, row.data);
-                } catch (componentError: any) {
-                    console.warn('Could not write bike_model_components row; continuing without normalized bike model component linkage:', componentError?.message || componentError);
-                }
+            const { error: bikeModelComponentError } = await supabase
+              .from('bike_model_components')
+              .insert(bikeModelComponentRows.map(row => ({ id: row.id, ...row.data })));
+            if (bikeModelComponentError) {
+                console.warn('Could not write bike_model_components rows; continuing without normalized bike model component linkage:', bikeModelComponentError?.message);
             }
         }
 
@@ -289,43 +337,61 @@ export async function updateMasterComponentAndSyncUsers({
         throw new Error('Master component ID is required.');
     }
 
-    const db = await getServerDb();
-    const batch = db.batch();
+    const supabase = getSupabaseClient();
 
-    const existingMaster = await db.getDoc<MasterComponent>('masterComponents', masterComponentId);
-    if (!existingMaster.exists) {
-        throw new Error('Master component not found.');
-    }
+    try {
+        // 1. Verify master component exists
+        const { data: existingMaster, error: fetchError } = await supabase
+          .from('master_components')
+          .select('id')
+          .eq('id', masterComponentId)
+          .single();
 
-    // 1. Update master component attributes
-    batch.update('masterComponents', masterComponentId, updates);
-
-    // 2. Propagate to user components unless they were user replaced
-    const userComponentSnap = await db.getDocs<UserComponent>('components', {
-        type: 'where',
-        field: 'master_component_id',
-        op: '==',
-        value: masterComponentId
-    });
-
-    for (const componentDoc of userComponentSnap.docs) {
-        const userComp = componentDoc.data;
-        if (userComp.replacedByUser) {
-            continue;
+        if (fetchError) throw fetchError;
+        if (!existingMaster) {
+            throw new Error('Master component not found.');
         }
 
-        const transformedUpdate: Partial<UserComponent> = {};
-        if (updates.brand !== undefined) transformedUpdate.brand = updates.brand;
-        if (updates.series !== undefined) transformedUpdate.series = updates.series;
-        if (updates.model !== undefined) transformedUpdate.model = updates.model;
-        if (updates.size !== undefined) transformedUpdate.size = updates.size;
+        // Convert updates to snake_case
+        const snakeCaseUpdates = convertKeysToSnakeCase(updates);
 
-        if (Object.keys(transformedUpdate).length > 0) {
-            batch.update('components', componentDoc.id, transformedUpdate as any);
+        // 2. Update master component
+        const { error: updateError } = await supabase
+          .from('master_components')
+          .update(snakeCaseUpdates)
+          .eq('id', masterComponentId);
+        if (updateError) throw updateError;
+
+        // 3. Find all user components using this master component that weren't user-replaced
+        const { data: userComponents, error: queryError } = await supabase
+          .from('components')
+          .select('id, replaced_by_user')
+          .eq('master_component_id', masterComponentId);
+
+        if (queryError) throw queryError;
+
+        // 4. Update user components (only those not replaced by user)
+        for (const component of userComponents || []) {
+            if (!component.replaced_by_user) {
+                const transformedUpdate: any = {};
+                if (updates.brand !== undefined) transformedUpdate.brand = updates.brand;
+                if (updates.series !== undefined) transformedUpdate.series = updates.series;
+                if (updates.model !== undefined) transformedUpdate.model = updates.model;
+                if (updates.size !== undefined) transformedUpdate.size = updates.size;
+
+                if (Object.keys(transformedUpdate).length > 0) {
+                    const { error: compError } = await supabase
+                      .from('components')
+                      .update(convertKeysToSnakeCase(transformedUpdate))
+                      .eq('id', component.id);
+                    if (compError) throw compError;
+                }
+            }
         }
+
+        return { success: true, message: 'Master component updated and user components synchronized where appropriate.' };
+    } catch (error: any) {
+        console.error('[ERROR] updateMasterComponentAndSyncUsers:', error);
+        throw new Error(error.message || 'Failed to update master component');
     }
-
-    await batch.commit();
-
-    return { success: true, message: 'Master component updated and user components synchronized where appropriate.' };
 }
