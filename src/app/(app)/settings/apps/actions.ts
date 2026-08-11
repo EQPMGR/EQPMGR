@@ -334,9 +334,18 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
         }
 
         const verifyResponse = await fetch('https://www.strava.com/api/v3/athlete', fetchOptions);
+        const verifyResponseText = await verifyResponse.text();
+        let verifyResponseData;
+        try {
+            verifyResponseData = JSON.parse(verifyResponseText);
+        } catch {
+            verifyResponseData = verifyResponseText;
+        }
+        
         console.log('[checkStravaConnection] Strava API verify response', {
             status: verifyResponse.status,
             ok: verifyResponse.ok,
+            response: verifyResponseData,
         });
         
         if (!verifyResponse.ok) {
