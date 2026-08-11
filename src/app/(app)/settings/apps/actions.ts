@@ -108,6 +108,7 @@ async function fetchStravaBikeActivities(accessToken: string, maxRides: number):
     const fetchOptions: RequestInit = {
         headers: {
             Authorization: `Bearer ${accessToken}`,
+            'User-Agent': 'EQPMGR/1.0',
         },
         cache: 'no-store',
     };
@@ -122,8 +123,23 @@ async function fetchStravaBikeActivities(accessToken: string, maxRides: number):
     while (rides.length < maxRides) {
         const activitiesResponse = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=${STRAVA_PAGE_SIZE}&page=${page}`, fetchOptions);
         if (!activitiesResponse.ok) {
-            const errorBody = await activitiesResponse.json();
-            const error = new Error(`Failed to fetch from Strava: ${errorBody?.message || JSON.stringify(errorBody)}`) as any;
+            const errorText = await activitiesResponse.text();
+            let errorMessage = 'Unknown error';
+            try {
+                const errorBody = JSON.parse(errorText);
+                errorMessage = errorBody?.message || JSON.stringify(errorBody);
+            } catch {
+                errorMessage = errorText || activitiesResponse.statusText;
+            }
+            
+            console.error('[fetchStravaBikeActivities] Strava API error response', {
+                status: activitiesResponse.status,
+                statusText: activitiesResponse.statusText,
+                errorBody: errorText,
+                parsedMessage: errorMessage,
+            });
+            
+            const error = new Error(`Failed to fetch from Strava: ${errorMessage}`) as any;
             error.status = activitiesResponse.status;
             throw error;
         }
