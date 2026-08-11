@@ -2,10 +2,24 @@
 'use server';
 
 import https from 'https';
+import { createClient } from '@supabase/supabase-js';
 import { getServerAuth, getServerDb } from '@/backend';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 import { accessSecret } from '@/lib/secrets';
+
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Missing Supabase configuration');
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+}
 
 export interface StravaActivity {
   id: number;
@@ -411,21 +425,54 @@ export async function assignStravaActivityToAction({
     }
 
     const auth = await getServerAuth();
-    const db = await getServerDb();
+    const supabase = getSupabaseClient();
 
     try {
         const decodedToken = await auth.verifyIdToken(idToken, true);
         const userId = decodedToken.uid;
 
-        const batch = db.batch();
+        // Get current equipment data to increment distances
+        const { data: equipmentData, error: getEquipmentError } = await supabase
+            .from('equipment')
+            .select('total_distance, total_hours')
+            .eq('id', equipmentId)
+            .single();
 
-        batch.updateInSubcollection(`app_users/${userId}`, 'equipment', equipmentId, {
-            totalDistance: db.increment(activity.distance / 1000),
-            totalHours: db.increment(activity.moving_time / 3600),
-        });
+        if (getEquipmentError) {
+            console.error('Error fetching equipment:', getEquipmentError);
+        }
 
-        const userDocSnap = await db.getDoc('app_users', userId);
-        const existingStrava = userDocSnap.exists ? userDocSnap.data?.strava || {} : {};
+        const currentDistance = equipmentData?.total_distance || 0;
+        const currentHours = equipmentData?.total_hours || 0;
+        const newDistance = currentDistance + (activity.distance / 1000);
+        const newHours = currentHours + (activity.moving_time / 3600);
+
+        // Update equipment with new distance/hours
+        const { error: updateEquipmentError } = await supabase
+            .from('equipment')
+            .update({
+                total_distance: newDistance,
+                total_hours: newHours,
+            })
+            .eq('id', equipmentId);
+
+        if (updateEquipmentError) {
+            console.error('Error updating equipment:', updateEquipmentError);
+            // Continue anyway - processedActivities update is more critical
+        }
+
+        // Get current strava data
+        const { data: userData, error: getUserError } = await supabase
+            .from('app_users')
+            .select('strava')
+            .eq('id', userId)
+            .single();
+
+        if (getUserError && getUserError.code !== 'PGRST116') {
+            throw getUserError;
+        }
+
+        const existingStrava = userData?.strava || {};
         const existingProcessedActivities: string[] = Array.isArray(existingStrava.processedActivities)
             ? existingStrava.processedActivities.map(String)
             : [];
@@ -436,20 +483,20 @@ export async function assignStravaActivityToAction({
             processedActivities: mergedProcessedActivities,
         };
 
-        if (!userDocSnap.exists) {
-            const fallbackEmail = decodedToken.email || `${userId}@no-email.local`;
-            batch.set('app_users', userId, {
-                email: fallbackEmail,
-                emailVerified: decodedToken.email_verified ?? false,
-                strava: updatedStrava,
-            });
-        } else {
-            batch.update('app_users', userId, {
-                strava: updatedStrava,
-            });
-        }
+        // Update strava field with new processedActivities
+        const { error: updateError } = await supabase
+            .from('app_users')
+            .update({ strava: updatedStrava })
+            .eq('id', userId);
 
-        await batch.commit();
+        if (updateError) throw updateError;
+
+        console.log('[assignStravaActivityToAction] Successfully assigned activity', {
+            userId,
+            activityId: activity.id,
+            equipmentId,
+            processedActivities: mergedProcessedActivities.length,
+        });
 
         return { success: true, message: `Activity '${activity.name}' assigned.` };
 
