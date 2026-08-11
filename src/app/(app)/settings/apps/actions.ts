@@ -287,7 +287,7 @@ export async function fetchUserBikes(idToken: string): Promise<{ bikes?: Equipme
     }
 }
 
-export async function checkStravaConnection(idToken: string): Promise<{ connected: boolean; error?: string }> {
+export async function checkStravaConnection(idToken: string, skipVerification: boolean = false): Promise<{ connected: boolean; error?: string }> {
     if (!idToken) {
         return { connected: false, error: 'User not authenticated.' };
     }
@@ -306,6 +306,7 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
             exists: userDocSnap.exists,
             hasStrava: !!userData?.strava,
             stravaValue: JSON.stringify(userData?.strava),
+            skipVerification,
         });
 
         if (!userDocSnap.exists || !userData?.strava) {
@@ -322,9 +323,16 @@ export async function checkStravaConnection(idToken: string): Promise<{ connecte
             };
         }
 
+        // If skipVerification is true (right after OAuth), trust the token and skip API verification
+        if (skipVerification) {
+            console.log('[checkStravaConnection] Skipping Strava API verification (post-OAuth)');
+            return { connected: true };
+        }
+
         const fetchOptions: RequestInit = {
             headers: {
                 Authorization: `Bearer ${validTokens.accessToken}`,
+                'User-Agent': 'EQPMGR/1.0',
             },
             cache: 'no-store',
         };

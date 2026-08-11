@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Loader2, RefreshCw } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -23,6 +23,9 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isPostOAuth = searchParams?.get('strava_connected') === 'true';
+  
   const [isSyncing, setIsSyncing] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [recentActivities, setRecentActivities] = useState<StravaActivity[]>([]);
@@ -37,8 +40,10 @@ export function RecentActivities({ showTitle = false }: RecentActivitiesProps) {
     }
     try {
         const idToken = await user.getIdToken(true);
-        console.log('[RecentActivities] Calling checkStravaConnection');
-        const result = await checkStravaConnection(idToken);
+        console.log('[RecentActivities] Calling checkStravaConnection', { isPostOAuth });
+        
+        // Skip verification immediately after OAuth to avoid premature API rejection
+        const result = await checkStravaConnection(idToken, isPostOAuth);
         console.log('[RecentActivities] checkStravaConnection result:', result);
         
         const connected = result?.connected ?? false;
