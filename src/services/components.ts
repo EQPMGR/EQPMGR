@@ -25,7 +25,8 @@ export async function fetchAllMasterComponents(): Promise<MasterComponentWithOpt
       const data = doc.data;
        // Data validation step to ensure documents have the basic required fields.
       if (data && typeof data.name === 'string' && typeof data.system === 'string') {
-           components.push({ id: doc.id, ...data } as MasterComponentWithOptions);
+           const { id: _id, ...rest } = data as any;
+           components.push({ id: doc.id, ...rest } as MasterComponentWithOptions);
       } else {
           console.warn(`[Data Validation] Skipped malformed component document with ID: ${doc.id}. Document data:`, data);
       }

@@ -35,8 +35,10 @@ export async function findSimilarComponents(text: string, topK: number = 5): Pro
     );
 
     const results: MasterComponent[] = querySnapshot.map(doc => {
-      // Note: The 'embedding' field itself is large and not needed on the client.
-      const { embedding, ...rest } = doc.data;
+      if (!doc.data) {
+        return { id: doc.id, name: '', system: '' } as MasterComponent;
+      }
+      const { id: _ignoredId, embedding, ...rest } = doc.data as MasterComponent;
       return { id: doc.id, ...rest } as MasterComponent;
     });
 

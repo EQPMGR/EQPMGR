@@ -126,14 +126,20 @@ export function ReplaceComponentDialog({
     return allComponentOptions.filter(c => c.name === componentToReplace.name);
   }, [allComponentOptions, componentToReplace.name]);
 
-  const brands = useMemo(() => [...new Set(componentOptions.map(c => c.brand).filter(Boolean))].sort(), [componentOptions]);
-  const sizes = useMemo(() => [...new Set(componentOptions.map(c => c.size).filter(Boolean))].sort(), [componentOptions]);
+  const brands = useMemo(
+    () => [...new Set(componentOptions.map(c => c.brand).filter((brand): brand is string => Boolean(brand)))].sort(),
+    [componentOptions]
+  );
+  const sizes = useMemo(
+    () => [...new Set(componentOptions.map(c => c.size).filter((size): size is string => Boolean(size)))].sort(),
+    [componentOptions]
+  );
   
   const filteredSeries = useMemo(() => {
       let filtered = componentOptions;
       if (brand) filtered = filtered.filter(c => c.brand === brand);
       if (size) filtered = filtered.filter(c => c.size === size);
-      return [...new Set(filtered.map(c => c.series).filter(Boolean))].sort();
+      return [...new Set(filtered.map(c => c.series).filter((series): series is string => Boolean(series)))].sort();
   }, [componentOptions, brand, size]);
 
   const filteredModels = useMemo(() => {
@@ -141,7 +147,9 @@ export function ReplaceComponentDialog({
       if (brand) filtered = filtered.filter(c => c.brand === brand);
       if (size) filtered = filtered.filter(c => c.size === size);
       if (series) filtered = filtered.filter(c => c.series === series);
-      return filtered.filter(c => c.model).sort((a,b) => a.model!.localeCompare(b.model!));
+      return filtered
+        .filter((c): c is MasterComponentWithOptions & { model: string } => typeof c.model === 'string')
+        .sort((a,b) => a.model.localeCompare(b.model));
   }, [componentOptions, brand, size, series]);
 
 
@@ -210,10 +218,10 @@ export function ReplaceComponentDialog({
                         <AccordionTrigger>Replace from Database</AccordionTrigger>
                         <AccordionContent className="space-y-4 pt-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="size" render={({ field }) => ( <FormItem><FormLabel>Size / Speeds</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Size" /></SelectTrigger></FormControl><SelectContent>{sizes.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('model', ''); }} value={field.value} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="model" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value as string}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="size" render={({ field }) => ( <FormItem><FormLabel>Size / Speeds</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('series', ''); form.setValue('model', ''); }} value={field.value as string}><FormControl><SelectTrigger><SelectValue placeholder="Select Size" /></SelectTrigger></FormControl><SelectContent>{sizes.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="series" render={({ field }) => ( <FormItem><FormLabel>Series</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('model', ''); }} value={field.value as string} disabled={!filteredSeries.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Series" /></SelectTrigger></FormControl><SelectContent>{filteredSeries.map((s, i) => <SelectItem key={`${s}-${i}`} value={s!}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="model" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={value => field.onChange(value)} value={typeof field.value === 'string' ? field.value : ''} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                             </div>
                         </AccordionContent>
                     </AccordionItem>

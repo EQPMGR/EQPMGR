@@ -1,4 +1,4 @@
-import { parseBikeText } from './src/lib/bike-parser.ts';
+import { parseBikeText } from './src/lib/bike-parser';
 
 const text = `Frame
 500 Series OCLV Carbon, IsoSpeed, internal storage, tapered head tube, internal cable routing, 3S chain keeper, fender mounts, flat mount disc, 142x12mm thru axle

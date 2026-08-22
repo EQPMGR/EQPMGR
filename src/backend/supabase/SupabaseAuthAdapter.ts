@@ -94,6 +94,7 @@ function getSupabaseClient(isServer: boolean): SupabaseClient {
 export class SupabaseAuthAdapter implements IAuthProvider {
   private supabase: SupabaseClient;
   private isServer: boolean;
+  destroy?(): void;
 
   constructor(isServer: boolean = false) {
     this.isServer = isServer;
@@ -251,7 +252,7 @@ export class SupabaseAuthAdapter implements IAuthProvider {
     return this.currentUser;
   }
 
-  async verifyIdToken(token: string): Promise<{
+  async verifyIdToken(token: string, forceRefresh: boolean = false): Promise<{
     uid: string;
     email?: string;
     email_verified?: boolean;

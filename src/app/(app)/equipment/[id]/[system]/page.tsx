@@ -35,21 +35,22 @@ export default function SystemDetailPage() {
       const database = await getDb();
       const equipmentDocSnap = await database.getSubDoc<Equipment>('app_users', uid, 'equipment', equipmentId);
 
-      if (equipmentDocSnap.exists) {
-        const equipmentData = equipmentDocSnap.data;
+      const equipmentData = equipmentDocSnap.data;
+      if (!equipmentDocSnap.exists || !equipmentData) {
+        toast({ variant: 'destructive', title: 'Not Found', description: 'Could not find the requested equipment.' });
+        setEquipment(undefined);
+      } else {
+        const equipmentDataDefined = equipmentData as Equipment;
         setEquipment({
-          ...equipmentData,
+          ...equipmentDataDefined,
           id: equipmentId,
-          purchaseDate: toDate(equipmentData.purchaseDate),
+          purchaseDate: toDate(equipmentDataDefined.purchaseDate),
           components: [], // Components are fetched separately
-          maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+          maintenanceLog: (equipmentDataDefined.maintenanceLog || []).map((l: any) => ({
               ...l,
               date: toDate(l.date),
           })),
         } as Equipment);
-      } else {
-         toast({ variant: "destructive", title: "Not Found", description: "Could not find the requested equipment." });
-         setEquipment(undefined);
       }
 
       // Fetch components for this equipment
@@ -77,17 +78,18 @@ export default function SystemDetailPage() {
           }
       }
 
-      const combinedComponents: Component[] = userComponents.map(userComp => {
-          const masterComp = masterComponentsMap.get(userComp.masterComponentId);
-          if (!masterComp) return null;
-          return {
-              ...masterComp,
-              ...userComp,
-              userComponentId: userComp.id,
-              purchaseDate: toDate(userComp.purchaseDate),
-              lastServiceDate: toNullableDate(userComp.lastServiceDate),
-          };
-      }).filter((c): c is Component => c !== null);
+const combinedComponents = userComponents.reduce<Component[]>((acc, userComp) => {
+            const masterComp = masterComponentsMap.get(userComp.masterComponentId);
+            if (!masterComp) return acc;
+            acc.push({
+                ...masterComp,
+                ...userComp,
+                userComponentId: userComp.id,
+                purchaseDate: toDate(userComp.purchaseDate),
+                lastServiceDate: toNullableDate(userComp.lastServiceDate),
+            });
+            return acc;
+        }, []);
 
       setComponents(combinedComponents);
 

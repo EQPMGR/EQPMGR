@@ -41,6 +41,25 @@ export function ComponentHotspot() {
 
       const equipmentPromises = querySnapshot.docs.map(async (doc) => {
         const equipmentData = doc.data;
+        if (!equipmentData) {
+          console.warn('Skipping equipment doc with missing data', doc.id);
+          return {
+            id: doc.id,
+            name: 'Unknown Equipment',
+            type: 'Other',
+            brand: '',
+            model: '',
+            modelYear: 0,
+            purchaseCondition: 'used',
+            purchaseDate: new Date(),
+            purchasePrice: 0,
+            totalDistance: 0,
+            totalHours: 0,
+            imageUrl: '',
+            components: [],
+            maintenanceLog: [],
+          } as Equipment;
+        }
         const componentsSnapshot = await database.getDocs<UserComponent>(
           'components',
           { type: 'where', field: 'equipmentId', op: '==', value: doc.id }
@@ -66,21 +85,24 @@ export function ComponentHotspot() {
           }
         }
 
-        const components: Component[] = userComponents.map(userComp => {
+        const components = userComponents.reduce<Component[]>((acc, userComp) => {
           const masterComp = masterComponentsMap.get(userComp.masterComponentId);
-          if (!masterComp) return null;
-          return {
+          if (!masterComp) return acc;
+          const { id: _unusedId, ...userCompWithoutId } = userComp;
+          acc.push({
             ...masterComp,
-            ...userComp,
+            ...userCompWithoutId,
             userComponentId: userComp.id,
             purchaseDate: toDate(userComp.purchaseDate),
             lastServiceDate: toNullableDate(userComp.lastServiceDate),
-          };
-        }).filter((c): c is Component => c !== null);
+          });
+          return acc;
+        }, []);
 
+        const { id: _unusedId, ...equipmentDataWithoutId } = equipmentData;
         return {
           id: doc.id,
-          ...equipmentData,
+          ...equipmentDataWithoutId,
           components,
         } as Equipment;
       });
@@ -105,7 +127,7 @@ export function ComponentHotspot() {
 
   const hasEquipment = allEquipment.length > 0;
 
-  const mostWornComponent = useMemo(() => {
+const mostWornComponent = useMemo<HotspotComponent | null>(() => {
     if (!hasEquipment) return null;
 
     let mostWorn: HotspotComponent | null = null;
@@ -117,7 +139,7 @@ export function ComponentHotspot() {
             ...component,
             equipmentId: equipment.id,
             equipmentName: equipment.name,
-          };
+          } as HotspotComponent;
         }
       });
     });
@@ -125,7 +147,7 @@ export function ComponentHotspot() {
     return mostWorn;
   }, [allEquipment, hasEquipment]);
   
-  const systemSlug = mostWornComponent?.system.toLowerCase().replace(/\s+/g, '-') || '';
+  const systemSlug = mostWornComponent ? String(mostWornComponent.system).toLowerCase().replace(/\s+/g, '-') : '';
 
   if (isLoading || authLoading) {
     return <Skeleton className="h-full min-h-[160px]" />;

@@ -69,7 +69,7 @@ const simulateWearFlow = ai.defineFlow(
     inputSchema: SimulateWearInputSchema,
     outputSchema: SimulateWearOutputSchema,
   },
-  async input => {
+  async (input: SimulateWearInput) => {
     const {output} = await prompt(input);
     return output!;
   }

@@ -107,7 +107,9 @@ async function exchangeCodeForToken(code: string, redirectUri: string) {
     redirect_uri: redirectUri,
   });
 
-  const fetchOptions: RequestInit = {
+  type NodeFetchInit = RequestInit & { agent?: any };
+
+  const fetchOptions: NodeFetchInit = {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),

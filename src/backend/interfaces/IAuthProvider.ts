@@ -68,7 +68,7 @@ export interface IAuthProvider {
   /**
    * Server-side: Verify ID token
    */
-  verifyIdToken(token: string): Promise<{
+  verifyIdToken(token: string, forceRefresh?: boolean): Promise<{
     uid: string;
     email?: string;
     email_verified?: boolean;

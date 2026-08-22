@@ -84,7 +84,7 @@ export interface UserComponent {
 }
 
 // The combined object we'll use in the app UI
-export interface Component extends MasterComponent, Omit<UserComponent, 'id' | 'masterComponentId'> {
+export interface Component extends MasterComponent, Omit<UserComponent, 'id'> {
   userComponentId: string;
 }
 
@@ -108,21 +108,21 @@ export interface ArchivedComponent {
 export interface MaintenanceLog {
   id: string;
   date: Date;
-  log_type: 'service' | 'repair' | 'modification';
+  logType: 'service' | 'repair' | 'modification';
   description: string;
   cost: number;
-  service_type: 'diy' | 'shop';
-  service_provider?: string;
-  shop_name?: string;
+  serviceType: 'diy' | 'shop';
+  serviceProvider?: string;
+  shopName?: string;
   technician?: string;
-  component_replaced: boolean;
-  is_oem?: boolean;
-  replacement_part?: string;
+  componentReplaced: boolean;
+  isOem?: boolean;
+  replacementPart?: string;
   notes?: string;
 }
 
 export interface CleatPosition {
-    fore_aft?: number;
+    foreAft?: number;
     lateral?: number;
     rotational?: number;
 }
@@ -175,45 +175,45 @@ export interface Equipment {
 export interface ServiceProvider {
   id: string;
   name: string;
-  shop_name?: string;
-  logo_url?: string;
+  shopName?: string;
+  logoUrl?: string;
   services: ('bike-fitting' | 'repairs' | 'rental')[];
   address: string;
   city: string;
   province: string;
-  postal_code: string;
+  postalCode: string;
   country: string;
   phone?: string;
   website?: string;
   geohash?: string; // For location-based queries
   lat?: number;
   lng?: number;
-  average_rating?: number;
-  rating_count?: number;
+  averageRating?: number;
+  ratingCount?: number;
   availability?: string;
-  drop_off?: boolean;
-  valet_service?: boolean;
+  dropOff?: boolean;
+  valetService?: boolean;
 }
 
 export interface WorkOrder {
     id: string;
-    user_id: string;
-    user_name: string;
-    user_phone: string;
-    user_email: string;
-    service_provider_id: string;
-    provider_name: string;
-    equipment_id: string;
-    equipment_name: string;
-    equipment_brand: string;
-    equipment_model: string;
-    service_type: string;
+    userId: string;
+    userName: string;
+    userPhone: string;
+    userEmail: string;
+    serviceProviderId: string;
+    providerName: string;
+    equipmentId: string;
+    equipmentName: string;
+    equipmentBrand: string;
+    equipmentModel: string;
+    serviceType: string;
     status: 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
     notes?: string;
-    fit_data?: BikeFitData;
-    created_at: Timestamp;
-    user_consent: {
-      consent_given: boolean;
+    fitData?: BikeFitData;
+    createdAt: Timestamp;
+    userConsent: {
+      consentGiven: boolean;
       timestamp: Timestamp;
     };
 }

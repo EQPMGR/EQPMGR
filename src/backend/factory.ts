@@ -8,6 +8,7 @@ import type { IAuthProvider, IDatabase, IStorage } from './interfaces';
 import { SupabaseAuthAdapter } from './supabase/SupabaseAuthAdapter';
 import { SupabaseDbAdapter } from './supabase/SupabaseDbAdapter';
 import { SupabaseStorageAdapter } from './supabase/SupabaseStorageAdapter';
+import { getBackendProviderName } from './config/loader';
 
 // Singleton adapter instances for supabase
 let currentAuthAdapter: SupabaseAuthAdapter | null = null;
@@ -103,13 +104,13 @@ export function getBackendProvider(): string {
  * Reset all backend instances (useful for testing)
  */
 export function resetBackend(): void {
-  if (currentAuthAdapter?.destroy) {
+  if (typeof currentAuthAdapter?.destroy === 'function') {
     currentAuthAdapter.destroy();
   }
-  if (currentDbAdapter?.destroy) {
+  if (typeof currentDbAdapter?.destroy === 'function') {
     currentDbAdapter.destroy();
   }
-  if (currentStorageAdapter?.destroy) {
+  if (typeof currentStorageAdapter?.destroy === 'function') {
     currentStorageAdapter.destroy();
   }
   currentAuthAdapter = null;
@@ -121,13 +122,13 @@ export function resetBackend(): void {
  * Reset server backend instances (useful for testing)
  */
 export function resetServerBackend(): void {
-  if (serverAuthAdapter?.destroy) {
+  if (typeof serverAuthAdapter?.destroy === 'function') {
     serverAuthAdapter.destroy();
   }
-  if (serverDbAdapter?.destroy) {
+  if (typeof serverDbAdapter?.destroy === 'function') {
     serverDbAdapter.destroy();
   }
-  if (serverStorageAdapter?.destroy) {
+  if (typeof serverStorageAdapter?.destroy === 'function') {
     serverStorageAdapter.destroy();
   }
   serverAuthAdapter = null;

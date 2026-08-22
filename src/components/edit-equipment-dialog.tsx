@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toDate } from '@/lib/date-utils';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -84,13 +85,13 @@ export function EditEquipmentDialog({ equipment, allBikes, onUpdateEquipment, on
   const isMobile = useIsMobile();
   const isShoes = equipment.type === 'Cycling Shoes';
   
-  const form = useForm<EditEquipmentFormValues>({
+  const form = useForm<any>({
     resolver: zodResolver(editEquipmentFormSchema),
     defaultValues: {
       type: 'bike',
       name: equipment.name || '',
       purchaseCondition: equipment.purchaseCondition || 'new',
-      purchaseDate: equipment.purchaseDate || new Date(),
+      purchaseDate: equipment.purchaseDate ? new Date(equipment.purchaseDate) : new Date(),
       purchasePrice: equipment.purchasePrice ?? 0,
       serialNumber: equipment.serialNumber || '',
       frameSize: equipment.frameSize || '',
@@ -101,45 +102,41 @@ export function EditEquipmentDialog({ equipment, allBikes, onUpdateEquipment, on
   });
 
   useEffect(() => {
-    if (isShoes) {
-        const [size, system] = (equipment.size || '0 eu').split(' ');
-        form.reset({
-            type: 'shoe',
-            name: equipment.name,
-            purchaseCondition: equipment.purchaseCondition,
-            purchaseDate: equipment.purchaseDate,
-            purchasePrice: equipment.purchasePrice,
-            size: parseFloat(size),
-            shoeSizeSystem: (system?.toLowerCase() as 'us' | 'uk' | 'eu') || 'eu',
-            associatedBikeIds: equipment.associatedEquipmentIds || [],
-        });
-    } else {
-        form.reset({
-            type: 'bike',
-            name: equipment.name,
-            purchaseCondition: equipment.purchaseCondition,
-            purchaseDate: equipment.purchaseDate,
-            purchasePrice: equipment.purchasePrice,
-            serialNumber: equipment.serialNumber || '',
-            frameSize: equipment.frameSize || '',
-        });
-    }
+      const purchaseDateValue = equipment.purchaseDate ? new Date(equipment.purchaseDate) : new Date();
+      if (isShoes) {
+          const [size, system] = (equipment.size || '0 eu').split(' ');
+          form.reset({
+              type: 'shoe',
+              name: equipment.name,
+              purchaseCondition: equipment.purchaseCondition,
+              purchaseDate: purchaseDateValue,
+              purchasePrice: equipment.purchasePrice,
+              size: parseFloat(size),
+              shoeSizeSystem: (system?.toLowerCase() as 'us' | 'uk' | 'eu') || 'eu',
+              associatedBikeIds: equipment.associatedEquipmentIds || [],
+          });
+      } else {
+          form.reset({
+              type: 'bike',
+              name: equipment.name,
+              purchaseCondition: equipment.purchaseCondition,
+              purchaseDate: purchaseDateValue,
+              purchasePrice: equipment.purchasePrice,
+              serialNumber: equipment.serialNumber || '',
+              frameSize: equipment.frameSize || '',
+          });
+      }
   }, [equipment, form, isShoes]);
 
   async function onSubmit(data: EditEquipmentFormValues) {
     setIsSubmitting(true);
+    let updateData: Partial<Equipment> = {};
     try {
-        const normalizedPurchaseDate = data.purchaseDate instanceof Date
-            ? data.purchaseDate.toISOString().split('T')[0]
-            : data.purchaseDate;
-
-        let updateData: Partial<Equipment>;
-        
         if (data.type === 'shoe') {
              updateData = {
                 name: data.name,
                 purchaseCondition: data.purchaseCondition,
-                purchaseDate: normalizedPurchaseDate,
+                purchaseDate: data.purchaseDate,
                 purchasePrice: data.purchasePrice,
                 size: `${data.size} ${data.shoeSizeSystem.toUpperCase()}`,
                 shoeSizeSystem: data.shoeSizeSystem,
@@ -149,7 +146,7 @@ export function EditEquipmentDialog({ equipment, allBikes, onUpdateEquipment, on
              updateData = {
                 name: data.name,
                 purchaseCondition: data.purchaseCondition,
-                purchaseDate: normalizedPurchaseDate,
+                purchaseDate: data.purchaseDate,
                 purchasePrice: data.purchasePrice,
                 serialNumber: data.serialNumber || '',
                 frameSize: data.frameSize || '',
@@ -363,10 +360,10 @@ export function EditEquipmentDialog({ equipment, allBikes, onUpdateEquipment, on
                                                 <FormItem key={bike.id} className="flex flex-row items-start space-x-3 space-y-0">
                                                     <FormControl>
                                                         <Checkbox checked={field.value?.includes(bike.id)}
-                                                            onCheckedChange={(checked) => {
+                                                            onCheckedChange={(checked: boolean) => {
                                                                 return checked
                                                                     ? field.onChange([...(field.value || []), bike.id])
-                                                                    : field.onChange(field.value?.filter((value) => value !== bike.id))
+                                                                    : field.onChange(field.value?.filter((value: string) => value !== bike.id))
                                                             }}
                                                         />
                                                     </FormControl>

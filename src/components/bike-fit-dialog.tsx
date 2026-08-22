@@ -139,30 +139,36 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
   const renderMeasurementField = (name: keyof FitFormValues, label: string, letter: string, unit: string) => (
      <FormField
         control={form.control}
-        name={name}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{letter}. {label} ({unit})</FormLabel>
-            <FormControl>
-              <Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={field.value ?? ''} />
-            </FormControl>
-          </FormItem>
-        )}
+        name={name as any}
+        render={({ field }) => {
+          const value = field.value as number | string | undefined;
+          return (
+            <FormItem>
+              <FormLabel>{letter}. {label} ({unit})</FormLabel>
+              <FormControl>
+                <Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={value ?? ''} />
+              </FormControl>
+            </FormItem>
+          )
+        }}
       />
   );
   
   const renderTextField = (name: keyof FitFormValues, label: string, letter: string) => (
      <FormField
         control={form.control}
-        name={name}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{letter}. {label}</FormLabel>
-            <FormControl>
-              <Input {...field} value={field.value ?? ''} />
-            </FormControl>
-          </FormItem>
-        )}
+        name={name as any}
+        render={({ field }) => {
+          const value = field.value as string | undefined;
+          return (
+            <FormItem>
+              <FormLabel>{letter}. {label}</FormLabel>
+              <FormControl>
+                <Input {...field} value={value ?? ''} />
+              </FormControl>
+            </FormItem>
+          )
+        }}
       />
   );
   
@@ -170,15 +176,18 @@ export function BikeFitDialog({ children, equipment, onSuccess }: BikeFitDialogP
      <FormField
         control={form.control}
         name={`cleatPosition.${name}` as any}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{label} ({unit})</FormLabel>
-            <FormControl>
-              <Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={field.value ?? ''} />
-            </FormControl>
-             <FormMessage />
-          </FormItem>
-        )}
+        render={({ field }) => {
+          const value = field.value as number | string | undefined;
+          return (
+            <FormItem>
+              <FormLabel>{label} ({unit})</FormLabel>
+              <FormControl>
+                <Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} value={value ?? ''} />
+              </FormControl>
+               <FormMessage />
+            </FormItem>
+          )
+        }}
       />
   );
 

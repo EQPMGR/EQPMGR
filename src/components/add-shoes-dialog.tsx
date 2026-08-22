@@ -52,6 +52,7 @@ import { Label } from '@/components/ui/label';
 
 
 const shoesFormSchema = z.object({
+  brand: z.string().optional(),
   shoeId: z.string().min(1, { message: 'Please select a shoe model.' }),
   size: z.coerce.number().min(1, 'Please enter a valid size.'),
   shoeSizeSystem: z.enum(['us', 'uk', 'eu']),
@@ -83,6 +84,7 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
   const form = useForm<ShoesFormValues>({
     resolver: zodResolver(shoesFormSchema),
     defaultValues: {
+      brand: '',
       shoeId: '',
       purchaseDate: new Date(),
       purchasePrice: 0,
@@ -92,7 +94,7 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
     },
   });
 
-  const { brand } = useWatch({ control: form.control });
+  const brand = useWatch({ control: form.control, name: 'brand' }) as string | undefined;
 
   useEffect(() => {
     async function fetchShoeModels() {
@@ -122,7 +124,7 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
   }, [discipline, shoeModels]);
 
   const shoeBrands = useMemo(() => {
-    return [...new Set(filteredShoes.map(shoe => shoe.brand).filter(Boolean))].sort();
+    return [...new Set(filteredShoes.map(shoe => shoe.brand).filter((brand): brand is string => Boolean(brand)))].sort();
   }, [filteredShoes]);
 
   const availableModels = useMemo(() => {
@@ -205,7 +207,7 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
                            field.onChange(brand);
                            form.setValue('shoeId', '');
                         }}
-                        value={field.value}
+                        value={field.value || ''}
                         disabled={isLoadingModels || !discipline}
                        >
                         <FormControl>
@@ -231,7 +233,7 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
                       <FormLabel>Model</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
-                        value={field.value}
+                        value={field.value || ''}
                         disabled={!brand || isLoadingModels}
                       >
                         <FormControl>
@@ -260,7 +262,7 @@ export function AddShoesDialog({ onAddShoes, allBikes }: AddShoesDialogProps) {
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value || 'eu'}
                         className="flex items-center space-x-4"
                       >
                         <FormItem className="flex items-center space-x-2 space-y-0">

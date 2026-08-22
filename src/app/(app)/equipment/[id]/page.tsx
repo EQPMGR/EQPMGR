@@ -131,6 +131,13 @@ export default function EquipmentDetailPage() {
 
       if (equipmentDocSnap.exists) {
         const equipmentData = equipmentDocSnap.data;
+        if (!equipmentData) {
+          toast({ variant: 'destructive', title: 'Not Found', description: 'Could not load equipment details.' });
+          setEquipment(undefined);
+          return;
+        }
+
+        const equipmentDataDefined = equipmentData as Equipment;
 
         // Fetch components for this equipment
         const componentsSnapshot = await database.getDocs<UserComponent>(
@@ -157,27 +164,28 @@ export default function EquipmentDetailPage() {
             }
         }
 
-        const combinedComponents: Component[] = userComponents.map(userComp => {
+        const combinedComponents = userComponents.reduce<Component[]>((acc, userComp) => {
             const masterComp = masterComponentsMap.get(userComp.masterComponentId);
             if (!masterComp) {
                 console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
-                return null;
+                return acc;
             }
-            return {
+            acc.push({
                 ...masterComp,
                 ...userComp,
                 userComponentId: userComp.id,
                 purchaseDate: toDate(userComp.purchaseDate),
                 lastServiceDate: toNullableDate(userComp.lastServiceDate),
-            };
-        }).filter((c): c is Component => c !== null);
+            });
+            return acc;
+        }, []);
 
         setEquipment({
-            ...equipmentData,
+            ...equipmentDataDefined,
             id: equipmentId,
-            purchaseDate: toDate(equipmentData.purchaseDate),
+            purchaseDate: toDate(equipmentDataDefined.purchaseDate),
             components: combinedComponents,
-            maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+            maintenanceLog: (equipmentDataDefined.maintenanceLog || []).map((l: any) => ({
                 ...l,
                 date: toDate(l.date),
             })),

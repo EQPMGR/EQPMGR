@@ -56,11 +56,17 @@ export default function ComponentDetailPage() {
           return;
       }
       const eqData = equipmentDocSnap.data;
+      if (!eqData) {
+          toast({ variant: 'destructive', title: 'Equipment data is missing' });
+          setIsLoading(false);
+          return;
+      }
+      const { id: _ignoredId, ...eqDataWithoutId } = eqData;
       setEquipment({
           id: equipmentId,
-          ...eqData,
-          purchaseDate: toDate(eqData.purchaseDate),
-          maintenanceLog: (eqData.maintenanceLog || []).map((l: any) => ({...l, date: toDate(l.date)})),
+          ...eqDataWithoutId,
+          purchaseDate: toDate(eqDataWithoutId.purchaseDate),
+          maintenanceLog: (eqDataWithoutId.maintenanceLog || []).map((l: any) => ({...l, date: toDate(l.date)})),
         } as Equipment);
 
       const mainComponentDocSnap = await database.getSubDoc<UserComponent>(
@@ -117,17 +123,18 @@ export default function ComponentDetailPage() {
         });
       }
 
-      const combinedSubComponents = subUserComps.map(subUserComp => {
+      const combinedSubComponents = subUserComps.reduce<Component[]>((acc, subUserComp) => {
         const masterComp = masterCompsMap.get(subUserComp.masterComponentId);
-        if (!masterComp) return null;
-        return {
+        if (!masterComp) return acc;
+        acc.push({
           ...masterComp,
           ...subUserComp,
           userComponentId: subUserComp.id,
           purchaseDate: toDate(subUserComp.purchaseDate),
           lastServiceDate: toNullableDate(subUserComp.lastServiceDate),
-        };
-      }).filter((c): c is Component => c !== null);
+        });
+        return acc;
+      }, []);
 
       setSubComponents(combinedSubComponents);
 

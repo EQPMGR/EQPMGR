@@ -135,7 +135,7 @@ export async function saveBikeModelAction({
             if (!componentToSave.system) continue;
 
             const canonicalKey = getCanonicalComponentKey(componentToSave);
-            let masterComponentId = masterComponentCache.get(canonicalKey);
+            let masterComponentId: string | undefined = masterComponentCache.get(canonicalKey);
 
             if (!masterComponentId) {
                 // For now, using direct Supabase query instead of findExistingMasterComponent
@@ -161,7 +161,7 @@ export async function saveBikeModelAction({
                         })
                     });
                 }
-                masterComponentCache.set(canonicalKey, masterComponentId);
+                masterComponentCache.set(canonicalKey, masterComponentId!);
             }
 
             const bikeModelComponentId = generateId();

@@ -147,7 +147,7 @@ export function AddComponentDialog({
     return options;
   }, [allComponentOptions, system, isAccessory, singularCategory]);
 
-  const brands = useMemo(() => [...new Set(componentOptions.map(c => c.brand).filter(Boolean))].sort(), [componentOptions]);
+  const brands = useMemo(() => [...new Set(componentOptions.map(c => c.brand).filter((brand): brand is string => Boolean(brand)))].sort(), [componentOptions]);
   
   const filteredModels = useMemo(() => {
       let filtered = componentOptions;
@@ -220,8 +220,8 @@ export function AddComponentDialog({
                     <AccordionTrigger>Add from Database</AccordionTrigger>
                     <AccordionContent className="space-y-4 pt-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={value => { field.onChange(value); form.setValue('componentId', ''); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="componentId" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Brand</FormLabel><Select onValueChange={(value) => { field.onChange(value as string); form.setValue('componentId', ''); }} value={String(field.value ?? '')}><FormControl><SelectTrigger><SelectValue placeholder="Select Brand" /></SelectTrigger></FormControl><SelectContent>{brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="componentId" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><Select onValueChange={(value) => field.onChange(value as string)} value={String(field.value ?? '')} disabled={!filteredModels.length}><FormControl><SelectTrigger><SelectValue placeholder="Select Model" /></SelectTrigger></FormControl><SelectContent>{filteredModels.map(m => <SelectItem key={m.id} value={m.id}>{m.model}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)}/>
                         </div>
                     </AccordionContent>
                 </AccordionItem>

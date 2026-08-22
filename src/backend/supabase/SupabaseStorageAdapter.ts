@@ -54,6 +54,7 @@ function dataURLtoBlob(dataUrl: string): { blob: Blob; contentType: string } {
 export class SupabaseStorageAdapter implements IStorage {
   private supabase: SupabaseClient;
   private bucket: string;
+  destroy?(): void;
 
   constructor(bucket: string = DEFAULT_BUCKET) {
     this.supabase = getSupabaseClient();

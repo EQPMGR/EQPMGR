@@ -66,7 +66,7 @@ async function ensureStravaTokenIsValid(
         throw new Error('Server is not configured for Strava integration.');
     }
 
-    const fetchOptions: RequestInit = {
+    const fetchOptions: NodeFetchInit = {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -118,8 +118,10 @@ const INITIAL_STRAVA_RIDE_LIMIT = 250;
 const REGULAR_STRAVA_RIDE_LIMIT = 25;
 const STRAVA_PAGE_SIZE = 30;
 
+type NodeFetchInit = RequestInit & { agent?: https.Agent };
+
 async function fetchStravaBikeActivities(accessToken: string, maxRides: number): Promise<StravaActivity[]> {
-    const fetchOptions: RequestInit = {
+    const fetchOptions: NodeFetchInit = {
         headers: {
             Authorization: `Bearer ${accessToken}`,
             'User-Agent': 'EQPMGR/1.0',
@@ -361,7 +363,7 @@ export async function checkStravaConnection(idToken: string, skipVerification: b
             return { connected: true };
         }
 
-        const fetchOptions: RequestInit = {
+        const fetchOptions: NodeFetchInit = {
             headers: {
                 Authorization: `Bearer ${validTokens.accessToken}`,
                 'User-Agent': 'EQPMGR/1.0',

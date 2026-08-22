@@ -1,0 +1,2 @@
+export const SADDLES_COMPONENTS: any[] = [];
+export const SADDLE_COMPONENTS = SADDLES_COMPONENTS;

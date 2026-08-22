@@ -52,6 +52,7 @@ import { Separator } from './ui/separator';
 
 
 const equipmentFormSchema = z.object({
+  brand: z.string().optional(),
   name: z.string().min(2, { message: 'Nickname is required.' }),
   bikeIdentifier: z.string().min(1, { message: 'Please select a bike.' }),
   purchaseDate: z.date({
@@ -90,9 +91,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
     defaultValues: {
-      name: '',
-      bikeIdentifier: '',
-      purchaseDate: new Date(),
+        brand: '',
       purchasePrice: 0,
       serialNumber: '',
       frameSize: '',
@@ -103,7 +102,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
   const selectedBrand = useWatch({
       control: form.control,
       name: 'brand'
-  });
+  }) as string | undefined;
   
   const purchaseCondition = useWatch({ control: form.control, name: 'purchaseCondition' });
   const purchaseDate = useWatch({ control: form.control, name: 'purchaseDate' });
@@ -127,7 +126,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
           'brand'
         );
 
-        const brands = [...new Set(docs.map((doc) => doc.data.brand).filter(Boolean))].sort();
+        const brands = [...new Set(docs.map((doc) => doc.data?.brand).filter((brand): brand is string => Boolean(brand)))].sort();
         setBikeBrands(brands);
       } catch (error) {
         console.error('Error fetching bike models:', error);
@@ -161,9 +160,9 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
 
         setModelOptions(querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          brand: doc.data.brand,
-          model: doc.data.model,
-          modelYear: doc.data.modelYear,
+          brand: doc.data?.brand || '',
+          model: doc.data?.model || '',
+          modelYear: doc.data?.modelYear || 0,
         })));
       } catch (error) {
         console.error('Error fetching bike models for brand:', error);

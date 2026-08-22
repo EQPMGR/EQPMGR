@@ -187,7 +187,7 @@ export function WearSimulation({ equipment, onSuccess }: WearSimulationProps) {
         throw new Error(err.error || 'Simulation failed');
       }
 
-      const { result: output } = await resp.json();
+      const { result: output } = await resp.json() as { result: SimulateWearOutput };
       setResult(output);
 
       // After successful simulation, update database

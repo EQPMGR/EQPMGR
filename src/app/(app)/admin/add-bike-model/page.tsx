@@ -127,17 +127,18 @@ function AddBikeModelFormComponent() {
           });
           
           // Create a mutable copy of base components to update
-          const updatedComponents = [...BASE_COMPONENTS.map(c => ({...c}))];
+          const updatedComponents = [...BASE_COMPONENTS.map(c => ({ ...c }))] as any[];
 
           // --- Improved Mapping Logic ---
           const componentMap = new Map(updatedComponents.map((comp, index) => [comp.name.toLowerCase(), index]));
 
           importedData.components.forEach(importedComp => {
+              const importedCompAny = importedComp as any;
               const normalizedImportedComp = {
-                ...importedComp,
-                chainring1: importedComp.chainring1 || importedComp['chainring 1'] || importedComp['chainring-1'] || importedComp['Chainring 1'] || importedComp['Chainring-1'] || importedComp['chainring1'],
-                chainring2: importedComp.chainring2 || importedComp['chainring 2'] || importedComp['chainring-2'] || importedComp['Chainring 2'] || importedComp['Chainring-2'] || importedComp['chainring2'],
-                chainring3: importedComp.chainring3 || importedComp['chainring 3'] || importedComp['chainring-3'] || importedComp['Chainring 3'] || importedComp['Chainring-3'] || importedComp['chainring3'],
+                ...importedCompAny,
+                chainring1: importedCompAny.chainring1 || importedCompAny['chainring 1'] || importedCompAny['chainring-1'] || importedCompAny['Chainring 1'] || importedCompAny['Chainring-1'] || importedCompAny['chainring1'],
+                chainring2: importedCompAny.chainring2 || importedCompAny['chainring 2'] || importedCompAny['chainring-2'] || importedCompAny['Chainring 2'] || importedCompAny['Chainring-2'] || importedCompAny['chainring2'],
+                chainring3: importedCompAny.chainring3 || importedCompAny['chainring 3'] || importedCompAny['chainring-3'] || importedCompAny['Chainring 3'] || importedCompAny['Chainring-3'] || importedCompAny['chainring3'],
               };
               const cleanedName = normalizedImportedComp.name.toLowerCase().trim();
               
@@ -197,7 +198,7 @@ function AddBikeModelFormComponent() {
                       Object.assign(updatedComponents[index], componentToUpdate);
                   } else {
                       // If it's still not found, push it as a new component
-                      updatedComponents.push({ ...importedComp, id: crypto.randomUUID() });
+                      updatedComponents.push({ ...importedCompAny, id: crypto.randomUUID() });
                   }
               }
           });

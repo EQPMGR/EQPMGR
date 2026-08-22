@@ -71,11 +71,11 @@ function ServiceProviderCard({ provider }: { provider: ServiceProviderWithDistan
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          {provider.services.map(service => (
+          {Array.isArray(provider.services) ? provider.services.map(service => (
             <Badge key={service} variant="secondary">
               {service.replace('-', ' ')}
             </Badge>
-          ))}
+          )) : null}
         </div>
       </CardContent>
       <CardFooter className="mt-auto flex flex-col items-stretch gap-2">

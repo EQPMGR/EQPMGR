@@ -3,6 +3,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { toDate } from '@/lib/date-utils';
 import type { ServiceProvider, WorkOrder } from '@/lib/types';
 
 function getSupabaseClient() {
@@ -117,9 +118,7 @@ export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' 
       createdAt: new Date(),
       userConsent: {
           ...workOrderData.userConsent,
-          timestamp: workOrderData.userConsent.timestamp instanceof Date
-            ? workOrderData.userConsent.timestamp
-            : new Date(workOrderData.userConsent.timestamp),
+          timestamp: toDate(workOrderData.userConsent.timestamp),
       },
     };
 

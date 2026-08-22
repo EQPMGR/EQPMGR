@@ -7,7 +7,8 @@ const SESSION_COOKIE = '__session';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
 async function setSessionCookie(token: string) {
-  cookies().set({
+  const cookieStore = await cookies();
+  cookieStore.set({
     name: SESSION_COOKIE,
     value: token,
     httpOnly: true,
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE() {
-  cookies().delete(SESSION_COOKIE, { path: '/' });
+  const cookieStore = await cookies();
+  cookieStore.delete({ name: SESSION_COOKIE, path: '/' });
   return NextResponse.json({ status: 'success' });
 }

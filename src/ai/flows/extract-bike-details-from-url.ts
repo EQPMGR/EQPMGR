@@ -67,7 +67,7 @@ const extractBikeDetailsFlow = ai.defineFlow(
     inputSchema: ExtractBikeDetailsInputSchema,
     outputSchema: ExtractBikeDetailsOutputSchema,
   },
-  async (input) => {
+  async (input: ExtractBikeDetailsInput) => {
     let output: ExtractBikeDetailsOutput | undefined;
     try {
         const result = await bikeExtractorPrompt(input);

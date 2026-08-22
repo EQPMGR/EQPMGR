@@ -29,7 +29,7 @@ export function InsuranceQuoteButton() {
 
       // If no province or not BC, allow user to proceed manually with clear guidance
       toast({
-        variant: 'warning',
+        variant: 'default',
         title: 'Location not determined',
         description: `${errorMessage} IP fallback yielded ${fallbackData.province || 'unknown location'}. You can still continue the application manually.`,
         duration: 9000,
@@ -87,7 +87,7 @@ export function InsuranceQuoteButton() {
         router.push('/insurance?brokerInterest=1');
       } else {
         toast({
-          variant: 'warning',
+          variant: 'default',
           title: 'Location Unknown',
           description: warn || 'Could not determine exact province. Coverage is currently BC-only.',
           duration: 9000,
@@ -123,7 +123,7 @@ export function InsuranceQuoteButton() {
         const fallbackData = await fallbackResponse.json().catch(() => ({ province: null, warning: 'Fallback service did not respond.' }));
         await processGeoResults(fallbackData.province, fallbackData.warning || 'GPS location failed.');
       } catch (fallbackError: any) {
-        toast({ variant: 'warning', title: 'Location Unavailable', description: 'Unable to derive location automatically. You can still continue manually on the insurance page.' });
+        toast({ variant: 'default', title: 'Location Unavailable', description: 'Unable to derive location automatically. You can still continue manually on the insurance page.' });
         router.push('/insurance?brokerInterest=1');
         setIsLoading(false);
       }

@@ -48,7 +48,7 @@ export interface VectorSearchOptions {
 }
 
 export interface BatchWrite {
-  set<T>(collection: string, docId: string, data: T): void;
+  set<T>(collection: string, docId: string, data: T, options?: { merge?: boolean }): void;
   update<T>(collection: string, docId: string, data: Partial<T>): void;
   delete(collection: string, docId: string): void;
   setInSubcollection<T>(parentCollection: string, subCollection: string, docId: string, data: T): void;
@@ -96,6 +96,21 @@ export interface IDatabase {
     subCollection: string,
     ...constraints: QueryConstraint[]
   ): Promise<QuerySnapshot<T>>;
+
+  /**
+   * Set a document in a nested collection path
+   */
+  setInSubcollection<T>(parentCollection: string, subCollection: string, docId: string, data: T): Promise<void>;
+
+  /**
+   * Update a document in a nested collection path
+   */
+  updateInSubcollection<T>(parentCollection: string, subCollection: string, docId: string, data: Partial<T>): Promise<void>;
+
+  /**
+   * Delete a document from a nested collection path
+   */
+  deleteInSubcollection(parentCollection: string, subCollection: string, docId: string): Promise<void>;
 
   /**
    * Set (create or overwrite) a document

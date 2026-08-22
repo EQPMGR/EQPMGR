@@ -78,7 +78,7 @@ export const indexComponentFlow = ai.defineFlow(
     inputSchema: IndexComponentInputSchema,
     outputSchema: IndexComponentOutputSchema,
   },
-  async (component) => {
+  async (component: any) => {
     console.log(`[SERVER] Starting indexComponentFlow for component ID: ${component.id}`);
     try {
         // 1. Create the string to be embedded.

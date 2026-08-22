@@ -55,6 +55,9 @@ export function OpenWorkOrders() {
             const orders: WorkOrder[] = [];
             querySnapshot.docs.forEach((doc) => {
                 const data = doc.data;
+                if (!data) {
+                  return;
+                }
                 orders.push({
                     ...data,
                     id: doc.id,

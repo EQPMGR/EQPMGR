@@ -37,7 +37,7 @@ const generateMaintenanceScheduleFlow = ai.defineFlow(
     inputSchema: GenerateMaintenanceScheduleInputSchema,
     outputSchema: GenerateMaintenanceScheduleOutputSchema,
   },
-  async input => {
+  async (input: GenerateMaintenanceScheduleInput) => {
     const {output} = await prompt(input);
     return output!;
   }

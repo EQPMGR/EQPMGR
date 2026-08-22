@@ -10,6 +10,10 @@ import { toDate } from '@/lib/date-utils';
 // Re-export UserProfile from backend types for backward compatibility
 export type UserProfile = BackendUserProfile;
 
+type ProfileUpdateData = Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'> & {
+  birthdate?: Date | string | null;
+};
+
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
@@ -17,7 +21,7 @@ interface AuthContextType {
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
-  updateProfileInfo: (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'>) => Promise<void>;
+  updateProfileInfo: (data: ProfileUpdateData) => Promise<void>;
   updateUserPreferences: (prefs: Partial<Pick<UserProfile, 'measurementSystem' | 'shoeSizeSystem' | 'distanceUnit' | 'dateFormat'>>) => Promise<void>;
   updateProfilePhoto: (photoDataUrl: string) => Promise<boolean>;
 }
@@ -247,7 +251,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  const updateProfileInfoHandler = useCallback(async (data: Omit<Partial<UserProfile>, 'uid' | 'email' | 'getIdToken'>) => {
+  const updateProfileInfoHandler = useCallback(async (data: ProfileUpdateData) => {
     const auth = await getAuth();
     const db = await getDb();
     const currentUser = auth.getCurrentUser();
@@ -259,11 +263,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     try {
       // Build update data for database; keep explicit nulls and zeros where valid
       let birthdayValue = undefined;
-      if (data.birthdate !== undefined) {
-        if (data.birthdate instanceof Date) {
-          birthdayValue = data.birthdate.toISOString().split('T')[0];
-        } else if (typeof data.birthdate === 'string' && data.birthdate.trim() !== '') {
-          const parsedDate = Date.parse(data.birthdate);
+      const birthdateValue = data.birthdate as Date | string | null | undefined;
+      if (birthdateValue !== undefined && birthdateValue !== null) {
+        if (birthdateValue instanceof Date) {
+          birthdayValue = birthdateValue.toISOString().split('T')[0];
+        } else if (typeof birthdateValue === 'string' && birthdateValue.trim() !== '') {
+          const parsedDate = Date.parse(birthdateValue);
           birthdayValue = isNaN(parsedDate) ? undefined : new Date(parsedDate).toISOString().split('T')[0];
         } else {
           birthdayValue = undefined;

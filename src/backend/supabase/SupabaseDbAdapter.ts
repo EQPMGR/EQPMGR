@@ -398,6 +398,7 @@ export class SupabaseDbAdapter implements IDatabase {
   private supabase: SupabaseClient;
   private isServer: boolean;
   private columnCache: Map<string, Set<string>> = new Map();
+  destroy?(): void;
 
   // Fallback known columns for common tables to use when table is empty or discovery fails
   private static DEFAULT_TABLE_COLUMNS: Record<string, string[]> = {
@@ -569,10 +570,10 @@ export class SupabaseDbAdapter implements IDatabase {
     const snapshot = toDocumentSnapshot<T>(data, collection);
     
     // Log strava field if present
-    if (collection === 'app_users' && data?.strava) {
-      console.log('[SupabaseDbAdapter] getDoc STRAVA FIELD', {
-        rawFromDb: JSON.stringify(data.strava),
-        afterConversion: JSON.stringify(snapshot.data?.strava),
+      const rawDataAny = data as any;
+      if (collection === 'app_users' && rawDataAny?.strava) {
+        console.log('[SupabaseDbAdapter] getDoc STRAVA FIELD', {
+          rawFromDb: JSON.stringify(rawDataAny.strava),
       });
     }
 
@@ -792,6 +793,23 @@ export class SupabaseDbAdapter implements IDatabase {
     if (error) {
       throw new Error(`Failed to set subdocument: ${error.message}`);
     }
+  }
+
+  async setInSubcollection<T>(parentCollection: string, subCollection: string, docId: string, data: T): Promise<void> {
+    const parsed = this.parseParentCollection(parentCollection);
+    const payload = { ...data } as any;
+    if (parsed.parentUserId) payload.user_id = parsed.parentUserId;
+    await this.setSubDoc(parsed.collection, parsed.parentDocId, subCollection, docId, payload);
+  }
+
+  async updateInSubcollection<T>(parentCollection: string, subCollection: string, docId: string, data: Partial<T>): Promise<void> {
+    const parsed = this.parseParentCollection(parentCollection);
+    await this.updateSubDoc(parsed.collection, parsed.parentDocId, subCollection, docId, data);
+  }
+
+  async deleteInSubcollection(parentCollection: string, subCollection: string, docId: string): Promise<void> {
+    const parsed = this.parseParentCollection(parentCollection);
+    await this.deleteSubDoc(parsed.collection, parsed.parentDocId, subCollection, docId);
   }
 
   private async resolveFieldValueOperations(collection: string, docId: string, data: any): Promise<any> {

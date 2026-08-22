@@ -43,6 +43,25 @@ export function EquipmentListPage() {
 
       const equipmentPromises = equipmentSnapshot.docs.map(async (equipmentDoc) => {
         const equipmentData = equipmentDoc.data;
+        if (!equipmentData) {
+          console.warn('Skipping equipment doc with missing data', equipmentDoc.id);
+          return {
+            id: equipmentDoc.id,
+            name: 'Unknown Equipment',
+            type: 'Other',
+            brand: '',
+            model: '',
+            modelYear: 0,
+            purchaseCondition: 'used',
+            purchaseDate: new Date(),
+            purchasePrice: 0,
+            totalDistance: 0,
+            totalHours: 0,
+            imageUrl: '',
+            components: [],
+            maintenanceLog: [],
+          } as Equipment;
+        }
 
         // Fetch components for each equipment
         const componentsSnapshot = await db.getDocs<UserComponent>(
@@ -71,27 +90,30 @@ export function EquipmentListPage() {
             }
         }
 
-        const combinedComponents: Component[] = userComponents.map(userComp => {
+        const combinedComponents = userComponents.reduce<Component[]>((acc, userComp) => {
             const masterComp = masterComponentsMap.get(userComp.masterComponentId);
-             if (!masterComp) {
+            if (!masterComp) {
                 console.warn(`Master component with ID ${userComp.masterComponentId} not found.`);
-                return null;
+                return acc;
             }
-            return {
+            const { id: _unusedId, ...userCompWithoutId } = userComp;
+            acc.push({
                 ...masterComp,
-                ...userComp, // User-specific data overrides master data
+                ...userCompWithoutId,
                 userComponentId: userComp.id,
                 purchaseDate: toDate(userComp.purchaseDate),
                 lastServiceDate: toNullableDate(userComp.lastServiceDate),
-            };
-        }).filter((c): c is Component => c !== null);
+            });
+            return acc;
+        }, []);
 
+        const { id: _equipmentIdUnused, ...equipmentDataWithoutId } = equipmentData;
         return {
           id: equipmentDoc.id,
-          ...equipmentData,
-          purchaseDate: toDate(equipmentData.purchaseDate),
+          ...equipmentDataWithoutId,
+          purchaseDate: toDate(equipmentDataWithoutId.purchaseDate),
           components: combinedComponents,
-          maintenanceLog: (equipmentData.maintenanceLog || []).map((l: any) => ({
+          maintenanceLog: (equipmentDataWithoutId.maintenanceLog || []).map((l: any) => ({
               ...l,
               date: toDate(l.date),
           })),
@@ -246,8 +268,8 @@ export function EquipmentListPage() {
 
               const componentDoc: Partial<UserComponent> = {
                 ...userComponent,
-                equipment_id: newEquipmentId,
-                user_id: user.uid,
+                equipmentId: newEquipmentId,
+                userId: user.uid,
               };
               batch.set('components', newComponentId, componentDoc as any);
           });
@@ -324,6 +346,7 @@ export function EquipmentListPage() {
         const userComponent: UserComponent = {
             id: newComponentId,
             masterComponentId: formData.shoeId,
+            name: shoeFromDb.model || shoeFromDb.name || 'Shoes',
             wearPercentage: 0,
             purchaseDate: formData.purchaseDate ?? new Date(),
             lastServiceDate: null,

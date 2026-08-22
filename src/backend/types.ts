@@ -35,7 +35,7 @@ export interface UserDocument {
   height?: number;
   weight?: number;
   shoe_size?: number;
-  birthdate?: Date;
+  birthdate?: Date | string;
   measurement_system?: 'metric' | 'imperial';
   shoe_size_system?: 'us-womens' | 'us-mens' | 'uk' | 'eu';
   distance_unit?: 'km' | 'miles';
