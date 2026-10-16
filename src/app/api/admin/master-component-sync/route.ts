@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/server-auth';
-import { updateMasterComponentAndSyncUsers } from '@/app/(app)/admin/add-bike-model/actions';
+import { updateMasterComponentAndSyncUsers } from '@/app/(app)/add-bike-model/actions';
 
 export async function POST(request: Request) {
   const authResult = await requireAdmin(request);
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid payload. Provide masterComponentId and updates object.' }, { status: 400 });
     }
 
-    const res = await updateMasterComponentAndSyncUsers({ masterComponentId, updates });
+    const res = await updateMasterComponentAndSyncUsers({ idToken: authResult.user.idToken, masterComponentId, updates });
     return NextResponse.json(res, { status: 200 });
   } catch (error: any) {
     console.error('admin master sync failed', error);

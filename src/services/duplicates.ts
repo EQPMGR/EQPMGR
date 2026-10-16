@@ -1,6 +1,8 @@
 
 'use server';
 
+import { verifyAdminToken } from '@/lib/server-auth';
+
 import { getServerDb } from '@/backend';
 import { fetchAllDocsPaginated } from '@/backend/dbPagination';
 import type { MasterComponent } from '@/lib/types';
@@ -15,8 +17,9 @@ export interface DuplicateGroup {
  * Duplicates are determined by having the same name, brand, size, and a similar model number.
  * @returns A promise that resolves to an array of groups of duplicate components.
  */
-export async function findDuplicateMasterComponents(): Promise<DuplicateGroup[]> {
+export async function findDuplicateMasterComponents(idToken: string): Promise<DuplicateGroup[]> {
   try {
+    await verifyAdminToken(idToken);
     const db = await getServerDb();
     const componentDocs = await fetchAllDocsPaginated<MasterComponent>(db, 'masterComponents', 500, 'id');
     const ignoredDocs = await fetchAllDocsPaginated<{ ignored: boolean; ignoredAt: string }>(db, 'ignoredDuplicates', 500, 'id');

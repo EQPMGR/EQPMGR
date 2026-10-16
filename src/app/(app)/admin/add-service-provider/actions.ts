@@ -1,6 +1,8 @@
 
 'use server';
 
+import { verifyAdminToken } from '@/lib/server-auth';
+
 import { createClient } from '@supabase/supabase-js';
 import type { AddProviderFormValues } from './page';
 
@@ -52,14 +54,17 @@ const createProviderId = (name: string, city: string) => {
 };
 
 export async function addServiceProviderAction({
+    idToken,
     values,
 }: {
+    idToken: string;
     values: AddProviderFormValues;
 }): Promise<{ success: boolean; message: string }> {
 
     const providerId = createProviderId(values.name, values.city);
 
     try {
+      await verifyAdminToken(idToken);
         const supabase = getSupabaseClient();
 
         // Check if provider already exists

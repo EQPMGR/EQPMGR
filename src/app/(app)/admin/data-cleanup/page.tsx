@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { Loader2, Trash2, ShieldAlert } from 'lucide-react';
 import { removeAllEmbeddingsAction } from './actions';
 
@@ -23,11 +24,12 @@ import { removeAllEmbeddingsAction } from './actions';
 export default function DataCleanupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleRemoveEmbeddings = async () => {
     setIsLoading(true);
     try {
-      const result = await removeAllEmbeddingsAction();
+      const result = await removeAllEmbeddingsAction((await user?.getIdToken()) ?? '');
       if (result.success) {
         toast({
           title: 'Cleanup Successful!',
