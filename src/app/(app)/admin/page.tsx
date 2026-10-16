@@ -41,7 +41,7 @@ export default function AdminPage() {
                             </CardDescription>
                         </div>
                         <Button asChild size="sm" variant="outline">
-                            <Link href="/admin/add-bike-model">
+                            <Link href="/add-bike-model">
                                 Go to Form <ArrowUpRight className="h-4 w-4 ml-2" />
                             </Link>
                         </Button>

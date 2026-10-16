@@ -4,6 +4,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { verifyAdminToken } from '@/lib/server-auth';
 import { getServerAuth } from '@/backend';
 import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent, UserComponent } from '@/lib/types';
@@ -384,12 +385,16 @@ export async function saveBikeModelAction({
 }
 
 export async function updateMasterComponentAndSyncUsers({
+    idToken,
     masterComponentId,
     updates
 }: {
+    idToken: string;
     masterComponentId: string;
     updates: Partial<MasterComponent>;
 }) {
+    await verifyAdminToken(idToken);
+
     if (!masterComponentId) {
         throw new Error('Master component ID is required.');
     }
