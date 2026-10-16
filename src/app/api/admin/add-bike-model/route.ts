@@ -1,17 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/server-auth';
 import { saveBikeModelAction } from '@/app/(app)/admin/add-bike-model/actions';
 import type { AddBikeModelFormValues } from '@/app/(app)/admin/add-bike-model/page';
 
 export async function POST(request: Request) {
-  const authHeader = request.headers.get('Authorization');
-  const idToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!idToken) {
-    return NextResponse.json(
-      { success: false, message: 'Missing authorization token.' },
-      { status: 401 }
-    );
-  }
+  const authResult = await requireAdmin(request);
+  if (!authResult.ok) return authResult.response;
+  const { idToken } = authResult.user;
 
   let values: AddBikeModelFormValues;
   try {
