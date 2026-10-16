@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { UserComponent, MasterComponent, MaintenanceLog } from '@/lib/types';
 import { findExistingMasterComponent, createComponentSlug } from '@/lib/master-component-utils';
+import { verifyUserToken } from '@/lib/server-auth';
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -72,20 +73,36 @@ function convertKeysToCamelCase(obj: any): any {
   return obj;
 }
 
+/**
+ * These actions use the service-role key, which bypasses RLS, so ownership must
+ * be checked here. Mirrors the equipment RLS policy (user_id or app_user_id).
+ */
+async function assertOwnsEquipment(supabase: ReturnType<typeof getSupabaseClient>, equipmentId: string, userId: string) {
+    const { data, error } = await supabase
+      .from('equipment')
+      .select('id')
+      .eq('id', equipmentId)
+      .or(`user_id.eq.${userId},app_user_id.eq.${userId}`)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new Error('Equipment not found.');
+}
+
 // Helper to generate UUIDs for new records
 function generateId(): string {
   return crypto.randomUUID();
 }
 
 export async function replaceUserComponentAction({
-    userId,
+    idToken,
     equipmentId,
     userComponentIdToReplace,
     replacementReason,
     newMasterComponentId,
     manualNewComponentData,
 }: {
-    userId: string;
+    idToken: string;
     equipmentId: string;
     userComponentIdToReplace: string;
     replacementReason: 'failure' | 'modification' | 'upgrade';
@@ -97,7 +114,7 @@ export async function replaceUserComponentAction({
         size?: string;
     } | null;
 }) {
-    if (!userId || !equipmentId || !userComponentIdToReplace) {
+    if (!idToken || !equipmentId || !userComponentIdToReplace) {
         throw new Error("Missing required parameters for component replacement.");
     }
 
@@ -106,6 +123,8 @@ export async function replaceUserComponentAction({
     }
 
     const supabase = getSupabaseClient();
+    const { uid: userId } = await verifyUserToken(idToken);
+    await assertOwnsEquipment(supabase, equipmentId, userId);
     
     try {
         // 1. Fetch the component record from the separate components table.
@@ -409,19 +428,21 @@ export async function replaceUserComponentAction({
 }
 
 export async function deleteUserComponentAction({
-    userId,
+    idToken,
     equipmentId,
     userComponentId,
 }: {
-    userId: string;
+    idToken: string;
     equipmentId: string;
     userComponentId: string;
 }) {
-    if (!userId || !equipmentId || !userComponentId) {
+    if (!idToken || !equipmentId || !userComponentId) {
         throw new Error("Missing required parameters for component deletion.");
     }
 
     const supabase = getSupabaseClient();
+    const { uid: userId } = await verifyUserToken(idToken);
+    await assertOwnsEquipment(supabase, equipmentId, userId);
 
     try {
         // Fetch equipment and remove component from array
@@ -446,13 +467,13 @@ export async function deleteUserComponentAction({
 
 
 export async function addUserComponentAction({
-    userId,
+    idToken,
     equipmentId,
     masterComponentId,
     system,
      manualNewComponentData,
 }: {
-    userId: string;
+    idToken: string;
     equipmentId: string;
     masterComponentId: string | null;
     system: string;
@@ -464,7 +485,7 @@ export async function addUserComponentAction({
         size?: string;
     } | null;
 }) {
-    if (!userId || !equipmentId || (!masterComponentId && !manualNewComponentData)) {
+    if (!idToken || !equipmentId || (!masterComponentId && !manualNewComponentData)) {
         throw new Error("Missing required parameters for adding a component.");
     }
 
@@ -472,6 +493,8 @@ export async function addUserComponentAction({
     let newComponentSize: string | undefined;
 
     const supabase = getSupabaseClient();
+    const { uid: userId } = await verifyUserToken(idToken);
+    await assertOwnsEquipment(supabase, equipmentId, userId);
 
     // Logic to handle manual entry vs. selection from DB
     if (manualNewComponentData && manualNewComponentData.brand) {

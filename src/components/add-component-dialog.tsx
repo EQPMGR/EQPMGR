@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { fetchAllMasterComponents, type MasterComponentWithOptions } from '@/services/components';
 import { addUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
 import {
@@ -58,7 +59,6 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface AddComponentDialogProps {
-  userId: string;
   equipmentId: string;
   system: string;
   onSuccess: () => void;
@@ -68,7 +68,6 @@ interface AddComponentDialogProps {
 const ACCESSORY_CATEGORIES = ['Pedals', 'Racks', 'Hydration Systems', 'Computers', 'Sensors'];
 
 export function AddComponentDialog({
-  userId,
   equipmentId,
   system,
   onSuccess,
@@ -80,6 +79,7 @@ export function AddComponentDialog({
   const [allComponentOptions, setAllComponentOptions] = useState<MasterComponentWithOptions[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const isAccessory = system.toLowerCase() === 'accessories';
   
@@ -159,8 +159,9 @@ export function AddComponentDialog({
   const onSubmit = async (data: FormValues) => {
     setIsSaving(true);
     try {
+      if (!user) throw new Error('You must be signed in to add a component.');
       await addUserComponentAction({
-        userId,
+        idToken: await user.getIdToken(),
         equipmentId,
         system,
         masterComponentId: data.componentId || null,

@@ -4,6 +4,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { toDate } from '@/lib/date-utils';
+import { verifyUserToken } from '@/lib/server-auth';
 import type { ServiceProvider, WorkOrder } from '@/lib/types';
 
 function getSupabaseClient() {
@@ -99,12 +100,16 @@ export async function getServiceProviders(): Promise<ServiceProvider[]> {
   }
 }
 
-export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' | 'createdAt' | 'status'>): Promise<{ success: boolean; message: string }> {
-  if (!workOrderData.userId || !workOrderData.serviceProviderId) {
-    return { success: false, message: 'User or Service Provider ID is missing.' };
+export async function submitWorkOrderAction(
+  idToken: string,
+  workOrderData: Omit<WorkOrder, 'id' | 'createdAt' | 'status' | 'userId'>
+): Promise<{ success: boolean; message: string }> {
+  if (!workOrderData.serviceProviderId) {
+    return { success: false, message: 'Service Provider ID is missing.' };
   }
 
   try {
+    const { uid } = await verifyUserToken(idToken);
     const supabase = getSupabaseClient();
 
     // Generate a new UUID-like ID (Supabase uses UUIDs by default)
@@ -114,6 +119,7 @@ export async function submitWorkOrderAction(workOrderData: Omit<WorkOrder, 'id' 
     const newWorkOrder: WorkOrder = {
       id: newWorkOrderId,
       ...workOrderData,
+      userId: uid,
       status: 'pending',
       createdAt: new Date(),
       userConsent: {

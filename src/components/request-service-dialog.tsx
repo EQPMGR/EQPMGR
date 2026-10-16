@@ -118,8 +118,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
     }
     setIsSubmitting(true);
     
-    const result = await submitWorkOrderAction({
-        userId: user.uid,
+    const result = await submitWorkOrderAction(await user.getIdToken(), {
         userName: user.displayName || user.email || 'Unknown User',
         userPhone: user.phone || '',
         userEmail: user.email || '',
