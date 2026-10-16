@@ -15,6 +15,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { addServiceProviderAction } from './actions';
 
 const services = [
@@ -42,6 +43,7 @@ export type AddProviderFormValues = z.infer<typeof addProviderSchema>;
 
 export default function AddServiceProviderPage() {
     const { toast } = useToast();
+  const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<AddProviderFormValues>({
@@ -62,7 +64,7 @@ export default function AddServiceProviderPage() {
     async function onSubmit(values: AddProviderFormValues) {
         setIsSubmitting(true);
         try {
-            const result = await addServiceProviderAction({ values });
+            const result = await addServiceProviderAction({ idToken: (await user?.getIdToken()) ?? '', values });
             if (result.success) {
                 toast({
                     title: 'Provider Added!',

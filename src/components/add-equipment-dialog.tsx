@@ -357,7 +357,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                         <Link href="/import-text"><FileInput className="mr-2 h-4 w-4" /> Import from Text</Link>
                     </Button>
                      <Button type="button" variant="outline" className="w-full" asChild>
-                        <Link href="/admin/add-bike-model"><FilePlus className="mr-2 h-4 w-4" /> Add Manually</Link>
+                        <Link href="/add-bike-model"><FilePlus className="mr-2 h-4 w-4" /> Add Manually</Link>
                     </Button>
                 </div>
                 <Separator />

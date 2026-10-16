@@ -110,7 +110,8 @@ export default function InsurancePage() {
     async function onSubmit(values: InsuranceFormValues) {
         setIsSubmitting(true);
         try {
-            const result = await submitInsuranceApplication(values);
+            if (!user) throw new Error('You must be signed in to apply.');
+            const result = await submitInsuranceApplication(await user.getIdToken(), values);
             if (result.success) {
                 toast({
                     title: 'Application Submitted!',

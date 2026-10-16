@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2, Replace } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { fetchAllMasterComponents, type MasterComponentWithOptions } from '@/services/components';
 import type { Component } from '@/lib/types';
 import { replaceUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
@@ -65,14 +66,12 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface ReplaceComponentDialogProps {
-  userId?: string;
   equipmentId: string;
   componentToReplace: Component;
   onSuccess: () => void;
 }
 
 export function ReplaceComponentDialog({
-  userId,
   equipmentId,
   componentToReplace,
   onSuccess,
@@ -82,6 +81,7 @@ export function ReplaceComponentDialog({
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [allComponentOptions, setAllComponentOptions] = useState<MasterComponentWithOptions[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -163,7 +163,7 @@ export function ReplaceComponentDialog({
   };
 
   const callServerAction = async (data: FormValues) => {
-      if (!userId) {
+      if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
         return;
       }
@@ -171,7 +171,7 @@ export function ReplaceComponentDialog({
       
       try {
         const result = await replaceUserComponentAction({
-            userId,
+            idToken: await user.getIdToken(),
             equipmentId,
             userComponentIdToReplace: componentToReplace.userComponentId,
             replacementReason: data.replacementReason,

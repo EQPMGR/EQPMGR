@@ -165,7 +165,7 @@ export default function ComponentDetailPage() {
     setIsDeleting(true);
     try {
         await deleteUserComponentAction({
-            userId: user.uid,
+            idToken: await user.getIdToken(),
             equipmentId: params.id as string,
             userComponentId: component.userComponentId,
         });
@@ -269,7 +269,6 @@ export default function ComponentDetailPage() {
                 <h4 className="font-semibold mb-2">Actions</h4>
                 <div className="flex gap-2 flex-wrap">
                     <ReplaceComponentDialog 
-                        userId={user?.uid} 
                         equipmentId={params.id as string} 
                         componentToReplace={component}
                         onSuccess={handleSuccess}

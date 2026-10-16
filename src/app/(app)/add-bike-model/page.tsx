@@ -267,7 +267,7 @@ function AddBikeModelFormComponent() {
         try {
             const idToken = await user.getIdToken(true);
             const payload = importFeedback ? { ...values, importFeedback } : values;
-            const response = await fetch('/api/admin/add-bike-model', {
+            const response = await fetch('/api/bike-models', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -590,7 +590,7 @@ function AddBikeModelFormComponent() {
                         </div>
                         <div className="flex items-center gap-2">
                             <Button type="button" variant="outline" asChild>
-                                <Link href="/admin">Cancel</Link>
+                                <Link href="/equipment">Cancel</Link>
                             </Button>
                             <Button type="submit" disabled={isSubmitting || !form.formState.isValid}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

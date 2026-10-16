@@ -4,6 +4,11 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  async redirects() {
+    return [
+      { source: '/admin/add-bike-model', destination: '/add-bike-model', permanent: true },
+    ];
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

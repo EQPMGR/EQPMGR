@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/server-auth';
-import { saveBikeModelAction } from '@/app/(app)/admin/add-bike-model/actions';
-import type { AddBikeModelFormValues } from '@/app/(app)/admin/add-bike-model/page';
+import { requireUser } from '@/lib/server-auth';
+import { saveBikeModelAction } from '@/app/(app)/add-bike-model/actions';
+import type { AddBikeModelFormValues } from '@/app/(app)/add-bike-model/page';
 
 export async function POST(request: Request) {
-  const authResult = await requireAdmin(request);
+  const authResult = await requireUser(request);
   if (!authResult.ok) return authResult.response;
   const { idToken } = authResult.user;
 

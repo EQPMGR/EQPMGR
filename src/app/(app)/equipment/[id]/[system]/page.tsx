@@ -155,7 +155,6 @@ const combinedComponents = userComponents.reduce<Component[]>((acc, userComp) =>
           </Button>
            {user && (
             <AddComponentDialog 
-                userId={user.uid}
                 equipmentId={params.id as string}
                 system={systemName}
                 onSuccess={handleSuccess}

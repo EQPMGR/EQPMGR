@@ -1,6 +1,3 @@
-
-'use server';
-
 /**
  * Accesses environment variable secrets.
  * @param secretName The name of the environment variable to access.

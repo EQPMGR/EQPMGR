@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { Loader2, SearchCheck, CheckCircle } from 'lucide-react';
 import { findDuplicateMasterComponents, type DuplicateGroup } from '@/services/duplicates';
 import { mergeDuplicateComponents, ignoreDuplicateGroup } from './actions';
@@ -24,13 +25,14 @@ export default function FindDuplicatesPage() {
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
   const [primarySelections, setPrimarySelections] = useState<{ [key: string]: string }>({});
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleFindDuplicates = async () => {
     setIsLoading(true);
     setDuplicateGroups([]);
     setPrimarySelections({});
     try {
-      const duplicates = await findDuplicateMasterComponents();
+      const duplicates = await findDuplicateMasterComponents((await user?.getIdToken()) ?? '');
       
       const initialSelections: { [key: string]: string } = {};
       duplicates.forEach(group => {
@@ -74,7 +76,7 @@ export default function FindDuplicatesPage() {
     }
     setActionStatus({ isLoading: true, groupId: group.key, action: 'merge' });
     const idsToMerge = group.components.map(c => c.id);
-    const result = await mergeDuplicateComponents(primaryId, idsToMerge);
+    const result = await mergeDuplicateComponents((await user?.getIdToken()) ?? '', primaryId, idsToMerge);
     if (result.success) {
       toast({ title: 'Merge Successful!', description: result.message });
       setDuplicateGroups(prev => prev.filter(g => g.key !== group.key));
@@ -86,7 +88,7 @@ export default function FindDuplicatesPage() {
   
   const handleIgnore = async (group: DuplicateGroup) => {
     setActionStatus({ isLoading: true, groupId: group.key, action: 'ignore' });
-    const result = await ignoreDuplicateGroup(group.key);
+    const result = await ignoreDuplicateGroup((await user?.getIdToken()) ?? '', group.key);
      if (result.success) {
       toast({ title: 'Group Ignored', description: result.message });
       setDuplicateGroups(prev => prev.filter(g => g.key !== group.key));

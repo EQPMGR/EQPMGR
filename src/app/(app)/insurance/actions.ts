@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { InsuranceFormValues } from './schema';
 import { accessSecret } from '@/lib/secrets';
+import { verifyUserToken } from '@/lib/server-auth';
 import * as nodemailer from 'nodemailer';
 import { format } from 'date-fns';
 
@@ -115,10 +116,13 @@ async function sendEmail(formData: InsuranceFormValues) {
 
 
 export async function submitInsuranceApplication(
+  idToken: string,
   values: InsuranceFormValues
 ): Promise<{ success: boolean; message: string }> {
 
   try {
+    await verifyUserToken(idToken);
+
     // Send the email with the form data
     await sendEmail(values);
 

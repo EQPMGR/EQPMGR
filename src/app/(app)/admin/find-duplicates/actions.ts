@@ -1,6 +1,8 @@
 
 'use server';
 
+import { verifyAdminToken } from '@/lib/server-auth';
+
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabaseClient() {
@@ -26,7 +28,7 @@ function getSupabaseClient() {
  * @param primaryComponentId The ID of the component to keep.
  * @param idsToMerge The list of component IDs to merge into the primary one.
  */
-export async function mergeDuplicateComponents(primaryComponentId: string, idsToMerge: string[]): Promise<{ success: boolean; message: string }> {
+export async function mergeDuplicateComponents(idToken: string, primaryComponentId: string, idsToMerge: string[]): Promise<{ success: boolean; message: string }> {
   if (!primaryComponentId || !idsToMerge || idsToMerge.length === 0) {
     return { success: false, message: 'Missing primary component ID or IDs to merge.' };
   }
@@ -34,6 +36,7 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
   const supabase = getSupabaseClient();
 
   try {
+    await verifyAdminToken(idToken);
     // 1. Find all equipment documents
     const { data: allEquipment, error: equipmentError } = await supabase
       .from('equipment')
@@ -91,12 +94,13 @@ export async function mergeDuplicateComponents(primaryComponentId: string, idsTo
  * This stores a record in the `ignored_duplicates` table.
  * @param key The unique key representing the duplicate group.
  */
-export async function ignoreDuplicateGroup(key: string): Promise<{ success: boolean; message: string }> {
+export async function ignoreDuplicateGroup(idToken: string, key: string): Promise<{ success: boolean; message: string }> {
     if (!key) {
         return { success: false, message: 'A group key is required to ignore duplicates.' };
     }
 
     try {
+      await verifyAdminToken(idToken);
         const supabase = getSupabaseClient();
         
         const { error } = await supabase

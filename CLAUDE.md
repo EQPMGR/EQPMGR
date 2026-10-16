@@ -6,6 +6,8 @@ The codebase was migrated from Firebase/Firestore to Supabase. Expect stale and 
 
 ## Commands
 
+- `next.config.ts` sets `ignoreBuildErrors`, so Netlify builds succeed even with type errors. Always run the typecheck yourself.
+
 - Dev: `npm run dev -- --hostname 0.0.0.0 --port 3007` (the `dev` script itself is plain `next dev`, so pass the port)
 - Typecheck: `npm run typecheck`. Run it after every change. It currently passes clean (`tsc_errors.txt` in the root is stale; ignore it).
 - Migrations: `supabase migration list`, `supabase db push`
@@ -19,10 +21,10 @@ The codebase was migrated from Firebase/Firestore to Supabase. Expect stale and 
 
 ## Layout
 
-- `src/app/(app)/`: authenticated app routes: `dashboard`, `equipment`, `settings`, `admin`, `import-text`, `service-providers`, `insurance`, `bike-insights`
-- `src/app/api/`: route handlers (`strava/*`, `admin/*`, `debug/*`, `provision`, `health`, `weather`, `geocode*`)
+- `src/app/(app)/`: authenticated app routes: `dashboard`, `equipment`, `settings`, `admin`, `import-text`, `add-bike-model`, `service-providers`, `insurance`, `bike-insights`
+- `src/app/api/`: route handlers (`strava/*`, `admin/*`, `bike-models`, `provision`, `health`, `weather`, `geocode*`)
 - `src/backend/`: backend abstraction (`factory.ts`, `interfaces/`, `supabase/`). Entry point is `@/backend` (`getDb`, `getAuth`, `getServerDb`, ...).
-- `src/lib/`: `types.ts` (core data model), `admin-access.ts`, `supabaseClient.ts` (browser singleton), the component seed data `*-data.ts`, and `wear-simulation.ts`
+- `src/lib/`: `types.ts` (core data model), `admin-access.ts`, `server-auth.ts`, `supabaseClient.ts` (browser singleton), the component seed data `*-data.ts`, and `wear-simulation.ts`
 - `src/services/`: duplicate detection, component helpers, vector search
 - `src/context/auth-context.tsx` + `src/hooks/use-auth.ts`: Supabase auth plus the `app_users` profile
 - `supabase/migrations/`: schema and RLS. Read these before changing data-access logic.
@@ -58,9 +60,13 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 ## Admin access
 
 - `src/lib/admin-access.ts` has a single-email allowlist. `src/app/(app)/admin/layout.tsx` and `src/app/debug/layout.tsx` gate the UI with `AdminAccessGate`.
-- That gate is client-side only. Route handlers enforce access themselves through `src/lib/server-auth.ts`: `requireAdmin` (bearer token plus allowlist, returning 401/403) or `requireUser` (bearer token only, returning 401).
-- Not everything under `api/admin/*` is admin-only. `import-text`, `simulate-wear` and `generate-maintenance-schedule` back regular-user features, so they use `requireUser`. `add-bike-model`, `master-component-sync` and `import-feedback-analysis` use `requireAdmin`. Every new route handler must call one of the two.
-- `updateMasterComponentAndSyncUsers` in `admin/add-bike-model/actions.ts` is a `'use server'` export with no auth check of its own. Only call it from guarded code.
+- That gate is client-side only. The server enforces access through `src/lib/server-auth.ts`:
+  - Route handlers: `requireUser(request)` (bearer token, 401) or `requireAdmin(request)` (also allowlist, 403).
+  - Server actions: `verifyUserToken(idToken)` or `verifyAdminToken(idToken)`, which throw. The client passes `await user.getIdToken()` from `useAuth()`.
+- **Every `'use server'` export is a public endpoint.** Most actions use the service-role key, which bypasses RLS, so each one must verify the token itself. Never trust a `userId` sent by the client; use the verified uid. Before touching equipment or components, check ownership (see `assertOwnsEquipment` in `equipment/[id]/actions.ts`). Don't put `'use server'` on plain helper modules.
+- Not everything under `api/admin/*` is admin-only. `import-text`, `simulate-wear` and `generate-maintenance-schedule` back regular-user features (`requireUser`). `master-component-sync` and `import-feedback-analysis` use `requireAdmin`.
+- Add Bike Model is a user feature: the page is `/add-bike-model` (`/admin/add-bike-model` redirects there) and the API is `/api/bike-models`. New models go into the shared catalog with `created_by` set.
+- Unguarded on purpose (read-only shared catalog): `getServiceProviders`, `fetchAllMasterComponents`.
 
 ## Delete flow
 
@@ -68,13 +74,11 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 
 ## Stale and legacy code
 
-- `src/ai/`: Genkit-era flows. `genkit.ts` is now a thin shim over `src/lib/llm.ts` (Genkit isn't a dependency). Check that a flow is actually called before relying on it.
 - Firebase leftovers: `firebase.json`, `firestore.rules`, `.firebaserc`, `apphosting.yaml`, and the `firebase`/`firebase-admin` dependencies.
 - Many root `*.md` files (`BACKEND_*`, `MIGRATION_GUIDE`, `IMPLEMENTATION_COMPLETE`, ...) describe past migration phases and may be out of date. `PHASE1_2_BREADCRUMB.md` is the most recent work log.
 - Stray files: `src/add-equipment-dialog.tsx` (duplicate of the one in `src/components/`), `src/tmp_parse_form_test.mjs`, `tmp-test-d.ts`, `repomix-output.xml`.
-- `admin/import-url` and some seeders may be inactive. Verify before editing.
+- Some admin seeders may be inactive. Verify before editing.
 
 ## Known issues (as of 2026-10-15)
 
-- **Migration 008 collision.** `HEAD` has `008_enable_rls_on_metadata_tables.sql` (enables RLS on all app tables). The working tree deletes it and adds an untracked `008_add_import_text_feedback.sql`. Both have version `008`. If the cloud DB already applied the old 008, `db push` will treat the new one as applied and skip creating `import_text_feedback`. Check `supabase migration list` before pushing, and renumber the new migration if needed.
-- **Much recent work is uncommitted** (delete fix, migration 012, admin gating, the `/import-text` route, the add-bike-model slug fix). Don't discard working-tree changes.
+- **Migration 008.** The old `008_enable_rls_on_metadata_tables.sql` was replaced by `008_add_import_text_feedback.sql` (the old RLS rules caused problems). The cloud DB records only version `008`, and `import_text_feedback` exists. It is unconfirmed whether the old RLS rules were ever applied; check `supabase_migrations.schema_migrations` for the name.

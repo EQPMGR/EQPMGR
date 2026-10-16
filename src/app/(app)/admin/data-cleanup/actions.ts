@@ -1,6 +1,8 @@
 
 'use server';
 
+import { verifyAdminToken } from '@/lib/server-auth';
+
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabaseClient() {
@@ -20,8 +22,9 @@ function getSupabaseClient() {
  * Iterates through all documents in the `master_components` table
  * and removes the `embedding` field if it exists.
  */
-export async function removeAllEmbeddingsAction(): Promise<{ success: boolean; message: string }> {
+export async function removeAllEmbeddingsAction(idToken: string): Promise<{ success: boolean; message: string }> {
   try {
+    await verifyAdminToken(idToken);
     const supabase = getSupabaseClient();
     let totalProcessed = 0;
     let totalUpdated = 0;
