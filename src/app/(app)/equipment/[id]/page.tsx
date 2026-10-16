@@ -228,24 +228,22 @@ export default function EquipmentDetailPage() {
       toast({ variant: "destructive", title: "Error", description: "Could not delete equipment." });
       return;
     }
+
     setIsDeleting(true);
+
     try {
       const database = await getDb();
-      const batch = database.batch();
 
-      // Delete all components
       const componentsSnap = await database.getDocs(
         'components',
         { type: 'where', field: 'equipmentId', op: '==', value: equipment.id }
       );
-      componentsSnap.docs.forEach(doc => {
-        batch.delete('components', doc.id);
-      });
 
-      // Delete the main equipment document
-      batch.delete('equipment', equipment.id);
+      for (const componentDoc of componentsSnap.docs) {
+        await database.deleteDoc('components', componentDoc.id);
+      }
 
-      await batch.commit();
+      await database.deleteDoc('equipment', equipment.id);
 
       toast({
         title: "Success!",
@@ -253,6 +251,7 @@ export default function EquipmentDetailPage() {
       });
 
       router.push('/equipment');
+      router.refresh();
     } catch (error) {
       console.error("Error deleting equipment: ", error);
       toast({
@@ -260,6 +259,7 @@ export default function EquipmentDetailPage() {
         title: "Delete failed",
         description: "An error occurred while deleting the equipment."
       });
+    } finally {
       setIsDeleting(false);
     }
   };
