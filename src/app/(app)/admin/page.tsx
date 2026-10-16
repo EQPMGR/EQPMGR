@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, DatabaseZap, SearchCheck, FileInput, Building, Trash2, Database } from 'lucide-react';
+import { ArrowUpRight, SearchCheck, FileInput, Building, Trash2, Database, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -50,14 +50,14 @@ export default function AdminPage() {
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
-                            <CardTitle className="text-base font-semibold">Import from Text</CardTitle>
+                            <CardTitle className="text-base font-semibold">Import Feedback Analyzer</CardTitle>
                             <CardDescription className="text-sm">
-                                Use AI to import a bike's specs from pasted text.
+                                Review parsed vs final import feedback and common parser mistakes.
                             </CardDescription>
                         </div>
                         <Button asChild size="sm" variant="outline">
-                            <Link href="/admin/import-text">
-                                <FileInput className="h-4 w-4 mr-2" /> Import
+                            <Link href="/admin/import-feedback">
+                                <BarChart3 className="h-4 w-4 mr-2" /> Review
                             </Link>
                         </Button>
                     </CardHeader>
@@ -73,21 +73,6 @@ export default function AdminPage() {
                         <Button asChild size="sm" variant="outline">
                             <Link href="/admin/add-service-provider">
                                 <Building className="h-4 w-4 mr-2" /> Add Provider
-                            </Link>
-                        </Button>
-                    </CardHeader>
-                </Card>
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                         <div>
-                            <CardTitle className="text-base font-semibold">Firestore Vector Indexing</CardTitle>
-                            <CardDescription className="text-sm">
-                                Generate embeddings for component search.
-                            </CardDescription>
-                        </div>
-                        <Button asChild size="sm" variant="outline">
-                            <Link href="/admin/vector-admin">
-                                <DatabaseZap className="h-4 w-4 mr-2" /> Manage Embeddings
                             </Link>
                         </Button>
                     </CardHeader>

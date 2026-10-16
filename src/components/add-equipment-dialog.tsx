@@ -354,7 +354,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                 <p className="text-sm text-center text-muted-foreground">Can't find your bike?</p>
                 <div className="flex gap-2">
                     <Button type="button" variant="outline" className="w-full" asChild>
-                        <Link href="/admin/import-text"><FileInput className="mr-2 h-4 w-4" /> Import from Text</Link>
+                        <Link href="/import-text"><FileInput className="mr-2 h-4 w-4" /> Import from Text</Link>
                     </Button>
                      <Button type="button" variant="outline" className="w-full" asChild>
                         <Link href="/admin/add-bike-model"><FilePlus className="mr-2 h-4 w-4" /> Add Manually</Link>
