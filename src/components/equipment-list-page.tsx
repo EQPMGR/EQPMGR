@@ -36,7 +36,7 @@ export function EquipmentListPage() {
       if (equipmentSnapshot.empty) {
         equipmentSnapshot = await db.getDocs<Equipment>(
           'equipment',
-          { type: 'where', field: 'appUserId', op: '==', value: uid }
+          { type: 'where', field: 'userId', op: '==', value: uid }
         );
       }
 
@@ -194,13 +194,11 @@ export function EquipmentListPage() {
           equipmentId: newEquipmentId,
           ...newEquipmentData,
           userId: user.uid,
-          appUserId: user.uid,
         });
 
         batch.set('equipment', newEquipmentId, {
           ...newEquipmentData,
           user_id: user.uid,
-          app_user_id: user.uid,
         });
 
         const bikeModelComponentsSnapshot = await db.getDocs<BikeModelComponent>(

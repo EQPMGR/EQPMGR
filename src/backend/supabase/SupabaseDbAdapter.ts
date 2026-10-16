@@ -428,7 +428,7 @@ export class SupabaseDbAdapter implements IDatabase {
       'distance_unit', 'date_format', 'created_at', 'last_login', 'strava'
     ],
     equipment: [
-      'id','user_id','app_user_id','name','type','brand','model','model_year','serial_number','frame_size','size',
+      'id','user_id','name','type','brand','model','model_year','serial_number','frame_size','size',
       'shoe_size_system','purchase_condition','purchase_date','purchase_price','total_distance','total_hours',
       'image_url','wheelsets','associated_equipment_ids','maintenance_log','master_bike_model_id','fit_data','archived_components','created_at','updated_at'
     ],
@@ -666,6 +666,8 @@ export class SupabaseDbAdapter implements IDatabase {
 
   private buildParentIdField(parentCollection: string): string {
     const normalized = normalizeTableName(parentCollection);
+    // Rows owned by a user (equipment, etc.) reference app_users through user_id.
+    if (normalized === 'app_users') return 'user_id';
     const base = normalized.endsWith('s') ? normalized.slice(0, -1) : normalized;
     return `${base}_id`;
   }
@@ -740,7 +742,7 @@ export class SupabaseDbAdapter implements IDatabase {
         if (!sanitized.type) {
           sanitized.type = 'Unknown';
         }
-        if (!sanitized.user_id && !sanitized.app_user_id) {
+        if (!sanitized.user_id) {
           throw new Error(`Equipment write missing owner information. Payload: ${JSON.stringify(sanitized)}`);
         }
       }
@@ -796,7 +798,7 @@ export class SupabaseDbAdapter implements IDatabase {
         if (!sanitizedSub.type) {
           sanitizedSub.type = 'Unknown';
         }
-        if (!sanitizedSub.user_id && !sanitizedSub.app_user_id) {
+        if (!sanitizedSub.user_id) {
           throw new Error(`Equipment subdocument write missing owner information. Payload: ${JSON.stringify(sanitizedSub)}`);
         }
       }

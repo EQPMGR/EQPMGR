@@ -57,7 +57,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
         if (equipmentSnapshot.empty) {
           equipmentSnapshot = await db.getDocs<Equipment>(
             'equipment',
-            { type: 'where', field: 'appUserId', op: '==', value: user.uid }
+            { type: 'where', field: 'userId', op: '==', value: user.uid }
           );
         }
 
