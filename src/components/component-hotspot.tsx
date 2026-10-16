@@ -35,7 +35,7 @@ export function ComponentHotspot() {
       if (querySnapshot.empty) {
         querySnapshot = await database.getDocs<Equipment>(
           'equipment',
-          { type: 'where', field: 'appUserId', op: '==', value: uid }
+          { type: 'where', field: 'userId', op: '==', value: uid }
         );
       }
 

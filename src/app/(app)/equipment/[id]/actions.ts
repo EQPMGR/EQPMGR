@@ -75,14 +75,14 @@ function convertKeysToCamelCase(obj: any): any {
 
 /**
  * These actions use the service-role key, which bypasses RLS, so ownership must
- * be checked here. Mirrors the equipment RLS policy (user_id or app_user_id).
+ * be checked here. Mirrors the equipment RLS policy.
  */
 async function assertOwnsEquipment(supabase: ReturnType<typeof getSupabaseClient>, equipmentId: string, userId: string) {
     const { data, error } = await supabase
       .from('equipment')
       .select('id')
       .eq('id', equipmentId)
-      .or(`user_id.eq.${userId},app_user_id.eq.${userId}`)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (error) throw error;

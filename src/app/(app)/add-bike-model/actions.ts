@@ -290,7 +290,6 @@ export async function saveBikeModelAction({
         const equipmentInsert = convertKeysToSnakeCase({
             id: equipmentId,
             user_id: uid,
-            app_user_id: uid,
             name: `${values.brand || ''} ${values.model || ''}`.trim(),
             type: values.type,
             brand: values.brand,

@@ -110,17 +110,10 @@ export default function EquipmentDetailPage() {
       const database = await getDb();
 
       // Fetch all equipment to pass to dialogs
-      let allEquipmentSnapshot = await database.getDocs<Equipment>(
+      const allEquipmentSnapshot = await database.getDocs<Equipment>(
         'equipment',
         { type: 'where', field: 'userId', op: '==', value: uid }
       );
-
-      if (allEquipmentSnapshot.empty) {
-        allEquipmentSnapshot = await database.getDocs<Equipment>(
-          'equipment',
-          { type: 'where', field: 'appUserId', op: '==', value: uid }
-        );
-      }
 
       const allEq = allEquipmentSnapshot.docs.map(doc => ({id: doc.id, ...doc.data}) as Equipment);
       setAllEquipment(allEq);
