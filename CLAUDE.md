@@ -38,12 +38,13 @@ Adapter caveats:
 - `batch().commit()` runs ops **sequentially, not atomically**. `runTransaction` is also not a real transaction. A failure midway leaves partial writes.
 - Writes to `app_users.strava` through the adapter are **blocked on purpose**, because the adapter used to null the field after OAuth. Write the `strava` blob with the direct client.
 
-## Ownership model (main bug source)
+## Ownership model
 
-- `equipment` has both `user_id` (not null) and `app_user_id` (nullable), both referencing `app_users(id)`. RLS allows access when **either** matches `auth.uid()`.
-- `components` has its own `user_id`, but RLS on components checks ownership **through the parent equipment row** (`components.equipment_id → equipment`).
+- `app_users.id` is the Supabase auth uid. `equipment.user_id` is the single owner column. (`app_user_id` was removed in migration `013`; don't reintroduce it.)
+- In the adapter, subcollection paths like `app_users/{uid}/equipment` filter on `user_id` (see `buildParentIdField`).
+- `components` has its own `user_id`, but RLS on components checks ownership **through the parent equipment row** (`components.equipment_id → equipment.user_id`).
 - `work_orders` match on `user_id` or `service_provider_auth_uid`.
-- Queries need to match the same either/or logic, or rows will look missing.
+- EQPMGRshop shares this database and also uses `equipment.user_id`.
 
 ## RLS
 
@@ -79,6 +80,8 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - Stray files: `src/add-equipment-dialog.tsx` (duplicate of the one in `src/components/`), `src/tmp_parse_form_test.mjs`, `tmp-test-d.ts`, `repomix-output.xml`.
 - Some admin seeders may be inactive. Verify before editing.
 
-## Known issues (as of 2026-10-15)
+## Migration history notes
 
-- **Migration 008.** The old `008_enable_rls_on_metadata_tables.sql` was replaced by `008_add_import_text_feedback.sql` (the old RLS rules caused problems). The cloud DB records only version `008`, and `import_text_feedback` exists. It is unconfirmed whether the old RLS rules were ever applied; check `supabase_migrations.schema_migrations` for the name.
+- `008` was originally `enable_rls_on_metadata_tables` (it caused problems and was removed). The database recorded `add_import_text_feedback` as 008, confirmed 2026-10-16, so the old rules were never applied.
+- Some policies were created in the dashboard rather than in migrations (for example `component_replacement_events_select_own`). Check `pg_policies` on the live DB before assuming the migrations describe everything.
+- `npx tsc` can fail on stale `.next/types` after a build. Delete `.next/types` and re-run.
