@@ -16,7 +16,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { UserNav } from '@/components/user-nav';
 import { Logo } from '@/components/logo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AuthProvider } from '@/context/auth-context';
 import { useAuth } from '@/hooks/use-auth';
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -107,8 +106,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <AuthProvider>
-      <AuthenticatedLayout>{children}</AuthenticatedLayout>
-    </AuthProvider>
+    <AuthenticatedLayout>{children}</AuthenticatedLayout>
   );
 }

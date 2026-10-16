@@ -8,6 +8,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
 import { getServerConfig } from './config';
 
+
 /**
  * Convert Supabase User to AuthUser interface
  */
@@ -24,7 +25,9 @@ function toAuthUser(supabaseUser: User, accessToken?: string): AuthUser {
       }
 
       // In Supabase, we use the session access_token as the equivalent of Firebase ID token
-      const { data: { session } } = await clientInstance!.auth.getSession();
+      const sharedClients = getSharedSupabaseClients();
+      const supabase = sharedClients.client ?? getSupabaseClient(false);
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('No active session');
       }
@@ -48,47 +51,66 @@ function getEmailRedirectUrl(): string {
   throw new Error('Unable to determine email redirect URL for Supabase. Set NEXT_PUBLIC_BASE_URL.');
 }
 
-// Singleton Supabase client instance (client-side)
-let clientInstance: SupabaseClient | null = null;
+type SharedSupabaseClients = {
+  client?: SupabaseClient;
+  server?: SupabaseClient;
+};
 
-// Singleton Supabase client instance (server-side with service role)
-let serverInstance: SupabaseClient | null = null;
+const SHARED_CLIENT_KEY = '__eqpmgr_supabase_clients__';
+
+function getSharedSupabaseClients(): SharedSupabaseClients {
+  const globalScope = globalThis as typeof globalThis & { [SHARED_CLIENT_KEY]?: SharedSupabaseClients };
+  if (!globalScope[SHARED_CLIENT_KEY]) {
+    globalScope[SHARED_CLIENT_KEY] = {};
+  }
+  return globalScope[SHARED_CLIENT_KEY];
+}
 
 /**
  * Get or create Supabase client instance
  */
 function getSupabaseClient(isServer: boolean): SupabaseClient {
+  const sharedClients = getSharedSupabaseClients();
+
   if (isServer) {
-    if (!serverInstance) {
+    if (!sharedClients.server) {
       const config = getServerConfig();
-      serverInstance = createClient(config.url, config.serviceRoleKey, {
+
+      if (process.env.NODE_ENV !== 'production') {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+      }
+
+      const clientOptions: any = {
         auth: {
           autoRefreshToken: false,
           persistSession: false
         }
-      });
-    }
-    return serverInstance;
-  } else {
-    if (!clientInstance) {
-      // For client-side, we need to get config from environment
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      };
 
-      if (!url || !anonKey) {
-        throw new Error('Missing Supabase client configuration. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
-      }
-
-      clientInstance = createClient(url, anonKey, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true
-        }
-      });
+      sharedClients.server = createClient(config.url, config.serviceRoleKey, clientOptions);
     }
-    return clientInstance;
+    return sharedClients.server;
   }
+
+  if (!sharedClients.client) {
+    // For client-side, we need to get config from environment
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !anonKey) {
+      throw new Error('Missing Supabase client configuration. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    }
+
+    sharedClients.client = createClient(url, anonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    });
+  }
+
+  return sharedClients.client;
 }
 
 export class SupabaseAuthAdapter implements IAuthProvider {

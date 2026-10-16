@@ -10,14 +10,28 @@ import { createClient } from '@supabase/supabase-js';
 // Default bucket name - can be configured
 const DEFAULT_BUCKET = 'uploads';
 
-// Singleton Supabase client instance
-let clientInstance: SupabaseClient | null = null;
+type SharedSupabaseClients = {
+  client?: SupabaseClient;
+  server?: SupabaseClient;
+};
+
+const SHARED_CLIENT_KEY = '__eqpmgr_supabase_clients__';
+
+function getSharedSupabaseClients(): SharedSupabaseClients {
+  const globalScope = globalThis as typeof globalThis & { [SHARED_CLIENT_KEY]?: SharedSupabaseClients };
+  if (!globalScope[SHARED_CLIENT_KEY]) {
+    globalScope[SHARED_CLIENT_KEY] = {};
+  }
+  return globalScope[SHARED_CLIENT_KEY];
+}
 
 /**
  * Get or create Supabase client instance
  */
 function getSupabaseClient(): SupabaseClient {
-  if (!clientInstance) {
+  const sharedClients = getSharedSupabaseClients();
+
+  if (!sharedClients.client) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -25,9 +39,10 @@ function getSupabaseClient(): SupabaseClient {
       throw new Error('Missing Supabase configuration. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
     }
 
-    clientInstance = createClient(url, anonKey);
+    sharedClients.client = createClient(url, anonKey);
   }
-  return clientInstance;
+
+  return sharedClients.client;
 }
 
 /**
