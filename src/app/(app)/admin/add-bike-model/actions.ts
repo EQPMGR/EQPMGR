@@ -3,6 +3,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServerAuth } from '@/backend';
 import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent, UserComponent } from '@/lib/types';
@@ -86,6 +87,42 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
+async function getUniqueMasterComponentSlug(
+  supabase: SupabaseClient,
+  baseSlug: string,
+  reservedSlugs: Set<string>
+): Promise<string> {
+  let attempt = 1;
+  let slug = baseSlug;
+
+  while (true) {
+    if (reservedSlugs.has(slug)) {
+      attempt += 1;
+      slug = `${baseSlug}-${attempt}`;
+      continue;
+    }
+
+    const { data: existing, error } = await supabase
+      .from('master_components')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (existing) {
+      reservedSlugs.add(slug);
+      attempt += 1;
+      slug = `${baseSlug}-${attempt}`;
+      continue;
+    }
+
+    reservedSlugs.add(slug);
+    return slug;
+  }
+}
 
 export async function saveBikeModelAction({
     idToken,
@@ -115,6 +152,7 @@ export async function saveBikeModelAction({
         const bikeModelSlug = createBikeModelSlug(values);
 
         const masterComponentCache = new Map<string, string>();
+        const masterComponentSlugReservations = new Set<string>();
         const bikeModelComponentRows: Array<{ id: string; data: Record<string, any> }> = [];
         const masterComponentsToInsert: Array<{ id: string; data: Record<string, any> }> = [];
         const userComponentRows: Array<{ id: string; data: Record<string, any> }> = [];
@@ -138,29 +176,48 @@ export async function saveBikeModelAction({
             let masterComponentId: string | undefined = masterComponentCache.get(canonicalKey);
 
             if (!masterComponentId) {
-                // For now, using direct Supabase query instead of findExistingMasterComponent
-                const { data: existingMasters } = await supabase
-                  .from('master_components')
-                  .select('id')
-                  .eq('brand', componentToSave.brand || null)
-                  .eq('model', componentToSave.model || null)
-                  .eq('series', componentToSave.series || null)
-                  .eq('system', componentToSave.system)
-                  .limit(1);
+                const componentSlug = createComponentSlug(componentToSave as Partial<MasterComponent>);
 
-                if (existingMasters && existingMasters.length > 0) {
-                    masterComponentId = existingMasters[0].id;
-                } else {
-                    masterComponentId = generateId();
-                    const componentSlug = createComponentSlug(componentToSave as Partial<MasterComponent>);
-                    masterComponentsToInsert.push({
-                        id: masterComponentId,
-                        data: convertKeysToSnakeCase({
-                            ...componentToSave,
-                            slug: componentSlug || undefined,
-                        })
-                    });
+                if (componentSlug) {
+                    const { data: existingBySlug, error: slugError } = await supabase
+                      .from('master_components')
+                      .select('id')
+                      .eq('slug', componentSlug)
+                      .maybeSingle();
+
+                    if (!slugError && existingBySlug) {
+                        masterComponentId = existingBySlug.id;
+                    }
                 }
+
+                if (!masterComponentId) {
+                    const { data: existingMasters } = await supabase
+                      .from('master_components')
+                      .select('id')
+                      .eq('brand', componentToSave.brand || null)
+                      .eq('model', componentToSave.model || null)
+                      .eq('series', componentToSave.series || null)
+                      .eq('system', componentToSave.system)
+                      .limit(1);
+
+                    if (existingMasters && existingMasters.length > 0) {
+                        masterComponentId = existingMasters[0].id;
+                    } else {
+                        masterComponentId = generateId();
+                        const uniqueSlug = componentSlug
+                          ? await getUniqueMasterComponentSlug(supabase, componentSlug, masterComponentSlugReservations)
+                          : undefined;
+
+                        masterComponentsToInsert.push({
+                            id: masterComponentId,
+                            data: convertKeysToSnakeCase({
+                                ...componentToSave,
+                                slug: uniqueSlug,
+                            })
+                        });
+                    }
+                }
+
                 masterComponentCache.set(canonicalKey, masterComponentId!);
             }
 
@@ -218,15 +275,15 @@ export async function saveBikeModelAction({
 
         // Prepare all data with snake_case
         const bikeModelInsert = convertKeysToSnakeCase({
-            id: bikeModelId,
-            ...bikeModelToSave,
-            slug: bikeModelSlug,
-            type: values.type,
-            created_by: uid,
-            model_year: values.modelYear,
-            image_url: `https://placehold.co/600x400.png`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+          id: bikeModelId,
+          brand: values.brand,
+          model: values.model,
+          model_year: values.modelYear,
+          slug: bikeModelSlug,
+          image_url: `https://placehold.co/600x400.png`,
+          created_by: uid,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
 
         const equipmentInsert = convertKeysToSnakeCase({

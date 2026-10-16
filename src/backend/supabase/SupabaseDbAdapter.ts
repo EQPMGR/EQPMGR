@@ -55,40 +55,60 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
 import { getServerConfig } from './config';
 
-// Singleton Supabase client instance (client-side)
-let clientInstance: SupabaseClient | null = null;
 
-// Singleton Supabase client instance (server-side with service role)
-let serverInstance: SupabaseClient | null = null;
+type SharedSupabaseClients = {
+  client?: SupabaseClient;
+  server?: SupabaseClient;
+};
+
+const SHARED_CLIENT_KEY = '__eqpmgr_supabase_clients__';
+
+function getSharedSupabaseClients(): SharedSupabaseClients {
+  const globalScope = globalThis as typeof globalThis & { [SHARED_CLIENT_KEY]?: SharedSupabaseClients };
+  if (!globalScope[SHARED_CLIENT_KEY]) {
+    globalScope[SHARED_CLIENT_KEY] = {};
+  }
+  return globalScope[SHARED_CLIENT_KEY];
+}
 
 /**
  * Get or create Supabase client instance
  */
 function getSupabaseClient(isServer: boolean): SupabaseClient {
+  const sharedClients = getSharedSupabaseClients();
+
   if (isServer) {
-    if (!serverInstance) {
+    if (!sharedClients.server) {
       const config = getServerConfig();
-      serverInstance = createClient(config.url, config.serviceRoleKey, {
+
+      if (process.env.NODE_ENV !== 'production') {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+      }
+
+      const clientOptions: any = {
         auth: {
           autoRefreshToken: false,
           persistSession: false
         }
-      });
-    }
-    return serverInstance;
-  } else {
-    if (!clientInstance) {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      };
 
-      if (!url || !anonKey) {
-        throw new Error('Missing Supabase client configuration. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
-      }
-
-      clientInstance = createClient(url, anonKey);
+      sharedClients.server = createClient(config.url, config.serviceRoleKey, clientOptions);
     }
-    return clientInstance;
+    return sharedClients.server;
   }
+
+  if (!sharedClients.client) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !anonKey) {
+      throw new Error('Missing Supabase client configuration. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    }
+
+    sharedClients.client = createClient(url, anonKey);
+  }
+
+  return sharedClients.client;
 }
 
 /**
@@ -424,6 +444,9 @@ export class SupabaseDbAdapter implements IDatabase {
     ],
     bike_model_components: [
       'id','bike_model_id','master_component_id','component_name','system','position','size','chainring1','chainring2','chainring3','created_at','updated_at'
+    ],
+    import_text_feedback: [
+      'id','user_id','bike_model_id','equipment_id','source','raw_text','parsed_output','final_output','created_at','updated_at'
     ],
     component_replacement_events: [
       'id','equipment_id','equipment_component_id','master_component_id','actual_interval_km','replacement_reason','replaced_at_distance','notes','created_at','updated_at'

@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import type { BikeModelComponent, Equipment, MasterComponent, UserComponent, Component } from '@/lib/types';
 import { EquipmentCard } from './equipment-card';
 import { AddEquipmentDialog, type EquipmentFormValues } from './add-equipment-dialog';
-import { AddShoesDialog, type ShoesFormValues } from './add-shoes-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { getDb } from '@/backend';
@@ -290,88 +289,7 @@ export function EquipmentListPage() {
     }
   }
 
-  async function handleAddShoes(
-    formData: ShoesFormValues
-  ) {
-    if (!user) {
-        toast({
-            variant: 'destructive',
-            title: 'Not Authenticated',
-            description: 'You must be logged in to add shoes.'
-        });
-        throw new Error("User not authenticated");
-    }
-
-    try {
-        const db = await getDb();
-        const batch = db.batch();
-        const masterComponentSnap = await db.getDoc('masterComponents', formData.shoeId);
-
-        if (!masterComponentSnap.exists) {
-          throw new Error('Selected shoes could not be found in the database.');
-        }
-        const shoeFromDb = masterComponentSnap.data! as MasterComponent;
-
-        // 1. Create the main equipment document for the shoes
-        const newEquipmentId = db.generateId();
-        const newShoeData: Omit<Equipment, 'id' | 'components' | 'maintenanceLog'> & { associatedEquipmentIds?: string[] } = {
-            name: `${shoeFromDb.brand} ${shoeFromDb.model}`,
-            type: 'Cycling Shoes', // Specific type for shoes
-            brand: shoeFromDb.brand!,
-            model: shoeFromDb.model!,
-            modelYear: new Date().getFullYear(), // Or a default/not applicable value
-            purchaseDate: formData.purchaseDate ?? new Date(),
-            purchasePrice: formData.purchasePrice,
-            purchaseCondition: formData.purchaseCondition,
-            size: `${formData.size} ${formData.shoeSizeSystem.toUpperCase()}`,
-            imageUrl: 'https://placehold.co/600x400.png', // Placeholder
-            totalDistance: 0,
-            totalHours: 0,
-            associatedEquipmentIds: formData.associatedBikeIds,
-        };
-        console.log('Adding shoe equipment data', {
-          equipmentId: newEquipmentId,
-          ...newShoeData,
-          userId: user.uid,
-        });
-
-        batch.set('equipment', newEquipmentId, {
-          ...newShoeData,
-          userId: user.uid,
-          appUserId: user.uid,
-        });
-
-        // 2. Create the single component entry for the shoes themselves in the components table
-        const newComponentId = db.generateId();
-        const userComponent: UserComponent = {
-            id: newComponentId,
-            masterComponentId: formData.shoeId,
-            name: shoeFromDb.model || shoeFromDb.name || 'Shoes',
-            wearPercentage: 0,
-            purchaseDate: formData.purchaseDate ?? new Date(),
-            lastServiceDate: null,
-            size: String(formData.size),
-            notes: '',
-        };
-        batch.set('components', newComponentId, {
-          ...userComponent,
-          equipmentId: newEquipmentId,
-          userId: user.uid,
-        });
-        await batch.commit();
-        await fetchEquipment(user.uid);
-
-    } catch (error) {
-        console.error("Failed to add shoes:", error);
-        toast({
-            variant: "destructive",
-            title: "Failed to Add Shoes",
-            description: "There was an issue adding your shoes. Please try again.",
-        });
-        throw error;
-    }
-  }
-
+  // Shoes flow is temporarily hidden until the Cycling Shoes experience is stabilized.
 
   if (isLoading || authLoading) {
     return (
@@ -407,8 +325,6 @@ export function EquipmentListPage() {
     )
   }
 
-  const bikes = data.filter(e => e.type !== 'Cycling Shoes');
-
   return (
     <PageContainer>
       <div className="flex items-center justify-between space-y-2 mb-6">
@@ -424,7 +340,6 @@ export function EquipmentListPage() {
             Sync Activity
           </Button>
           <AddEquipmentDialog onAddEquipment={handleAddEquipment} />
-          <AddShoesDialog onAddShoes={handleAddShoes} allBikes={bikes} />
         </div>
       </div>
       {data.length > 0 ? (

@@ -41,3 +41,6 @@ firestore-debug.log
 # IDE files
 .vscode
 .idea
+
+# Local Netlify folder
+.netlify

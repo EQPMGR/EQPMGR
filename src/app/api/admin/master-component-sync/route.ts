@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/server-auth';
 import { updateMasterComponentAndSyncUsers } from '@/app/(app)/admin/add-bike-model/actions';
 
 export async function POST(request: Request) {
+  const authResult = await requireAdmin(request);
+  if (!authResult.ok) return authResult.response;
+
   try {
     const body = await request.json();
     const { masterComponentId, updates } = body;
