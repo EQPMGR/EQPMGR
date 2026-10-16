@@ -108,26 +108,90 @@ export async function replaceUserComponentAction({
     const supabase = getSupabaseClient();
     
     try {
-        // 1. Fetch equipment document (contains components as JSON array)
+        // 1. Fetch the component record from the separate components table.
+        // Use maybeSingle so a missing component can fall back to legacy equipment.components.
+        const { data: componentDataRow, error: componentError } = await supabase
+          .from('components')
+          .select('*')
+          .eq('id', userComponentIdToReplace)
+          .eq('equipment_id', equipmentId)
+          .maybeSingle();
+
+        if (componentError) {
+          // Allow no-result cases to fall through and attempt legacy lookup.
+          if (componentError.code !== 'PGRST116') {
+            throw componentError;
+          }
+        }
+
+        let componentToReplace: any = componentDataRow || null;
+        let isLegacyEquipmentComponent = false;
+
+        if (!componentToReplace) {
+            // Legacy fallback: some older data may still be stored in equipment.components JSON.
+            const { data: equipmentDataFallback, error: equipmentFallbackError } = await supabase
+              .from('equipment')
+              .select('components')
+              .eq('id', equipmentId)
+              .single();
+
+            if (equipmentFallbackError) {
+              throw equipmentFallbackError;
+            }
+
+            const legacyComponents = equipmentDataFallback?.components || [];
+            const legacyMatch = legacyComponents.find((c: any) =>
+              c.id === userComponentIdToReplace || c.user_component_id === userComponentIdToReplace
+            );
+
+            if (legacyMatch) {
+              console.warn('[Legacy fallback] Found component in equipment.components for ID:', userComponentIdToReplace);
+              componentToReplace = legacyMatch;
+              isLegacyEquipmentComponent = true;
+
+              const { error: insertLegacyError } = await supabase
+                .from('components')
+                .insert([{
+                  id: userComponentIdToReplace,
+                  equipment_id: equipmentId,
+                  user_id: userId,
+                  parent_user_component_id: legacyMatch.parentUserComponentId || legacyMatch.parent_user_component_id || null,
+                  master_component_id: legacyMatch.masterComponentId || legacyMatch.master_component_id,
+                  name: legacyMatch.name,
+                  wear_percentage: legacyMatch.wearPercentage ?? legacyMatch.wear_percentage ?? 0,
+                  purchase_date: legacyMatch.purchaseDate || legacyMatch.purchase_date || null,
+                  last_service_date: legacyMatch.lastServiceDate || legacyMatch.last_service_date || null,
+                  installed_at_distance: legacyMatch.installedAtDistance || legacyMatch.installed_at_distance || null,
+                  current_distance: legacyMatch.currentDistance || legacyMatch.current_distance || null,
+                  expected_replacement_km: legacyMatch.expectedReplacementKm || legacyMatch.expected_replacement_km || null,
+                  is_active: legacyMatch.isActive ?? legacyMatch.is_active ?? true,
+                  replacement_count: legacyMatch.replacementCount || legacyMatch.replacement_count || null,
+                  installed_at: legacyMatch.installedAt || legacyMatch.installed_at || null,
+                  notes: legacyMatch.notes || null,
+                  size: legacyMatch.size || null,
+                  wheelset_id: legacyMatch.wheelsetId || legacyMatch.wheelset_id || null,
+                  replaced_by_user: legacyMatch.replacedByUser ?? legacyMatch.replaced_by_user ?? null,
+                }]);
+
+              if (insertLegacyError) {
+                throw insertLegacyError;
+              }
+            }
+        }
+
+        if (!componentToReplace) {
+            throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
+        }
+
         const { data: equipmentData, error: equipmentError } = await supabase
           .from('equipment')
-          .select('*')
+          .select('total_distance, archived_components, maintenance_log')
           .eq('id', equipmentId)
           .single();
 
         if (equipmentError) throw equipmentError;
         if (!equipmentData) {
             throw new Error("Equipment not found.");
-        }
-
-        // Find the component to replace in the array
-        const components = equipmentData.components || [];
-        const componentToReplace = components.find((c: any) => 
-          (c.id === userComponentIdToReplace || c.user_component_id === userComponentIdToReplace)
-        );
-
-        if (!componentToReplace) {
-            throw new Error(`Component with ID ${userComponentIdToReplace} not found.`);
         }
 
         const componentData = convertKeysToCamelCase(componentToReplace);
@@ -156,7 +220,7 @@ export async function replaceUserComponentAction({
             purchase_date: componentData.purchaseDate || componentData.purchase_date || null,
             last_service_date: componentData.lastServiceDate || componentData.last_service_date || null,
             replaced_on: new Date().toISOString(),
-            final_mileage: equipmentData.total_distance || equipmentData.totalDistance || 0,
+            final_mileage: equipmentData.total_distance || 0,
             replacement_reason: replacementReason,
         };
 
@@ -270,7 +334,7 @@ export async function replaceUserComponentAction({
         if (replacementReason === 'failure') {
             const installedAtDistance = componentData.installedAtDistance || componentData.installed_at_distance;
             const currentDistance = componentData.currentDistance || componentData.current_distance;
-            const equipmentDistance = equipmentData.total_distance || equipmentData.totalDistance;
+            const equipmentDistance = equipmentData.total_distance;
 
             let actualIntervalKm: number | null = null;
             if (typeof installedAtDistance === 'number' && typeof currentDistance === 'number') {
@@ -300,11 +364,10 @@ export async function replaceUserComponentAction({
         }
 
         // 6. Update equipment with archived component and new log entry
-        const existingArchived = equipmentData.archived_components || equipmentData.archivedComponents || [];
-        const existingLogs = equipmentData.maintenance_log || equipmentData.maintenanceLog || [];
+        const existingArchived = equipmentData.archived_components || [];
+        const existingLogs = equipmentData.maintenance_log || [];
 
         const newUserComponentData = {
-            id: userComponentIdToReplace,
             master_component_id: finalNewMasterComponentId,
             wear_percentage: 0,
             purchase_date: new Date().toISOString(),
@@ -316,19 +379,19 @@ export async function replaceUserComponentAction({
 
         const cleanData = Object.fromEntries(Object.entries(newUserComponentData).filter(([_, v]) => v !== undefined));
 
-        // Update the components array
-        const updatedComponents = components.map((c: any) => 
-          (c.id === userComponentIdToReplace || c.user_component_id === userComponentIdToReplace)
-            ? cleanData
-            : c
-        );
+        const { error: updateComponentError } = await supabase
+          .from('components')
+          .update(cleanData)
+          .eq('id', userComponentIdToReplace)
+          .eq('equipment_id', equipmentId);
+
+        if (updateComponentError) throw updateComponentError;
 
         const { error: updateEquipmentError } = await supabase
           .from('equipment')
           .update({
             archived_components: [...existingArchived, archivedComponent],
             maintenance_log: [...existingLogs, newLogEntry],
-            components: updatedComponents
           })
           .eq('id', equipmentId);
 
@@ -362,27 +425,13 @@ export async function deleteUserComponentAction({
 
     try {
         // Fetch equipment and remove component from array
-        const { data: equipmentData, error: fetchError } = await supabase
-          .from('equipment')
-          .select('components')
-          .eq('id', equipmentId)
-          .single();
+        const { error: deleteError } = await supabase
+          .from('components')
+          .delete()
+          .eq('id', userComponentId)
+          .eq('equipment_id', equipmentId);
 
-        if (fetchError) throw fetchError;
-        if (!equipmentData) {
-            throw new Error("Equipment not found.");
-        }
-
-        const components = (equipmentData.components || []).filter((c: any) => 
-          c.id !== userComponentId && c.user_component_id !== userComponentId
-        );
-
-        const { error: updateError } = await supabase
-          .from('equipment')
-          .update({ components })
-          .eq('id', equipmentId);
-
-        if (updateError) throw updateError;
+        if (deleteError) throw deleteError;
 
         return { success: true, message: "Component deleted successfully." };
 
@@ -516,27 +565,11 @@ export async function addUserComponentAction({
             }
         }
 
-        // Fetch equipment and add component to array
-        const { data: equipmentData, error: fetchError } = await supabase
-          .from('equipment')
-          .select('components')
-          .eq('id', equipmentId)
-          .single();
+        const { error: insertError } = await supabase
+          .from('components')
+          .insert([cleanData]);
 
-        if (fetchError) throw fetchError;
-        if (!equipmentData) {
-            throw new Error("Equipment not found.");
-        }
-
-        const components = equipmentData.components || [];
-        components.push(cleanData);
-
-        const { error: updateError } = await supabase
-          .from('equipment')
-          .update({ components })
-          .eq('id', equipmentId);
-
-        if (updateError) throw updateError;
+        if (insertError) throw insertError;
 
         return { success: true, message: "Component added successfully." };
     } catch (error) {
