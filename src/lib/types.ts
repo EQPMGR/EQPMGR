@@ -164,7 +164,7 @@ export interface Equipment {
   totalDistance: number;
   totalHours: number;
   imageUrl: string;
-  components: Component[]; // This will be populated at runtime, not stored in Firestore
+  components: Component[]; // Populated at runtime from the components table
   maintenanceLog: MaintenanceLog[];
   archivedComponents?: ArchivedComponent[];
   fitData?: BikeFitData;

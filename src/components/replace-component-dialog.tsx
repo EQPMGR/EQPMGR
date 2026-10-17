@@ -108,10 +108,7 @@ export function ReplaceComponentDialog({
           const options = await fetchAllMasterComponents();
           setAllComponentOptions(options);
         } catch (error: any) {
-            let description = 'Could not load components.';
-            if (error.message.includes('firestore/failed-precondition') || error.message.includes('index')) {
-                description = 'The database query failed. A Firestore index is likely required. Please check the Firestore console for an index creation link in the error logs.'
-            }
+            const description = 'Could not load components.';
             toast({ variant: 'destructive', title: 'Error', description });
         } finally {
           setIsLoadingOptions(false);

@@ -15,7 +15,7 @@
 - Primary color: Use a desaturated teal (#2a5d59) from the original screenshot for the background to maintain a sense of calm and reliability, inspired by the muted tones of the photograph.
 - Background color: Lighter desaturated teal (#6ec8bf) for card backgrounds, for soft contrast and to reinforce a muted, modern aesthetic.
 - Accent color: Burnt orange (#D98945), taken from the Strava logo in the original screenshot, used sparingly for interactive elements and key alerts to draw the user's eye.
-- Headline font: 'Monteserrat', sans-serif, to convey a modern, technical, precise feeling, and also to match the original screenshot. Note: currently only Google Fonts are supported.
-- Body font: 'Inter', sans-serif, is added as companion font to provide highly readable paragraphs of supporting text. Note: currently only Google Fonts are supported.
+- Headline font: 'Monteserrat', sans-serif, to convey a modern, technical, precise feeling, and also to match the original screenshot.
+- Body font: 'Inter', sans-serif, is added as companion font to provide highly readable paragraphs of supporting text.
 - Use outline-style icons for equipment components, similar to those in the reference image. Use the accent color to highlight wear and tear.
 - Adopt a card-based layout to display equipment status, maintenance schedules, and usage statistics.

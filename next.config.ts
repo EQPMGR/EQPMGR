@@ -30,18 +30,6 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
         // Supabase Storage public files (shop logos, bike photos)
         protocol: 'https',
         hostname: '*.supabase.co',
@@ -51,13 +39,6 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
-    // Fix for Genkit's dependency on handlebars
-    config.module.rules.push({
-      test: /\.mjs$/,
-      include: /node_modules/,
-      type: 'javascript/auto',
-    });
-
     // Fix for ENOENT error with nested node_modules
     config.resolve.symlinks = false;
 
@@ -71,14 +52,7 @@ const nextConfig: NextConfig = {
         crypto: false,
         http2: false,
         stream: false,
-        'firebase-admin': false,
       };
-
-      // Use externals to completely exclude firebase-admin
-      config.externals = config.externals || [];
-      config.externals.push({
-        'firebase-admin': 'commonjs firebase-admin',
-      });
     }
 
     config.resolve.alias = {

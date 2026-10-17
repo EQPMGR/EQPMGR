@@ -2,7 +2,7 @@
 
 Equipment manager for cyclists: bikes and accessories, their components, wear estimates, maintenance and work orders, and Strava activity sync. Next.js 15 (App Router) + TypeScript + Supabase (Postgres + RLS), Tailwind, Radix UI.
 
-The codebase was migrated from Firebase/Firestore to Supabase. Expect stale and half-migrated code. Supabase is the source of truth. Don't assume Firestore semantics still hold.
+The codebase was originally built on Firebase and migrated to Supabase; all Firebase/Google code and config was removed on 2026-10-17. Some APIs (the `SupabaseDbAdapter` with `getDoc`/`setDoc`/subcollection paths) still mimic the old document-database style. Supabase is the source of truth. Don't add Google/Firebase services back.
 
 ## Working with Sage (the owner)
 
@@ -81,9 +81,7 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 
 ## Stale and legacy code
 
-- Firebase leftovers: `firebase.json`, `firestore.rules`, `.firebaserc`, `apphosting.yaml`, and the `firebase`/`firebase-admin` dependencies.
-- Many root `*.md` files (`BACKEND_*`, `MIGRATION_GUIDE`, `IMPLEMENTATION_COMPLETE`, ...) describe past migration phases and may be out of date. `PHASE1_2_BREADCRUMB.md` is the most recent work log.
-- Stray files: `src/add-equipment-dialog.tsx` (duplicate of the one in `src/components/`), `src/tmp_parse_form_test.mjs`, `tmp-test-d.ts`, `repomix-output.xml`.
+- `src/app/api/mapmyride/token-exchange/route.ts` and `src/app/strava/page.tsx` are empty files.
 - Some admin seeders may be inactive. Verify before editing.
 
 ## Migration history notes

@@ -2,7 +2,7 @@
  * Backend Provider Interface
  *
  * This interface defines the contract that all backend providers must implement.
- * Each backend (Firebase, Supabase, etc.) is a self-contained module that knows
+ * Each backend (currently only Supabase) is a self-contained module that knows
  * how to initialize itself and provide auth, database, and storage services.
  *
  * Benefits of this approach:
@@ -16,7 +16,7 @@ import type { IAuthProvider, IDatabase, IStorage } from './';
 
 export interface IBackendProvider {
   /**
-   * The unique name of this backend provider (e.g., 'firebase', 'supabase')
+   * The unique name of this backend provider (e.g., 'supabase')
    */
   readonly name: string;
 
