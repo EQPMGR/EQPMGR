@@ -9,6 +9,19 @@ Both apps share one Supabase database and one login system.
 
 _Last updated: 2026-10-17_
 
+**Current status:** alpha. The only real accounts are Sage as a rider and Sage as a test shop, so it's safe to test changes live.
+
+---
+
+## Budget and build rules
+
+Running costs: about $50/month (Strava $18, Claude $32). No income or investors yet, so keep everything lean.
+
+- **Netlify free plan:** 300 credits a month, renewing on the 8th. Each **production** deploy (a merge to `main`) costs 15 credits. Deploy previews on PRs don't use credits.
+- Both repos' `netlify.toml` files **skip the build automatically** when a merge changes only docs or migrations.
+- **Batch app changes:** finish and test locally (`npm run build`), then merge related PRs together so they share one production build. Use `[skip netlify]` in a merge commit message to skip a build deliberately.
+- Credits left: 254 on 2026-10-17, before the shop PR #1 build.
+
 ---
 
 ## How the business works (from the pitch)
@@ -40,13 +53,13 @@ _Last updated: 2026-10-17_
 
 ## Phases
 
-### Phase 1: Close the security holes ⏳ in progress
+### Phase 1: Close the security holes ✅ done 2026-10-17
 - [x] Rider app: every API route and server action checks who's logged in (PRs #6, #7)
 - [x] Rider app: one owner column for bikes (PR #8, migration 013)
-- [ ] Shop app: billing endpoint requires the shop's own login
-- [ ] Shop app: "replace part" requires a shop login **and** an open work order for that bike
-- [ ] Shop app: remove unused, unprotected server actions
-- [ ] Database: make component stats server-only (migration 014)
+- [x] Shop app: billing endpoint requires the shop's own login (shop PR #1)
+- [x] Shop app: "replace part" requires a shop login **and** an open work order for that bike (shop PR #1)
+- [x] Shop app: remove unused, unprotected server actions (shop PR #1)
+- [x] Database: make component stats server-only (migration 014, PR #9)
 
 ### Phase 2: Make the repair ticket work end to end (first revenue)
 - [ ] Rider app: fix work order submission (consent stored as true/false, set `service_provider_auth_uid`, consistent shop IDs)
@@ -77,7 +90,7 @@ _Last updated: 2026-10-17_
 
 ## Open questions
 
-1. **Terms vs. data sales.** Section 8 of the alpha terms on eqpmgr.com says rider data is never sold and is used "strictly" to run the app. Selling manufacturer data, even anonymized, needs updated terms and explicit consent first. Talk to a lawyer (BC / PIPEDA) before Phase 3's consent work ships.
+1. **Terms vs. data sales.** Section 8 of the alpha terms on eqpmgr.com says rider data is never sold and is used "strictly" to run the app. Selling manufacturer data, even anonymized, needs updated terms and explicit consent first. **Sage will have a lawyer review the terms before beta.** Nothing to sell yet.
 2. **Pricing.** $2 per ticket (as pitched), a monthly subscription (what the half-built shop billing code does), or both?
 3. **Admin roles.** Which jobs does each admin type do? (A proposal is coming in Phase 3.)
 4. **Billable moment.** Which work-order status triggers the $2 charge?
@@ -88,6 +101,7 @@ _Last updated: 2026-10-17_
 
 | Date | What |
 |---|---|
+| 2026-10-17 | Phase 1 done: shop billing and part-replacement lockdown, stats made server-only, builds skipped automatically for docs/migration-only changes |
 | 2026-10-17 | Reviewed the shop app: found unprotected billing and part-replacement endpoints, and a broken work-order handoff (0 work orders ever) |
 | 2026-10-16 | Merged the owner columns; applied migration 013 to production |
 | 2026-10-16 | Locked down every rider-app server action; moved Add Bike Model out of /admin |
