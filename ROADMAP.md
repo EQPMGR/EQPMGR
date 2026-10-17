@@ -20,7 +20,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - **Netlify free plan:** 300 credits a month, renewing on the 8th. Each **production** deploy (a merge to `main`) costs 15 credits. Deploy previews on PRs don't use credits.
 - Both repos' `netlify.toml` files **skip the build automatically** when a merge changes only docs or migrations.
 - **Batch app changes:** finish and test locally (`npm run build`), then merge related PRs together so they share one production build. Use `[skip netlify]` in a merge commit message to skip a build deliberately.
-- Credits left: 254 on 2026-10-17, before the shop PR #1 build.
+- In Netlify's deploy list, a **skipped** build shows as **"Failed"** ("Canceled build due to no content change"). That's normal and costs nothing.
+- Credits: 254 on 2026-10-17. The shop's first Git-based production build on 2026-10-17 used about 15, leaving about 239. The rider skips were free.
 
 ---
 
@@ -77,6 +78,9 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] One home for all database changes: move the shop app's migrations into this repo
 - [ ] Shop app cleanup: CLAUDE.md, Firebase leftovers, its 42 pre-existing type errors
 
+### Housekeeping
+- [ ] `shop.eqpmgr.com` doesn't resolve (no DNS record). The shop is live at https://eqpmgrshop.netlify.app. The Stripe portal's return URL is hard-coded to shop.eqpmgr.com, so set up DNS before billing goes live.
+
 ### Phase 4: Later
 - [ ] Billing (once pricing is decided)
 - [ ] Shop ratings and reviews
@@ -101,6 +105,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-10-17 | Shop app's first Git-based production deploy (it had been deployed by drag-and-drop before). Fixed the build-skip rule for sites without a previous build. |
 | 2026-10-17 | Phase 1 done: shop billing and part-replacement lockdown, stats made server-only, builds skipped automatically for docs/migration-only changes |
 | 2026-10-17 | Reviewed the shop app: found unprotected billing and part-replacement endpoints, and a broken work-order handoff (0 work orders ever) |
 | 2026-10-16 | Merged the owner columns; applied migration 013 to production |
