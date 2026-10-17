@@ -12,25 +12,22 @@ import { Button } from './ui/button';
 import Link from 'next/link';
 import { getDb } from '@/backend';
 import { Skeleton } from './ui/skeleton';
+import { isWorkOrderOpen } from '@/lib/work-orders';
 
 export function OpenWorkOrders() {
   const { user, loading: authLoading } = useAuth();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const getStatusVariant = (status: WorkOrder['status']): 'default' | 'secondary' | 'outline' | 'destructive' => {
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'outline' | 'destructive' => {
     switch (status) {
+      case 'New':
       case 'pending':
         return 'secondary';
-      case 'accepted':
-      case 'in-progress':
-        return 'default';
-      case 'completed':
+      case 'Bike Ready':
         return 'outline';
-      case 'cancelled':
-        return 'destructive';
       default:
-        return 'outline';
+        return 'default';
     }
   }
 
@@ -55,17 +52,13 @@ export function OpenWorkOrders() {
             const orders: WorkOrder[] = [];
             querySnapshot.docs.forEach((doc) => {
                 const data = doc.data;
-                if (!data) {
+                if (!data || !isWorkOrderOpen(data.status)) {
                   return;
                 }
                 orders.push({
                     ...data,
                     id: doc.id,
                     createdAt: toDate(data.createdAt),
-                    userConsent: {
-                        ...data.userConsent,
-                        timestamp: toDate(data.userConsent.timestamp)
-                    }
                 } as WorkOrder);
             });
             setWorkOrders(orders);
@@ -75,8 +68,7 @@ export function OpenWorkOrders() {
             console.error("Error fetching work orders: ", error);
             setIsLoading(false);
           },
-          { type: 'where', field: 'userId', op: '==', value: user.uid },
-          { type: 'where', field: 'status', op: 'in', value: ['pending', 'accepted', 'in-progress'] }
+          { type: 'where', field: 'userId', op: '==', value: user.uid }
         );
       } catch (error) {
         console.error("Error initializing work orders listener:", error);
@@ -114,7 +106,7 @@ export function OpenWorkOrders() {
                     {wo.equipmentName} - Requested {toDate(wo.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <Badge variant={getStatusVariant(wo.status)} className="capitalize">{wo.status}</Badge>
+                <Badge variant={getStatusVariant(wo.status)} >{wo.status === 'pending' ? 'New' : wo.status}</Badge>
               </div>
             ))}
           </div>

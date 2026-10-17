@@ -102,44 +102,74 @@ export async function getServiceProviders(): Promise<ServiceProvider[]> {
 
 export async function submitWorkOrderAction(
   idToken: string,
-  workOrderData: Omit<WorkOrder, 'id' | 'createdAt' | 'status' | 'userId'>
+  request: {
+    serviceProviderId: string;
+    equipmentId: string;
+    serviceType: string;
+    notes?: string;
+    userName?: string;
+    userPhone?: string;
+    userConsent: boolean;
+  }
 ): Promise<{ success: boolean; message: string }> {
-  if (!workOrderData.serviceProviderId) {
-    return { success: false, message: 'Service Provider ID is missing.' };
+  if (!request.serviceProviderId || !request.equipmentId) {
+    return { success: false, message: 'Choose a shop and a bike.' };
+  }
+  if (!request.userConsent) {
+    return { success: false, message: 'Please agree to share your bike details with the shop.' };
   }
 
   try {
-    const { uid } = await verifyUserToken(idToken);
+    const { uid, email } = await verifyUserToken(idToken);
     const supabase = getSupabaseClient();
 
-    // Generate a new UUID-like ID (Supabase uses UUIDs by default)
-    const { data: uuidData } = await supabase.rpc('uuid_generate_v4');
-    const newWorkOrderId = uuidData || crypto.randomUUID();
+    // The shop must have an account (owner) so it can see the order.
+    const { data: provider, error: providerError } = await supabase
+      .from('service_providers')
+      .select('id, owner_id, shop_name')
+      .eq('id', request.serviceProviderId)
+      .maybeSingle();
+    if (providerError) throw providerError;
+    const shopAuthUid = provider?.owner_id || provider?.id;
+    if (!provider || !/^[0-9a-f-]{36}$/i.test(shopAuthUid)) {
+      return { success: false, message: "This shop isn't taking online bookings yet." };
+    }
 
-    const newWorkOrder: WorkOrder = {
-      id: newWorkOrderId,
-      ...workOrderData,
-      userId: uid,
-      status: 'pending',
-      createdAt: new Date(),
-      userConsent: {
-          ...workOrderData.userConsent,
-          timestamp: toDate(workOrderData.userConsent.timestamp),
-      },
-    };
+    // The bike must belong to the rider; denormalized details come from the DB.
+    const { data: equipment, error: equipmentError } = await supabase
+      .from('equipment')
+      .select('id, name, brand, model, fit_data')
+      .eq('id', request.equipmentId)
+      .eq('user_id', uid)
+      .maybeSingle();
+    if (equipmentError) throw equipmentError;
+    if (!equipment) return { success: false, message: 'Bike not found.' };
 
-    // Convert to snake_case for database
-    const dbData = convertKeysToSnakeCase(newWorkOrder);
-
-    const { error } = await supabase
-      .from('work_orders')
-      .insert([dbData]);
+    const { error } = await supabase.from('work_orders').insert([{
+      id: crypto.randomUUID(),
+      user_id: uid,
+      user_name: request.userName || email || 'Rider',
+      user_phone: request.userPhone || '',
+      user_email: email || '',
+      service_provider_id: provider.id,
+      service_provider_auth_uid: shopAuthUid,
+      provider_name: provider.shop_name || 'Shop',
+      equipment_id: equipment.id,
+      equipment_name: equipment.name,
+      equipment_brand: equipment.brand,
+      equipment_model: equipment.model,
+      service_type: request.serviceType,
+      notes: request.notes || null,
+      fit_data: request.serviceType === 'bike-fitting' ? equipment.fit_data : null,
+      user_consent: true,
+      status: 'New',
+    }]);
 
     if (error) throw error;
 
     return {
       success: true,
-      message: `Work order successfully submitted to ${workOrderData.providerName}.`,
+      message: `Work order sent to ${provider.shop_name || 'the shop'}.`,
     };
 
   } catch (error: any) {
