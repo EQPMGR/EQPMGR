@@ -69,7 +69,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Shop app: bike page rebuilt on Supabase (it was still using removed Firebase code). Shop log entries go through a guarded server action.
 - [x] One status list in both apps: New → Customer Contacted → … → Bike Ready → Completed / Cancelled. The rider's dashboard shows open orders.
 - [x] Admin "add shop" form fixed (it was writing a non-existent `name` column; shop IDs are now uuids)
-- [ ] **Sage to test end to end:** as the rider, request service from the test shop. As the shop, find the order, open the bike, replace a part, and set status. As the rider, check the bike's log.
+- [x] First real work order created by Sage (rider → test shop) 2026-10-17. Found and fixed: a crash when a shop has no services saved, and Supabase logos not loading.
+- [ ] **Sage to finish testing:** As the shop, find the order, open the bike, replace a part, and set status. As the rider, check the bike's log.
 - [ ] Decide which status counts as a billable "activation"
 - [ ] Notifications (email) when a work order is created or changes status
 
@@ -80,9 +81,11 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] T&C checkbox at signup, storing which version was accepted and when
 - [ ] Anonymized data-sharing consent (see the open question about the terms below)
 - [ ] One home for all database changes: move the shop app's migrations into this repo
-- [ ] Shop app cleanup: CLAUDE.md, Firebase leftovers, its 42 pre-existing type errors
+- [x] Firebase/Google removed from the shop app (2026-10-17)
+- [ ] Shop app cleanup: CLAUDE.md, its 21 pre-existing type errors
 
 ### Housekeeping
+- [ ] Sage: in Google's consoles, delete the old Firebase project and revoke the Gemini API key (both unused now), and remove any FIREBASE_* or GEMINI_* variables from Netlify's environment settings.
 - [ ] Shop app: the bike-fit and add-wheelset dialogs still write to customer bikes from the browser, which the database blocks. Move them to guarded server actions like the log entries.
 - [ ] `shop.eqpmgr.com` doesn't resolve (no DNS record). The shop is live at https://eqpmgrshop.netlify.app. The Stripe portal's return URL is hard-coded to shop.eqpmgr.com, so set up DNS before billing goes live.
 
@@ -92,7 +95,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] Rental tickets with waivers
 - [ ] Affiliate part and tool links
 - [ ] AI maintenance advisor
-- [ ] Rider app cleanup: Firebase packages, old docs, stray files
+- [x] Rider app cleanup: Firebase packages, old docs, stray files (2026-10-17)
 - [ ] Simplify equipment delete (the database already removes components automatically)
 
 ---
@@ -110,6 +113,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-10-17 | Removed every Firebase/Google/Gemini/Genkit dependency, config file and doc from both apps (about 40k lines). Only robots.txt crawler rules mention Google. |
 | 2026-10-17 | Phase 2 shipped: work orders connect riders and shops, shared replace routine records field data (migration 015) |
 | 2026-10-17 | Shop app's first Git-based production deploy (it had been deployed by drag-and-drop before). Fixed the build-skip rule for sites without a previous build. |
 | 2026-10-17 | Phase 1 done: shop billing and part-replacement lockdown, stats made server-only, builds skipped automatically for docs/migration-only changes |
