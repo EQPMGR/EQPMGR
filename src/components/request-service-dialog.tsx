@@ -121,20 +121,11 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
     const result = await submitWorkOrderAction(await user.getIdToken(), {
         userName: user.displayName || user.email || 'Unknown User',
         userPhone: user.phone || '',
-        userEmail: user.email || '',
         serviceProviderId: provider.id,
-        providerName: provider.shopName || provider.name,
         equipmentId: selectedEquipmentId,
-        equipmentName: selectedEquipment.name,
-        equipmentBrand: selectedEquipment.brand,
-        equipmentModel: selectedEquipment.model,
         serviceType: selectedService,
         notes: notes,
-        fitData: selectedService === 'bike-fitting' ? selectedEquipment.fitData : undefined,
-        userConsent: {
-            consentGiven: hasConsented,
-            timestamp: new Date(),
-        }
+        userConsent: hasConsented,
     });
     
     if (result.success) {

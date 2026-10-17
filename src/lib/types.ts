@@ -208,14 +208,14 @@ export interface WorkOrder {
     equipmentBrand: string;
     equipmentModel: string;
     serviceType: string;
-    status: 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
+    serviceProviderAuthUid?: string;
+    /** One of WORK_ORDER_STATUSES (src/lib/work-orders.ts); the shop app sets these. */
+    status: string;
     notes?: string;
     fitData?: BikeFitData;
     createdAt: Timestamp;
-    userConsent: {
-      consentGiven: boolean;
-      timestamp: Timestamp;
-    };
+    /** Rider agreed to share their bike details with the shop. */
+    userConsent: boolean;
 }
 
 // Timestamp type for database dates
