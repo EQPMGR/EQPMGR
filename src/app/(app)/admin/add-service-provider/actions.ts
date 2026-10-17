@@ -46,13 +46,6 @@ function convertKeysToSnakeCase(obj: any): any {
   return obj;
 }
 
-const createProviderId = (name: string, city: string) => {
-    return `${name}-${city}`
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-};
-
 export async function addServiceProviderAction({
     idToken,
     values,
@@ -61,7 +54,9 @@ export async function addServiceProviderAction({
     values: AddProviderFormValues;
 }): Promise<{ success: boolean; message: string }> {
 
-    const providerId = createProviderId(values.name, values.city);
+    // work_orders.service_provider_id is a uuid, so shop ids must be uuids.
+    // A shop added here has no login (owner_id) until its owner claims it.
+    const providerId = crypto.randomUUID();
 
     try {
       await verifyAdminToken(idToken);
@@ -71,8 +66,10 @@ export async function addServiceProviderAction({
         const { data: existingProvider, error: checkError } = await supabase
           .from('service_providers')
           .select('id')
-          .eq('id', providerId)
-          .single();
+          .ilike('shop_name', values.name)
+          .ilike('city', values.city)
+          .limit(1)
+          .maybeSingle();
 
         if (checkError && checkError.code !== 'PGRST116') {
           throw checkError;
@@ -86,8 +83,12 @@ export async function addServiceProviderAction({
         }
 
         // Convert to snake_case for database
+        // Map form fields onto the service_providers columns (shared with the shop app).
+        const { name, province, ...rest } = values;
         const providerToSave = convertKeysToSnakeCase({
-            ...values,
+            ...rest,
+            shopName: name,
+            state: province,
             geohash: 'c2b2q', // Placeholder for Vancouver
         });
 

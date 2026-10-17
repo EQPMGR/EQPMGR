@@ -62,12 +62,16 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Shop app: remove unused, unprotected server actions (shop PR #1)
 - [x] Database: make component stats server-only (migration 014, PR #9)
 
-### Phase 2: Make the repair ticket work end to end (first revenue)
-- [ ] Rider app: fix work order submission (consent stored as true/false, set `service_provider_auth_uid`, consistent shop IDs)
-- [ ] Database: shops can view bikes of customers they've had a work order with (permanent read access)
-- [ ] Shop app: rebuild "replace part" on the rider app's logic, so every replacement records an event and a reason (failure, upgrade or modification)
-- [ ] Ticket lifecycle that both sides see: New → … → Completed
+### Phase 2: Make the repair ticket work end to end (first revenue) ✅ shipped 2026-10-17
+- [x] Rider app: work order submission fixed. The server looks up the shop and bike, stores consent as true/false, and sets `service_provider_auth_uid`. Shops without a login get a friendly "not taking online bookings yet".
+- [x] Database: shops can view a bike (parts and history included) once they've had any work order for it (migration 015)
+- [x] One shared "replace part" routine in the database (`replace_component`), used by both apps. It's atomic, archives the old part, logs it, and records replacement events plus failure data, which feed the lifespan stats.
+- [x] Shop app: bike page rebuilt on Supabase (it was still using removed Firebase code). Shop log entries go through a guarded server action.
+- [x] One status list in both apps: New → Customer Contacted → … → Bike Ready → Completed / Cancelled. The rider's dashboard shows open orders.
+- [x] Admin "add shop" form fixed (it was writing a non-existent `name` column; shop IDs are now uuids)
+- [ ] **Sage to test end to end:** as the rider, request service from the test shop. As the shop, find the order, open the bike, replace a part, and set status. As the rider, check the bike's log.
 - [ ] Decide which status counts as a billable "activation"
+- [ ] Notifications (email) when a work order is created or changes status
 
 ### Phase 3: Admins, shop approval, consent
 - [ ] Admin roles in the database (replace the single-email allowlist)
@@ -79,6 +83,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] Shop app cleanup: CLAUDE.md, Firebase leftovers, its 42 pre-existing type errors
 
 ### Housekeeping
+- [ ] Shop app: the bike-fit and add-wheelset dialogs still write to customer bikes from the browser, which the database blocks. Move them to guarded server actions like the log entries.
 - [ ] `shop.eqpmgr.com` doesn't resolve (no DNS record). The shop is live at https://eqpmgrshop.netlify.app. The Stripe portal's return URL is hard-coded to shop.eqpmgr.com, so set up DNS before billing goes live.
 
 ### Phase 4: Later
@@ -105,6 +110,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-10-17 | Phase 2 shipped: work orders connect riders and shops, shared replace routine records field data (migration 015) |
 | 2026-10-17 | Shop app's first Git-based production deploy (it had been deployed by drag-and-drop before). Fixed the build-skip rule for sites without a previous build. |
 | 2026-10-17 | Phase 1 done: shop billing and part-replacement lockdown, stats made server-only, builds skipped automatically for docs/migration-only changes |
 | 2026-10-17 | Reviewed the shop app: found unprotected billing and part-replacement endpoints, and a broken work-order handoff (0 work orders ever) |
