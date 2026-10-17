@@ -4,6 +4,12 @@ Equipment manager for cyclists: bikes and accessories, their components, wear es
 
 The codebase was migrated from Firebase/Firestore to Supabase. Expect stale and half-migrated code. Supabase is the source of truth. Don't assume Firestore semantics still hold.
 
+## Working with Sage (the owner)
+
+- `ROADMAP.md` holds decisions, phases, open questions and the done log for **both** apps. Read it at the start of a session, and update it in the same PR whenever work lands or a decision is made. Sage relies on it instead of keeping their own lists.
+- Sage is new to software development. Explain things in plain language, and interpret loose terminology generously.
+- The shop app (`~/Developer/EQPMGRshop`) shares this Supabase database and login system. Any schema or RLS change must be checked against both apps. All migrations live in this repo's `supabase/migrations/`.
+
 ## Commands
 
 - `next.config.ts` sets `ignoreBuildErrors`, so Netlify builds succeed even with type errors. Always run the typecheck yourself.
