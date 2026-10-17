@@ -139,6 +139,8 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
   }
 
   const selectedEquipment = equipmentList.find(e => e.id === selectedEquipmentId);
+  // A shop that hasn't ticked any services in its settings still takes general repairs.
+  const offeredServices = Array.isArray(provider.services) && provider.services.length > 0 ? provider.services : ['repairs'];
   
   const renderStepContent = () => {
     if (isLoading) {
@@ -175,7 +177,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
           <div className="space-y-4">
             <Label>What service do you need for your {selectedEquipment?.name}?</Label>
             <RadioGroup onValueChange={setSelectedService} value={selectedService || ''}>
-              {provider.services.map(service => (
+              {offeredServices.map(service => (
                 <Label key={service} htmlFor={service} className="flex items-center gap-4 p-4 border rounded-md has-[:checked]:bg-muted">
                     <RadioGroupItem value={service} id={service} />
                     <span className="font-medium capitalize">{service.replace('-', ' ')}</span>
