@@ -83,7 +83,6 @@ services:
 
       # Optional: Add your API keys below
       # OPENAI_API_KEY: your_key_here
-      # GEMINI_API_KEY: your_key_here
       
     depends_on:
       db:

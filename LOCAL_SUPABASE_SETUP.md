@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project now uses **Supabase** as its backend (Firebase has been removed). For local development, everything runs in Docker with:
+This project uses **Supabase** as its backend. For local development, everything runs in Docker with:
 
 - **PostgreSQL** database for data persistence
 - **PostgREST** for REST API (auto-generated from your database schema)
@@ -102,20 +102,6 @@ docker-compose -f docker-compose.supabase.yml build app
 docker-compose -f docker-compose.supabase.yml up -d app
 ```
 
-## What Changed from Firebase
-
-### Removed:
-- ✅ All Firebase authentication code
-- ✅ Firebase storage code  
-- ✅ Firebase library dependencies
-- ✅ Firebase config files
-
-### Kept:
-- ✅ Strava integration
-- ✅ MapMyRide integration  
-- ✅ AI references (placeholder for later implementation)
-- ✅ All UI components and business logic
-
 ### Added:
 - ✅ Local Supabase stack
 - ✅ Kong API gateway
@@ -196,7 +182,6 @@ When ready to deploy:
 - [ ] Test data persistence (enter profile info, refresh app)
 - [ ] Review Supabase migrations: `supabase/migrations/`
 - [ ] Implement AI features with placeholders
-- [ ] Add any missing features from original Firebase version
 - [ ] Plan migration to cloud Supabase
 
 ---

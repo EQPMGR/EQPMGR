@@ -29,6 +29,8 @@ import { ReplaceComponentDialog } from '@/components/replace-component-dialog';
 import { EditComponentDialog } from '@/components/edit-component-dialog';
 import { deleteUserComponentAction } from '../../actions';
 import { AddMaintenanceLogDialog } from '@/components/add-maintenance-log-dialog';
+import { ChainStretchCard } from '@/components/chain-stretch-card';
+import { isChain } from '@/components/chain-stretch-fields';
 
 
 export default function ComponentDetailPage() {
@@ -246,7 +248,24 @@ export default function ComponentDetailPage() {
                     <p className="text-muted-foreground">Last Service</p>
                     <p className="font-medium">{formatDate(component.lastServiceDate, user?.dateFormat)}</p>
                 </div>
+                {typeof (component as any).expectedReplacementKm === 'number' && (
+                  <div>
+                    <p className="text-muted-foreground">Expected life on this bike</p>
+                    <p className="font-medium">
+                      {Math.round((component as any).expectedReplacementKm).toLocaleString()} km
+                      {typeof (component as any).wearKm === 'number' && ` (${Math.round((component as any).wearKm).toLocaleString()} km ridden so far)`}
+                    </p>
+                  </div>
+                )}
             </div>
+
+            {isChain(component as any) && (
+              <ChainStretchCard
+                equipmentId={params.id as string}
+                componentId={component.userComponentId}
+                onRecorded={handleSuccess}
+              />
+            )}
 
             {subComponents.length > 0 && (
                  <div className="mt-6 border-t pt-6">

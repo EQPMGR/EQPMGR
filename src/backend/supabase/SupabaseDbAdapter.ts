@@ -1161,7 +1161,7 @@ export class SupabaseDbAdapter implements IDatabase {
       },
       commit: async () => {
         // Execute all operations sequentially to preserve dependency order.
-        // Supabase does not provide a Firestore-style batch transaction, so
+        // Supabase does not provide a client-side batch transaction, so
         // writing dependent rows in order avoids foreign key races.
         for (const op of operations) {
           await op();
@@ -1171,7 +1171,7 @@ export class SupabaseDbAdapter implements IDatabase {
   }
 
   async runTransaction<T>(updateFunction: (transaction: Transaction) => Promise<T>): Promise<T> {
-    // Supabase doesn't have direct transaction support like Firestore
+    // Supabase's client has no multi-statement transactions
     // For simple cases, we can use optimistic locking
     // For complex cases, you'd need to use Postgres RPC functions
 

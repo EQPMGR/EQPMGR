@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing or invalid idToken' }, { status: 400 });
     }
 
-    // Verify the user's Firebase token
+    // Verify the user's Supabase access token
     const auth = await getServerAuth();
     const decoded = await auth.verifyIdToken(idToken, true);
     const userId = decoded.uid;

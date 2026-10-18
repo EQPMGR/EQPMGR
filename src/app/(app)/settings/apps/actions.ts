@@ -6,7 +6,9 @@ import { createClient } from '@supabase/supabase-js';
 import { getServerAuth, getServerDb } from '@/backend';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
-import { accessSecret } from '@/lib/secrets';
+import { verifyUserToken } from '@/lib/server-auth';
+import { ensureValidStravaToken, clearStravaConnection as clearSharedStravaConnection, isStravaRide, fetchStravaActivity } from '@/lib/strava';
+import { recordStravaActivity, describeStravaResult, processPendingStravaEvents } from '@/lib/strava-sync';
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -33,87 +35,16 @@ export interface StravaActivity {
   alreadySynced?: boolean;
 }
 
+// Shared helper (src/lib/strava.ts) saves refreshed tokens with the direct client.
 async function ensureStravaTokenIsValid(
     userId: string,
-    db: any,
+    _db: unknown,
     stravaData: any
 ): Promise<{ accessToken: string; refreshToken: string; expiresAt: number; }> {
-    const { accessToken, refreshToken, expiresAt } = stravaData;
-    
-    console.log('[ensureStravaTokenIsValid] Checking token expiry', {
-        userId,
-        expiresAt,
-        now: Math.floor(Date.now() / 1000),
-        expired: Math.floor(Date.now() / 1000) > expiresAt - 300,
-    });
-    
-    if (!accessToken || !refreshToken || !expiresAt) {
-        throw new Error('Strava credentials are missing or corrupted. Please reconnect your account.');
-    }
-
-    if (Math.floor(Date.now() / 1000) <= expiresAt - 300) {
-        console.log('[ensureStravaTokenIsValid] Token still valid, returning as-is');
-        return { accessToken, refreshToken, expiresAt };
-    }
-
-    console.log('Strava token expired, refreshing...');
-    const [clientId, clientSecret] = await Promise.all([
-        accessSecret('NEXT_PUBLIC_STRAVA_CLIENT_ID'),
-        accessSecret('STRAVA_CLIENT_SECRET'),
-    ]);
-
-    if (!clientId || !clientSecret) {
-        throw new Error('Server is not configured for Strava integration.');
-    }
-
-    const fetchOptions: NodeFetchInit = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            grant_type: 'refresh_token',
-            refresh_token: refreshToken,
-        }),
-    };
-
-    if (process.env.NODE_ENV !== 'production') {
-        fetchOptions.agent = new https.Agent({ rejectUnauthorized: false });
-    }
-
-    const response = await fetch('https://www.strava.com/oauth/token', fetchOptions);
-    const data = await response.json();
-
-    if (!response.ok) {
-        console.error('Strava token refresh failed:', data);
-        if ([400, 401, 403].includes(response.status)) {
-            await clearStravaConnection(userId, db);
-        }
-        throw new Error(
-            data?.message ||
-            'Strava token refresh failed. Your Strava connection may have been revoked. Please reconnect your account.'
-        );
-    }
-
-    const newStravaData = {
-        ...stravaData,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token || refreshToken,
-        expiresAt: data.expires_at,
-    };
-
-    await db.updateDoc('app_users', userId, {
-        strava: newStravaData,
-    });
-
-    return {
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token || refreshToken,
-        expiresAt: data.expires_at,
-    };
+    const valid = await ensureValidStravaToken(getSupabaseClient(), userId, stravaData);
+    return { accessToken: valid.accessToken, refreshToken: valid.refreshToken, expiresAt: valid.expiresAt };
 }
 
-const STRAVA_RIDE_TYPES = new Set(['Ride', 'VirtualRide', 'EBikeRide']);
 const INITIAL_STRAVA_RIDE_LIMIT = 250;
 const REGULAR_STRAVA_RIDE_LIMIT = 25;
 const STRAVA_PAGE_SIZE = 30;
@@ -161,7 +92,7 @@ async function fetchStravaBikeActivities(accessToken: string, maxRides: number):
         }
 
         const rawActivities: StravaActivity[] = await activitiesResponse.json();
-        const rideActivities = rawActivities.filter(activity => STRAVA_RIDE_TYPES.has(activity.type));
+        const rideActivities = rawActivities.filter(activity => isStravaRide(activity as any));
         rides.push(...rideActivities);
 
         if (rawActivities.length < STRAVA_PAGE_SIZE) {
@@ -174,12 +105,8 @@ async function fetchStravaBikeActivities(accessToken: string, maxRides: number):
     return rides.slice(0, maxRides);
 }
 
-async function clearStravaConnection(userId: string, db: any): Promise<void> {
-    try {
-        await db.updateDoc('app_users', userId, { strava: null });
-    } catch (error) {
-        console.error('Unable to clear stale Strava credentials for user', userId, error);
-    }
+async function clearStravaConnection(userId: string, _db: unknown): Promise<void> {
+    await clearSharedStravaConnection(getSupabaseClient(), userId);
 }
 
 export async function fetchRecentStravaActivities(idToken: string): Promise<{ activities?: StravaActivity[]; error?: string }> {
@@ -211,6 +138,17 @@ export async function fetchRecentStravaActivities(idToken: string): Promise<{ ac
             console.log('[fetchRecentStravaActivities] No strava data found, returning error');
             return { error: 'Could not authenticate with Strava. Please reconnect your account.' };
         }
+
+        // Catch up on any Strava webhook rides that couldn't be processed yet.
+        if (userData.strava.athleteId) {
+            try {
+                await processPendingStravaEvents(getSupabaseClient(), Number(userData.strava.athleteId));
+            } catch (err) {
+                console.error('[fetchRecentStravaActivities] pending webhook processing failed', err);
+            }
+        }
+        const { data: freshUser } = await getSupabaseClient().from('app_users').select('strava').eq('id', userId).maybeSingle();
+        if (freshUser?.strava) userData.strava = freshUser.strava;
 
         const { accessToken, refreshToken, expiresAt, processedActivities } = userData.strava;
         console.log('[fetchRecentStravaActivities] About to validate token', {
@@ -419,91 +357,69 @@ export async function assignStravaActivityToAction({
     equipmentId,
 }: {
     idToken: string;
-    activity: StravaActivity;
+    activity: Pick<StravaActivity, 'id' | 'name'>;
     equipmentId: string;
 }): Promise<{ success: boolean; message: string; }> {
-    if (!idToken || !activity || !equipmentId) {
+    if (!idToken || !activity?.id || !equipmentId) {
         return { success: false, message: 'Missing required data.' };
     }
 
-    const auth = await getServerAuth();
     const supabase = getSupabaseClient();
 
     try {
-        const decodedToken = await auth.verifyIdToken(idToken, true);
-        const userId = decodedToken.uid;
+        const { uid: userId } = await verifyUserToken(idToken);
 
-        // Get current equipment data to increment distances
-        const { data: equipmentData, error: getEquipmentError } = await supabase
+        const { data: bike, error: bikeError } = await supabase
             .from('equipment')
-            .select('total_distance, total_hours')
+            .select('id, type')
             .eq('id', equipmentId)
-            .single();
+            .eq('user_id', userId)
+            .maybeSingle();
+        if (bikeError) throw bikeError;
+        if (!bike) return { success: false, message: 'Bike not found.' };
 
-        if (getEquipmentError) {
-            console.error('Error fetching equipment:', getEquipmentError);
-        }
-
-        const currentDistance = equipmentData?.total_distance || 0;
-        const currentHours = equipmentData?.total_hours || 0;
-        const newDistance = currentDistance + (activity.distance / 1000);
-        const newHours = currentHours + (activity.moving_time / 3600);
-
-        // Update equipment with new distance/hours
-        const { error: updateEquipmentError } = await supabase
-            .from('equipment')
-            .update({
-                total_distance: newDistance,
-                total_hours: newHours,
-            })
-            .eq('id', equipmentId);
-
-        if (updateEquipmentError) {
-            console.error('Error updating equipment:', updateEquipmentError);
-            // Continue anyway - processedActivities update is more critical
-        }
-
-        // Get current strava data
+        // Re-fetch the activity from Strava: distance, time and location come
+        // from Strava itself, not from the browser.
         const { data: userData, error: getUserError } = await supabase
             .from('app_users')
             .select('strava')
             .eq('id', userId)
             .single();
-
-        if (getUserError && getUserError.code !== 'PGRST116') {
-            throw getUserError;
+        if (getUserError) throw getUserError;
+        if (!userData?.strava?.accessToken) {
+            return { success: false, message: 'Connect Strava first.' };
         }
+        const strava = await ensureValidStravaToken(supabase, userId, userData.strava);
+        const activityDetail = await fetchStravaActivity(strava.accessToken, activity.id);
 
-        const existingStrava = userData?.strava || {};
-        const existingProcessedActivities: string[] = Array.isArray(existingStrava.processedActivities)
-            ? existingStrava.processedActivities.map(String)
-            : [];
-        const mergedProcessedActivities = Array.from(new Set([...existingProcessedActivities, String(activity.id)]));
-
-        const updatedStrava = {
-            ...existingStrava,
-            processedActivities: mergedProcessedActivities,
-        };
-
-        // Update strava field with new processedActivities
-        const { error: updateError } = await supabase
-            .from('app_users')
-            .update({ strava: updatedStrava })
-            .eq('id', userId);
-
-        if (updateError) throw updateError;
-
-        console.log('[assignStravaActivityToAction] Successfully assigned activity', {
-            userId,
-            activityId: activity.id,
-            equipmentId,
-            processedActivities: mergedProcessedActivities.length,
-        });
-
-        return { success: true, message: `Activity '${activity.name}' assigned.` };
+        // Assigning by hand also teaches us which Strava bike this is, so
+        // future rides on it are assigned automatically.
+        const result = await recordStravaActivity(supabase, userId, strava, activityDetail, bike, true);
+        return { success: true, message: describeStravaResult(result) };
 
     } catch (error: any) {
         console.error("Error assigning Strava activity:", error);
         return { success: false, message: error.message || "An unknown server error occurred." };
     }
+}
+
+/** Bikes that rides are auto-assigned to, by their linked Strava bike. */
+export async function getLinkedStravaBikesAction(idToken: string): Promise<{ bikes: { id: string; name: string; stravaGearName: string | null }[] }> {
+    const { uid } = await verifyUserToken(idToken);
+    const { data: bikes } = await getSupabaseClient()
+        .from('equipment')
+        .select('id, name, strava_gear_name')
+        .eq('user_id', uid)
+        .not('strava_gear_id', 'is', null);
+    return { bikes: (bikes ?? []).map((b: any) => ({ id: b.id, name: b.name, stravaGearName: b.strava_gear_name })) };
+}
+
+export async function unlinkStravaBikeAction(idToken: string, equipmentId: string): Promise<{ success: boolean }> {
+    const { uid } = await verifyUserToken(idToken);
+    const { error } = await getSupabaseClient()
+        .from('equipment')
+        .update({ strava_gear_id: null, strava_gear_name: null })
+        .eq('id', equipmentId)
+        .eq('user_id', uid);
+    return { success: !error };
 }

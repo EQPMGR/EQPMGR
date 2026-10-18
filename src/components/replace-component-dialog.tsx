@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { Loader2, Replace } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { ChainStretchFields, parseChainStretch, isChain, type ChainStretchValue } from '@/components/chain-stretch-fields';
 import { fetchAllMasterComponents, type MasterComponentWithOptions } from '@/services/components';
 import type { Component } from '@/lib/types';
 import { replaceUserComponentAction } from '@/app/(app)/equipment/[id]/actions';
@@ -82,6 +83,8 @@ export function ReplaceComponentDialog({
   const [allComponentOptions, setAllComponentOptions] = useState<MasterComponentWithOptions[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
+  const [finalStretch, setFinalStretch] = useState<ChainStretchValue>({ value: '', threshold: '0.5' });
+  const replacingChain = isChain(componentToReplace as any);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -108,10 +111,7 @@ export function ReplaceComponentDialog({
           const options = await fetchAllMasterComponents();
           setAllComponentOptions(options);
         } catch (error: any) {
-            let description = 'Could not load components.';
-            if (error.message.includes('firestore/failed-precondition') || error.message.includes('index')) {
-                description = 'The database query failed. A Firestore index is likely required. Please check the Firestore console for an index creation link in the error logs.'
-            }
+            const description = 'Could not load components.';
             toast({ variant: 'destructive', title: 'Error', description });
         } finally {
           setIsLoadingOptions(false);
@@ -172,6 +172,7 @@ export function ReplaceComponentDialog({
       try {
         const result = await replaceUserComponentAction({
             idToken: await user.getIdToken(),
+            finalStretch: replacingChain ? parseChainStretch(finalStretch) : null,
             equipmentId,
             userComponentIdToReplace: componentToReplace.userComponentId,
             replacementReason: data.replacementReason,
@@ -252,7 +253,7 @@ export function ReplaceComponentDialog({
                         >
                           <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl><RadioGroupItem value="failure" /></FormControl>
-                            <FormLabel className="font-normal">Failure</FormLabel>
+                            <FormLabel className="font-normal">Worn out / failed</FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl><RadioGroupItem value="modification" /></FormControl>
@@ -268,6 +269,12 @@ export function ReplaceComponentDialog({
                     </FormItem>
                   )}
                 />
+                {replacingChain && (
+                  <div className="space-y-2 border-t pt-4">
+                    <p className="text-sm font-medium">Chain stretch at replacement</p>
+                    <ChainStretchFields stretch={finalStretch} onChange={setFinalStretch} optional />
+                  </div>
+                )}
 
                 <DialogFooter>
                     <Button type="submit" disabled={isSaving || !replacementReason || (!selectedModelId && !manualBrand)}>

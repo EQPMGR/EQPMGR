@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { ArrowUpRight, SearchCheck, FileInput, Building, Trash2, Database, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { StravaWebhookCard } from '@/components/strava-webhook-card';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -43,6 +44,22 @@ export default function AdminPage() {
                         <Button asChild size="sm" variant="outline">
                             <Link href="/add-bike-model">
                                 Go to Form <ArrowUpRight className="h-4 w-4 ml-2" />
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                 <StravaWebhookCard />
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Field Data</CardTitle>
+                            <CardDescription className="text-sm">
+                                Learned lifespans, chain stretch reports and ride weather stats.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/field-data">
+                                <BarChart3 className="h-4 w-4 mr-2" /> View
                             </Link>
                         </Button>
                     </CardHeader>

@@ -69,7 +69,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Shop app: bike page rebuilt on Supabase (it was still using removed Firebase code). Shop log entries go through a guarded server action.
 - [x] One status list in both apps: New → Customer Contacted → … → Bike Ready → Completed / Cancelled. The rider's dashboard shows open orders.
 - [x] Admin "add shop" form fixed (it was writing a non-existent `name` column; shop IDs are now uuids)
-- [ ] **Sage to test end to end:** as the rider, request service from the test shop. As the shop, find the order, open the bike, replace a part, and set status. As the rider, check the bike's log.
+- [x] First real work order created by Sage (rider → test shop) 2026-10-17. Found and fixed: a crash when a shop has no services saved, and Supabase logos not loading.
+- [ ] **Sage to finish testing:** As the shop, find the order, open the bike, replace a part, and set status. As the rider, check the bike's log.
 - [ ] Decide which status counts as a billable "activation"
 - [ ] Notifications (email) when a work order is created or changes status
 
@@ -80,11 +81,39 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] T&C checkbox at signup, storing which version was accepted and when
 - [ ] Anonymized data-sharing consent (see the open question about the terms below)
 - [ ] One home for all database changes: move the shop app's migrations into this repo
-- [ ] Shop app cleanup: CLAUDE.md, Firebase leftovers, its 42 pre-existing type errors
+- [x] Firebase/Google removed from the shop app (2026-10-17)
+- [ ] Shop app cleanup: CLAUDE.md, its 21 pre-existing type errors
+
+### Ride-based wear ✅ built 2026-10-18 (migration 016)
+- [x] Researched baseline lifespans for every part type, stored in the `wear_baselines` table (road / off-road km, or service hours)
+- [x] Every Strava or manual ride is stored once; wear = km ÷ lifespan, ×1.5 for wet rides on rain-sensitive parts, ×1.5 on the drivetrain for e-bikes
+- [x] Hills (metres climbed per km, from Strava or entered by hand) and rider weight (from the profile) add wear to the drivetrain and brakes. These multipliers are reasoned estimates, not published data.
+- [x] Rain detection from the ride's time and place (WeatherAPI history, about 7 days back), including "rode after it rained"
+- [x] Frames, bars, stems, levers and disc-brake rims no longer get fake wear
+- [x] Replaced the old wear simulator with a "Log a ride" form
+- [ ] Time-based items: tubeless sealant (every 4 months), brake bleed (yearly), suspension lowers service (50 h). Needs a small "service reminders" feature.
+- [ ] Weather for rides older than 7 days (Open-Meteo archive, or a paid WeatherAPI plan)
+- [ ] Show each part's baseline and remaining km/hours on the part page
+- [x] Parts track adjusted road-equivalent km; lifespans blend in real replacement data automatically (baseline = 8 observations), from part type down to exact model (migration 017)
+- [x] Chain stretch measurements by riders and shops (part page, and at replacement); a measurement overrides the estimate
+- [x] Reports: learned lifespans, chain care vs cassette/chainring/jockey life, model vs measured chain wear (admin → Field data)
+- [x] Fixed: /admin/import-feedback rendered data on the server for anyone (2026-10-18)
+- [x] Fixed: refreshed Strava tokens were never saved (the adapter blocks `strava` writes), so every request refreshed again
+- [ ] Later: re-fit the wet/hill/weight multipliers from data (needs a few hundred replacements)
+- [ ] Later: per-rider calibration from stretch measurements (e.g. "your chains wear 1.3x faster")
 
 ### Housekeeping
+- [ ] Sage: in Google's consoles, delete the old Firebase project and revoke the Gemini API key (both unused now), and remove any FIREBASE_* or GEMINI_* variables from Netlify's environment settings.
 - [ ] Shop app: the bike-fit and add-wheelset dialogs still write to customer bikes from the browser, which the database blocks. Move them to guarded server actions like the log entries.
 - [ ] `shop.eqpmgr.com` doesn't resolve (no DNS record). The shop is live at https://eqpmgrshop.netlify.app. The Stripe portal's return URL is hard-coded to shop.eqpmgr.com, so set up DNS before billing goes live.
+
+### Next batch (agreed 2026-10-18)
+- [x] Automatic Strava sync: webhooks + Strava gear matching (built 2026-10-18; switch on in Admin after deploy)
+- [ ] Handle Strava ride edits/deletes (currently ignored once a ride is counted)
+- [x] ~~Wear alert emails~~: built, then removed 2026-10-18. Sage doesn't want the app emailing people.
+- [ ] Maybe: in-app "needs attention" list on the dashboard (no email)
+- [ ] More data sources besides Strava (Garmin, Wahoo, ...). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data.
+- [ ] Database backups before real users (Supabase Pro or scheduled exports)
 
 ### Phase 4: Later
 - [ ] Billing (once pricing is decided)
@@ -92,7 +121,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] Rental tickets with waivers
 - [ ] Affiliate part and tool links
 - [ ] AI maintenance advisor
-- [ ] Rider app cleanup: Firebase packages, old docs, stray files
+- [x] Rider app cleanup: Firebase packages, old docs, stray files (2026-10-17)
 - [ ] Simplify equipment delete (the database already removes components automatically)
 
 ---
@@ -110,6 +139,10 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-10-18 | Automatic Strava sync (webhooks, bike matching) and a Strava token-save fix (migration 018). Email alerts removed by decision. |
+| 2026-10-18 | Learning from real data: adjusted km, blended per-model lifespans, chain stretch measurements, field-data reports (migration 017). Fixed an admin data leak. |
+| 2026-10-18 | Ride-based wear: researched baselines, rides table, weather-based wet multiplier for Strava and manual rides (migration 016) |
+| 2026-10-17 | Removed every Firebase/Google/Gemini/Genkit dependency, config file and doc from both apps (about 40k lines). Only robots.txt crawler rules mention Google. |
 | 2026-10-17 | Phase 2 shipped: work orders connect riders and shops, shared replace routine records field data (migration 015) |
 | 2026-10-17 | Shop app's first Git-based production deploy (it had been deployed by drag-and-drop before). Fixed the build-skip rule for sites without a previous build. |
 | 2026-10-17 | Phase 1 done: shop billing and part-replacement lockdown, stats made server-only, builds skipped automatically for docs/migration-only changes |

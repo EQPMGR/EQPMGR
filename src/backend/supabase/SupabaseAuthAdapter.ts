@@ -24,7 +24,7 @@ function toAuthUser(supabaseUser: User, accessToken?: string): AuthUser {
         return accessToken;
       }
 
-      // In Supabase, we use the session access_token as the equivalent of Firebase ID token
+      // The session access_token is the ID token our server code verifies
       const sharedClients = getSharedSupabaseClients();
       const supabase = sharedClients.client ?? getSupabaseClient(false);
       const { data: { session } } = await supabase.auth.getSession();
@@ -213,7 +213,7 @@ export class SupabaseAuthAdapter implements IAuthProvider {
   async applyActionCode(code: string): Promise<void> {
     // Supabase uses token_hash in URL params for email verification
     // The verification is automatically handled when user clicks the link
-    // This method is primarily for Firebase compatibility
+    // Kept to satisfy the IAuthProvider interface
 
     // In Supabase, verification happens via the email link with token_hash
     // If we need to manually verify, we'd use exchangeCodeForSession
@@ -298,7 +298,7 @@ export class SupabaseAuthAdapter implements IAuthProvider {
   }
 
   async createSessionCookie(idToken: string, expiresIn: number): Promise<string> {
-    // Supabase doesn't have direct session cookie creation like Firebase
+    // Supabase has no separate session-cookie API
     // Instead, we return the JWT token itself which can be used as a session token
     // The expiration is handled by the JWT's exp claim
 

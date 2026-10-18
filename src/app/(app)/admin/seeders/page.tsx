@@ -38,7 +38,7 @@ export default function SeedersPage() {
       <div className="mt-8 pt-4 border-t">
         <h3 className="text-lg font-semibold mb-4">Available Premium Seeders</h3>
         <p className="text-sm text-gray-600 mb-4">
-          These seeders require specific component data files. They were used in the Firebase version and can be re-enabled once their data sources are added:
+          These seeders require specific component data files. They can be re-enabled once their data sources are added:
         </p>
         <ul className="text-sm text-gray-600 space-y-1 ml-4">
           <li>• Shimano Components</li>

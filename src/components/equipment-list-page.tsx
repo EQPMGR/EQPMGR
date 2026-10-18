@@ -126,7 +126,7 @@ export function EquipmentListPage() {
       console.error("Error fetching equipment: ", error);
       let description = "Could not load your equipment from the database.";
       if (error.code === 'permission-denied') {
-          description = "You don't have permission to view this gear. Check Firestore rules."
+          description = "You don't have permission to view this gear. Please sign out and back in, or contact app@eqpmgr.com."
       }
       toast({
         variant: "destructive",

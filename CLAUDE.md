@@ -2,7 +2,7 @@
 
 Equipment manager for cyclists: bikes and accessories, their components, wear estimates, maintenance and work orders, and Strava activity sync. Next.js 15 (App Router) + TypeScript + Supabase (Postgres + RLS), Tailwind, Radix UI.
 
-The codebase was migrated from Firebase/Firestore to Supabase. Expect stale and half-migrated code. Supabase is the source of truth. Don't assume Firestore semantics still hold.
+The codebase was originally built on Firebase and migrated to Supabase; all Firebase/Google code and config was removed on 2026-10-17. Some APIs (the `SupabaseDbAdapter` with `getDoc`/`setDoc`/subcollection paths) still mimic the old document-database style. Supabase is the source of truth. Don't add Google/Firebase services back.
 
 ## Working with Sage (the owner)
 
@@ -58,7 +58,35 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - `001` sets up select/insert/update policies. Delete policies for `equipment` and `components` come from `012`.
 - `011` adds a service-role policy on `app_users` for server-side writes (Strava token exchange).
 
+## Component wear
+
+- Every ride (Strava or manual) is stored once in `rides`. `apply_ride_wear(ride_id)` adds its wear to each part on the bike (migration 016). Never write `wear_percentage` from app code except to reset it.
+- Lifespans live in the `wear_baselines` table: road and off-road km, or service hours for suspension and droppers. Parts are matched by regex on "name | brand | series | model" (`match_wear_baseline`). Untracked parts (frame, bars, stems, levers, disc-brake rims) get no wear.
+- Distance wear = km × wet × e-bike × hill × rider-weight factors ÷ lifespan for the ride's terrain. Wear can go above 100% (overdue).
+  - Hill factor uses metres climbed per km: drivetrain parts ×1.15/1.3/1.5 and brakes ×1.25/1.5/2.0 at 5/15/30 m/km.
+  - Weight factor = ((rider kg + bike 12 or 23 kg) / 87) ^ exponent, capped 0.8–1.5. Exponent is 1 for brakes, 0.5 for drivetrain, tires and bearings. Rider weight is snapshotted from `app_users.weight` (kg).
+- The `components_set_wear_baseline` trigger sets the baseline and `expected_replacement_km` when a part is added, and resets wear when its catalog part changes. So `replace_component()` and any insert get the right values automatically.
+- Learning (migration 017):
+  - Parts track `adjusted_km` (road-equivalent km with all factors applied).
+  - Wear % = adjusted km ÷ `component_lifespan_km()`, which blends worn-out replacements into the baseline: (n × observed mean + 8 × prior) / (n + 8), level by level from type → brand → series → model, each observation counted once. New `failure` replacements re-judge every part of that type.
+  - The latest `component_measurements` chain-stretch reading (since install) overrides the estimate.
+  - Replacement events snapshot adjusted km, identity, install time and final stretch.
+  - The `report_*` views are service-role only, shown on `/admin/field-data`.
+  - Replacement reason `failure` is labelled "Worn out / failed" in the UI; only those count toward lifespans.
+- Admin pages must load data in the browser through admin-checked actions or routes, never in server components: the admin gate runs client-side.
+- Weather: `src/lib/ride-weather.ts` (WeatherAPI history, about 7 days back). A ride is wet if ≥0.3 mm falls during it or ≥1 mm in the 12 h before. Strava rides use `start_latlng` and `start_date`; manual rides use the browser location, or the rider marks wet/dry.
+- Terrain and e-bike come from Strava's `sport_type` (MountainBikeRide, GravelRide, EBikeRide...), or else the bike's type.
+
 ## Strava
+
+- Shared helpers: `src/lib/strava.ts` (token refresh, activity fetch; saves refreshed tokens with the direct client, because the adapter blocks `strava` writes) and `src/lib/strava-sync.ts` (records a Strava activity on a bike, picks the bike, processes webhook events). Don't add exports for these to `'use server'` files.
+- Automatic sync (migration 018, `018_strava_sync.sql`):
+  - `POST /api/strava/webhook` stores each event in `strava_webhook_events`, replies at once, and processes it in `after()`. Pending or failed events are retried when the rider opens Settings → Apps.
+  - The verify token is derived from `STRAVA_CLIENT_SECRET`.
+  - The app's single subscription is switched on or off from Admin → "Automatic Strava sync" (live site only).
+  - Bike choice: linked `equipment.strava_gear_id` → unique name match with the Strava bike → the rider's only bike; otherwise the ride is left to assign by hand. Assigning by hand links that Strava bike.
+  - Not handled yet: activity update/delete events.
+- No email: Sage decided (2026-10-18) the app should not email people. Don't add outbound email or notifications without asking.
 
 - Tokens live in the `app_users.strava` JSON blob: `accessToken`, `refreshToken`, `expiresAt`, `athleteId`, `processedActivities`.
 - Refresh logic is in `src/app/(app)/settings/apps/actions.ts` (it refreshes 5 min before expiry). OAuth exchange is in `src/app/api/strava/token-exchange/route.ts`.
@@ -81,9 +109,7 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 
 ## Stale and legacy code
 
-- Firebase leftovers: `firebase.json`, `firestore.rules`, `.firebaserc`, `apphosting.yaml`, and the `firebase`/`firebase-admin` dependencies.
-- Many root `*.md` files (`BACKEND_*`, `MIGRATION_GUIDE`, `IMPLEMENTATION_COMPLETE`, ...) describe past migration phases and may be out of date. `PHASE1_2_BREADCRUMB.md` is the most recent work log.
-- Stray files: `src/add-equipment-dialog.tsx` (duplicate of the one in `src/components/`), `src/tmp_parse_form_test.mjs`, `tmp-test-d.ts`, `repomix-output.xml`.
+- `src/app/api/mapmyride/token-exchange/route.ts` and `src/app/strava/page.tsx` are empty files.
 - Some admin seeders may be inactive. Verify before editing.
 
 ## Migration history notes
