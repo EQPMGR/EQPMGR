@@ -80,6 +80,19 @@ export default function FieldDataPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">AI bike import spend</CardTitle>
+          <CardDescription>Claude Haiku 5.5 calls from "Build bike from text". Hard limits: 10 per rider per day, 100 AI imports site-wide per day.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 grid-cols-2 md:grid-cols-4">
+          <Stat label="AI imports, last 24 h" value={data.importUsage.last24h.aiImports} />
+          <Stat label="Cost, last 24 h" value={`$${data.importUsage.last24h.costUsd.toFixed(4)}`} />
+          <Stat label="AI imports, last 30 days" value={data.importUsage.last30d.aiImports} />
+          <Stat label="Cost, last 30 days" value={`$${data.importUsage.last30d.costUsd.toFixed(4)}`} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Learned lifespans</CardTitle>
           <CardDescription>Catalog parts with at least one related replacement. Road-equivalent km, adjusted for weather, hills, rider weight and e-bikes.</CardDescription>
         </CardHeader>

@@ -8,9 +8,21 @@ import { matchCatalogParts } from '@/lib/catalog-match';
 // POST /api/bike-import: pasted spec-page text -> structured build for the
 // Add Bike Model form, with catalog matches and an "already in catalog" check.
 // Body: { text, brand?, model?, year? }
+//
+// This is the ONLY code path that can spend money on the Anthropic API. Cost
+// guardrails, in order (see CLAUDE.md -> Build bike from text):
+//   1. verified login (bots get 401 before anything runs)
+//   2. per-rider limit: RIDER_DAILY_LIMIT imports per 24 h (admins exempt)
+//   3. site-wide limit: SITE_DAILY_AI_LIMIT AI imports per 24 h; past it, the free parser
+//   4. per-call caps: MAX_CHARS input here, max output tokens in spec-extract.ts
+//   5. kill switch: BIKE_IMPORT_AI_DISABLED=1 in Netlify -> parser only
+//   6. outside the code: the Anthropic Console spend limit (no auto-reload)
+// The import is logged (reserved) BEFORE the AI call, so parallel requests
+// can't slip past the limits.
 
-const DAILY_LIMIT = 20;
-const MAX_CHARS = 60_000;
+const RIDER_DAILY_LIMIT = 10;
+const SITE_DAILY_AI_LIMIT = Number(process.env.BIKE_IMPORT_SITE_DAILY_LIMIT) || 100;
+const MAX_CHARS = 30_000;
 
 function serviceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
@@ -27,14 +39,28 @@ export async function POST(request: Request) {
   if (text.length > MAX_CHARS) return NextResponse.json({ error: 'That is a lot of text. Paste just the product page.' }, { status: 400 });
 
   const supabase = serviceClient();
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
 
   if (!isAllowedAdminEmail(email)) {
-    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
-    const { count } = await supabase.from('bike_imports').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
-    if ((count ?? 0) >= DAILY_LIMIT) {
-      return NextResponse.json({ error: `You've reached today's limit of ${DAILY_LIMIT} imports. Try again tomorrow.` }, { status: 429 });
+    const { count, error } = await supabase.from('bike_imports').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
+    if (error) return NextResponse.json({ error: 'Import is unavailable right now.' }, { status: 503 }); // fail closed
+    if ((count ?? 0) >= RIDER_DAILY_LIMIT) {
+      return NextResponse.json({ error: `You've reached today's limit of ${RIDER_DAILY_LIMIT} imports. Try again tomorrow.` }, { status: 429 });
     }
   }
+
+  const { count: siteAiCount, error: siteError } = await supabase.from('bike_imports')
+    .select('id', { count: 'exact', head: true }).eq('method', 'ai').gte('created_at', since);
+  const aiAllowed = !siteError && (siteAiCount ?? 0) < SITE_DAILY_AI_LIMIT && process.env.BIKE_IMPORT_AI_DISABLED !== '1';
+  const aiBlockedReason = siteError ? 'AI import is unavailable right now'
+    : process.env.BIKE_IMPORT_AI_DISABLED === '1' ? 'AI import is turned off'
+    : !aiAllowed ? 'AI import has reached today\'s site-wide limit' : undefined;
+
+  // Reserve the log row first so concurrent requests count against the limits.
+  const { data: reserved, error: reserveError } = await supabase.from('bike_imports')
+    .insert({ user_id: uid, method: aiAllowed ? 'ai' : 'parser', model: aiAllowed ? SPEC_MODEL : null, input_chars: text.length })
+    .select('id').single();
+  if (reserveError) return NextResponse.json({ error: 'Import is unavailable right now.' }, { status: 503 }); // fail closed
 
   const year = Number(body.year);
   const started = Date.now();
@@ -42,7 +68,7 @@ export async function POST(request: Request) {
     brand: typeof body.brand === 'string' && body.brand.trim() ? body.brand.trim() : undefined,
     model: typeof body.model === 'string' && body.model.trim() ? body.model.trim() : undefined,
     modelYear: Number.isInteger(year) && year > 1900 && year < 2100 ? year : undefined,
-  });
+  }, { allowAi: aiAllowed, blockedReason: aiBlockedReason });
   const durationMs = Date.now() - started;
   const bike = extraction.bike;
 
@@ -63,18 +89,16 @@ export async function POST(request: Request) {
     existingBike = data ?? null;
   }
 
-  await supabase.from('bike_imports').insert({
-    user_id: uid,
+  await supabase.from('bike_imports').update({
     method: extraction.method,
     model: extraction.method === 'ai' ? SPEC_MODEL : null,
-    input_chars: text.length,
     input_tokens: extraction.usage?.inputTokens ?? null,
     output_tokens: extraction.usage?.outputTokens ?? null,
     duration_ms: durationMs,
     parts_found: parts.length,
     parts_matched: matches.filter(Boolean).length,
     fallback_reason: extraction.fallbackReason ?? null,
-  });
+  }).eq('id', reserved.id);
 
   // Shape the Add Bike Model form already understands (name/brand/series/model/size/system/chainringN),
   // plus review details it ignores.

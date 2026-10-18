@@ -9,6 +9,8 @@ import { BASE_COMPONENTS, BIKE_TYPES } from '@/lib/constants';
 import { parseBikeText } from '@/lib/bike-parser';
 
 export const SPEC_MODEL = 'claude-haiku-5-5';
+/** Measured with scripts/bike-import-eval: see CLAUDE.md. */
+const SPEC_EFFORT = (process.env.SPEC_EFFORT as 'low' | 'medium' | 'high' | undefined) || 'medium';
 
 /** EQPMGR's part slots: the names the Add Bike Model form uses. */
 const BASE_NAMES = [...new Set(BASE_COMPONENTS.map((c) => c.name))];
@@ -57,7 +59,7 @@ For each part in the spec list:
 - sourceText: the spec line you read, copied verbatim (trimmed).
 - confidence: high when brand and model are clear; medium when something had to be inferred; low when the line is ambiguous.
 
-Bike level: brand, model name without the year, modelYear if stated, bikeType from the allowed list (null if unclear), isEbike, wheelSize if stated. In warnings, list anything a human should double-check (e.g. "Rear tire size differs by frame size", "No chain listed").`;
+Bike level: brand; model name without the year (usually a short standalone heading near the top of the page, such as "Fluid A1" or "DEW-E", often just above the price); modelYear if stated, bikeType from the allowed list (null if unclear), isEbike, wheelSize if stated. In warnings, list anything a human should double-check (e.g. "Rear tire size differs by frame size", "No chain listed").`;
 
 type Hints = { brand?: string; model?: string; modelYear?: number };
 
@@ -98,7 +100,15 @@ function fromParser(text: string, hints: Hints, reason: string): SpecExtraction 
   };
 }
 
-export async function extractBikeSpecs(text: string, hints: Hints = {}): Promise<SpecExtraction> {
+/** Hard cap on what one call can generate (output tokens are the expensive part). */
+const MAX_OUTPUT_TOKENS = 8000;
+
+export async function extractBikeSpecs(
+  text: string,
+  hints: Hints = {},
+  gate: { allowAi: boolean; blockedReason?: string } = { allowAi: true }
+): Promise<SpecExtraction> {
+  if (!gate.allowAi) return fromParser(text, hints, gate.blockedReason || 'AI extraction is unavailable');
   if (!process.env.ANTHROPIC_API_KEY) return fromParser(text, hints, 'AI extraction is not configured');
 
   const hintLines = [
@@ -108,11 +118,12 @@ export async function extractBikeSpecs(text: string, hints: Hints = {}): Promise
   ].filter(Boolean).join('\n');
 
   try {
-    const client = new Anthropic();
+    // One retry at most, so a flaky moment can't multiply cost.
+    const client = new Anthropic({ maxRetries: 1, timeout: 90_000 });
     const response = await client.messages.parse({
       model: SPEC_MODEL,
-      max_tokens: 16000,
-      output_config: { format: zodOutputFormat(BikeSpecSchema), effort: 'medium' },
+      max_tokens: MAX_OUTPUT_TOKENS,
+      output_config: { format: zodOutputFormat(BikeSpecSchema), effort: SPEC_EFFORT },
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',

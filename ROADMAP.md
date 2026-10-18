@@ -43,6 +43,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | Decision |
 |---|---|
+| 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
 | 2026-10-17 | New shops must be **manually approved**. We need an **admin team** (more than one admin) who can approve shops, bulk-add bike models, and fix data. |
 | 2026-10-17 | Billing was never really set up. **Don't build billing until the pricing model is chosen.** |
@@ -102,12 +103,13 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] Later: re-fit the wet/hill/weight multipliers from data (needs a few hundred replacements)
 - [ ] Later: per-rider calibration from stretch measurements (e.g. "your chains wear 1.3x faster")
 
-### Build bike from text ⏳ built 2026-10-18, needs an API key
+### Build bike from text ⏳ built 2026-10-18, ready to ship
 - [x] AI extraction (Claude Haiku 5.5) with a strict schema mapped to EQPMGR part slots; falls back to the old parser
 - [x] Catalog matching by brand + part code (no duplicate parts), "already in catalog" bike check
 - [x] Review screen (found / matched / new / double-check) before the form
-- [x] Usage log + 20 imports/day per rider; accuracy test set (old parser: 57%)
-- [ ] **Sage:** create an Anthropic API key and add `ANTHROPIC_API_KEY` to `.env.local` and Netlify; then run the accuracy test (target ≥ 90%)
+- [x] Usage log, AI spend card, and cost guardrails (10/day per rider, 100 AI/day for the site, kill switch, size caps)
+- [x] API key set up; accuracy 100% on the test set (old parser: 57%)
+- [ ] **Sage:** set a monthly spend limit in the Anthropic Console and turn auto-reload off
 - [ ] Grow the test set to 10–20 pages across brands (road, gravel, e-bike, kids); feed real corrections from `import_text_feedback`
 - [ ] Crowd-sourcing quality: mark imported bikes/parts "unverified" until confirmed (ties to Phase 3 admin roles)
 

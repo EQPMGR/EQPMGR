@@ -42,7 +42,19 @@ export async function getFieldDataAction(idToken: string) {
   const firstError = bErr || lErr || sErr || cErr;
   if (firstError) throw firstError;
 
+  // AI import spend (Claude Haiku 5.5: $0.10 / $0.50 per million input / output tokens).
+  const monthAgo = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+  const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { data: imports } = await supabase.from('bike_imports').select('created_at, method, input_tokens, output_tokens').gte('created_at', monthAgo);
+  const usage = (rows: any[]) => ({
+    imports: rows.length,
+    aiImports: rows.filter((r) => r.method === 'ai').length,
+    costUsd: Math.round(rows.reduce((s, r) => s + (r.input_tokens || 0) * 0.10 / 1e6 + (r.output_tokens || 0) * 0.50 / 1e6, 0) * 10000) / 10000,
+  });
+  const importUsage = { last24h: usage((imports ?? []).filter((r: any) => r.created_at >= dayAgo)), last30d: usage(imports ?? []) };
+
   return {
+    importUsage,
     totals: { rides, wetRides, unknownWeather, measurements, shopMeasurements, wornOutReplacements: wornOut },
     baselines: baselines ?? [],
     learned: learned ?? [],

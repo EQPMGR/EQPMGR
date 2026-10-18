@@ -81,7 +81,16 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 
 - `/import-text` → `POST /api/bike-import` → `src/lib/spec-extract.ts`: Claude **Haiku 5.5** (`@anthropic-ai/sdk`, `messages.parse` + a Zod v4 schema; import `z` from `zod/v4`) maps pasted spec-page text to EQPMGR's part slots (the `BASE_COMPONENTS` names the Add Bike Model form uses). Without `ANTHROPIC_API_KEY`, or on any API error or refusal, it falls back to the rule-based `src/lib/bike-parser.ts`.
 - `src/lib/catalog-match.ts` matches parts to existing `master_components` by brand + part code. It's used on the review screen and when saving, so imports don't create duplicate catalog parts. It's deliberately conservative: a missed match beats a wrong merge.
-- `bike_imports` (migration 019) logs every import (method, tokens, duration) and enforces 20 imports per rider per day (admins exempt).
+- `bike_imports` (migration 019) logs every import (method, tokens, duration). Admin → Field data shows the AI spend.
+- **Cost guardrails.** `/api/bike-import` is the ONLY code path that can spend money on the Anthropic API. Keep it that way: no other route, server action or client code may call Anthropic. (The original Firebase build left AI endpoints open and a bot ran up a $16k bill.) The layers:
+  1. A verified login is required.
+  2. A rider gets 10 imports per 24 h; admins are exempt. The count fails closed: if it can't be checked, the import is refused.
+  3. The whole site gets 100 AI imports per 24 h (env `BIKE_IMPORT_SITE_DAILY_LIMIT`). Past that cap, imports use the free parser.
+  4. Input is capped at 30,000 characters and output at 8,000 tokens. The SDK retries once and times out after 90 s.
+  5. A log row is reserved before the AI call, so parallel requests count against the limits.
+  6. Kill switch: set `BIKE_IMPORT_AI_DISABLED=1` in Netlify to turn AI off; the parser still works.
+  7. The Anthropic Console monthly spend limit is the hard ceiling, with auto-reload off.
+- Model settings: Haiku 5.5 at effort `medium` (env `SPEC_EFFORT`). Eval 2026-10-18: medium scored 100% at about 6.3k output tokens per page; low scored 98% at about 3.9k, but missed parts and added a phantom one.
 - Accuracy: `npx tsx scripts/bike-import-eval/run.mts` scores the importer against hand-checked fixtures (`--parser` forces the old parser; baseline 57%). Run it after any prompt or schema change. Each AI run costs a fraction of a cent.
 
 ## Strava
