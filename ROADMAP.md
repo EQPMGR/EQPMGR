@@ -87,6 +87,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 ### Ride-based wear ✅ built 2026-10-18 (migration 016)
 - [x] Researched baseline lifespans for every part type, stored in the `wear_baselines` table (road / off-road km, or service hours)
 - [x] Every Strava or manual ride is stored once; wear = km ÷ lifespan, ×1.5 for wet rides on rain-sensitive parts, ×1.5 on the drivetrain for e-bikes
+- [x] Hills (metres climbed per km, from Strava or entered by hand) and rider weight (from the profile) add wear to the drivetrain and brakes. These multipliers are reasoned estimates, not published data.
 - [x] Rain detection from the ride's time and place (WeatherAPI history, about 7 days back), including "rode after it rained"
 - [x] Frames, bars, stems, levers and disc-brake rims no longer get fake wear
 - [x] Replaced the old wear simulator with a "Log a ride" form

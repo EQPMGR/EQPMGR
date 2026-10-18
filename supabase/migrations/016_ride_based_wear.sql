@@ -3,7 +3,8 @@
 -- Wear used to come from a hard-coded simulator that added at least 1% to every
 -- part per ride. Now every ride (Strava or manual) is stored once in `rides`,
 -- and apply_ride_wear() adds wear to each part on the bike:
---   distance parts: km x wet factor x e-bike factor / lifespan (road or off-road) x 100
+--   distance parts: km x wet x e-bike x hill x rider-weight factors
+--                   / lifespan (road or off-road) x 100
 --   hour parts:     moving hours / service interval x 100   (suspension, droppers)
 --   untracked:      frames, bars, stems, levers... (inspect, don't fake wear)
 -- Lifespans live in `wear_baselines` (researched generic baselines, 2026-10-18).
@@ -25,6 +26,11 @@ create table if not exists wear_baselines (
   service_hours numeric,
   wet_factor numeric not null default 1,
   ebike_factor numeric not null default 1,
+  -- Hills: 'drivetrain' parts wear with climbing torque, 'brakes' with descending.
+  hill_group text not null default 'none' check (hill_group in ('drivetrain', 'brakes', 'none')),
+  -- Rider weight effect: factor = (total mass / 87 kg reference) ^ exponent.
+  -- 1 = full (brakes: braking energy is proportional to mass), 0.5 = partial, 0 = none.
+  weight_exponent numeric not null default 0,
   confidence text check (confidence in ('high', 'medium', 'low')),
   notes text,
   updated_at timestamptz not null default now()
@@ -72,6 +78,38 @@ on conflict (component_key) do update set
   service_hours = excluded.service_hours, wet_factor = excluded.wet_factor,
   ebike_factor = excluded.ebike_factor, confidence = excluded.confidence,
   notes = excluded.notes, updated_at = now();
+
+-- Hill and rider-weight sensitivity (reasoned estimates, not published data;
+-- to be refined with observed replacement data).
+update wear_baselines set hill_group = 'drivetrain', weight_exponent = 0.5
+  where component_key in ('chain', 'cassette', 'chainring', 'jockey_wheels', 'bottom_bracket');
+update wear_baselines set hill_group = 'brakes', weight_exponent = 1
+  where component_key in ('brake_pads', 'rotor');
+update wear_baselines set weight_exponent = 0.5
+  where component_key in ('rear_tire', 'tire', 'hub', 'headset', 'pedals');
+
+-- Climbing in metres per km -> multiplier for the part's hill group.
+create or replace function public.hill_factor(p_hill_group text, p_elevation_gain_m numeric, p_distance_km numeric)
+returns numeric language sql immutable as $$
+  select case
+    when p_hill_group = 'none' or coalesce(p_elevation_gain_m, 0) <= 0 or coalesce(p_distance_km, 0) <= 0 then 1
+    else case
+      when p_elevation_gain_m / p_distance_km < 5 then 1
+      when p_elevation_gain_m / p_distance_km < 15 then case p_hill_group when 'brakes' then 1.25 else 1.15 end
+      when p_elevation_gain_m / p_distance_km < 30 then case p_hill_group when 'brakes' then 1.5 else 1.3 end
+      else case p_hill_group when 'brakes' then 2.0 else 1.5 end
+    end
+  end::numeric;
+$$;
+
+-- Rider + bike mass relative to a 75 kg rider on a 12 kg bike, capped 0.8-1.5.
+create or replace function public.weight_factor(p_exponent numeric, p_rider_kg numeric, p_is_ebike boolean)
+returns numeric language sql immutable as $$
+  select case
+    when coalesce(p_exponent, 0) = 0 or p_rider_kg is null or p_rider_kg <= 0 then 1
+    else power(least(greatest((p_rider_kg + case when p_is_ebike then 23 else 12 end) / 87.0, 0.8), 1.5), p_exponent)
+  end::numeric;
+$$;
 
 create or replace function public.match_wear_baseline(p_name text, p_brand text, p_series text, p_model text)
 returns text
@@ -155,6 +193,8 @@ create table if not exists rides (
   started_at timestamptz not null,
   distance_km numeric not null check (distance_km >= 0),
   moving_hours numeric not null default 0 check (moving_hours >= 0),
+  elevation_gain_m numeric check (elevation_gain_m >= 0),
+  rider_weight_kg numeric,               -- snapshot from the rider's profile
   sport_type text,
   terrain text not null check (terrain in ('road', 'offroad')),
   is_ebike boolean not null default false,
@@ -210,6 +250,8 @@ begin
           v_ride.distance_km
           * case when v_ride.weather_status = 'wet' then b.wet_factor else 1 end
           * case when v_ride.is_ebike then b.ebike_factor else 1 end
+          * hill_factor(b.hill_group, v_ride.elevation_gain_m, v_ride.distance_km)
+          * weight_factor(b.weight_exponent, v_ride.rider_weight_kg, v_ride.is_ebike)
           / nullif(case when v_ride.terrain = 'offroad' then b.offroad_km else b.road_km end, 0) * 100
         when b.basis = 'hours' then v_ride.moving_hours / nullif(b.service_hours, 0) * 100
         else 0

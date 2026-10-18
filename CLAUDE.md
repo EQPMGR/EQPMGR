@@ -62,7 +62,9 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 
 - Every ride (Strava or manual) is stored once in `rides`. `apply_ride_wear(ride_id)` adds its wear to each part on the bike (migration 016). Never write `wear_percentage` from app code except to reset it.
 - Lifespans live in the `wear_baselines` table: road and off-road km, or service hours for suspension and droppers. Parts are matched by regex on "name | brand | series | model" (`match_wear_baseline`). Untracked parts (frame, bars, stems, levers, disc-brake rims) get no wear.
-- Distance wear = km × wet factor × e-bike factor ÷ lifespan for the ride's terrain. Wear can go above 100% (overdue).
+- Distance wear = km × wet × e-bike × hill × rider-weight factors ÷ lifespan for the ride's terrain. Wear can go above 100% (overdue).
+  - Hill factor uses metres climbed per km: drivetrain parts ×1.15/1.3/1.5 and brakes ×1.25/1.5/2.0 at 5/15/30 m/km.
+  - Weight factor = ((rider kg + bike 12 or 23 kg) / 87) ^ exponent, capped 0.8–1.5. Exponent is 1 for brakes, 0.5 for drivetrain, tires and bearings. Rider weight is snapshotted from `app_users.weight` (kg).
 - The `components_set_wear_baseline` trigger sets the baseline and `expected_replacement_km` when a part is added, and resets wear when its catalog part changes. So `replace_component()` and any insert get the right values automatically.
 - Weather: `src/lib/ride-weather.ts` (WeatherAPI history, about 7 days back). A ride is wet if ≥0.3 mm falls during it or ≥1 mm in the 12 h before. Strava rides use `start_latlng` and `start_date`; manual rides use the browser location, or the rider marks wet/dry.
 - Terrain and e-bike come from Strava's `sport_type` (MountainBikeRide, GravelRide, EBikeRide...), or else the bike's type.

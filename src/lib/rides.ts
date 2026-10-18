@@ -25,6 +25,8 @@ export type NewRide = {
   startedAt: Date;
   distanceKm: number;
   movingHours: number;
+  /** Metres climbed; drives the hill factor. */
+  elevationGainM?: number | null;
   sportType?: string | null;
   terrain: 'road' | 'offroad';
   isEbike: boolean;
@@ -57,6 +59,10 @@ export async function recordRideAndApplyWear(supabase: SupabaseClient, ride: New
     }
   }
 
+  // Snapshot the rider's weight (profile stores kg) for the weight factor.
+  const { data: rider } = await supabase.from('app_users').select('weight').eq('id', ride.userId).maybeSingle();
+  const riderWeightKg = typeof rider?.weight === 'number' && rider.weight > 20 && rider.weight < 250 ? rider.weight : null;
+
   const looked = await getRideWeather({ lat: ride.lat, lng: ride.lng, startedAt: ride.startedAt, movingHours: ride.movingHours });
   const weather: RideWeather = ride.weatherOverride
     ? { ...looked, status: ride.weatherOverride, summary: [`Marked ${ride.weatherOverride} by rider`, looked.summary].filter(Boolean).join('; ') }
@@ -73,6 +79,8 @@ export async function recordRideAndApplyWear(supabase: SupabaseClient, ride: New
       started_at: ride.startedAt.toISOString(),
       distance_km: Math.round(ride.distanceKm * 100) / 100,
       moving_hours: Math.round(ride.movingHours * 1000) / 1000,
+      elevation_gain_m: ride.elevationGainM != null && ride.elevationGainM >= 0 ? Math.round(ride.elevationGainM) : null,
+      rider_weight_kg: riderWeightKg,
       sport_type: ride.sportType ?? null,
       terrain: ride.terrain,
       is_ebike: ride.isEbike,

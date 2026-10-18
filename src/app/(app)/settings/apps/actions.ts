@@ -480,6 +480,7 @@ export async function assignStravaActivityToAction({
             startedAt: new Date(full.start_date),
             distanceKm: (full.distance || 0) / 1000,
             movingHours: (full.moving_time || 0) / 3600,
+            elevationGainM: typeof full.total_elevation_gain === 'number' ? full.total_elevation_gain : null,
             sportType,
             terrain: rideTerrain(sportType, bike.type),
             isEbike: rideIsEbike(sportType, bike.type),

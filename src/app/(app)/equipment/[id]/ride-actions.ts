@@ -19,6 +19,7 @@ export async function logManualRideAction(
     startedAt: string;          // ISO timestamp
     distanceKm: number;
     durationMinutes: number;
+    elevationGainM?: number | null;
     terrain: 'auto' | 'road' | 'offroad';
     conditions: 'auto' | 'wet' | 'dry';
     lat?: number | null;
@@ -34,6 +35,9 @@ export async function logManualRideAction(
     }
     if (!(input.distanceKm > 0) || input.distanceKm > 1000) {
       return { success: false, message: 'Distance must be between 0 and 1,000 km.' };
+    }
+    if (input.elevationGainM != null && (input.elevationGainM < 0 || input.elevationGainM > 10000)) {
+      return { success: false, message: 'Climbing must be between 0 and 10,000 m.' };
     }
     if (!(input.durationMinutes > 0) || input.durationMinutes > 48 * 60) {
       return { success: false, message: 'Duration must be between 1 minute and 48 hours.' };
@@ -57,6 +61,7 @@ export async function logManualRideAction(
       startedAt,
       distanceKm: input.distanceKm,
       movingHours: input.durationMinutes / 60,
+      elevationGainM: input.elevationGainM ?? null,
       terrain: input.terrain === 'auto' ? rideTerrain(null, bike.type) : input.terrain,
       isEbike: rideIsEbike(null, bike.type),
       lat: input.lat ?? null,

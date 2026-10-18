@@ -20,6 +20,7 @@ const formSchema = z.object({
   startedAt: z.string().min(1, 'When did the ride start?'),
   distanceKm: z.coerce.number().positive('Distance must be positive').max(1000),
   durationMinutes: z.coerce.number().int().positive('Duration must be positive').max(48 * 60),
+  elevationGainM: z.union([z.literal(''), z.coerce.number().min(0).max(10000)]).optional(),
   terrain: z.enum(['auto', 'road', 'offroad']),
   conditions: z.enum(['auto', 'wet', 'dry']),
 });
@@ -42,7 +43,7 @@ export function LogRideForm({ equipment, onSuccess }: { equipment: Equipment; on
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { startedAt: localNow(), distanceKm: 20, durationMinutes: 60, terrain: 'auto', conditions: 'auto' },
+    defaultValues: { startedAt: localNow(), distanceKm: 20, durationMinutes: 60, elevationGainM: '', terrain: 'auto', conditions: 'auto' },
   });
 
   const useMyLocation = () => {
@@ -73,6 +74,7 @@ export function LogRideForm({ equipment, onSuccess }: { equipment: Equipment; on
         startedAt: new Date(values.startedAt).toISOString(),
         distanceKm: values.distanceKm,
         durationMinutes: values.durationMinutes,
+        elevationGainM: values.elevationGainM === '' || values.elevationGainM == null ? null : Number(values.elevationGainM),
         terrain: values.terrain,
         conditions: values.conditions,
         lat: location?.lat ?? null,
@@ -97,11 +99,11 @@ export function LogRideForm({ equipment, onSuccess }: { equipment: Equipment; on
             <CardTitle className="flex items-center gap-2"><Bike className="h-5 w-5" /> Log a ride</CardTitle>
             <CardDescription>
               For rides that aren't on Strava. Wear is added to each part from the distance or riding hours,
-              with extra wear if the ride was wet.
+              with extra wear for wet rides, climbing, and your weight (from your profile).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <FormField control={form.control} name="startedAt" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Started</FormLabel>
@@ -120,6 +122,13 @@ export function LogRideForm({ equipment, onSuccess }: { equipment: Equipment; on
                 <FormItem>
                   <FormLabel>Riding time (minutes)</FormLabel>
                   <FormControl><Input type="number" step="1" min="1" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="elevationGainM" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Climbing (m)</FormLabel>
+                  <FormControl><Input type="number" step="1" min="0" placeholder="Optional" {...field} value={field.value ?? ''} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
