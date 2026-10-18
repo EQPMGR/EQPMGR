@@ -84,6 +84,17 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Firebase/Google removed from the shop app (2026-10-17)
 - [ ] Shop app cleanup: CLAUDE.md, its 21 pre-existing type errors
 
+### Ride-based wear ✅ built 2026-10-18 (migration 016)
+- [x] Researched baseline lifespans for every part type, stored in the `wear_baselines` table (road / off-road km, or service hours)
+- [x] Every Strava or manual ride is stored once; wear = km ÷ lifespan, ×1.5 for wet rides on rain-sensitive parts, ×1.5 on the drivetrain for e-bikes
+- [x] Rain detection from the ride's time and place (WeatherAPI history, about 7 days back), including "rode after it rained"
+- [x] Frames, bars, stems, levers and disc-brake rims no longer get fake wear
+- [x] Replaced the old wear simulator with a "Log a ride" form
+- [ ] Time-based items: tubeless sealant (every 4 months), brake bleed (yearly), suspension lowers service (50 h). Needs a small "service reminders" feature.
+- [ ] Weather for rides older than 7 days (Open-Meteo archive, or a paid WeatherAPI plan)
+- [ ] Show each part's baseline and remaining km/hours on the part page
+- [ ] Later: replace baselines with observed lifespans once enough replacement data exists
+
 ### Housekeeping
 - [ ] Sage: in Google's consoles, delete the old Firebase project and revoke the Gemini API key (both unused now), and remove any FIREBASE_* or GEMINI_* variables from Netlify's environment settings.
 - [ ] Shop app: the bike-fit and add-wheelset dialogs still write to customer bikes from the browser, which the database blocks. Move them to guarded server actions like the log entries.
@@ -113,6 +124,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-10-18 | Ride-based wear: researched baselines, rides table, weather-based wet multiplier for Strava and manual rides (migration 016) |
 | 2026-10-17 | Removed every Firebase/Google/Gemini/Genkit dependency, config file and doc from both apps (about 40k lines). Only robots.txt crawler rules mention Google. |
 | 2026-10-17 | Phase 2 shipped: work orders connect riders and shops, shared replace routine records field data (migration 015) |
 | 2026-10-17 | Shop app's first Git-based production deploy (it had been deployed by drag-and-drop before). Fixed the build-skip rule for sites without a previous build. |

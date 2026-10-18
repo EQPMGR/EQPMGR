@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { MaintenanceLog } from '@/components/maintenance-log';
-import { WearSimulation } from '@/components/wear-simulation';
+import { LogRideForm } from '@/components/log-ride-form';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
 import type { Equipment, MaintenanceLog as MaintenanceLogType, Component, MasterComponent, UserComponent } from '@/lib/types';
 import { AccessoriesIcon } from '@/components/icons/accessories-icon';
@@ -463,7 +463,7 @@ export default function EquipmentDetailPage() {
             </Card>
             
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
-            <WearSimulation equipment={equipment} onSuccess={() => fetchEquipment(user!.uid)} />
+            <LogRideForm equipment={equipment} onSuccess={() => fetchEquipment(user!.uid)} />
             <MaintenanceSchedule equipment={equipment} />
           </div>
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">

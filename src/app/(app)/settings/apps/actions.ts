@@ -7,6 +7,8 @@ import { getServerAuth, getServerDb } from '@/backend';
 import type { Equipment } from '@/lib/types';
 import { toDate } from '@/lib/date-utils';
 import { accessSecret } from '@/lib/secrets';
+import { verifyUserToken } from '@/lib/server-auth';
+import { recordRideAndApplyWear, rideTerrain, rideIsEbike, describeWeather } from '@/lib/rides';
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -419,88 +421,88 @@ export async function assignStravaActivityToAction({
     equipmentId,
 }: {
     idToken: string;
-    activity: StravaActivity;
+    activity: Pick<StravaActivity, 'id' | 'name'>;
     equipmentId: string;
 }): Promise<{ success: boolean; message: string; }> {
-    if (!idToken || !activity || !equipmentId) {
+    if (!idToken || !activity?.id || !equipmentId) {
         return { success: false, message: 'Missing required data.' };
     }
 
-    const auth = await getServerAuth();
     const supabase = getSupabaseClient();
 
     try {
-        const decodedToken = await auth.verifyIdToken(idToken, true);
-        const userId = decodedToken.uid;
+        const { uid: userId } = await verifyUserToken(idToken);
 
-        // Get current equipment data to increment distances
-        const { data: equipmentData, error: getEquipmentError } = await supabase
+        const { data: bike, error: bikeError } = await supabase
             .from('equipment')
-            .select('total_distance, total_hours')
+            .select('id, type')
             .eq('id', equipmentId)
-            .single();
+            .eq('user_id', userId)
+            .maybeSingle();
+        if (bikeError) throw bikeError;
+        if (!bike) return { success: false, message: 'Bike not found.' };
 
-        if (getEquipmentError) {
-            console.error('Error fetching equipment:', getEquipmentError);
-        }
-
-        const currentDistance = equipmentData?.total_distance || 0;
-        const currentHours = equipmentData?.total_hours || 0;
-        const newDistance = currentDistance + (activity.distance / 1000);
-        const newHours = currentHours + (activity.moving_time / 3600);
-
-        // Update equipment with new distance/hours
-        const { error: updateEquipmentError } = await supabase
-            .from('equipment')
-            .update({
-                total_distance: newDistance,
-                total_hours: newHours,
-            })
-            .eq('id', equipmentId);
-
-        if (updateEquipmentError) {
-            console.error('Error updating equipment:', updateEquipmentError);
-            // Continue anyway - processedActivities update is more critical
-        }
-
-        // Get current strava data
+        // Re-fetch the activity from Strava: distance, time and location come
+        // from Strava itself, not from the browser.
         const { data: userData, error: getUserError } = await supabase
             .from('app_users')
             .select('strava')
             .eq('id', userId)
             .single();
-
-        if (getUserError && getUserError.code !== 'PGRST116') {
-            throw getUserError;
+        if (getUserError) throw getUserError;
+        if (!userData?.strava?.accessToken) {
+            return { success: false, message: 'Connect Strava first.' };
         }
+        const db = await getServerDb();
+        const tokens = await ensureStravaTokenIsValid(userId, db, userData.strava);
 
-        const existingStrava = userData?.strava || {};
+        const fetchOptions: NodeFetchInit = {
+            headers: { Authorization: `Bearer ${tokens.accessToken}`, 'User-Agent': 'EQPMGR/1.0' },
+            cache: 'no-store',
+        };
+        if (process.env.NODE_ENV !== 'production') {
+            fetchOptions.agent = new https.Agent({ rejectUnauthorized: false });
+        }
+        const res = await fetch(`https://www.strava.com/api/v3/activities/${encodeURIComponent(String(activity.id))}`, fetchOptions);
+        if (!res.ok) {
+            return { success: false, message: `Couldn't load that ride from Strava (${res.status}).` };
+        }
+        const full = await res.json();
+        const sportType: string | null = full.sport_type || full.type || null;
+        const [lat, lng] = Array.isArray(full.start_latlng) && full.start_latlng.length === 2 ? full.start_latlng : [null, null];
+
+        const recorded = await recordRideAndApplyWear(supabase, {
+            userId,
+            equipmentId,
+            source: 'strava',
+            externalId: String(full.id),
+            name: full.name,
+            startedAt: new Date(full.start_date),
+            distanceKm: (full.distance || 0) / 1000,
+            movingHours: (full.moving_time || 0) / 3600,
+            sportType,
+            terrain: rideTerrain(sportType, bike.type),
+            isEbike: rideIsEbike(sportType, bike.type),
+            lat,
+            lng,
+        });
+
+        // Keep the "already synced" list the activity picker uses.
+        const existingStrava = userData.strava || {};
         const existingProcessedActivities: string[] = Array.isArray(existingStrava.processedActivities)
             ? existingStrava.processedActivities.map(String)
             : [];
-        const mergedProcessedActivities = Array.from(new Set([...existingProcessedActivities, String(activity.id)]));
-
-        const updatedStrava = {
-            ...existingStrava,
-            processedActivities: mergedProcessedActivities,
-        };
-
-        // Update strava field with new processedActivities
+        const mergedProcessedActivities = Array.from(new Set([...existingProcessedActivities, String(full.id)]));
         const { error: updateError } = await supabase
             .from('app_users')
-            .update({ strava: updatedStrava })
+            .update({ strava: { ...existingStrava, processedActivities: mergedProcessedActivities } })
             .eq('id', userId);
-
         if (updateError) throw updateError;
 
-        console.log('[assignStravaActivityToAction] Successfully assigned activity', {
-            userId,
-            activityId: activity.id,
-            equipmentId,
-            processedActivities: mergedProcessedActivities.length,
-        });
-
-        return { success: true, message: `Activity '${activity.name}' assigned.` };
+        if (recorded.alreadyRecorded) {
+            return { success: true, message: `'${full.name}' was already counted.` };
+        }
+        return { success: true, message: `'${full.name}' assigned. ${describeWeather(recorded.weather)}` };
 
     } catch (error: any) {
         console.error("Error assigning Strava activity:", error);

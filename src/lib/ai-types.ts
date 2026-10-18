@@ -61,34 +61,6 @@ export const BikeModelDetailsOutputSchema = z.object({
 export type BikeModelDetailsOutput = z.infer<typeof BikeModelDetailsOutputSchema>;
 
 
-// === From simulate-wear.ts ===
-
-export const SimulateWearInputSchema = z.object({
-  equipmentType: z.string().describe('The type of equipment being used (e.g., running shoes, bicycle).'),
-  workoutType: z.string().describe('The type of workout performed (e.g., running, cycling).'),
-  distance: z.number().describe('The distance covered during the workout in kilometers.'),
-  duration: z.number().describe('The duration of the workout in minutes.'),
-  intensity: z.string().describe('The intensity of the workout (e.g., low, medium, high).'),
-  environmentalConditions: z
-    .string()
-    .describe('The environmental conditions during the workout (e.g., sunny, rainy, muddy).'),
-  wearAndTearData: z.string().optional().describe('JSON string of the current wear and tear data for each component.'),
-  manufacturerGuidelines: z.string().optional().describe('JSON string of manufacturer guidelines for maintenance.'),
-});
-export type SimulateWearInput = z.infer<typeof SimulateWearInputSchema>;
-
-export const SimulateWearOutputSchema = z.object({
-  wearPercentage: z
-    .number()
-    .describe('The estimated percentage of wear and tear on the equipment after the workout.'),
-  componentWear: z.array(z.object({
-      componentName: z.string().describe("The name of the component, e.g., 'Chain' or 'Brake Pads'."),
-      wearPercentage: z.number().describe("The new total wear percentage of this component after the activity.")
-    })).describe('A breakdown of wear and tear on individual components of the equipment.'),
-  recommendations: z.array(z.string()).describe('Recommendations for maintenance or replacement based on the wear.'),
-});
-export type SimulateWearOutput = z.infer<typeof SimulateWearOutputSchema>;
-
 // === From extract-component-details.ts ===
 const ExtractedSingleComponentSchema = z.object({
   name: z.string().describe('The name of the component (e.g., "Chainring", "Rear Derailleur"). Standardize "Seat Post" to "Seatpost".'),

@@ -253,7 +253,7 @@ export async function saveBikeModelAction({
                     last_service_date: null,
                     installed_at_distance: 0,
                     current_distance: 0,
-                    expected_replacement_km: componentToSave.recommendedIntervalKm || componentToSave.replacementIntervalKm || null,
+                    // expected_replacement_km is set by the components_set_wear_baseline trigger (migration 016)
                     is_active: true,
                     replacement_count: 0,
                     installed_at: new Date().toISOString(),
