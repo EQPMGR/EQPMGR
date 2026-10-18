@@ -3,8 +3,11 @@
 -- Wear used to come from a hard-coded simulator that added at least 1% to every
 -- part per ride. Now every ride (Strava or manual) is stored once in `rides`,
 -- and apply_ride_wear() adds wear to each part on the bike:
---   distance parts: km x wet x e-bike x hill x rider-weight factors
---                   / lifespan (road or off-road) x 100
+--   distance parts: adjusted km = km x wet x e-bike x hill x rider-weight
+--                   factors, converted to road-equivalent km for off-road
+--                   rides; wear % = adjusted km / the part's lifespan (road)
+--   (component_lifespan_km is the baseline here; migration 017 blends in
+--    observed replacement data, and wear re-judges itself automatically)
 --   hour parts:     moving hours / service interval x 100   (suspension, droppers)
 --   untracked:      frames, bars, stems, levers... (inspect, don't fake wear)
 -- Lifespans live in `wear_baselines` (researched generic baselines, 2026-10-18).
@@ -137,6 +140,27 @@ $$;
 alter table components add column if not exists wear_baseline_key text references wear_baselines(component_key);
 alter table components add column if not exists wear_km numeric not null default 0;
 alter table components add column if not exists wear_hours numeric not null default 0;
+-- Road-equivalent km with all wear factors applied. Comparable across riders,
+-- terrain and weather, so it is what replacements are learned from.
+alter table components add column if not exists adjusted_km numeric not null default 0;
+
+-- Best current road lifespan for a part (baseline here; 017 blends real data in).
+create or replace function public.component_lifespan_km(p_master_component_id uuid, p_baseline_key text)
+returns numeric language sql stable set search_path = public as $$
+  select road_km from wear_baselines where component_key = p_baseline_key and basis = 'distance';
+$$;
+
+-- Wear % for one part from its stored usage (017 adds chain-stretch measurements).
+create or replace function public.component_wear_pct(p_component_id uuid)
+returns numeric language sql stable set search_path = public as $$
+  select round(coalesce(case b.basis
+      when 'distance' then c.adjusted_km / nullif(component_lifespan_km(c.master_component_id, c.wear_baseline_key), 0) * 100
+      when 'hours' then c.wear_hours / nullif(b.service_hours, 0) * 100
+    end, 0)::numeric, 2)
+  from components c
+  left join wear_baselines b on b.component_key = c.wear_baseline_key
+  where c.id = p_component_id;
+$$;
 
 -- Keep the baseline (and expected lifespan) in sync whenever a part is added or swapped.
 create or replace function public.components_set_wear_baseline()
@@ -159,15 +183,18 @@ begin
 
   select type into v_type from equipment where id = new.equipment_id;
   select * into v_baseline from wear_baselines where component_key = new.wear_baseline_key;
+  -- Expected km on this bike's usual terrain (lifespan is road-equivalent).
   new.expected_replacement_km := case
-    when v_baseline.basis = 'distance' and bike_terrain(v_type) = 'offroad' then v_baseline.offroad_km
-    when v_baseline.basis = 'distance' then v_baseline.road_km
-    else null end;
+    when v_baseline.basis <> 'distance' then null
+    when bike_terrain(v_type) = 'offroad' then round(component_lifespan_km(new.master_component_id, new.wear_baseline_key)
+                                                       * v_baseline.offroad_km / nullif(v_baseline.road_km, 0))
+    else round(component_lifespan_km(new.master_component_id, new.wear_baseline_key)) end;
 
   -- A different part means a fresh wear clock.
   if tg_op = 'UPDATE' and new.master_component_id is distinct from old.master_component_id then
     new.wear_km := 0;
     new.wear_hours := 0;
+    new.adjusted_km := 0;
     new.wear_percentage := 0;
   end if;
   return new;
@@ -245,17 +272,15 @@ begin
 
   with w as (
     select c.id,
-      case
-        when b.basis = 'distance' then
+      case when b.basis = 'distance' then
           v_ride.distance_km
           * case when v_ride.weather_status = 'wet' then b.wet_factor else 1 end
           * case when v_ride.is_ebike then b.ebike_factor else 1 end
           * hill_factor(b.hill_group, v_ride.elevation_gain_m, v_ride.distance_km)
           * weight_factor(b.weight_exponent, v_ride.rider_weight_kg, v_ride.is_ebike)
-          / nullif(case when v_ride.terrain = 'offroad' then b.offroad_km else b.road_km end, 0) * 100
-        when b.basis = 'hours' then v_ride.moving_hours / nullif(b.service_hours, 0) * 100
-        else 0
-      end as delta
+          -- off-road km count as more road-equivalent km
+          * case when v_ride.terrain = 'offroad' then b.road_km / nullif(b.offroad_km, 0) else 1 end
+        else 0 end as adj_km
     from components c
     left join wear_baselines b on b.component_key = c.wear_baseline_key
     where c.equipment_id = v_ride.equipment_id
@@ -264,11 +289,14 @@ begin
   update components c set
     wear_km = c.wear_km + v_ride.distance_km,
     wear_hours = c.wear_hours + v_ride.moving_hours,
-    wear_percentage = round((coalesce(c.wear_percentage, 0) + coalesce(w.delta, 0))::numeric, 2),
+    adjusted_km = c.adjusted_km + coalesce(w.adj_km, 0),
     current_distance = coalesce(c.current_distance, 0) + v_ride.distance_km,
     updated_at = now()
   from w where w.id = c.id;
   get diagnostics v_parts = row_count;
+
+  update components set wear_percentage = component_wear_pct(id)
+  where equipment_id = v_ride.equipment_id and coalesce(is_active, true);
 
   update rides set wear_applied_at = now() where id = p_ride_id;
 
@@ -298,15 +326,17 @@ where x.id = c.id;
 update components c set
   wear_km = greatest(coalesce(e.total_distance, 0) - coalesce(c.installed_at_distance, 0), 0),
   wear_hours = 0,
+  adjusted_km = case when b.basis = 'distance' then
+      greatest(coalesce(e.total_distance, 0) - coalesce(c.installed_at_distance, 0), 0)
+      * case when bike_terrain(e.type) = 'offroad' then b.road_km / nullif(b.offroad_km, 0) else 1 end
+    else 0 end,
   expected_replacement_km = case
     when b.basis = 'distance' and bike_terrain(e.type) = 'offroad' then b.offroad_km
-    when b.basis = 'distance' then b.road_km end,
-  wear_percentage = case
-    when b.basis = 'distance' then round((greatest(coalesce(e.total_distance, 0) - coalesce(c.installed_at_distance, 0), 0)
-      / nullif(case when bike_terrain(e.type) = 'offroad' then b.offroad_km else b.road_km end, 0) * 100)::numeric, 2)
-    else 0 end
+    when b.basis = 'distance' then b.road_km end
 from equipment e, wear_baselines b
 where e.id = c.equipment_id and b.component_key = c.wear_baseline_key;
+
+update components set wear_percentage = component_wear_pct(id);
 
 update components set wear_percentage = 0, expected_replacement_km = null
 where wear_baseline_key is null;

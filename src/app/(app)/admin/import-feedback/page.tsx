@@ -1,8 +1,12 @@
+'use client';
+
 import Link from 'next/link';
 import { ArrowLeft, BarChart3, ClipboardList, LayoutList, MessageSquareWarning, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getImportFeedbackRecords, analyzeImportFeedback } from '@/lib/import-feedback-analytics';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import type { analyzeImportFeedback } from '@/lib/import-feedback-analytics';
 
 function StatCard({ title, value, description, icon: Icon }: { title: string; value: string | number; description: string; icon: any }) {
   return (
@@ -44,9 +48,27 @@ function MiniList({ title, items }: { title: string; items: Array<{ label: strin
   );
 }
 
-export default async function ImportFeedbackAnalyzerPage() {
-  const records = await getImportFeedbackRecords(200);
-  const summary = analyzeImportFeedback(records);
+// Loaded in the browser through the admin-only API route. Rendering this on the
+// server exposed the data to anyone, because the admin gate runs client-side.
+export default function ImportFeedbackAnalyzerPage() {
+  const { user } = useAuth();
+  const [summary, setSummary] = useState<ReturnType<typeof analyzeImportFeedback> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const res = await fetch('/api/admin/import-feedback-analysis', {
+        headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setError(data.error || 'Could not load feedback.');
+      else setSummary(data.summary);
+    })();
+  }, [user]);
+
+  if (error) return <div className="mx-auto max-w-6xl px-4 py-6 text-destructive">{error}</div>;
+  if (!summary) return <div className="mx-auto max-w-6xl px-4 py-6 text-muted-foreground">Loading…</div>;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6">

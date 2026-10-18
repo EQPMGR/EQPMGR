@@ -50,6 +50,21 @@ export default function AdminPage() {
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
+                            <CardTitle className="text-base font-semibold">Field Data</CardTitle>
+                            <CardDescription className="text-sm">
+                                Learned lifespans, chain stretch reports and ride weather stats.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/field-data">
+                                <BarChart3 className="h-4 w-4 mr-2" /> View
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
                             <CardTitle className="text-base font-semibold">Import Feedback Analyzer</CardTitle>
                             <CardDescription className="text-sm">
                                 Review parsed vs final import feedback and common parser mistakes.

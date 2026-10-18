@@ -74,6 +74,7 @@ export async function replaceUserComponentAction({
     replacementReason,
     newMasterComponentId,
     manualNewComponentData,
+    finalStretch,
 }: {
     idToken: string;
     equipmentId: string;
@@ -86,6 +87,8 @@ export async function replaceUserComponentAction({
         model?: string;
         size?: string;
     } | null;
+    /** Chains: stretch measured at replacement (percent) and the replace-at limit. */
+    finalStretch?: { value: number; threshold: number } | null;
 }) {
     if (!idToken || !equipmentId || !userComponentIdToReplace) {
         throw new Error("Missing required parameters for component replacement.");
@@ -100,6 +103,16 @@ export async function replaceUserComponentAction({
     await assertOwnsEquipment(supabase, equipmentId, userId);
     
     try {
+        // Record the outgoing chain's final stretch first; the replacement
+        // event picks it up (migration 017).
+        if (finalStretch) {
+            await insertChainStretch(supabase, {
+                componentId: userComponentIdToReplace, equipmentId, userId,
+                value: finalStretch.value, threshold: finalStretch.threshold,
+                role: 'rider', notes: 'Measured at replacement',
+            });
+        }
+
         // All steps run in one transaction in the database, shared with the
         // shop app: swap the part, archive the old one, log it, and record the
         // replacement data (supabase/migrations/015).
@@ -299,5 +312,62 @@ export async function addUserComponentAction({
     } catch (error) {
         console.error("[ACTION ERROR] in addUserComponentAction:", error);
         throw new Error((error as Error).message || "An unexpected error occurred while adding the component.");
+    }
+}
+
+
+async function insertChainStretch(
+    supabase: ReturnType<typeof getSupabaseClient>,
+    m: { componentId: string; equipmentId: string; userId: string; value: number; threshold: number; role: 'rider' | 'shop'; notes?: string }
+) {
+    if (!(m.value >= 0 && m.value <= 5)) throw new Error('Stretch must be between 0% and 5%.');
+    if (![0.5, 0.75, 1].includes(m.threshold)) throw new Error('Unknown chain wear limit.');
+
+    const { data: part, error: partError } = await supabase
+      .from('components')
+      .select('id, wear_baseline_key')
+      .eq('id', m.componentId)
+      .eq('equipment_id', m.equipmentId)
+      .maybeSingle();
+    if (partError) throw partError;
+    if (!part) throw new Error('Part not found on this bike.');
+    if (part.wear_baseline_key !== 'chain') throw new Error('Stretch can only be recorded for a chain.');
+
+    const { error } = await supabase.from('component_measurements').insert({
+        component_id: m.componentId,
+        equipment_id: m.equipmentId,
+        kind: 'chain_stretch',
+        value: m.value,
+        threshold: m.threshold,
+        measured_by: m.userId,
+        measured_by_role: m.role,
+        notes: m.notes ?? null,
+    });
+    if (error) throw error;
+}
+
+/** A rider records measured chain stretch; it replaces the estimate for that chain. */
+export async function recordChainStretchAction({
+    idToken,
+    equipmentId,
+    componentId,
+    value,
+    threshold,
+}: {
+    idToken: string;
+    equipmentId: string;
+    componentId: string;
+    value: number;
+    threshold: number;
+}): Promise<{ success: boolean; message: string }> {
+    try {
+        const supabase = getSupabaseClient();
+        const { uid } = await verifyUserToken(idToken);
+        await assertOwnsEquipment(supabase, equipmentId, uid);
+        await insertChainStretch(supabase, { componentId, equipmentId, userId: uid, value, threshold, role: 'rider' });
+        const pct = Math.round((value / threshold) * 100);
+        return { success: true, message: `Recorded ${value}% stretch: about ${pct}% of the way to replacement.` };
+    } catch (error) {
+        return { success: false, message: (error as Error).message || 'Could not record the measurement.' };
     }
 }
