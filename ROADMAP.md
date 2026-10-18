@@ -102,6 +102,15 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] Later: re-fit the wet/hill/weight multipliers from data (needs a few hundred replacements)
 - [ ] Later: per-rider calibration from stretch measurements (e.g. "your chains wear 1.3x faster")
 
+### Build bike from text ⏳ built 2026-10-18, needs an API key
+- [x] AI extraction (Claude Haiku 5.5) with a strict schema mapped to EQPMGR part slots; falls back to the old parser
+- [x] Catalog matching by brand + part code (no duplicate parts), "already in catalog" bike check
+- [x] Review screen (found / matched / new / double-check) before the form
+- [x] Usage log + 20 imports/day per rider; accuracy test set (old parser: 57%)
+- [ ] **Sage:** create an Anthropic API key and add `ANTHROPIC_API_KEY` to `.env.local` and Netlify; then run the accuracy test (target ≥ 90%)
+- [ ] Grow the test set to 10–20 pages across brands (road, gravel, e-bike, kids); feed real corrections from `import_text_feedback`
+- [ ] Crowd-sourcing quality: mark imported bikes/parts "unverified" until confirmed (ties to Phase 3 admin roles)
+
 ### Housekeeping
 - [ ] Sage: in Google's consoles, delete the old Firebase project and revoke the Gemini API key (both unused now), and remove any FIREBASE_* or GEMINI_* variables from Netlify's environment settings.
 - [ ] Shop app: the bike-fit and add-wheelset dialogs still write to customer bikes from the browser, which the database blocks. Move them to guarded server actions like the log entries.

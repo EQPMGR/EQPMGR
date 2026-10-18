@@ -77,6 +77,13 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - Weather: `src/lib/ride-weather.ts` (WeatherAPI history, about 7 days back). A ride is wet if ≥0.3 mm falls during it or ≥1 mm in the 12 h before. Strava rides use `start_latlng` and `start_date`; manual rides use the browser location, or the rider marks wet/dry.
 - Terrain and e-bike come from Strava's `sport_type` (MountainBikeRide, GravelRide, EBikeRide...), or else the bike's type.
 
+## Build bike from text (import)
+
+- `/import-text` → `POST /api/bike-import` → `src/lib/spec-extract.ts`: Claude **Haiku 5.5** (`@anthropic-ai/sdk`, `messages.parse` + a Zod v4 schema; import `z` from `zod/v4`) maps pasted spec-page text to EQPMGR's part slots (the `BASE_COMPONENTS` names the Add Bike Model form uses). Without `ANTHROPIC_API_KEY`, or on any API error or refusal, it falls back to the rule-based `src/lib/bike-parser.ts`.
+- `src/lib/catalog-match.ts` matches parts to existing `master_components` by brand + part code. It's used on the review screen and when saving, so imports don't create duplicate catalog parts. It's deliberately conservative: a missed match beats a wrong merge.
+- `bike_imports` (migration 019) logs every import (method, tokens, duration) and enforces 20 imports per rider per day (admins exempt).
+- Accuracy: `npx tsx scripts/bike-import-eval/run.mts` scores the importer against hand-checked fixtures (`--parser` forces the old parser; baseline 57%). Run it after any prompt or schema change. Each AI run costs a fraction of a cent.
+
 ## Strava
 
 - Shared helpers: `src/lib/strava.ts` (token refresh, activity fetch; saves refreshed tokens with the direct client, because the adapter blocks `strava` writes) and `src/lib/strava-sync.ts` (records a Strava activity on a bike, picks the bike, processes webhook events). Don't add exports for these to `'use server'` files.

@@ -120,6 +120,9 @@ function AddBikeModelFormComponent() {
           if (importedData.brand) form.setValue('brand', importedData.brand);
           if (importedData.model) form.setValue('model', importedData.model);
           if (importedData.modelYear) form.setValue('modelYear', importedData.modelYear);
+          const importedAny = importedData as any;
+          if (importedAny.type && (BIKE_TYPES as readonly string[]).includes(importedAny.type)) form.setValue('type', importedAny.type);
+          if (typeof importedAny.isEbike === 'boolean') form.setValue('isEbike', importedAny.isEbike);
           setImportFeedback({
             rawText: fullImportedData.rawText,
             parsedOutput: importedData,

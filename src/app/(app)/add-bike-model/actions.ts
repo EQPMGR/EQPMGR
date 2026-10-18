@@ -10,6 +10,7 @@ import type { AddBikeModelFormValues } from './page';
 import type { MasterComponent, UserComponent } from '@/lib/types';
 import { z } from 'zod';
 import { createComponentSlug, getCanonicalComponentKey, findExistingMasterComponent } from '@/lib/master-component-utils';
+import { matchCatalogParts } from '@/lib/catalog-match';
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -192,17 +193,19 @@ export async function saveBikeModelAction({
                 }
 
                 if (!masterComponentId) {
-                    const { data: existingMasters } = await supabase
-                      .from('master_components')
-                      .select('id')
-                      .eq('brand', componentToSave.brand || null)
-                      .eq('model', componentToSave.model || null)
-                      .eq('series', componentToSave.series || null)
-                      .eq('system', componentToSave.system)
-                      .limit(1);
+                    // Reuse an existing catalog part when brand + part code match
+                    // (e.g. "Deore XT CN-M8100" vs "XT CN-M8100"); duplicates would
+                    // split that part's lifespan data.
+                    const [match] = await matchCatalogParts(supabase, [{
+                        slot: componentToSave.name,
+                        brand: componentToSave.brand,
+                        series: componentToSave.series,
+                        model: componentToSave.model,
+                        system: componentToSave.system,
+                    }]);
 
-                    if (existingMasters && existingMasters.length > 0) {
-                        masterComponentId = existingMasters[0].id;
+                    if (match) {
+                        masterComponentId = match.part.id;
                     } else {
                         masterComponentId = generateId();
                         const uniqueSlug = componentSlug
