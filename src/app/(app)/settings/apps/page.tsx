@@ -5,6 +5,7 @@ import React, { useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { RecentActivities } from '@/components/recent-activities';
+import { SyncAndAlertsCard } from '@/components/sync-and-alerts-card';
 
 
 function AppsSettings() {
@@ -26,6 +27,7 @@ function AppsSettings() {
   return (
     <div className="space-y-6">
       <RecentActivities />
+      <SyncAndAlertsCard />
     </div>
   );
 }

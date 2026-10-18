@@ -98,6 +98,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Chain stretch measurements by riders and shops (part page, and at replacement); a measurement overrides the estimate
 - [x] Reports: learned lifespans, chain care vs cassette/chainring/jockey life, model vs measured chain wear (admin → Field data)
 - [x] Fixed: /admin/import-feedback rendered data on the server for anyone (2026-10-18)
+- [x] Fixed: refreshed Strava tokens were never saved (the adapter blocks `strava` writes), so every request refreshed again
 - [ ] Later: re-fit the wet/hill/weight multipliers from data (needs a few hundred replacements)
 - [ ] Later: per-rider calibration from stretch measurements (e.g. "your chains wear 1.3x faster")
 
@@ -107,8 +108,10 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] `shop.eqpmgr.com` doesn't resolve (no DNS record). The shop is live at https://eqpmgrshop.netlify.app. The Stripe portal's return URL is hard-coded to shop.eqpmgr.com, so set up DNS before billing goes live.
 
 ### Next batch (agreed 2026-10-18)
-- [ ] Automatic Strava sync: webhooks + Strava gear matching, so rides are assigned without opening the app
-- [ ] Wear alerts by email when parts cross thresholds (SMTP credentials already in Netlify)
+- [x] Automatic Strava sync: webhooks + Strava gear matching (built 2026-10-18; switch on in Admin after deploy)
+- [ ] Handle Strava ride edits/deletes (currently ignored once a ride is counted)
+- [x] Wear alert emails at 80% / 100% with an on/off switch in Settings → Apps (built 2026-10-18)
+- [ ] Shops: notify a rider's linked shop when a part is due (upsell), and push notifications via the PWA
 - [ ] More data sources besides Strava (Garmin, Wahoo, ...). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data.
 - [ ] Database backups before real users (Supabase Pro or scheduled exports)
 
@@ -136,6 +139,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-10-18 | Automatic Strava sync (webhooks, bike matching), wear alert emails, Strava token-save fix (migration 018) |
 | 2026-10-18 | Learning from real data: adjusted km, blended per-model lifespans, chain stretch measurements, field-data reports (migration 017). Fixed an admin data leak. |
 | 2026-10-18 | Ride-based wear: researched baselines, rides table, weather-based wet multiplier for Strava and manual rides (migration 016) |
 | 2026-10-17 | Removed every Firebase/Google/Gemini/Genkit dependency, config file and doc from both apps (about 40k lines). Only robots.txt crawler rules mention Google. |

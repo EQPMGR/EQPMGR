@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { ArrowUpRight, SearchCheck, FileInput, Building, Trash2, Database, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { StravaWebhookCard } from '@/components/strava-webhook-card';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -47,6 +48,7 @@ export default function AdminPage() {
                         </Button>
                     </CardHeader>
                 </Card>
+                 <StravaWebhookCard />
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>
