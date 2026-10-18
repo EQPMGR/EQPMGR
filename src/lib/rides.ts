@@ -1,7 +1,6 @@
 // Server-only: store a ride once and apply its wear (supabase/migrations/016).
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getRideWeather, type RideWeather } from '@/lib/ride-weather';
-import { sendWearAlertsForBike } from '@/lib/wear-alerts';
 
 const OFFROAD_SPORTS = new Set(['MountainBikeRide', 'EMountainBikeRide', 'GravelRide']);
 const EBIKE_SPORTS = new Set(['EBikeRide', 'EMountainBikeRide']);
@@ -104,13 +103,6 @@ export async function recordRideAndApplyWear(supabase: SupabaseClient, ride: New
 
   const { error: applyError } = await supabase.rpc('apply_ride_wear', { p_ride_id: inserted.id });
   if (applyError) throw applyError;
-
-  // Email the rider if a part just crossed 80% / 100%. Never fails the ride.
-  try {
-    await sendWearAlertsForBike(supabase, ride.equipmentId);
-  } catch (error) {
-    console.error('[rides] wear alert failed', error);
-  }
 
   return { alreadyRecorded: false, weather };
 }

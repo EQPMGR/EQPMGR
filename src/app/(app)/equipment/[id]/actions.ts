@@ -5,7 +5,6 @@ import { createClient } from '@supabase/supabase-js';
 import type { MasterComponent } from '@/lib/types';
 import { createComponentSlug } from '@/lib/master-component-utils';
 import { verifyUserToken } from '@/lib/server-auth';
-import { sendWearAlertsForBike } from '@/lib/wear-alerts';
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -366,7 +365,6 @@ export async function recordChainStretchAction({
         const { uid } = await verifyUserToken(idToken);
         await assertOwnsEquipment(supabase, equipmentId, uid);
         await insertChainStretch(supabase, { componentId, equipmentId, userId: uid, value, threshold, role: 'rider' });
-        try { await sendWearAlertsForBike(supabase, equipmentId); } catch (e) { console.error('[recordChainStretch] alert failed', e); }
         const pct = Math.round((value / threshold) * 100);
         return { success: true, message: `Recorded ${value}% stretch: about ${pct}% of the way to replacement.` };
     } catch (error) {

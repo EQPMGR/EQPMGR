@@ -404,17 +404,14 @@ export async function assignStravaActivityToAction({
 }
 
 /** Bikes that rides are auto-assigned to, by their linked Strava bike. */
-export async function getLinkedStravaBikesAction(idToken: string): Promise<{ bikes: { id: string; name: string; stravaGearName: string | null }[]; alertsEnabled: boolean }> {
+export async function getLinkedStravaBikesAction(idToken: string): Promise<{ bikes: { id: string; name: string; stravaGearName: string | null }[] }> {
     const { uid } = await verifyUserToken(idToken);
-    const supabase = getSupabaseClient();
-    const [{ data: bikes }, { data: user }] = await Promise.all([
-        supabase.from('equipment').select('id, name, strava_gear_name').eq('user_id', uid).not('strava_gear_id', 'is', null),
-        supabase.from('app_users').select('wear_alerts_enabled').eq('id', uid).maybeSingle(),
-    ]);
-    return {
-        bikes: (bikes ?? []).map((b: any) => ({ id: b.id, name: b.name, stravaGearName: b.strava_gear_name })),
-        alertsEnabled: user?.wear_alerts_enabled ?? true,
-    };
+    const { data: bikes } = await getSupabaseClient()
+        .from('equipment')
+        .select('id, name, strava_gear_name')
+        .eq('user_id', uid)
+        .not('strava_gear_id', 'is', null);
+    return { bikes: (bikes ?? []).map((b: any) => ({ id: b.id, name: b.name, stravaGearName: b.strava_gear_name })) };
 }
 
 export async function unlinkStravaBikeAction(idToken: string, equipmentId: string): Promise<{ success: boolean }> {
@@ -424,11 +421,5 @@ export async function unlinkStravaBikeAction(idToken: string, equipmentId: strin
         .update({ strava_gear_id: null, strava_gear_name: null })
         .eq('id', equipmentId)
         .eq('user_id', uid);
-    return { success: !error };
-}
-
-export async function setWearAlertsAction(idToken: string, enabled: boolean): Promise<{ success: boolean }> {
-    const { uid } = await verifyUserToken(idToken);
-    const { error } = await getSupabaseClient().from('app_users').update({ wear_alerts_enabled: enabled }).eq('id', uid);
     return { success: !error };
 }

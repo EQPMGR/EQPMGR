@@ -80,13 +80,13 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 ## Strava
 
 - Shared helpers: `src/lib/strava.ts` (token refresh, activity fetch; saves refreshed tokens with the direct client, because the adapter blocks `strava` writes) and `src/lib/strava-sync.ts` (records a Strava activity on a bike, picks the bike, processes webhook events). Don't add exports for these to `'use server'` files.
-- Automatic sync (migration 018):
+- Automatic sync (migration 018, `018_strava_sync.sql`):
   - `POST /api/strava/webhook` stores each event in `strava_webhook_events`, replies at once, and processes it in `after()`. Pending or failed events are retried when the rider opens Settings → Apps.
   - The verify token is derived from `STRAVA_CLIENT_SECRET`.
   - The app's single subscription is switched on or off from Admin → "Automatic Strava sync" (live site only).
   - Bike choice: linked `equipment.strava_gear_id` → unique name match with the Strava bike → the rider's only bike; otherwise the ride is left to assign by hand. Assigning by hand links that Strava bike.
   - Not handled yet: activity update/delete events.
-- Alerts: `src/lib/wear-alerts.ts` emails the rider (nodemailer, `EMAIL_*` secrets) once per part at 80% and 100%, tracked in `components.alert_level_sent` (reset when the part is replaced). Riders opt out with `app_users.wear_alerts_enabled`.
+- No email: Sage decided (2026-10-18) the app should not email people. Don't add outbound email or notifications without asking.
 
 - Tokens live in the `app_users.strava` JSON blob: `accessToken`, `refreshToken`, `expiresAt`, `athleteId`, `processedActivities`.
 - Refresh logic is in `src/app/(app)/settings/apps/actions.ts` (it refreshes 5 min before expiry). OAuth exchange is in `src/app/api/strava/token-exchange/route.ts`.

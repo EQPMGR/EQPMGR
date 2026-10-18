@@ -1,17 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, Link2 } from 'lucide-react';
+import { Link2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getLinkedStravaBikesAction, unlinkStravaBikeAction, setWearAlertsAction } from '@/app/(app)/settings/apps/actions';
+import { getLinkedStravaBikesAction, unlinkStravaBikeAction } from '@/app/(app)/settings/apps/actions';
 
 type Linked = Awaited<ReturnType<typeof getLinkedStravaBikesAction>>;
 
-export function SyncAndAlertsCard() {
+export function StravaSyncCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [state, setState] = useState<Linked | null>(null);
@@ -23,12 +22,6 @@ export function SyncAndAlertsCard() {
   useEffect(() => { load(); }, [load]);
 
   if (!state) return null;
-
-  const toggleAlerts = async (enabled: boolean) => {
-    setState({ ...state, alertsEnabled: enabled });
-    const r = await setWearAlertsAction(await user!.getIdToken(), enabled);
-    if (!r.success) { toast({ variant: 'destructive', title: 'Could not save' }); load(); }
-  };
 
   const unlink = async (id: string) => {
     const r = await unlinkStravaBikeAction(await user!.getIdToken(), id);
@@ -59,13 +52,6 @@ export function SyncAndAlertsCard() {
             ))}
           </ul>
         )}
-        <div className="flex items-start justify-between gap-4 border-t pt-4">
-          <div>
-            <p className="font-medium flex items-center gap-2"><Bell className="h-4 w-4" /> Wear alert emails</p>
-            <p className="text-sm text-muted-foreground">Get an email when a part reaches 80% (due soon) and 100% (replace now).</p>
-          </div>
-          <Switch checked={state.alertsEnabled} onCheckedChange={toggleAlerts} aria-label="Wear alert emails" />
-        </div>
       </CardContent>
     </Card>
   );

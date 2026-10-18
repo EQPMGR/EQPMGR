@@ -110,8 +110,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 ### Next batch (agreed 2026-10-18)
 - [x] Automatic Strava sync: webhooks + Strava gear matching (built 2026-10-18; switch on in Admin after deploy)
 - [ ] Handle Strava ride edits/deletes (currently ignored once a ride is counted)
-- [x] Wear alert emails at 80% / 100% with an on/off switch in Settings → Apps (built 2026-10-18)
-- [ ] Shops: notify a rider's linked shop when a part is due (upsell), and push notifications via the PWA
+- [x] ~~Wear alert emails~~: built, then removed 2026-10-18. Sage doesn't want the app emailing people.
+- [ ] Maybe: in-app "needs attention" list on the dashboard (no email)
 - [ ] More data sources besides Strava (Garmin, Wahoo, ...). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data.
 - [ ] Database backups before real users (Supabase Pro or scheduled exports)
 
@@ -139,7 +139,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
-| 2026-10-18 | Automatic Strava sync (webhooks, bike matching), wear alert emails, Strava token-save fix (migration 018) |
+| 2026-10-18 | Automatic Strava sync (webhooks, bike matching) and a Strava token-save fix (migration 018). Email alerts removed by decision. |
 | 2026-10-18 | Learning from real data: adjusted km, blended per-model lifespans, chain stretch measurements, field-data reports (migration 017). Fixed an admin data leak. |
 | 2026-10-18 | Ride-based wear: researched baselines, rides table, weather-based wet multiplier for Strava and manual rides (migration 016) |
 | 2026-10-17 | Removed every Firebase/Google/Gemini/Genkit dependency, config file and doc from both apps (about 40k lines). Only robots.txt crawler rules mention Google. |
