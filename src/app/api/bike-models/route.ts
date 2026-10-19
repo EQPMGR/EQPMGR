@@ -9,8 +9,11 @@ export async function POST(request: Request) {
   const { idToken } = authResult.user;
 
   let values: AddBikeModelFormValues;
+  let catalogOnly = false;
   try {
-    values = await request.json();
+    const { catalogOnly: catalogOnlyFlag, ...rest } = await request.json();
+    values = rest;
+    catalogOnly = catalogOnlyFlag === true;
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error?.message || 'Invalid request payload.' },
@@ -19,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await saveBikeModelAction({ idToken, values });
+    const result = await saveBikeModelAction({ idToken, values, catalogOnly });
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json(

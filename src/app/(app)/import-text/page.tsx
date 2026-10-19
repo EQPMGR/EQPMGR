@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Sparkles, Send } from 'lucide-react';
+import { Loader2, Sparkles, Send, AlertTriangle, CheckCircle2, PlusCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -29,6 +31,7 @@ export default function ImportTextPage() {
     const [textContent, setTextContent] = useState('');
     const [isExtracting, setIsExtracting] = useState(false);
     const [structuredResult, setStructuredResult] = useState<any | null>(null);
+    const [importInfo, setImportInfo] = useState<{ method: 'ai' | 'parser'; fallbackReason: string | null; existingBike: any } | null>(null);
 
     async function handleExtract() {
         if (!user) {
@@ -46,7 +49,7 @@ export default function ImportTextPage() {
                 model: model || undefined,
                 year: year ? Number(year) : undefined,
             };
-            const resp = await fetch('/api/admin/import-text', {
+            const resp = await fetch('/api/bike-import', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
                 body: JSON.stringify(requestBody),
@@ -57,7 +60,8 @@ export default function ImportTextPage() {
             }
 
             const responseBody = await resp.json();
-            setStructuredResult(responseBody.result || responseBody.parsed || null);
+            setStructuredResult(responseBody.result || null);
+            setImportInfo({ method: responseBody.method, fallbackReason: responseBody.fallbackReason, existingBike: responseBody.existingBike });
         } catch (error: any) {
             console.error('Import extract error:', error);
             toast({ variant: 'destructive', title: 'Extraction failed', description: error.message || 'Unknown error' });
@@ -74,7 +78,7 @@ export default function ImportTextPage() {
                     aiOutput: structuredResult,
                 };
                 sessionStorage.setItem('importedBikeData', JSON.stringify(dataToStore));
-                router.push('/add-bike-model');
+                router.push(`/add-bike-model${window.location.search.includes('catalog=1') ? '?catalog=1' : ''}`);
             } catch (error) {
                 console.error('Failed to save data to sessionStorage:', error);
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not pass data to the form. Please try again.' });
@@ -160,6 +164,8 @@ export default function ImportTextPage() {
                     </div>
                 </div>
 
+                {structuredResult && importInfo && <ImportReview result={structuredResult} info={importInfo} />}
+
                 {isExtracting && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -168,5 +174,78 @@ export default function ImportTextPage() {
                 )}
             </CardContent>
         </Card>
+    );
+}
+
+const CONFIDENCE_STYLE: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    high: 'secondary', medium: 'outline', low: 'destructive',
+};
+
+/** What was read from the page, before it goes into the form. */
+function ImportReview({ result, info }: { result: any; info: { method: 'ai' | 'parser'; fallbackReason: string | null; existingBike: any } }) {
+    const parts: any[] = result.components || [];
+    const matched = parts.filter((p) => p.catalogMatch).length;
+    const uncertain = parts.filter((p) => p.confidence === 'low' || p.confidence === 'medium').length;
+
+    return (
+        <div className="space-y-4 border-t pt-4">
+            {info.existingBike && (
+                <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                    <strong>{info.existingBike.brand} {info.existingBike.model}{info.existingBike.model_year ? ` (${info.existingBike.model_year})` : ''}</strong>{' '}
+                    is already in the bike catalog. Add it from <Link href="/equipment" className="underline">My Equipment → Add Equipment</Link> instead of creating a duplicate.
+                </div>
+            )}
+            {info.method === 'parser' && (
+                <div className="rounded-md border p-3 text-sm text-muted-foreground">
+                    <AlertTriangle className="mr-1 inline h-4 w-4" />
+                    Read with the basic parser{info.fallbackReason ? ` (${info.fallbackReason})` : ''}. Expect gaps; check every part in the form.
+                </div>
+            )}
+            <div>
+                <p className="font-medium">
+                    {[result.brand, result.model, result.modelYear].filter(Boolean).join(' ') || 'Unnamed bike'}
+                    {result.type ? <span className="text-muted-foreground"> · {result.type}</span> : null}
+                    {result.isEbike ? <span className="text-muted-foreground"> · e-bike</span> : null}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                    {parts.length} parts found · {matched} already in the parts catalog · {parts.length - matched} new
+                    {uncertain > 0 ? ` · ${uncertain} to double-check` : ''}
+                </p>
+            </div>
+            {result.warnings?.length > 0 && (
+                <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                    {result.warnings.map((w: string, i: number) => <li key={i}>{w}</li>)}
+                </ul>
+            )}
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b text-left text-muted-foreground">
+                            <th className="py-2 pr-3 font-medium">Part</th>
+                            <th className="py-2 pr-3 font-medium">Brand / series / model</th>
+                            <th className="py-2 pr-3 font-medium">Details</th>
+                            <th className="py-2 pr-3 font-medium">Catalog</th>
+                            <th className="py-2 font-medium">Read</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {parts.map((p, i) => (
+                            <tr key={i} className="border-b last:border-0 align-top" title={p.sourceText ? `From the page: ${p.sourceText}` : undefined}>
+                                <td className="py-2 pr-3 font-medium">{p.name}</td>
+                                <td className="py-2 pr-3">{[p.brand, p.series, p.model].filter(Boolean).join(' · ') || '–'}</td>
+                                <td className="py-2 pr-3 text-muted-foreground">{p.size || '–'}</td>
+                                <td className="py-2 pr-3">
+                                    {p.catalogMatch
+                                        ? <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4 text-green-600" /> {p.catalogMatch.kind === 'exact' ? 'In catalog' : 'Likely match'}</span>
+                                        : <span className="inline-flex items-center gap-1 text-muted-foreground"><PlusCircle className="h-4 w-4" /> New</span>}
+                                </td>
+                                <td className="py-2">{p.confidence ? <Badge variant={CONFIDENCE_STYLE[p.confidence] ?? 'outline'}>{p.confidence === 'high' ? 'Clear' : p.confidence === 'medium' ? 'Check' : 'Unsure'}</Badge> : null}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <p className="text-xs text-muted-foreground">Hover a row to see the line it was read from. You can fix anything in the next step.</p>
+        </div>
     );
 }

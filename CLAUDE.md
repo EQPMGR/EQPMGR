@@ -77,6 +77,28 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - Weather: `src/lib/ride-weather.ts` (WeatherAPI history, about 7 days back). A ride is wet if ≥0.3 mm falls during it or ≥1 mm in the 12 h before. Strava rides use `start_latlng` and `start_date`; manual rides use the browser location, or the rider marks wet/dry.
 - Terrain and e-bike come from Strava's `sport_type` (MountainBikeRide, GravelRide, EBikeRide...), or else the bike's type.
 
+## Build bike from text (import)
+
+- `/import-text` → `POST /api/bike-import` → `src/lib/spec-extract.ts`: Claude **Haiku 5.5** (`@anthropic-ai/sdk`, `messages.parse` + a Zod v4 schema; import `z` from `zod/v4`) maps pasted spec-page text to EQPMGR's part slots (the `BASE_COMPONENTS` names the Add Bike Model form uses). Without `ANTHROPIC_API_KEY`, or on any API error or refusal, it falls back to the rule-based `src/lib/bike-parser.ts`.
+- `src/lib/catalog-match.ts` matches parts to existing `master_components` by brand + part code. It's used on the review screen and when saving, so imports don't create duplicate catalog parts. It's deliberately conservative: a missed match beats a wrong merge.
+- `bike_imports` (migration 019) logs every import (method, tokens, duration). Admin → Field data shows the AI spend.
+- **Cost guardrails.** `/api/bike-import` is the ONLY web code path that can spend money on the Anthropic API. Keep it that way: no other route, server action or client code may call Anthropic. (The local admin script below is the one other caller. It runs on Sage's machine only and has the same caps.) (The original Firebase build left AI endpoints open and a bot ran up a $16k bill.) The layers:
+  1. A verified login is required.
+  2. A rider gets 10 imports per 24 h; admins are exempt. The count fails closed: if it can't be checked, the import is refused.
+  3. The whole site gets 100 AI imports per 24 h (env `BIKE_IMPORT_SITE_DAILY_LIMIT`). Past that cap, imports use the free parser.
+  4. Input is capped at 30,000 characters and output at 8,000 tokens. The SDK retries once and times out after 90 s.
+  5. A log row is reserved before the AI call, so parallel requests count against the limits.
+  6. Kill switch: set `BIKE_IMPORT_AI_DISABLED=1` in Netlify to turn AI off; the parser still works.
+  7. The Anthropic Console monthly spend limit is the hard ceiling, with auto-reload off.
+- Model settings: Haiku 5.5 at effort `medium` (env `SPEC_EFFORT`). Eval 2026-10-18: medium scored 100% at about 6.3k output tokens per page; low scored 98% at about 3.9k, but missed parts and added a phantom one.
+- Catalog-only saves: admins can save a bike to the shared catalog without it landing in their garage. That's the switch on the Add Bike Model form, or Admin → Build Catalog Bikes (`/import-text?catalog=1`). The server re-checks admin (`saveBikeModelAction({ catalogOnly })`) and refuses duplicates by slug. The save logic lives in `src/lib/bike-model-save.ts` (`saveBikeModel(supabase, { uid, values, addToGarage })`).
+- Bulk catalog import (local, admin): `scripts/catalog-import/run.mts`. Spec pages go in `scripts/catalog-import/pages/*.txt` (gitignored, with optional `brand:/model:/year:/type:` header lines before `---`).
+  - `extract` reads each page once with the AI and writes a `.json`, capped by `--max` (default 20, hard max 50), the site-wide cap and the kill switch. Every call is logged in `bike_imports` under the admin.
+  - Review or fix the `.json` files.
+  - `save` writes them to the catalog as the admin, skipping bikes already there.
+  - A separate Claude session can run this as Sage's catalog assistant: find spec pages, save the text, extract, check the results against the pages, then save.
+- Accuracy: `npx tsx scripts/bike-import-eval/run.mts` scores the importer against hand-checked fixtures (`--parser` forces the old parser; baseline 57%). Run it after any prompt or schema change. Each AI run costs a fraction of a cent.
+
 ## Strava
 
 - Shared helpers: `src/lib/strava.ts` (token refresh, activity fetch; saves refreshed tokens with the direct client, because the adapter blocks `strava` writes) and `src/lib/strava-sync.ts` (records a Strava activity on a bike, picks the bike, processes webhook events). Don't add exports for these to `'use server'` files.

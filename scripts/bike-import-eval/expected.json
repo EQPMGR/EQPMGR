@@ -1,0 +1,32 @@
+{
+  "norco-fluid-a1": {
+    "bike": { "brand": "Norco", "model": "Fluid A1", "isEbike": false },
+    "parts": [
+      ["Frame", "Norco", ""], ["Fork", "RockShox", "Lyrik"], ["Rear Shock", "RockShox", "Super Deluxe"],
+      ["Rear Shifter", "Shimano", "SL-M8210"], ["Rear Derailleur", "Shimano", "XT"], ["Crankset", "Shimano", "FC-M6200"],
+      ["Bottom Bracket", "Shimano", ""], ["Cassette", "Shimano", "CS-M8200"], ["Chain", "Shimano", "CN-M8100"],
+      ["Front Brake", "Shimano", "BR-M7120"], ["Rear Brake", "Shimano", "BR-M7120"],
+      ["Front Rotor", "Shimano", "RT64"], ["Rear Rotor", "Shimano", "RT64"], ["Brake Levers", "Shimano", "BL-M7100"],
+      ["Handlebar", "Norco", ""], ["Stem", "Norco", ""], ["Seatpost", "TranzX", "YSI160"], ["Headset", null, ""],
+      ["Saddle", "WTB", "Solano"], ["Grips", "WTB", "Wavelength"], ["Seatpost Clamp", "Norco", ""],
+      ["Front Hub", "Shimano", "HB-TC500"], ["Rear Hub", "Shimano", "FH-TC600"],
+      ["Front Rim", "WTB", "KOM"], ["Rear Rim", "WTB", "KOM"],
+      ["Front Tire", "Schwalbe", "Magic Mary"], ["Rear Tire", "Schwalbe", "Roamy"]
+    ]
+  },
+  "kona-dew-e": {
+    "bike": { "brand": "Kona", "model": "Dew-E", "isEbike": true },
+    "parts": [
+      ["Frame", "Kona", ""], ["Fork", "Kona", ""], ["Crankset", "Shimano", "EN500"], ["Pedals", "Feimin", ""],
+      ["Chain", "KMC", "eGlide"], ["Cassette", "Shimano", "LG300"], ["Rear Derailleur", "Shimano", "U4010"],
+      ["Rear Shifter", "Shimano", "CUES"], ["Front Brake", "Shimano", "MT401"], ["Rear Brake", "Shimano", "MT401"],
+      ["Front Rotor", "Shimano", ""], ["Rear Rotor", "Shimano", ""], ["Brake Levers", "Shimano", "MT410"],
+      ["Headset", "Feimin", ""], ["Handlebar", "Kona", ""], ["Stem", "Kona", ""], ["Seatpost", "Kona", "Commuter"],
+      ["Seatpost Clamp", "Kona", ""], ["Grips", "Kona", "Key"], ["Saddle", "Kona", "Commuter"],
+      ["Front Hub", "Shimano", ""], ["Rear Hub", "Shimano", ""], ["Front Rim", "WTB", "SX19"], ["Rear Rim", "WTB", "SX19"],
+      ["Front Tire", "WTB", "Horizon"], ["Rear Tire", "WTB", "Horizon"],
+      ["Motor", "Shimano", "EP500"], ["Battery", "Shimano", ""], ["Display", "Shimano", "EN600"], ["Charger", "Shimano", ""]
+    ],
+    "mustNotInclude": ["Rear Shock", "Bottom Bracket", "Front Derailleur"]
+  }
+}

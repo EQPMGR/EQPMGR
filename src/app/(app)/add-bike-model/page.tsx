@@ -24,6 +24,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useToast } from '@/hooks/use-toast';
 import { BIKE_TYPES, DROP_BAR_BIKE_TYPES, BASE_COMPONENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { isAllowedAdminEmail } from '@/lib/admin-access';
 import type { ExtractBikeDetailsOutput } from '@/lib/ai-types';
 
 const componentSchema = z.object({
@@ -91,6 +92,12 @@ function AddBikeModelFormComponent() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+    const isAdmin = isAllowedAdminEmail(user?.email);
+    // Admins building the catalog (Admin -> Build catalog bikes) don't want each bike in their garage.
+    const [catalogOnly, setCatalogOnly] = useState(false);
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get('catalog') === '1') setCatalogOnly(true);
+    }, []);
     const [importFeedback, setImportFeedback] = useState<AddBikeModelFormValues['importFeedback'] | null>(null);
 
     const form = useForm<AddBikeModelFormValues>({
@@ -120,6 +127,9 @@ function AddBikeModelFormComponent() {
           if (importedData.brand) form.setValue('brand', importedData.brand);
           if (importedData.model) form.setValue('model', importedData.model);
           if (importedData.modelYear) form.setValue('modelYear', importedData.modelYear);
+          const importedAny = importedData as any;
+          if (importedAny.type && (BIKE_TYPES as readonly string[]).includes(importedAny.type)) form.setValue('type', importedAny.type);
+          if (typeof importedAny.isEbike === 'boolean') form.setValue('isEbike', importedAny.isEbike);
           setImportFeedback({
             rawText: fullImportedData.rawText,
             parsedOutput: importedData,
@@ -273,7 +283,7 @@ function AddBikeModelFormComponent() {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${idToken}`,
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({ ...payload, catalogOnly: isAdmin && catalogOnly }),
             });
 
             const result = await response.json();
@@ -588,9 +598,15 @@ function AddBikeModelFormComponent() {
                                 </p>
                             )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            {isAdmin && (
+                                <label className="flex items-center gap-2 text-sm">
+                                    <Switch checked={catalogOnly} onCheckedChange={setCatalogOnly} />
+                                    Catalog only (not in my garage)
+                                </label>
+                            )}
                             <Button type="button" variant="outline" asChild>
-                                <Link href="/equipment">Cancel</Link>
+                                <Link href={catalogOnly ? '/admin' : '/equipment'}>Cancel</Link>
                             </Button>
                             <Button type="submit" disabled={isSubmitting || !form.formState.isValid}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
