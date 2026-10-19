@@ -110,6 +110,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Usage log, AI spend card, and cost guardrails (10/day per rider, 100 AI/day for the site, kill switch, size caps)
 - [x] API key set up; accuracy 100% on the test set (old parser: 57%)
 - [ ] **Sage:** set a monthly spend limit in the Anthropic Console and turn auto-reload off
+- [x] Admin catalog building: "Catalog only" switch and Admin → Build Catalog Bikes (nothing lands in the admin's garage); local bulk-import script for a Claude catalog assistant
+- [ ] Seed popular models with the bulk script (after ship + migration 019)
 - [ ] Grow the test set to 10–20 pages across brands (road, gravel, e-bike, kids); feed real corrections from `import_text_feedback`
 - [ ] Crowd-sourcing quality: mark imported bikes/parts "unverified" until confirmed (ties to Phase 3 admin roles)
 

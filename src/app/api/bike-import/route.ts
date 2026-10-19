@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireUser } from '@/lib/server-auth';
 import { isAllowedAdminEmail } from '@/lib/admin-access';
-import { extractBikeSpecs, slotSystem, SPEC_MODEL } from '@/lib/spec-extract';
+import { extractBikeSpecs, toFormComponent, SPEC_MODEL } from '@/lib/spec-extract';
 import { matchCatalogParts } from '@/lib/catalog-match';
 
 // POST /api/bike-import: pasted spec-page text -> structured build for the
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   const bike = extraction.bike;
 
   // Catalog matches for each part, and is this bike already in the catalog?
-  const parts = bike.components.map((c) => ({ ...c, name: c.slot === 'Other' ? c.customName || 'Other' : c.slot, system: slotSystem(c.slot) }));
+  const parts = bike.components.map((c) => ({ ...toFormComponent(c), confidence: c.confidence, sourceText: c.sourceText }));
   let matches: Awaited<ReturnType<typeof matchCatalogParts>> = parts.map(() => null);
   try {
     matches = await matchCatalogParts(supabase, parts.map((p) => ({ slot: p.name, brand: p.brand, series: p.series, model: p.model, system: p.system })));
@@ -111,17 +111,7 @@ export async function POST(request: Request) {
     wheelSize: bike.wheelSize ?? undefined,
     warnings: bike.warnings,
     components: parts.map((p, i) => ({
-      name: p.name,
-      system: p.system,
-      brand: p.brand ?? undefined,
-      series: p.series ?? undefined,
-      model: p.model ?? undefined,
-      size: [p.spec, p.sizeNotes].filter(Boolean).join('; ') || undefined,
-      chainring1: p.chainrings[0] != null ? String(p.chainrings[0]) : undefined,
-      chainring2: p.chainrings[1] != null ? String(p.chainrings[1]) : undefined,
-      chainring3: p.chainrings[2] != null ? String(p.chainrings[2]) : undefined,
-      confidence: p.confidence,
-      sourceText: p.sourceText,
+      ...p,
       catalogMatch: matches[i] ? { id: matches[i]!.part.id, kind: matches[i]!.kind, label: [matches[i]!.part.brand, matches[i]!.part.series, matches[i]!.part.model].filter(Boolean).join(' ') } : null,
     })),
   };

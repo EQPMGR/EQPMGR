@@ -78,7 +78,7 @@ export default function ImportTextPage() {
                     aiOutput: structuredResult,
                 };
                 sessionStorage.setItem('importedBikeData', JSON.stringify(dataToStore));
-                router.push('/add-bike-model');
+                router.push(`/add-bike-model${window.location.search.includes('catalog=1') ? '?catalog=1' : ''}`);
             } catch (error) {
                 console.error('Failed to save data to sessionStorage:', error);
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not pass data to the form. Please try again.' });

@@ -167,3 +167,18 @@ export function slotSystem(slot: string): string {
     ?? ({ Display: 'E-Bike', Chainring: 'Drivetrain', 'Bar Tape': 'Cockpit', 'Chain Guide': 'Drivetrain', 'Dropper Remote': 'Cockpit' } as Record<string, string>)[slot]
     ?? 'Accessories';
 }
+
+/** One extracted part in the shape the Add Bike Model form uses. */
+export function toFormComponent(c: ExtractedComponent) {
+  return {
+    name: c.slot === 'Other' ? c.customName || 'Other' : c.slot,
+    system: slotSystem(c.slot),
+    brand: c.brand ?? undefined,
+    series: c.series ?? undefined,
+    model: c.model ?? undefined,
+    size: [c.spec, c.sizeNotes].filter(Boolean).join('; ') || undefined,
+    chainring1: c.chainrings[0] != null ? String(c.chainrings[0]) : undefined,
+    chainring2: c.chainrings[1] != null ? String(c.chainrings[1]) : undefined,
+    chainring3: c.chainrings[2] != null ? String(c.chainrings[2]) : undefined,
+  };
+}

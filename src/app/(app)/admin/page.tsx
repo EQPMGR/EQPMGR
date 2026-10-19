@@ -48,6 +48,21 @@ export default function AdminPage() {
                         </Button>
                     </CardHeader>
                 </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Build Catalog Bikes</CardTitle>
+                            <CardDescription className="text-sm">
+                                Import bike models into the shared catalog without adding them to your garage.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/import-text?catalog=1">
+                                Import <ArrowUpRight className="h-4 w-4 ml-2" />
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
                  <StravaWebhookCard />
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
