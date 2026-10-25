@@ -46,7 +46,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
 | 2026-10-17 | New shops must be **manually approved**. We need an **admin team** (more than one admin) who can approve shops, bulk-add bike models, and fix data. |
-| 2026-10-17 | Billing was never really set up. **Don't build billing until the pricing model is chosen.** |
+| 2026-10-25 | **Shop pricing:** C$2 per **Service Ticket** (repair or fit work order), charged when the work order is **created**; no monthly fee, minimum or setup fee. **Rental Tickets** later, as a separate line on the same monthly bill. Promo code **FIRST10** = 10 free Service Tickets. Riders are free forever. Business: BC-incorporated, bills in CAD; sales tax by the shop's location (Stripe Tax; registrations to confirm with an accountant). Failed payment: notify the shop, 5-day grace, then pause new work orders. |
+| 2026-10-17 | Billing was never really set up. Superseded 2026-10-25 (pricing chosen). |
 | 2026-10-17 | Riders must **accept the Terms & Conditions at signup** (a checkbox). |
 | 2026-10-16 | `equipment.user_id` is the only owner column (`app_user_id` removed). |
 | 2026-10-16 | Add Bike Model is for all riders, not just admins. |
@@ -129,7 +130,11 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] Database backups before real users (Supabase Pro or scheduled exports)
 
 ### Phase 4: Later
-- [ ] Billing (once pricing is decided)
+- [ ] Billing ⏳ built 2026-10-25 (test mode, not shipped): migration 020 (tickets, promo credits, pause), shop Billing card + dashboard notices, Stripe card setup/portal/webhook, daily billing run, monthly invoices with Service Ticket line items, FIRST10, junk-ticket limits. Next: Stripe key → `scripts/stripe-setup.mts` → webhook endpoint → apply 020 → test with Stripe test cards → ship
+  - [ ] **Sage:** put the Stripe secret key in the **shop** app's `.env.local` and the **eqpmgrshop** Netlify site (start with a test key, `sk_test_…`); turn on Stripe Tax and add the business address + GST/PST numbers once registered
+  - [ ] **Sage + accountant:** GST registration (optional under C$30k revenue) and BC PST registration; whether to charge GST/HST before C$30k
+  - [x] Guard shops from junk tickets: 1 open request per bike per shop, 5 per rider per day; `void_billing_ticket()` for admins (no admin screen yet)
+  - [ ] Decide: should shops without a card be hidden from riders? (Today they still get work orders; tickets wait until a card is added.)
 - [ ] Shop ratings and reviews
 - [ ] Rental tickets with waivers
 - [ ] Affiliate part and tool links
@@ -142,9 +147,9 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 ## Open questions
 
 1. **Terms vs. data sales.** Section 8 of the alpha terms on eqpmgr.com says rider data is never sold and is used "strictly" to run the app. Selling manufacturer data, even anonymized, needs updated terms and explicit consent first. **Sage will have a lawyer review the terms before beta.** Nothing to sell yet.
-2. **Pricing.** $2 per ticket (as pitched), a monthly subscription (what the half-built shop billing code does), or both?
+2. ~~**Pricing.**~~ Decided 2026-10-25: C$2 per Service Ticket (see Decisions).
 3. **Admin roles.** Which jobs does each admin type do? (A proposal is coming in Phase 3.)
-4. **Billable moment.** Which work-order status triggers the $2 charge?
+4. ~~**Billable moment.**~~ Decided 2026-10-25: when the work order is created.
 
 ---
 

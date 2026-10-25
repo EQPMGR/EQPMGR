@@ -99,6 +99,23 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - A separate Claude session can run this as Sage's catalog assistant: find spec pages, save the text, extract, check the results against the pages, then save.
 - Accuracy: `npx tsx scripts/bike-import-eval/run.mts` scores the importer against hand-checked fixtures (`--parser` forces the old parser; baseline 57%). Run it after any prompt or schema change. Each AI run costs a fraction of a cent.
 
+## Shop billing (Stripe, built in the shop app)
+
+- Pricing (ROADMAP decision 2026-10-25): C$2 per **Service Ticket**, one per work order, charged when the work order is **created**. Billed monthly for the previous calendar month (Vancouver time). No monthly or setup fee. Promo codes give free tickets (FIRST10 = 10, one code per shop). Riders are always free.
+- Migration 020:
+  - `shop_billing`: status `setup_needed` / `active` / `past_due` / `paused`, the Stripe customer, free tickets, grace period.
+  - `billing_tickets`: one row per work order, written by a `work_orders` trigger.
+  - `promo_codes`.
+  - Functions: `redeem_promo_code`, `void_billing_ticket` (admin, unbilled tickets only), `billing_cutoff`.
+  - Shops can read their own rows but write nothing. Don't put billing fields on `service_providers`: shops can edit that row through RLS. The old `service_providers.stripe_customer_id` column is legacy; `shop_billing` holds the real one.
+- A paused shop can't receive work orders: the trigger raises `SHOP_PAUSED`, and `submitWorkOrderAction` shows a friendly message. That action also limits junk tickets: one open request per bike per shop, and 5 requests per rider per 24 h.
+- The shop app (`src/lib/billing.ts`):
+  - Card setup goes through Stripe Checkout (setup mode). The billing portal handles cards and invoices.
+  - `/api/stripe/webhook` processes card added → active, `invoice.payment_failed` → past_due plus 5 days of grace, `invoice.paid` → active.
+  - The daily `netlify/functions/billing-daily.mts` calls `/api/billing/run`. That pauses shops whose grace ran out and invoices unbilled tickets, one invoice per shop. It's safe to re-run.
+  - Our database is the source of truth; Stripe never counts usage.
+- Shop-app env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_TAX_ENABLED=1` once Stripe Tax is set up. Products, prices (lookup keys `service_ticket_cad` / `rental_ticket_cad`) and portal settings come from `scripts/stripe-setup.mts` in the shop repo.
+
 ## Strava
 
 - Shared helpers: `src/lib/strava.ts` (token refresh, activity fetch; saves refreshed tokens with the direct client, because the adapter blocks `strava` writes) and `src/lib/strava-sync.ts` (records a Strava activity on a bike, picks the bike, processes webhook events). Don't add exports for these to `'use server'` files.
