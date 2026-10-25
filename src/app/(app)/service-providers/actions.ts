@@ -87,7 +87,8 @@ export async function getServiceProviders(): Promise<ServiceProvider[]> {
 
     if (!data) return [];
 
-    return data.map(row => ({
+    // This list is public: never send billing details (Stripe customer ids).
+    return data.map(({ stripe_customer_id: _stripe, ...row }) => ({
       id: row.id,
       ...convertKeysToCamelCase(row),
     } as ServiceProvider));
@@ -99,6 +100,8 @@ export async function getServiceProviders(): Promise<ServiceProvider[]> {
     throw new Error("Could not fetch service providers from the database.");
   }
 }
+
+const WORK_ORDERS_PER_DAY = 5;
 
 export async function submitWorkOrderAction(
   idToken: string,
@@ -145,6 +148,22 @@ export async function submitWorkOrderAction(
     if (equipmentError) throw equipmentError;
     if (!equipment) return { success: false, message: 'Bike not found.' };
 
+    // Each work order costs the shop a C$2 Service Ticket, so limit junk:
+    // one open request per bike per shop, and a few per rider per day.
+    const { count: openForBike } = await supabase.from('work_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', uid).eq('equipment_id', equipment.id).eq('service_provider_id', provider.id)
+      .not('status', 'in', '("Completed","Cancelled","cancelled")');
+    if ((openForBike ?? 0) > 0) {
+      return { success: false, message: `You already have an open request for this bike with ${provider.shop_name || 'this shop'}.` };
+    }
+    const { count: today } = await supabase.from('work_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', uid).gte('created_at', new Date(Date.now() - 24 * 3600_000).toISOString());
+    if ((today ?? 0) >= WORK_ORDERS_PER_DAY) {
+      return { success: false, message: "You've sent the most service requests allowed today. Try again tomorrow." };
+    }
+
     const { error } = await supabase.from('work_orders').insert([{
       id: crypto.randomUUID(),
       user_id: uid,
@@ -165,7 +184,13 @@ export async function submitWorkOrderAction(
       status: 'New',
     }]);
 
-    if (error) throw error;
+    if (error) {
+      // Migration 020: a shop with an unpaid bill can't take new work orders.
+      if (error.message?.includes('SHOP_PAUSED')) {
+        return { success: false, message: `${provider.shop_name || 'This shop'} isn't taking online requests right now. Please contact the shop directly.` };
+      }
+      throw error;
+    }
 
     return {
       success: true,

@@ -168,8 +168,8 @@ const combinedComponents = userComponents.reduce<Component[]>((acc, userComp) =>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-headline">{systemName} Components</CardTitle>
-          <CardDescription>Details for each component in the {systemName.toLowerCase()} system.</CardDescription>
+          <CardTitle className="text-2xl font-headline">{systemName === 'Brakes' ? 'Brake' : systemName} Components</CardTitle>
+          <CardDescription>Details for each component in the {systemName === 'Brakes' ? 'brake' : systemName.toLowerCase()} system.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {systemComponents.map(component => (
