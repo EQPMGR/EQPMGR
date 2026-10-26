@@ -79,7 +79,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 ### Go-live checklist (2026-10-25)
 - [x] Shop approval (Admin → Shop approvals), billing terms checkbox, hide shops without a card (migration 021, go-live batch)
-- [ ] Database backups: an encrypted nightly backup to GitHub Actions is drafted. It's waiting on Sage's OK, because it copies user data to GitHub.
+- [x] Nightly encrypted database backup to GitHub Actions (approved 2026-10-26); **Sage:** add the `SUPABASE_DB_URL` and `BACKUP_PASSPHRASE` secrets, then run it once from the Actions tab
 - [ ] **Sage:** confirm custom SMTP for sign-up/password emails: Supabase dashboard → Authentication → Emails → SMTP Settings ("Enable custom SMTP" on, with your server)
 - [ ] **Sage:** get a regular business card onto Netlify (prepaid isn't accepted) so the sites don't stop if credits run out
 - [ ] Lawyer review: rider T&C and the shop billing terms (`EQPMGRshop/src/lib/billing-terms.ts`)

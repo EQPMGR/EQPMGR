@@ -120,6 +120,10 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - Our database is the source of truth; Stripe never counts usage.
 - Shop-app env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_TAX_ENABLED=1` once Stripe Tax is set up. Products, prices (lookup keys `service_ticket_cad` / `rental_ticket_cad`) and portal settings come from `scripts/stripe-setup.mts` in the shop repo.
 
+## Backups
+
+- `.github/workflows/db-backup.yml` makes a nightly `supabase db dump` (roles, schema, data), encrypted with GPG. It's kept 30 days as a GitHub Actions artifact (approved by Sage 2026-10-26). It needs the repository secrets `SUPABASE_DB_URL` (session pooler) and `BACKUP_PASSPHRASE`. Restore steps: `docs/RESTORE.md`.
+
 ## Strava
 
 - Shared helpers: `src/lib/strava.ts` (token refresh, activity fetch; saves refreshed tokens with the direct client, because the adapter blocks `strava` writes) and `src/lib/strava-sync.ts` (records a Strava activity on a bike, picks the bike, processes webhook events). Don't add exports for these to `'use server'` files.
