@@ -108,6 +108,10 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - `promo_codes`.
   - Functions: `redeem_promo_code`, `void_billing_ticket` (admin, unbilled tickets only), `billing_cutoff`.
   - Shops can read their own rows but write nothing. Don't put billing fields on `service_providers`: shops can edit that row through RLS. The old `service_providers.stripe_customer_id` column is legacy; `shop_billing` holds the real one.
+- Migration 021 adds approval and terms:
+  - Riders only see, and can only send work orders to, shops that an admin approved (`shop_billing.approved_at`, Admin → Shop approvals) and that have a working card (status `active` or `past_due`).
+  - Server side, `getServiceProviders` filters the list, and the trigger raises `SHOP_NOT_ACCEPTING` for anything else.
+  - Shops accept the billing terms before adding a card. The shop repo's `src/lib/billing-terms.ts` holds the text and version; the setup route records `terms_accepted_at` / `terms_version`. Bump the version when the wording changes.
 - A paused shop can't receive work orders: the trigger raises `SHOP_PAUSED`, and `submitWorkOrderAction` shows a friendly message. That action also limits junk tickets: one open request per bike per shop, and 5 requests per rider per 24 h.
 - The shop app (`src/lib/billing.ts`):
   - Card setup goes through Stripe Checkout (setup mode). The billing portal handles cards and invoices.

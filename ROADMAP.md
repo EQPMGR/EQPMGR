@@ -46,6 +46,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
 | 2026-10-17 | New shops must be **manually approved**. We need an **admin team** (more than one admin) who can approve shops, bulk-add bike models, and fix data. |
+| 2026-10-25 | **Go-live rules:** riders only see shops that an admin approved **and** that have a working card on file. Shops accept billing terms before adding a card. Tax: under BC's C$10k small-seller threshold PST registration isn't needed yet. GST/PST are collected and remitted once registered: add the numbers in Stripe → Tax, then set `STRIPE_TAX_ENABLED=1`. |
 | 2026-10-25 | **Shop pricing:** C$2 per **Service Ticket** (repair or fit work order), charged when the work order is **created**; no monthly fee, minimum or setup fee. **Rental Tickets** later, as a separate line on the same monthly bill. Promo code **FIRST10** = 10 free Service Tickets. Riders are free forever. Business: BC-incorporated, bills in CAD; sales tax by the shop's location (Stripe Tax; registrations to confirm with an accountant). Failed payment: notify the shop, 5-day grace, then pause new work orders. |
 | 2026-10-17 | Billing was never really set up. Superseded 2026-10-25 (pricing chosen). |
 | 2026-10-17 | Riders must **accept the Terms & Conditions at signup** (a checkbox). |
@@ -75,6 +76,17 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] **Sage to finish testing:** As the shop, find the order, open the bike, replace a part, and set status. As the rider, check the bike's log.
 - [ ] Decide which status counts as a billable "activation"
 - [ ] Notifications (email) when a work order is created or changes status
+
+### Go-live checklist (2026-10-25)
+- [x] Shop approval (Admin → Shop approvals), billing terms checkbox, hide shops without a card (migration 021, go-live batch)
+- [ ] Database backups: an encrypted nightly backup to GitHub Actions is drafted. It's waiting on Sage's OK, because it copies user data to GitHub.
+- [ ] **Sage:** confirm custom SMTP for sign-up/password emails: Supabase dashboard → Authentication → Emails → SMTP Settings ("Enable custom SMTP" on, with your server)
+- [ ] **Sage:** get a regular business card onto Netlify (prepaid isn't accepted) so the sites don't stop if credits run out
+- [ ] Lawyer review: rider T&C and the shop billing terms (`EQPMGRshop/src/lib/billing-terms.ts`)
+- [ ] Tax: once registered, add GST/PST numbers in Stripe Tax and set `STRIPE_TAX_ENABLED=1` on eqpmgrshop
+- [ ] Stripe live: activate the account, live secret key in Netlify, `scripts/stripe-setup.mts --live`, live webhook endpoint + `STRIPE_WEBHOOK_SECRET`, redeploy
+- [ ] Check the first scheduled billing run in Netlify's function logs (`billing-daily`)
+- [ ] Strava: 999 athletes allowed, 6,000 requests a day; ask Strava for more before about 750 riders
 
 ### Phase 3: Admins, shop approval, consent
 - [ ] Admin roles in the database (replace the single-email allowlist)
@@ -138,7 +150,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
   - [ ] **Ship with the next batch** (held by Sage): shop `fix/billing-idempotency` (a second bill for the same shop and month within 24 h reused the first invoice, so the tickets were never charged) and rider `fix/import-bike-type` (the imported bike type was wiped on the form)
   - [ ] Shop app: the Work Orders "AI Priority" button is a placeholder that picks Low/Medium/High at random. Remove it or use a real rule.
   - [ ] Shop app: the Work Orders table doesn't refresh after "Update Status" (it saves, but the screen shows the old status)
-  - [ ] Decide: should shops without a card be hidden from riders? (Today they still get work orders; tickets wait until a card is added.)
+  - [x] Shops without a working card are hidden from riders (decided 2026-10-25; migration 021)
 - [ ] Shop ratings and reviews
 - [ ] Rental tickets with waivers
 - [ ] Affiliate part and tool links

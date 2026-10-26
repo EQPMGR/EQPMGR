@@ -7,6 +7,7 @@ import { ArrowUpRight, SearchCheck, FileInput, Building, Trash2, Database, BarCh
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { StravaWebhookCard } from '@/components/strava-webhook-card';
+import { ShopApprovalsCard } from '@/components/shop-approvals-card';
 
 export default function AdminPage() {
     const { user } = useAuth();
@@ -63,6 +64,7 @@ export default function AdminPage() {
                         </Button>
                     </CardHeader>
                 </Card>
+                 <ShopApprovalsCard />
                  <StravaWebhookCard />
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
