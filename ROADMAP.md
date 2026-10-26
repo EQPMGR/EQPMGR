@@ -134,6 +134,10 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
   - [ ] **Sage:** put the Stripe secret key in the **shop** app's `.env.local` and the **eqpmgrshop** Netlify site (start with a test key, `sk_test_…`); turn on Stripe Tax and add the business address + GST/PST numbers once registered
   - [ ] **Sage + accountant:** GST registration (optional under C$30k revenue) and BC PST registration; whether to charge GST/HST before C$30k
   - [x] Guard shops from junk tickets: 1 open request per bike per shop, 5 per rider per day; `void_billing_ticket()` for admins (no admin screen yet)
+  - [x] Tested live in Stripe test mode 2026-10-25: AI import, catalog-only save, Service Ticket on new work order, FIRST10, card setup, monthly invoice, decline → 5-day grace → pause (rider sees a friendly message) → pay → active
+  - [ ] **Ship with the next batch** (held by Sage): shop `fix/billing-idempotency` (a second bill for the same shop and month within 24 h reused the first invoice, so the tickets were never charged) and rider `fix/import-bike-type` (the imported bike type was wiped on the form)
+  - [ ] Shop app: the Work Orders "AI Priority" button is a placeholder that picks Low/Medium/High at random. Remove it or use a real rule.
+  - [ ] Shop app: the Work Orders table doesn't refresh after "Update Status" (it saves, but the screen shows the old status)
   - [ ] Decide: should shops without a card be hidden from riders? (Today they still get work orders; tickets wait until a card is added.)
 - [ ] Shop ratings and reviews
 - [ ] Rental tickets with waivers
