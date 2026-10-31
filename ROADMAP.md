@@ -139,7 +139,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] ~~Wear alert emails~~: built, then removed 2026-10-18. Sage doesn't want the app emailing people.
 - [ ] Maybe: in-app "needs attention" list on the dashboard (no email)
 - [ ] More data sources besides Strava (Garmin, Wahoo, ...). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data.
-- [ ] Database backups before real users (Supabase Pro or scheduled exports)
+- [x] Database backups before real users: nightly encrypted dump via GitHub Actions (2026-10-26, see the go-live checklist)
 
 ### Phase 4: Later
 - [ ] Billing ⏳ built 2026-10-25 (test mode, not shipped): migration 020 (tickets, promo credits, pause), shop Billing card + dashboard notices, Stripe card setup/portal/webhook, daily billing run, monthly invoices with Service Ticket line items, FIRST10, junk-ticket limits. Next: Stripe key → `scripts/stripe-setup.mts` → webhook endpoint → apply 020 → test with Stripe test cards → ship
