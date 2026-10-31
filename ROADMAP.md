@@ -46,6 +46,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
 | 2026-10-17 | New shops must be **manually approved**. We need an **admin team** (more than one admin) who can approve shops, bulk-add bike models, and fix data. |
+| 2026-10-31 | **Insurance leads by email:** the Oasis Pedal Power form emails insurance@eqpmgr.com, and a new Acci7 accident insurance form (name, address, phone, email) emails acci7@eqpmgr.com. Sage invoices partners for leads manually for now. These go to EQPMGR's own inboxes only; riders still get no email from the app. |
 | 2026-10-25 | **Go-live rules:** riders only see shops that an admin approved **and** that have a working card on file. Shops accept billing terms before adding a card. Tax: under BC's C$10k small-seller threshold PST registration isn't needed yet. GST/PST are collected and remitted once registered: add the numbers in Stripe → Tax, then set `STRIPE_TAX_ENABLED=1`. |
 | 2026-10-25 | **Shop pricing:** C$2 per **Service Ticket** (repair or fit work order), charged when the work order is **created**; no monthly fee, minimum or setup fee. **Rental Tickets** later, as a separate line on the same monthly bill. Promo code **FIRST10** = 10 free Service Tickets. Riders are free forever. Business: BC-incorporated, bills in CAD; sales tax by the shop's location (Stripe Tax; registrations to confirm with an accountant). Failed payment: notify the shop, 5-day grace, then pause new work orders. |
 | 2026-10-17 | Billing was never really set up. Superseded 2026-10-25 (pricing chosen). |
@@ -87,6 +88,13 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] Stripe live: activate the account, live secret key in Netlify, `scripts/stripe-setup.mts --live`, live webhook endpoint + `STRIPE_WEBHOOK_SECRET`, redeploy
 - [ ] Check the first scheduled billing run in Netlify's function logs (`billing-daily`)
 - [ ] Strava: 999 athletes allowed, 6,000 requests a day; ask Strava for more before about 750 riders
+
+### Insurance leads (built 2026-10-31, in the go-live batch)
+- [x] Oasis form now emails insurance@eqpmgr.com (was sage@), with escaped fields and a reply-to to the rider; Acci7 card + form → acci7@eqpmgr.com; 3 leads per rider per form per day (migration 022)
+- [ ] **Sage:** fix the email login. The local copy (`.env.netlify`) is rejected by the mail server ("Incorrect authentication data"). Check `EMAIL_USER` / `EMAIL_PASS` in Netlify (eqpmgr site), and put the same `EMAIL_*` values in `.env.local` so it can be tested locally.
+- [ ] The mail server's certificate (eqpmgr.com, Sectigo) didn't verify with Node's built-in list on this Mac. Confirm on the live site after the login is fixed by sending one test lead.
+- [ ] Acci7 wording on the card and page is a placeholder; Sage to supply the real product description
+- [ ] Maybe: Admin view of leads per month for invoicing (today: count `lead_submissions`)
 
 ### Phase 3: Admins, shop approval, consent
 - [ ] Admin roles in the database (replace the single-email allowlist)

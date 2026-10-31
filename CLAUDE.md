@@ -120,6 +120,14 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - Our database is the source of truth; Stripe never counts usage.
 - Shop-app env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_TAX_ENABLED=1` once Stripe Tax is set up. Products, prices (lookup keys `service_ticket_cad` / `rental_ticket_cad`) and portal settings come from `scripts/stripe-setup.mts` in the shop repo.
 
+## Insurance leads
+
+- Dashboard cards link to two forms. Both send through `src/lib/lead-email.ts`, using the SMTP `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASS` settings:
+  - Oasis Pedal Power (`/insurance`, BC only) → `insurance@eqpmgr.com`
+  - Acci7 accident insurance (`/insurance/accident`: name, address, phone, email, consent) → `acci7@eqpmgr.com`
+- `sendLead` escapes everything a rider typed and sets reply-to to the rider's email. Each lead is logged in `lead_submissions` (migration 022) with a limit of 3 per rider per form per 24 h, failing closed.
+- Sage invoices partners for leads by hand, counting `lead_submissions` per month.
+
 ## Backups
 
 - `.github/workflows/db-backup.yml` makes a nightly `supabase db dump` (roles, schema, data), encrypted with GPG. It's kept 30 days as a GitHub Actions artifact (approved by Sage 2026-10-26). It needs the repository secrets `SUPABASE_DB_URL` (session pooler) and `BACKUP_PASSPHRASE`. Restore steps: `docs/RESTORE.md`.
@@ -133,7 +141,7 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - The app's single subscription is switched on or off from Admin → "Automatic Strava sync" (live site only).
   - Bike choice: linked `equipment.strava_gear_id` → unique name match with the Strava bike → the rider's only bike; otherwise the ride is left to assign by hand. Assigning by hand links that Strava bike.
   - Not handled yet: activity update/delete events.
-- No email: Sage decided (2026-10-18) the app should not email people. Don't add outbound email or notifications without asking.
+- No email to riders: Sage decided (2026-10-18) the app should not email people. Don't add outbound email or notifications without asking. The one exception (2026-10-31) is insurance lead forms, which email EQPMGR's own inboxes: see Insurance leads.
 
 - Tokens live in the `app_users.strava` JSON blob: `accessToken`, `refreshToken`, `expiresAt`, `athleteId`, `processedActivities`.
 - Refresh logic is in `src/app/(app)/settings/apps/actions.ts` (it refreshes 5 min before expiry). OAuth exchange is in `src/app/api/strava/token-exchange/route.ts`.
