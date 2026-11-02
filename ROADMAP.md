@@ -156,8 +156,9 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
   - [x] Guard shops from junk tickets: 1 open request per bike per shop, 5 per rider per day; `void_billing_ticket()` for admins (no admin screen yet)
   - [x] Tested live in Stripe test mode 2026-10-25: AI import, catalog-only save, Service Ticket on new work order, FIRST10, card setup, monthly invoice, decline → 5-day grace → pause (rider sees a friendly message) → pay → active
   - [ ] **Ship with the next batch** (held by Sage): shop `fix/billing-idempotency` (a second bill for the same shop and month within 24 h reused the first invoice, so the tickets were never charged) and rider `fix/import-bike-type` (the imported bike type was wiped on the form)
-  - [ ] Shop app: the Work Orders "AI Priority" button is a placeholder that picks Low/Medium/High at random. Remove it or use a real rule.
-  - [ ] Shop app: the Work Orders table doesn't refresh after "Update Status" (it saves, but the screen shows the old status)
+  - [x] Shop app: removed the random "AI Priority" column and the dead Add/Cancel buttons on Work Orders (go-live batch, 2026-11-02)
+  - [x] Shop app: Work Orders table now shows the new status right after "Update Status" (go-live batch)
+  - [x] Shop app: bike fit never saved (shops can't write a rider's bike under RLS, and the error was silent) and saved fits never showed. Now saved through `saveBikeFitAction` (open work order required) (go-live batch)
   - [x] Shops without a working card are hidden from riders (decided 2026-10-25; migration 021)
 - [ ] Shop ratings and reviews
 - [ ] Rental tickets with waivers
