@@ -91,8 +91,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 ### Insurance leads (built 2026-10-31, in the go-live batch)
 - [x] Oasis form now emails insurance@eqpmgr.com (was sage@), with escaped fields and a reply-to to the rider; Acci7 card + form → acci7@eqpmgr.com; 3 leads per rider per form per day (migration 022)
-- [ ] **Sage:** fix the email login. The local copy (`.env.netlify`) is rejected by the mail server ("Incorrect authentication data"). Check `EMAIL_USER` / `EMAIL_PASS` in Netlify (eqpmgr site), and put the same `EMAIL_*` values in `.env.local` so it can be tested locally.
-- [ ] The mail server's certificate (eqpmgr.com, Sectigo) didn't verify with Node's built-in list on this Mac. Confirm on the live site after the login is fixed by sending one test lead.
+- [x] Email login fixed 2026-11-01: the app sends as `no_reply@eqpmgr.com` (Netlify + `.env.local`). Test emails to insurance@ and acci7@ were accepted.
+- [ ] After the batch ships, send one real test lead through each form on the live site
 - [ ] Acci7 wording on the card and page is a placeholder; Sage to supply the real product description
 - [ ] Maybe: Admin view of leads per month for invoicing (today: count `lead_submissions`)
 
