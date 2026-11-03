@@ -155,7 +155,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
   - [ ] **Sage + accountant:** GST registration (optional under C$30k revenue) and BC PST registration; whether to charge GST/HST before C$30k
   - [x] Guard shops from junk tickets: 1 open request per bike per shop, 5 per rider per day; `void_billing_ticket()` for admins (no admin screen yet)
   - [x] Tested live in Stripe test mode 2026-10-25: AI import, catalog-only save, Service Ticket on new work order, FIRST10, card setup, monthly invoice, decline → 5-day grace → pause (rider sees a friendly message) → pay → active
-  - [ ] **Ship with the next batch** (held by Sage): shop `fix/billing-idempotency` (a second bill for the same shop and month within 24 h reused the first invoice, so the tickets were never charged) and rider `fix/import-bike-type` (the imported bike type was wiped on the form)
+  - [x] Shipped 2026-11-03 in the go-live batch: billing idempotency fix and the import bike-type fix
   - [x] Shop app: removed the random "AI Priority" column and the dead Add/Cancel buttons on Work Orders (go-live batch, 2026-11-02)
   - [x] Shop app: Work Orders table now shows the new status right after "Update Status" (go-live batch)
   - [x] Shop app: bike fit never saved (shops can't write a rider's bike under RLS, and the error was silent) and saved fits never showed. Now saved through `saveBikeFitAction` (open work order required) (go-live batch)
@@ -182,6 +182,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-11-03 | **Go-live batch shipped:** migrations 021 + 022 applied; rider PR #15 and shop PR #5 merged and live (shop approvals, hide shops without a card, billing terms, invoice fix, insurance leads, nightly backup, import bike-type fix, shop work-order + bike fit fixes). First rider build failed Netlify secret scanning (sending address in ROADMAP); fixed. |
 | 2026-10-18 | Automatic Strava sync (webhooks, bike matching) and a Strava token-save fix (migration 018). Email alerts removed by decision. |
 | 2026-10-18 | Learning from real data: adjusted km, blended per-model lifespans, chain stretch measurements, field-data reports (migration 017). Fixed an admin data leak. |
 | 2026-10-18 | Ride-based wear: researched baselines, rides table, weather-based wet multiplier for Strava and manual rides (migration 016) |
