@@ -46,6 +46,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
 | 2026-10-17 | New shops must be **manually approved**. We need an **admin team** (more than one admin) who can approve shops, bulk-add bike models, and fix data. |
+| 2026-10-31 | **Insurance leads by email:** the Oasis Pedal Power form emails insurance@eqpmgr.com, and a new Acci7 accident insurance form (name, address, phone, email) emails acci7@eqpmgr.com. Sage invoices partners for leads manually for now. These go to EQPMGR's own inboxes only; riders still get no email from the app. |
+| 2026-10-25 | **Go-live rules:** riders only see shops that an admin approved **and** that have a working card on file. Shops accept billing terms before adding a card. Tax: under BC's C$10k small-seller threshold PST registration isn't needed yet. GST/PST are collected and remitted once registered: add the numbers in Stripe → Tax, then set `STRIPE_TAX_ENABLED=1`. |
 | 2026-10-25 | **Shop pricing:** C$2 per **Service Ticket** (repair or fit work order), charged when the work order is **created**; no monthly fee, minimum or setup fee. **Rental Tickets** later, as a separate line on the same monthly bill. Promo code **FIRST10** = 10 free Service Tickets. Riders are free forever. Business: BC-incorporated, bills in CAD; sales tax by the shop's location (Stripe Tax; registrations to confirm with an accountant). Failed payment: notify the shop, 5-day grace, then pause new work orders. |
 | 2026-10-17 | Billing was never really set up. Superseded 2026-10-25 (pricing chosen). |
 | 2026-10-17 | Riders must **accept the Terms & Conditions at signup** (a checkbox). |
@@ -75,6 +77,24 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] **Sage to finish testing:** As the shop, find the order, open the bike, replace a part, and set status. As the rider, check the bike's log.
 - [ ] Decide which status counts as a billable "activation"
 - [ ] Notifications (email) when a work order is created or changes status
+
+### Go-live checklist (2026-10-25)
+- [x] Shop approval (Admin → Shop approvals), billing terms checkbox, hide shops without a card (migration 021, go-live batch)
+- [x] Nightly encrypted database backup to GitHub Actions (approved 2026-10-26); **Sage:** add the `SUPABASE_DB_URL` and `BACKUP_PASSPHRASE` secrets, then run it once from the Actions tab
+- [ ] **Sage:** confirm custom SMTP for sign-up/password emails: Supabase dashboard → Authentication → Emails → SMTP Settings ("Enable custom SMTP" on, with your server)
+- [ ] **Sage:** get a regular business card onto Netlify (prepaid isn't accepted) so the sites don't stop if credits run out
+- [ ] Lawyer review: rider T&C and the shop billing terms (`EQPMGRshop/src/lib/billing-terms.ts`)
+- [ ] Tax: once registered, add GST/PST numbers in Stripe Tax and set `STRIPE_TAX_ENABLED=1` on eqpmgrshop
+- [ ] Stripe live: activate the account, live secret key in Netlify, `scripts/stripe-setup.mts --live`, live webhook endpoint + `STRIPE_WEBHOOK_SECRET`, redeploy
+- [ ] Check the first scheduled billing run in Netlify's function logs (`billing-daily`)
+- [ ] Strava: 999 athletes allowed, 6,000 requests a day; ask Strava for more before about 750 riders
+
+### Insurance leads (built 2026-10-31, in the go-live batch)
+- [x] Oasis form now emails insurance@eqpmgr.com (was sage@), with escaped fields and a reply-to to the rider; Acci7 card + form → acci7@eqpmgr.com; 3 leads per rider per form per day (migration 022)
+- [x] Email login fixed 2026-11-01: the app sends as `no_reply@eqpmgr.com` (Netlify + `.env.local`). Test emails to insurance@ and acci7@ were accepted.
+- [ ] After the batch ships, send one real test lead through each form on the live site
+- [ ] Acci7 wording on the card and page is a placeholder; Sage to supply the real product description
+- [ ] Maybe: Admin view of leads per month for invoicing (today: count `lead_submissions`)
 
 ### Phase 3: Admins, shop approval, consent
 - [ ] Admin roles in the database (replace the single-email allowlist)
@@ -127,14 +147,19 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] ~~Wear alert emails~~: built, then removed 2026-10-18. Sage doesn't want the app emailing people.
 - [ ] Maybe: in-app "needs attention" list on the dashboard (no email)
 - [ ] More data sources besides Strava (Garmin, Wahoo, ...). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data.
-- [ ] Database backups before real users (Supabase Pro or scheduled exports)
+- [x] Database backups before real users: nightly encrypted dump via GitHub Actions (2026-10-26, see the go-live checklist)
 
 ### Phase 4: Later
 - [ ] Billing ⏳ built 2026-10-25 (test mode, not shipped): migration 020 (tickets, promo credits, pause), shop Billing card + dashboard notices, Stripe card setup/portal/webhook, daily billing run, monthly invoices with Service Ticket line items, FIRST10, junk-ticket limits. Next: Stripe key → `scripts/stripe-setup.mts` → webhook endpoint → apply 020 → test with Stripe test cards → ship
   - [ ] **Sage:** put the Stripe secret key in the **shop** app's `.env.local` and the **eqpmgrshop** Netlify site (start with a test key, `sk_test_…`); turn on Stripe Tax and add the business address + GST/PST numbers once registered
   - [ ] **Sage + accountant:** GST registration (optional under C$30k revenue) and BC PST registration; whether to charge GST/HST before C$30k
   - [x] Guard shops from junk tickets: 1 open request per bike per shop, 5 per rider per day; `void_billing_ticket()` for admins (no admin screen yet)
-  - [ ] Decide: should shops without a card be hidden from riders? (Today they still get work orders; tickets wait until a card is added.)
+  - [x] Tested live in Stripe test mode 2026-10-25: AI import, catalog-only save, Service Ticket on new work order, FIRST10, card setup, monthly invoice, decline → 5-day grace → pause (rider sees a friendly message) → pay → active
+  - [ ] **Ship with the next batch** (held by Sage): shop `fix/billing-idempotency` (a second bill for the same shop and month within 24 h reused the first invoice, so the tickets were never charged) and rider `fix/import-bike-type` (the imported bike type was wiped on the form)
+  - [x] Shop app: removed the random "AI Priority" column and the dead Add/Cancel buttons on Work Orders (go-live batch, 2026-11-02)
+  - [x] Shop app: Work Orders table now shows the new status right after "Update Status" (go-live batch)
+  - [x] Shop app: bike fit never saved (shops can't write a rider's bike under RLS, and the error was silent) and saved fits never showed. Now saved through `saveBikeFitAction` (open work order required) (go-live batch)
+  - [x] Shops without a working card are hidden from riders (decided 2026-10-25; migration 021)
 - [ ] Shop ratings and reviews
 - [ ] Rental tickets with waivers
 - [ ] Affiliate part and tool links

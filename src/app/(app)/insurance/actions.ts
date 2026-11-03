@@ -3,9 +3,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { InsuranceFormValues } from './schema';
-import { accessSecret } from '@/lib/secrets';
 import { verifyUserToken } from '@/lib/server-auth';
-import * as nodemailer from 'nodemailer';
+import { esc, sendLead } from '@/lib/lead-email';
 import { format } from 'date-fns';
 
 function getSupabaseClient() {
@@ -21,47 +20,32 @@ function getSupabaseClient() {
   });
 }
 
-async function sendEmail(formData: InsuranceFormValues) {
-    const emailHost = await accessSecret('EMAIL_HOST');
-    const emailPort = Number(await accessSecret('EMAIL_PORT')) || 587;
-    const emailUser = await accessSecret('EMAIL_USER');
-    const emailPass = await accessSecret('EMAIL_PASS');
-
-    const transporter = nodemailer.createTransport({
-        host: emailHost,
-        port: emailPort,
-        secure: emailPort === 465,
-        auth: {
-            user: emailUser,
-            pass: emailPass,
-        },
-    });
-
+function applicationHtml(formData: InsuranceFormValues) {
     const yesNoToText = (value?: boolean) => value ? 'Yes' : 'No';
 
     const htmlBody = `
       <h1>New Pedal Power Insurance Application</h1>
       <h2>Personal Information</h2>
-      <p><strong>Name:</strong> ${formData.owner1FirstName} ${formData.owner1LastName}</p>
-      <p><strong>Email:</strong> ${formData.email}</p>
-      <p><strong>Phone:</strong> ${formData.phone}</p>
-      <p><strong>Address:</strong> ${formData.addressStreet}, ${formData.addressCity}, ${formData.addressProvince}, ${formData.addressPostalCode}</p>
+      <p><strong>Name:</strong> ${esc(formData.owner1FirstName)} ${esc(formData.owner1LastName)}</p>
+      <p><strong>Email:</strong> ${esc(formData.email)}</p>
+      <p><strong>Phone:</strong> ${esc(formData.phone)}</p>
+      <p><strong>Address:</strong> ${esc(formData.addressStreet)}, ${esc(formData.addressCity)}, ${esc(formData.addressProvince)}, ${esc(formData.addressPostalCode)}</p>
       
       <h2>Unit Information</h2>
-      <p><strong>Type:</strong> ${formData.unitType}</p>
-      <p><strong>Year:</strong> ${formData.unitYear}</p>
-      <p><strong>Make:</strong> ${formData.unitMake}</p>
-      <p><strong>Model:</strong> ${formData.unitModel}</p>
-      <p><strong>Serial Number:</strong> ${formData.unitSerialNumber || 'N/A'}</p>
-      <p><strong>Purchase Price:</strong> $${formData.unit.purchasePrice}</p>
-      <p><strong>Usage Area:</strong> ${formData.unitUsageArea}</p>
-      <p><strong>Storage:</strong> ${formData.unitStorage}</p>
+      <p><strong>Type:</strong> ${esc(formData.unitType)}</p>
+      <p><strong>Year:</strong> ${esc(formData.unitYear)}</p>
+      <p><strong>Make:</strong> ${esc(formData.unitMake)}</p>
+      <p><strong>Model:</strong> ${esc(formData.unitModel)}</p>
+      <p><strong>Serial Number:</strong> ${esc(formData.unitSerialNumber || 'N/A')}</p>
+      <p><strong>Purchase Price:</strong> $${esc(formData.unit.purchasePrice)}</p>
+      <p><strong>Usage Area:</strong> ${esc(formData.unitUsageArea)}</p>
+      <p><strong>Storage:</strong> ${esc(formData.unitStorage)}</p>
 
       <h2>Coverage Information</h2>
       <p><strong>Effective Date:</strong> ${format(formData.effectiveDate, 'PPP')}</p>
-      <p><strong>Liability:</strong> ${formData.liability}</p>
-      <p><strong>Accident Benefits:</strong> ${formData.accidentBenefits}</p>
-      <p><strong>Physical Damage:</strong> ${formData.physicalDamage}</p>
+      <p><strong>Liability:</strong> ${esc(formData.liability)}</p>
+      <p><strong>Accident Benefits:</strong> ${esc(formData.accidentBenefits)}</p>
+      <p><strong>Physical Damage:</strong> ${esc(formData.physicalDamage)}</p>
       <p><strong>Broker Notification Request:</strong> ${formData.contactWhenBrokerAvailable ? 'Yes' : 'No'}</p>
       
       <h2>Eligibility</h2>
@@ -97,23 +81,16 @@ async function sendEmail(formData: InsuranceFormValues) {
                 ${formData.claims.map(claim => `
                     <tr>
                         <td>${claim.dateOfLoss ? format(claim.dateOfLoss, 'PPP') : 'N/A'}</td>
-                        <td>${claim.typeOfClaim || 'N/A'}</td>
-                        <td>$${claim.payoutAmount?.toFixed(2) || 'N/A'}</td>
+                        <td>${esc(claim.typeOfClaim || 'N/A')}</td>
+                        <td>$${esc(claim.payoutAmount?.toFixed(2) || 'N/A')}</td>
                     </tr>
                 `).join('')}
             </tbody>
         </table>
       ` : ''}
     `;
-
-    await transporter.sendMail({
-        from: `"EQPMGR Insurance Bot" <${emailUser}>`,
-        to: "sage@eqpmgr.com",
-        subject: "New Insurance Application Received",
-        html: htmlBody,
-    });
+    return htmlBody;
 }
-
 
 export async function submitInsuranceApplication(
   idToken: string,
@@ -121,10 +98,17 @@ export async function submitInsuranceApplication(
 ): Promise<{ success: boolean; message: string }> {
 
   try {
-    await verifyUserToken(idToken);
+    const { uid } = await verifyUserToken(idToken);
 
-    // Send the email with the form data
-    await sendEmail(values);
+    // Oasis Pedal Power leads go to insurance@eqpmgr.com (limited per rider per day).
+    await sendLead({
+      userId: uid,
+      kind: 'pedal_power',
+      to: 'insurance@eqpmgr.com',
+      subject: `New Pedal Power insurance application: ${values.owner1FirstName} ${values.owner1LastName}`.slice(0, 150),
+      html: applicationHtml(values),
+      replyTo: values.email,
+    });
 
     // Increment a counter for billing/tracking purposes
     const supabase = getSupabaseClient();

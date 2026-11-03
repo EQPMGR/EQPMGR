@@ -78,17 +78,20 @@ export async function getServiceProviders(): Promise<ServiceProvider[]> {
   try {
     const supabase = getSupabaseClient();
     
-    const { data, error } = await supabase
-      .from('service_providers')
-      .select('*')
-      .order('id', { ascending: true });
+    const [{ data, error }, { data: open, error: openError }] = await Promise.all([
+      supabase.from('service_providers').select('*').order('id', { ascending: true }),
+      // Riders only see shops an admin approved that have a working card (migration 021).
+      supabase.from('shop_billing').select('shop_id').not('approved_at', 'is', null).in('status', ['active', 'past_due']),
+    ]);
 
     if (error) throw error;
+    if (openError) throw openError;
 
     if (!data) return [];
+    const accepting = new Set((open ?? []).map((b) => b.shop_id));
 
     // This list is public: never send billing details (Stripe customer ids).
-    return data.map(({ stripe_customer_id: _stripe, ...row }) => ({
+    return data.filter((row) => accepting.has(row.id)).map(({ stripe_customer_id: _stripe, ...row }) => ({
       id: row.id,
       ...convertKeysToCamelCase(row),
     } as ServiceProvider));
@@ -186,6 +189,9 @@ export async function submitWorkOrderAction(
 
     if (error) {
       // Migration 020: a shop with an unpaid bill can't take new work orders.
+      if (error.message?.includes('SHOP_NOT_ACCEPTING')) {
+        return { success: false, message: `${provider.shop_name || 'This shop'} isn't taking online requests yet.` };
+      }
       if (error.message?.includes('SHOP_PAUSED')) {
         return { success: false, message: `${provider.shop_name || 'This shop'} isn't taking online requests right now. Please contact the shop directly.` };
       }
