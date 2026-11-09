@@ -1,24 +1,10 @@
 
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
 import type { InsuranceFormValues } from './schema';
 import { verifyUserToken } from '@/lib/server-auth';
 import { esc, sendLead } from '@/lib/lead-email';
 import { format } from 'date-fns';
-
-function getSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceRoleKey) {
-    throw new Error('Missing Supabase configuration');
-  }
-
-  return createClient(url, serviceRoleKey, {
-    auth: { persistSession: false }
-  });
-}
 
 function applicationHtml(formData: InsuranceFormValues) {
     const yesNoToText = (value?: boolean) => value ? 'Yes' : 'No';
@@ -109,32 +95,6 @@ export async function submitInsuranceApplication(
       html: applicationHtml(values),
       replyTo: values.email,
     });
-
-    // Increment a counter for billing/tracking purposes
-    const supabase = getSupabaseClient();
-    
-    // Get current counter value
-    const { data: counterData, error: getError } = await supabase
-      .from('counters')
-      .select('count')
-      .eq('id', 'insurance_applications')
-      .single();
-
-    if (getError && getError.code !== 'PGRST116') {
-      throw getError;
-    }
-
-    // Increment or create the counter
-    const newCount = (counterData?.count || 0) + 1;
-    
-    const { error: updateError } = await supabase
-      .from('counters')
-      .upsert(
-        { id: 'insurance_applications', count: newCount },
-        { onConflict: 'id' }
-      );
-
-    if (updateError) throw updateError;
 
     return {
       success: true,

@@ -92,7 +92,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 ### Insurance leads (built 2026-10-31, in the go-live batch)
 - [x] Oasis form now emails insurance@eqpmgr.com (was sage@), with escaped fields and a reply-to to the rider; Acci7 card + form → acci7@eqpmgr.com; 3 leads per rider per form per day (migration 022)
 - [x] Email login fixed 2026-11-01: the app sends from a dedicated no-reply mailbox (`EMAIL_USER` in Netlify + `.env.local`; keep the address out of repo files, Netlify secret scanning fails the build). Test emails to insurance@ and acci7@ were accepted.
-- [ ] After the batch ships, send one real test lead through each form on the live site
+- [x] Live test 2026-11-08: one test lead through each form; both logged as sent (2 test rows in `lead_submissions`: leave them out when invoicing)
+- [ ] **Ship with the next batch:** branch `fix/oasis-lead-counter`. The live Oasis form sends the email, then shows "Submission Failed" because it updates a `counters` table that doesn't exist, so riders may resubmit. `lead_submissions` already does that counting.
 - [ ] Acci7 wording on the card and page is a placeholder; Sage to supply the real product description
 - [ ] Maybe: Admin view of leads per month for invoicing (today: count `lead_submissions`)
 
