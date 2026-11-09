@@ -94,6 +94,9 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Email login fixed 2026-11-01: the app sends from a dedicated no-reply mailbox (`EMAIL_USER` in Netlify + `.env.local`; keep the address out of repo files, Netlify secret scanning fails the build). Test emails to insurance@ and acci7@ were accepted.
 - [x] Live test 2026-11-08: one test lead through each form; both logged as sent (2 test rows in `lead_submissions`: leave them out when invoicing)
 - [ ] **Ship with the next batch:** branch `fix/oasis-lead-counter`. The live Oasis form sends the email, then shows "Submission Failed" because it updates a `counters` table that doesn't exist, so riders may resubmit. `lead_submissions` already does that counting.
+- [x] Both test leads confirmed in the inboxes by Sage (2026-11-08). Oasis form no longer puts an email in First Name (same branch).
+- [ ] **Ship with the next batch:** shop branch `fix/work-order-sheet-buttons`: Print Work Order and Update Status on the work order panel now work
+- [ ] Shop app: "Add Note" (Internal Shop Notes) on the work order panel is still a dead button. Notes need a shop-only place in the database, since riders can read `work_orders`.
 - [ ] Acci7 wording on the card and page is a placeholder; Sage to supply the real product description
 - [ ] Maybe: Admin view of leads per month for invoicing (today: count `lead_submissions`)
 
