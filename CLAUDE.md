@@ -50,6 +50,7 @@ Adapter caveats:
 - In the adapter, subcollection paths like `app_users/{uid}/equipment` filter on `user_id` (see `buildParentIdField`).
 - `components` has its own `user_id`, but RLS on components checks ownership **through the parent equipment row** (`components.equipment_id → equipment.user_id`).
 - `work_orders` match on `user_id` or `service_provider_auth_uid`.
+- `work_order_notes` (migration 023) holds a shop's internal notes. Riders can read `work_orders`, so these live apart: service role only, through the shop app's server actions.
 - EQPMGRshop shares this database and also uses `equipment.user_id`.
 
 ## RLS

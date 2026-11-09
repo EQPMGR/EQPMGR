@@ -96,7 +96,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] **Ship with the next batch:** branch `fix/oasis-lead-counter`. The live Oasis form sends the email, then shows "Submission Failed" because it updates a `counters` table that doesn't exist, so riders may resubmit. `lead_submissions` already does that counting.
 - [x] Both test leads confirmed in the inboxes by Sage (2026-11-08). Oasis form no longer puts an email in First Name (same branch).
 - [ ] **Ship with the next batch:** shop branch `fix/work-order-sheet-buttons`: Print Work Order and Update Status on the work order panel now work
-- [ ] Shop app: "Add Note" (Internal Shop Notes) on the work order panel is still a dead button. Notes need a shop-only place in the database, since riders can read `work_orders`.
+- [x] Shop app: "Add Note" on the work order panel saves internal notes riders can't see (same shop branch)
+- [ ] **Apply migration 023 (`work_order_notes`) before merging that shop branch**, or notes will fail to load and save. Tested in a rolled-back transaction 2026-11-09.
 - [ ] Acci7 wording on the card and page is a placeholder; Sage to supply the real product description
 - [ ] Maybe: Admin view of leads per month for invoicing (today: count `lead_submissions`)
 
