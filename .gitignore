@@ -45,3 +45,6 @@ yarn-error.log*
 
 # Admin bulk catalog import: copied spec pages and their extractions
 scripts/catalog-import/pages/
+
+# Claude Code personal settings
+.claude/settings.local.json
