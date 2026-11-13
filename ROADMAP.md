@@ -94,11 +94,11 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Oasis form now emails insurance@eqpmgr.com (was sage@), with escaped fields and a reply-to to the rider; Acci7 card + form → acci7@eqpmgr.com; 3 leads per rider per form per day (migration 022)
 - [x] Email login fixed 2026-11-01: the app sends from a dedicated no-reply mailbox (`EMAIL_USER` in Netlify + `.env.local`; keep the address out of repo files, Netlify secret scanning fails the build). Test emails to insurance@ and acci7@ were accepted.
 - [x] Live test 2026-11-08: one test lead through each form; both logged as sent (2 test rows in `lead_submissions`: leave them out when invoicing)
-- [ ] **Ship with the next batch:** branch `fix/oasis-lead-counter`. The live Oasis form sends the email, then shows "Submission Failed" because it updates a `counters` table that doesn't exist, so riders may resubmit. `lead_submissions` already does that counting.
+- [x] Shipped 2026-11-12 (PR #16): branch `fix/oasis-lead-counter`. The live Oasis form sends the email, then shows "Submission Failed" because it updates a `counters` table that doesn't exist, so riders may resubmit. `lead_submissions` already does that counting.
 - [x] Both test leads confirmed in the inboxes by Sage (2026-11-08). Oasis form no longer puts an email in First Name (same branch).
-- [ ] **Ship with the next batch:** shop branch `fix/work-order-sheet-buttons`: Print Work Order and Update Status on the work order panel now work
+- [x] Shipped 2026-11-12 (shop PR #6): shop branch `fix/work-order-sheet-buttons`: Print Work Order and Update Status on the work order panel now work
 - [x] Shop app: "Add Note" on the work order panel saves internal notes riders can't see (same shop branch)
-- [ ] **Apply migration 023 (`work_order_notes`) before merging that shop branch**, or notes will fail to load and save. Tested in a rolled-back transaction 2026-11-09.
+- [x] Migration 023 (`work_order_notes`) applied 2026-11-12 before merging that shop branch, or notes will fail to load and save. Tested in a rolled-back transaction 2026-11-09.
 - [x] Acci7 card, page and form removed; Bicycle Insurance card now reads "Protect yourself and your ride…" (branch `fix/oasis-lead-counter`, 2026-11-12). The acci7@ mailbox is no longer used by the app.
 - [ ] Maybe: Admin page to enter the closed policies the agent reports each month, next to leads sent, showing close rate and what's owed (C$25 bike / C$10 accident)
 
@@ -188,6 +188,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-11-12 | Shipped: Oasis form fixes, Acci7 removed (one insurance form covers bike and accident), shop work order panel (Print, Update Status, internal notes, migration 023). Live-tested notes and status; Print not yet clicked. |
 | 2026-11-03 | **Go-live batch shipped:** migrations 021 + 022 applied; rider PR #15 and shop PR #5 merged and live (shop approvals, hide shops without a card, billing terms, invoice fix, insurance leads, nightly backup, import bike-type fix, shop work-order + bike fit fixes). First rider build failed Netlify secret scanning (sending address in ROADMAP); fixed. |
 | 2026-10-18 | Automatic Strava sync (webhooks, bike matching) and a Strava token-save fix (migration 018). Email alerts removed by decision. |
 | 2026-10-18 | Learning from real data: adjusted km, blended per-model lifespans, chain stretch measurements, field-data reports (migration 017). Fixed an admin data leak. |
