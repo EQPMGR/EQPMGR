@@ -123,11 +123,9 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 
 ## Insurance leads
 
-- Dashboard cards link to two forms. Both send through `src/lib/lead-email.ts`, using the SMTP `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASS` settings:
-  - Oasis Pedal Power (`/insurance`, BC only) → `insurance@eqpmgr.com`
-  - Acci7 accident insurance (`/insurance/accident`: name, address, phone, email, consent) → `acci7@eqpmgr.com`
+- The dashboard's Bicycle Insurance card links to the Oasis Pedal Power form (`/insurance`, BC only), which also covers accident insurance. It emails `insurance@eqpmgr.com` through `src/lib/lead-email.ts`, using the SMTP `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASS` settings. (The separate Acci7 accident form was removed 2026-11-12.)
 - `sendLead` escapes everything a rider typed and sets reply-to to the rider's email. Each lead is logged in `lead_submissions` (migration 022) with a limit of 3 per rider per form per 24 h, failing closed.
-- Sage invoices partners for leads by hand, counting `lead_submissions` per month.
+- Pay is per **closed** policy, not per lead (decision 2026-11-12): C$25 per bike policy, C$10 per accident policy, reported by the agent. `lead_submissions` still counts leads sent, so the close rate can be shown to agents in other regions.
 
 ## Backups
 

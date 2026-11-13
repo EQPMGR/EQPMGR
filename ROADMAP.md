@@ -46,6 +46,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
 | 2026-10-17 | New shops must be **manually approved**. We need an **admin team** (more than one admin) who can approve shops, bulk-add bike models, and fix data. |
+| 2026-11-12 | **Insurance leads, revised:** the BC agent handling Oasis leads also sells accident insurance (the Oasis form already asks about it), so the separate Acci7 form is removed. He pays per **closed** policy: C$25 per bike policy, C$10 per accident policy, which he reports and Sage invoices by hand. We still count leads sent (`lead_submissions`) so the close rate can sell the program to agents in other regions. Card text: "Protect yourself and your ride…" |
 | 2026-10-31 | **Insurance leads by email:** the Oasis Pedal Power form emails insurance@eqpmgr.com, and a new Acci7 accident insurance form (name, address, phone, email) emails acci7@eqpmgr.com. Sage invoices partners for leads manually for now. These go to EQPMGR's own inboxes only; riders still get no email from the app. |
 | 2026-10-25 | **Go-live rules:** riders only see shops that an admin approved **and** that have a working card on file. Shops accept billing terms before adding a card. Tax: under BC's C$10k small-seller threshold PST registration isn't needed yet. GST/PST are collected and remitted once registered: add the numbers in Stripe → Tax, then set `STRIPE_TAX_ENABLED=1`. |
 | 2026-10-25 | **Shop pricing:** C$2 per **Service Ticket** (repair or fit work order), charged when the work order is **created**; no monthly fee, minimum or setup fee. **Rental Tickets** later, as a separate line on the same monthly bill. Promo code **FIRST10** = 10 free Service Tickets. Riders are free forever. Business: BC-incorporated, bills in CAD; sales tax by the shop's location (Stripe Tax; registrations to confirm with an accountant). Failed payment: notify the shop, 5-day grace, then pause new work orders. |
@@ -98,8 +99,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] **Ship with the next batch:** shop branch `fix/work-order-sheet-buttons`: Print Work Order and Update Status on the work order panel now work
 - [x] Shop app: "Add Note" on the work order panel saves internal notes riders can't see (same shop branch)
 - [ ] **Apply migration 023 (`work_order_notes`) before merging that shop branch**, or notes will fail to load and save. Tested in a rolled-back transaction 2026-11-09.
-- [ ] Acci7 wording on the card and page is a placeholder; Sage to supply the real product description
-- [ ] Maybe: Admin view of leads per month for invoicing (today: count `lead_submissions`)
+- [x] Acci7 card, page and form removed; Bicycle Insurance card now reads "Protect yourself and your ride…" (branch `fix/oasis-lead-counter`, 2026-11-12). The acci7@ mailbox is no longer used by the app.
+- [ ] Maybe: Admin page to enter the closed policies the agent reports each month, next to leads sent, showing close rate and what's owed (C$25 bike / C$10 accident)
 
 ### Phase 3: Admins, shop approval, consent
 - [ ] Admin roles in the database (replace the single-email allowlist)

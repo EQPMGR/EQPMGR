@@ -10,7 +10,7 @@ export function InsuranceCard() {
             <CardHeader>
                 <CardTitle>Bicycle Insurance</CardTitle>
                 <CardDescription>
-                    Protect your ride with comprehensive coverage from our partners. Check if service is available in your area.
+                    Protect yourself and your ride with comprehensive coverage from our partners. Check if service is available in your area.
                 </CardDescription>
             </CardHeader>
             <CardContent>
