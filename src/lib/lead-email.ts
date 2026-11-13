@@ -6,7 +6,8 @@ import * as nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { accessSecret } from '@/lib/secrets';
 
-export type LeadKind = 'pedal_power' | 'acci7';
+// 'acci7' rows from the removed accident form (2026-11) may still be in the log.
+export type LeadKind = 'pedal_power';
 const LEADS_PER_DAY = 3;
 
 function serviceClient() {

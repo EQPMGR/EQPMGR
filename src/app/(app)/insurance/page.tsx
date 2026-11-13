@@ -67,9 +67,15 @@ export default function InsurancePage() {
             }
         }
 
+        // Accounts without a real name have their email as the display name.
+        if (storedValues?.owner1FirstName?.includes('@')) {
+            delete storedValues.owner1FirstName;
+        }
+        const displayName = user?.displayName?.includes('@') ? '' : user?.displayName || '';
+
         return {
-            owner1FirstName: user?.displayName?.split(' ')[0] || '',
-            owner1LastName: user?.displayName?.split(' ').slice(1).join(' ') || '',
+            owner1FirstName: displayName.split(' ')[0] || '',
+            owner1LastName: displayName.split(' ').slice(1).join(' ') || '',
             email: user?.email || '',
             phone: user?.phone || '',
             contactWhenBrokerAvailable: false,

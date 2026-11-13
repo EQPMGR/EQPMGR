@@ -46,6 +46,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
 | 2026-10-17 | New shops must be **manually approved**. We need an **admin team** (more than one admin) who can approve shops, bulk-add bike models, and fix data. |
+| 2026-11-12 | **Insurance leads, revised:** the BC agent handling Oasis leads also sells accident insurance (the Oasis form already asks about it), so the separate Acci7 form is removed. He pays per **closed** policy: C$25 per bike policy, C$10 per accident policy, which he reports and Sage invoices by hand. We still count leads sent (`lead_submissions`) so the close rate can sell the program to agents in other regions. Card text: "Protect yourself and your ride…" |
 | 2026-10-31 | **Insurance leads by email:** the Oasis Pedal Power form emails insurance@eqpmgr.com, and a new Acci7 accident insurance form (name, address, phone, email) emails acci7@eqpmgr.com. Sage invoices partners for leads manually for now. These go to EQPMGR's own inboxes only; riders still get no email from the app. |
 | 2026-10-25 | **Go-live rules:** riders only see shops that an admin approved **and** that have a working card on file. Shops accept billing terms before adding a card. Tax: under BC's C$10k small-seller threshold PST registration isn't needed yet. GST/PST are collected and remitted once registered: add the numbers in Stripe → Tax, then set `STRIPE_TAX_ENABLED=1`. |
 | 2026-10-25 | **Shop pricing:** C$2 per **Service Ticket** (repair or fit work order), charged when the work order is **created**; no monthly fee, minimum or setup fee. **Rental Tickets** later, as a separate line on the same monthly bill. Promo code **FIRST10** = 10 free Service Tickets. Riders are free forever. Business: BC-incorporated, bills in CAD; sales tax by the shop's location (Stripe Tax; registrations to confirm with an accountant). Failed payment: notify the shop, 5-day grace, then pause new work orders. |
@@ -92,9 +93,14 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 ### Insurance leads (built 2026-10-31, in the go-live batch)
 - [x] Oasis form now emails insurance@eqpmgr.com (was sage@), with escaped fields and a reply-to to the rider; Acci7 card + form → acci7@eqpmgr.com; 3 leads per rider per form per day (migration 022)
 - [x] Email login fixed 2026-11-01: the app sends from a dedicated no-reply mailbox (`EMAIL_USER` in Netlify + `.env.local`; keep the address out of repo files, Netlify secret scanning fails the build). Test emails to insurance@ and acci7@ were accepted.
-- [ ] After the batch ships, send one real test lead through each form on the live site
-- [ ] Acci7 wording on the card and page is a placeholder; Sage to supply the real product description
-- [ ] Maybe: Admin view of leads per month for invoicing (today: count `lead_submissions`)
+- [x] Live test 2026-11-08: one test lead through each form; both logged as sent (2 test rows in `lead_submissions`: leave them out when invoicing)
+- [ ] **Ship with the next batch:** branch `fix/oasis-lead-counter`. The live Oasis form sends the email, then shows "Submission Failed" because it updates a `counters` table that doesn't exist, so riders may resubmit. `lead_submissions` already does that counting.
+- [x] Both test leads confirmed in the inboxes by Sage (2026-11-08). Oasis form no longer puts an email in First Name (same branch).
+- [ ] **Ship with the next batch:** shop branch `fix/work-order-sheet-buttons`: Print Work Order and Update Status on the work order panel now work
+- [x] Shop app: "Add Note" on the work order panel saves internal notes riders can't see (same shop branch)
+- [ ] **Apply migration 023 (`work_order_notes`) before merging that shop branch**, or notes will fail to load and save. Tested in a rolled-back transaction 2026-11-09.
+- [x] Acci7 card, page and form removed; Bicycle Insurance card now reads "Protect yourself and your ride…" (branch `fix/oasis-lead-counter`, 2026-11-12). The acci7@ mailbox is no longer used by the app.
+- [ ] Maybe: Admin page to enter the closed policies the agent reports each month, next to leads sent, showing close rate and what's owed (C$25 bike / C$10 accident)
 
 ### Phase 3: Admins, shop approval, consent
 - [ ] Admin roles in the database (replace the single-email allowlist)
@@ -155,7 +161,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
   - [ ] **Sage + accountant:** GST registration (optional under C$30k revenue) and BC PST registration; whether to charge GST/HST before C$30k
   - [x] Guard shops from junk tickets: 1 open request per bike per shop, 5 per rider per day; `void_billing_ticket()` for admins (no admin screen yet)
   - [x] Tested live in Stripe test mode 2026-10-25: AI import, catalog-only save, Service Ticket on new work order, FIRST10, card setup, monthly invoice, decline → 5-day grace → pause (rider sees a friendly message) → pay → active
-  - [ ] **Ship with the next batch** (held by Sage): shop `fix/billing-idempotency` (a second bill for the same shop and month within 24 h reused the first invoice, so the tickets were never charged) and rider `fix/import-bike-type` (the imported bike type was wiped on the form)
+  - [x] Shipped 2026-11-03 in the go-live batch: billing idempotency fix and the import bike-type fix
   - [x] Shop app: removed the random "AI Priority" column and the dead Add/Cancel buttons on Work Orders (go-live batch, 2026-11-02)
   - [x] Shop app: Work Orders table now shows the new status right after "Update Status" (go-live batch)
   - [x] Shop app: bike fit never saved (shops can't write a rider's bike under RLS, and the error was silent) and saved fits never showed. Now saved through `saveBikeFitAction` (open work order required) (go-live batch)
@@ -182,6 +188,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-11-03 | **Go-live batch shipped:** migrations 021 + 022 applied; rider PR #15 and shop PR #5 merged and live (shop approvals, hide shops without a card, billing terms, invoice fix, insurance leads, nightly backup, import bike-type fix, shop work-order + bike fit fixes). First rider build failed Netlify secret scanning (sending address in ROADMAP); fixed. |
 | 2026-10-18 | Automatic Strava sync (webhooks, bike matching) and a Strava token-save fix (migration 018). Email alerts removed by decision. |
 | 2026-10-18 | Learning from real data: adjusted km, blended per-model lifespans, chain stretch measurements, field-data reports (migration 017). Fixed an admin data leak. |
 | 2026-10-18 | Ride-based wear: researched baselines, rides table, weather-based wet multiplier for Strava and manual rides (migration 016) |
