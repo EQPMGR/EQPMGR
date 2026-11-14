@@ -43,6 +43,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | Decision |
 |---|---|
+| 2026-11-14 | **Wording and website:** always say "bike fitters", never just "fitters", in the apps, site and print. New marketing site on the existing WordPress at Namecheap (eqpmgr.com): the home page splits riders and shops/bike fitters right away. Printed QR codes will point at forwarding links on eqpmgr.com (e.g. /ride, /shop) so cards survive any move of the apps; rebuild all three rack cards with those links and the "bike fitters" wording before printing. |
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
 | 2026-10-17 | New shops must be **manually approved**. We need an **admin team** (more than one admin) who can approve shops, bulk-add bike models, and fix data. |
