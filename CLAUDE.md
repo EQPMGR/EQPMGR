@@ -159,6 +159,10 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - Add Bike Model is a user feature: the page is `/add-bike-model` (`/admin/add-bike-model` redirects there) and the API is `/api/bike-models`. New models go into the shared catalog with `created_by` set.
 - Unguarded on purpose (read-only shared catalog): `getServiceProviders`, `fetchAllMasterComponents`.
 
+## Getting-started checklists
+
+- Rider: `src/components/getting-started-card.tsx` on the dashboard. Shop: `src/components/getting-started-card.tsx` in the shop repo. Steps tick from existing data (no tables); hiding is remembered per device in localStorage. The rider card reads only `strava->>athleteId`, never the tokens. While the shop checklist shows, it replaces the shop's "add a card" / "waiting for approval" banners; past-due and paused banners still show.
+
 ## Installable app (PWA)
 
 - `public/manifest.json` (start URL `/dashboard`), icons in `public/icons/` (made from the logo in `src/components/logo.tsx`), and `public/sw.js`, registered on the live site only by `src/components/service-worker-register.tsx`.

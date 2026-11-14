@@ -173,7 +173,9 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] **Shipped 2026-11-14 (PR #17).** After login, visitors return to the page they came for (e.g. /insurance from eqpmgr.com) instead of the dashboard; new sign-ups get it after confirming their email, in the same browser. Same-site paths only (`src/lib/return-path.ts`).
 - [x] Rebuilt the three rack cards (2026-11-14): QR codes to eqpmgr.com/ride and /shop, those addresses printed under the QR, "bike fitters" wording. Ready to print.
 - [x] Home page FAQ now links the privacy policy (eqpmgr.com/privacy) instead of "coming soon" (2026-11-14)
-- [ ] Quickstart guides for riders and shops (being planned 2026-11-14)
+- [ ] Quickstart for new users (decision 2026-11-14): in-app checklists first, short quickstart pages on eqpmgr.com next, short looping clips last (once screens stop changing). Before writing guides, watch 2-3 people set up the app with no help.
+  - [ ] **Next batch** (branches `feature/getting-started` in both repos): "Get set up" checklist on the rider dashboard (add a bike, connect Strava or upload a ride, add your weight, find a shop or bike fitter) and "Get ready for riders" on the shop dashboard (profile, billing terms + card, approval, first work order). Steps tick themselves from real data; hideable.
+  - [ ] Quickstart pages on eqpmgr.com for riders and for shops/bike fitters
 - [ ] Style /terms/ and /privacy/ to match the home page; inner pages (how wear works, insurance, FAQ) later
 
 ### Phase 4: Later
