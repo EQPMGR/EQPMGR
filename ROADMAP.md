@@ -155,7 +155,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] ~~Wear alert emails~~: built, then removed 2026-10-18. Sage doesn't want the app emailing people.
 - [ ] Maybe: in-app "needs attention" list on the dashboard (no email)
 - [ ] More data sources besides Strava (decision 2026-11-14). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data and on rides that didn't come through Strava.
-  - [ ] **Ship with the next batch** (branch `feature/next-batch`): upload ride files (.FIT, .GPX, .TCX) on a bike's page, up to 50 at a time (migration 024 adds ride source `file`). Files are read on the server (`src/lib/ride-file.ts`, Garmin's official FIT library, pinned). Distance, riding time, climbing, start point and ride type come from the file. The same file can't count twice, and a ride already counted from Strava (or typed in by hand) at the same time with about the same distance is skipped, in every direction, so Strava sync also skips rides already uploaded. 100 file rides per rider per day. Migration 024 applied 2026-11-14. Tested locally the same day: a FIT ride counted with weather (wet), a GPX of an existing Strava ride skipped, the same file twice refused, and a running file refused. Test data removed.
+  - [x] **Shipped 2026-11-14 (PR #17):** upload ride files (.FIT, .GPX, .TCX) on a bike's page, up to 50 at a time (migration 024 adds ride source `file`). Files are read on the server (`src/lib/ride-file.ts`, Garmin's official FIT library, pinned). Distance, riding time, climbing, start point and ride type come from the file. The same file can't count twice, and a ride already counted from Strava (or typed in by hand) at the same time with about the same distance is skipped, in every direction, so Strava sync also skips rides already uploaded. 100 file rides per rider per day. Migration 024 applied 2026-11-14. Tested locally the same day: a FIT ride counted with weather (wet), a GPX of an existing Strava ride skipped, the same file twice refused, and a running file refused. Test data removed.
   - [ ] Garmin Connect API: applied 2026-11-14, waiting for approval. Then automatic sync like Strava.
   - [ ] Wahoo API: Sage looking into it.
   - [ ] Ask Strava to raise the 999-athlete cap (see go-live checklist).
@@ -167,10 +167,10 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Terms moved to /terms/ (old /contact forwards there); Privacy policy published at /privacy/ (plain-language draft, **needs lawyer review**)
 - [x] Forwarding links via the Redirection plugin (no visitor logging): /ride, /shop, /insurance (302, so they can be repointed)
 - [x] Old "Get the App!" and "How to Use It" pages set to draft (restorable)
-- [ ] **Ship with the next batch** (branch `feature/next-batch`): Oasis insurance form asks for date of birth (prefilled from the rider's profile, required, included in the lead email).
-- [ ] **Ship with the next batch** (branch `feature/next-batch`): rider app is installable to the home screen (progressive web app). Real EQPMGR icons, manifest starting at the dashboard, a service worker that only adds an offline page (never caches data). Checked locally: worker activates, Chrome reports no install problems.
+- [x] **Shipped 2026-11-14 (PR #17):** Oasis insurance form asks for date of birth (prefilled from the rider's profile, required, included in the lead email).
+- [x] **Shipped 2026-11-14 (PR #17):** rider app is installable to the home screen (progressive web app). Real EQPMGR icons, manifest starting at the dashboard, a service worker that only adds an offline page (never caches data). Checked locally: worker activates, Chrome reports no install problems.
   - After shipping, test on a real iPhone and Android phone: Add to Home Screen, and **Strava connect from the installed app** (on iPhone the Strava login may open in Safari and return to the browser instead of the app).
-- [ ] **Ship with the next batch** (branch `feature/next-batch`, was `fix/login-return-path`). After login, visitors return to the page they came for (e.g. /insurance from eqpmgr.com) instead of the dashboard; new sign-ups get it after confirming their email, in the same browser. Same-site paths only (`src/lib/return-path.ts`).
+- [x] **Shipped 2026-11-14 (PR #17).** After login, visitors return to the page they came for (e.g. /insurance from eqpmgr.com) instead of the dashboard; new sign-ups get it after confirming their email, in the same browser. Same-site paths only (`src/lib/return-path.ts`).
 - [ ] Rebuild the three rack cards: QR codes to eqpmgr.com/ride and /shop, "bike fitters" wording; then print
 - [ ] Style /terms/ and /privacy/ to match the home page; inner pages (how wear works, insurance, FAQ) later
 
@@ -213,6 +213,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-11-14 | Shipped PR #17 (rider app): ride-file upload (.FIT/.GPX/.TCX, migration 024), installable home-screen app, insurance date of birth, return to the page you came for after login. Still to do: try Add to Home Screen and Strava connect on a real iPhone and Android phone. |
 | 2026-11-12 | Shipped: Oasis form fixes, Acci7 removed (one insurance form covers bike and accident), shop work order panel (Print, Update Status, internal notes, migration 023). Live-tested notes and status; Print not yet clicked. |
 | 2026-11-03 | **Go-live batch shipped:** migrations 021 + 022 applied; rider PR #15 and shop PR #5 merged and live (shop approvals, hide shops without a card, billing terms, invoice fix, insurance leads, nightly backup, import bike-type fix, shop work-order + bike fit fixes). First rider build failed Netlify secret scanning (sending address in ROADMAP); fixed. |
 | 2026-10-18 | Automatic Strava sync (webhooks, bike matching) and a Strava token-save fix (migration 018). Email alerts removed by decision. |
