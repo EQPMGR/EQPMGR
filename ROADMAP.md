@@ -43,6 +43,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | Decision |
 |---|---|
+| 2026-11-14 | **Ride sources beyond Strava:** relying on Strava alone caps us at 999 riders until Strava approves more, and its API terms limit how Strava data may be shared or used. So: (1) ride-file upload (.FIT/.GPX/.TCX) now, which covers every bike computer and needs no approval; (2) Garmin Connect Developer Program, applied 2026-11-14 (approval takes weeks); (3) Wahoo, Sage looking into it; (4) MapMyRide skipped (API largely closed, small cycling user base; the empty placeholder route was deleted); (5) Apple Health / Google Health Connect need a native app, so not now. Every ride records its `source` (strava, manual, file), so any future data product can leave out Strava-derived rides. The lawyer should read Strava's current API terms alongside the privacy review. |
 | 2026-11-14 | **Wording and website:** always say "bike fitters", never just "fitters", in the apps, site and print. New marketing site on the existing WordPress at Namecheap (eqpmgr.com): the home page splits riders and shops/bike fitters right away. Printed QR codes will point at forwarding links on eqpmgr.com (e.g. /ride, /shop) so cards survive any move of the apps; rebuild all three rack cards with those links and the "bike fitters" wording before printing. |
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
 | 2026-10-17 | Once a rider has used a shop, the shop can **view** that bike permanently, but can **change parts only while a work order is open**. |
@@ -153,7 +154,12 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] Handle Strava ride edits/deletes (currently ignored once a ride is counted)
 - [x] ~~Wear alert emails~~: built, then removed 2026-10-18. Sage doesn't want the app emailing people.
 - [ ] Maybe: in-app "needs attention" list on the dashboard (no email)
-- [ ] More data sources besides Strava (Garmin, Wahoo, ...). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data.
+- [ ] More data sources besides Strava (decision 2026-11-14). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data and on rides that didn't come through Strava.
+  - [ ] **Ship with the next batch** (branch `feature/next-batch`): upload ride files (.FIT, .GPX, .TCX) on a bike's page, up to 50 at a time (migration 024 adds ride source `file`). Files are read on the server (`src/lib/ride-file.ts`, Garmin's official FIT library, pinned). Distance, riding time, climbing, start point and ride type come from the file. The same file can't count twice, and a ride already counted from Strava (or typed in by hand) at the same time with about the same distance is skipped, in every direction, so Strava sync also skips rides already uploaded. 100 file rides per rider per day.
+  - [ ] Garmin Connect API: applied 2026-11-14, waiting for approval. Then automatic sync like Strava.
+  - [ ] Wahoo API: Sage looking into it.
+  - [ ] Ask Strava to raise the 999-athlete cap (see go-live checklist).
+  - [ ] Lawyer: read Strava's current API agreement (data sharing, AI use) with the privacy review.
 - [x] Database backups before real users: nightly encrypted dump via GitHub Actions (2026-10-26, see the go-live checklist)
 
 ### Website (eqpmgr.com, WordPress at Namecheap) ✅ live 2026-11-14

@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { verifyUserToken } from '@/lib/server-auth';
-import { recordRideAndApplyWear, rideTerrain, rideIsEbike, describeWeather } from '@/lib/rides';
+import { recordRideAndApplyWear, rideTerrain, rideIsEbike, describeWeather, describeDuplicate } from '@/lib/rides';
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -68,6 +68,10 @@ export async function logManualRideAction(
       lng: input.lng ?? null,
       weatherOverride: input.conditions === 'auto' ? null : input.conditions,
     });
+
+    if (recorded.alreadyRecorded) {
+      return { success: false, message: describeDuplicate(recorded.duplicateOf) };
+    }
 
     return {
       success: true,
