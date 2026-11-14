@@ -156,6 +156,15 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] More data sources besides Strava (Garmin, Wahoo, ...). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data.
 - [x] Database backups before real users: nightly encrypted dump via GitHub Actions (2026-10-26, see the go-live checklist)
 
+### Website (eqpmgr.com, WordPress at Namecheap) ✅ live 2026-11-14
+- [x] New home page (riders vs shops/bike fitters split, real app visuals) on theme Twenty Twenty-Five with a "Blank canvas" template; source in `marketing/website/` (kept out of git)
+- [x] Terms moved to /terms/ (old /contact forwards there); Privacy policy published at /privacy/ (plain-language draft, **needs lawyer review**)
+- [x] Forwarding links via the Redirection plugin (no visitor logging): /ride, /shop, /insurance (302, so they can be repointed)
+- [x] Old "Get the App!" and "How to Use It" pages set to draft (restorable)
+- [ ] Rider app: after login/sign-up, return to the page the visitor came for (e.g. /insurance), not the dashboard (`(app)/layout.tsx` sends to /login without a return path)
+- [ ] Rebuild the three rack cards: QR codes to eqpmgr.com/ride and /shop, "bike fitters" wording; then print
+- [ ] Style /terms/ and /privacy/ to match the home page; inner pages (how wear works, insurance, FAQ) later
+
 ### Phase 4: Later
 - [ ] **Bike transfer to a new owner** (promised on the rider rack card, 2026-11-14: "Fully portable and transferable service record for your bike"). When a bike is sold, its parts, wear, rides, maintenance log, service history and fit move with it. Open questions:
   - How the seller hands it over: a one-time code or link, accepted by the buyer.
