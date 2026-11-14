@@ -105,8 +105,10 @@ export default function EquipmentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchEquipment = useCallback(async (uid: string) => {
-    setIsLoading(true);
+  // silent: refresh in the background without the full-page spinner, so cards
+  // on the page (e.g. ride upload results) keep what they're showing.
+  const fetchEquipment = useCallback(async (uid: string, opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setIsLoading(true);
     try {
       const database = await getDb();
 
@@ -464,7 +466,7 @@ export default function EquipmentDetailPage() {
             </Card>
             
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
-            <UploadRideFiles equipment={equipment} onSuccess={() => fetchEquipment(user!.uid)} />
+            <UploadRideFiles equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, { silent: true })} />
             <LogRideForm equipment={equipment} onSuccess={() => fetchEquipment(user!.uid)} />
             <MaintenanceSchedule equipment={equipment} />
           </div>
