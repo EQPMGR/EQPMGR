@@ -31,6 +31,9 @@ export const insuranceFormSchema = z.object({
   // Personal Information
   owner1FirstName: z.string().min(1, 'First name is required.'),
   owner1LastName: z.string().min(1, 'Last name is required.'),
+  owner1BirthDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth is required.')
+    .refine(v => !Number.isNaN(Date.parse(v)) && Date.parse(v) < Date.now(), 'Enter a valid date of birth.'),
   email: z.string().email('Invalid email address.'),
   phone: z.string().min(10, 'A valid phone number is required.'),
   addressStreet: z.string().min(1, 'Street address is required.'),

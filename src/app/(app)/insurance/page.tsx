@@ -72,10 +72,17 @@ export default function InsurancePage() {
             delete storedValues.owner1FirstName;
         }
         const displayName = user?.displayName?.includes('@') ? '' : user?.displayName || '';
+        // Date of birth comes from the profile if it's there; an empty saved draft value shouldn't hide it.
+        if (!storedValues?.owner1BirthDate) {
+            delete storedValues?.owner1BirthDate;
+        }
+        const birthdate = user?.birthdate ? new Date(user.birthdate) : null;
+        const birthDateValue = birthdate && !Number.isNaN(birthdate.getTime()) ? birthdate.toISOString().slice(0, 10) : '';
 
         return {
             owner1FirstName: displayName.split(' ')[0] || '',
             owner1LastName: displayName.split(' ').slice(1).join(' ') || '',
+            owner1BirthDate: birthDateValue,
             email: user?.email || '',
             phone: user?.phone || '',
             contactWhenBrokerAvailable: false,
@@ -204,6 +211,7 @@ export default function InsurancePage() {
                                 <FormField control={form.control} name="owner1FirstName" render={({ field }) => (<FormItem><FormLabel>Owner #1 First Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="owner1LastName" render={({ field }) => (<FormItem><FormLabel>Owner #1 Last Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
+                            <FormField control={form.control} name="owner1BirthDate" render={({ field }) => (<FormItem className="md:w-1/2 md:pr-2"><FormLabel>Owner #1 Date of Birth</FormLabel><FormControl><Input type="date" max={new Date().toISOString().slice(0, 10)} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
