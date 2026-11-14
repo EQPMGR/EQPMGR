@@ -156,6 +156,12 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Database backups before real users: nightly encrypted dump via GitHub Actions (2026-10-26, see the go-live checklist)
 
 ### Phase 4: Later
+- [ ] **Bike transfer to a new owner** (promised on the rider rack card, 2026-11-14: "Fully portable and transferable service record for your bike"). When a bike is sold, its parts, wear, rides, maintenance log, service history and fit move with it. Open questions:
+  - How the seller hands it over: a one-time code or link, accepted by the buyer.
+  - What stays private: the seller's rides and personal notes vs. the bike's own history.
+  - Strava gear link: reset, so the buyer's rides sync to the right bike.
+  - Shop work orders and billing history stay with the shop; `equipment.user_id` changes owner, so check RLS in both apps.
+  - Also a rider export (PDF or file) of a bike's full service record, for "portable".
 - [ ] Billing ⏳ built 2026-10-25 (test mode, not shipped): migration 020 (tickets, promo credits, pause), shop Billing card + dashboard notices, Stripe card setup/portal/webhook, daily billing run, monthly invoices with Service Ticket line items, FIRST10, junk-ticket limits. Next: Stripe key → `scripts/stripe-setup.mts` → webhook endpoint → apply 020 → test with Stripe test cards → ship
   - [ ] **Sage:** put the Stripe secret key in the **shop** app's `.env.local` and the **eqpmgrshop** Netlify site (start with a test key, `sk_test_…`); turn on Stripe Tax and add the business address + GST/PST numbers once registered
   - [ ] **Sage + accountant:** GST registration (optional under C$30k revenue) and BC PST registration; whether to charge GST/HST before C$30k
