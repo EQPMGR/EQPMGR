@@ -171,7 +171,9 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] **Shipped 2026-11-14 (PR #17):** rider app is installable to the home screen (progressive web app). Real EQPMGR icons, manifest starting at the dashboard, a service worker that only adds an offline page (never caches data). Checked locally: worker activates, Chrome reports no install problems.
   - After shipping, test on a real iPhone and Android phone: Add to Home Screen, and **Strava connect from the installed app** (on iPhone the Strava login may open in Safari and return to the browser instead of the app).
 - [x] **Shipped 2026-11-14 (PR #17).** After login, visitors return to the page they came for (e.g. /insurance from eqpmgr.com) instead of the dashboard; new sign-ups get it after confirming their email, in the same browser. Same-site paths only (`src/lib/return-path.ts`).
-- [ ] Rebuild the three rack cards: QR codes to eqpmgr.com/ride and /shop, "bike fitters" wording; then print
+- [x] Rebuilt the three rack cards (2026-11-14): QR codes to eqpmgr.com/ride and /shop, those addresses printed under the QR, "bike fitters" wording. Ready to print.
+- [x] Home page FAQ now links the privacy policy (eqpmgr.com/privacy) instead of "coming soon" (2026-11-14)
+- [ ] Quickstart guides for riders and shops (being planned 2026-11-14)
 - [ ] Style /terms/ and /privacy/ to match the home page; inner pages (how wear works, insurance, FAQ) later
 
 ### Phase 4: Later
