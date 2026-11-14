@@ -40,6 +40,7 @@ import {
 import { ComponentStatusList } from '@/components/component-status-list';
 import { MaintenanceLog } from '@/components/maintenance-log';
 import { LogRideForm } from '@/components/log-ride-form';
+import { UploadRideFiles } from '@/components/upload-ride-files';
 import { MaintenanceSchedule } from '@/components/maintenance-schedule';
 import type { Equipment, MaintenanceLog as MaintenanceLogType, Component, MasterComponent, UserComponent } from '@/lib/types';
 import { AccessoriesIcon } from '@/components/icons/accessories-icon';
@@ -104,8 +105,10 @@ export default function EquipmentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchEquipment = useCallback(async (uid: string) => {
-    setIsLoading(true);
+  // silent: refresh in the background without the full-page spinner, so cards
+  // on the page (e.g. ride upload results) keep what they're showing.
+  const fetchEquipment = useCallback(async (uid: string, opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setIsLoading(true);
     try {
       const database = await getDb();
 
@@ -463,6 +466,7 @@ export default function EquipmentDetailPage() {
             </Card>
             
             <MaintenanceLog log={equipment.maintenanceLog} onAddLog={handleAddLog} />
+            <UploadRideFiles equipment={equipment} onSuccess={() => fetchEquipment(user!.uid, { silent: true })} />
             <LogRideForm equipment={equipment} onSuccess={() => fetchEquipment(user!.uid)} />
             <MaintenanceSchedule equipment={equipment} />
           </div>

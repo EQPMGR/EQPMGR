@@ -27,7 +27,9 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      // Come back here after logging in (e.g. /insurance from eqpmgr.com).
+      const here = window.location.pathname + window.location.search;
+      router.push(here === '/dashboard' ? '/login' : `/login?next=${encodeURIComponent(here)}`);
     }
   }, [loading, user, router]);
 

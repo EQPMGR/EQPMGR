@@ -1,13 +1,20 @@
-import type {Metadata} from 'next';
+import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/context/auth-context';
+import { ServiceWorkerRegister } from '@/components/service-worker-register';
 
 
 export const metadata: Metadata = {
   title: 'EQPMGR',
-  description: 'AI-powered lifelong companion for your gear.',
+  description: "Know what's wearing out before it fails. Every part on your bike, tracked from your real rides.",
   manifest: '/manifest.json',
+  icons: { apple: '/icons/apple-touch-icon.png' },
+  appleWebApp: { capable: true, title: 'EQPMGR', statusBarStyle: 'default' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#6ec9c0',
 };
 
 export default function RootLayout({
@@ -24,6 +31,7 @@ export default function RootLayout({
           {children}
         </AuthProvider>
         <Toaster />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

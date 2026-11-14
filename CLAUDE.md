@@ -28,7 +28,7 @@ The codebase was originally built on Firebase and migrated to Supabase; all Fire
 ## Layout
 
 - `src/app/(app)/`: authenticated app routes: `dashboard`, `equipment`, `settings`, `admin`, `import-text`, `add-bike-model`, `service-providers`, `insurance`, `bike-insights`
-- `src/app/api/`: route handlers (`strava/*`, `admin/*`, `bike-models`, `provision`, `health`, `weather`, `geocode*`)
+- `src/app/api/`: route handlers (`strava/*`, `rides/upload`, `admin/*`, `bike-models`, `provision`, `health`, `weather`, `geocode*`)
 - `src/backend/`: backend abstraction (`factory.ts`, `interfaces/`, `supabase/`). Entry point is `@/backend` (`getDb`, `getAuth`, `getServerDb`, ...).
 - `src/lib/`: `types.ts` (core data model), `admin-access.ts`, `server-auth.ts`, `supabaseClient.ts` (browser singleton), the component seed data `*-data.ts`, and `wear-simulation.ts`
 - `src/services/`: duplicate detection, component helpers, vector search
@@ -75,6 +75,8 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - The `report_*` views are service-role only, shown on `/admin/field-data`.
   - Replacement reason `failure` is labelled "Worn out / failed" in the UI; only those count toward lifespans.
 - Admin pages must load data in the browser through admin-checked actions or routes, never in server components: the admin gate runs client-side.
+- Ride sources (`rides.source`): `strava`, `manual`, `file` (migration 024). File uploads (.FIT/.GPX/.TCX) go to `POST /api/rides/upload` (login required, the rider must own the bike, 100 file rides per rider per 24 h, failing closed). The browser gzips the file; the server unpacks it (capped at 60 MB) and reads it with `src/lib/ride-file.ts`. FIT files use Garmin's `@garmin/fitsdk`, pinned exactly. Its license doesn't allow handing the library out, so never import it in client code. File rides get `external_id` = `<uid>:<sha-256 of the file>`.
+- `recordRideAndApplyWear` skips a ride that starts within 5 minutes of one the rider already has, with a distance within 15% (min 1 km), whatever the source. That stops a Strava ride and the same ride's file (or a hand-typed copy) from counting twice. It returns `alreadyRecorded` with `duplicateOf`.
 - Weather: `src/lib/ride-weather.ts` (WeatherAPI history, about 7 days back). A ride is wet if ≥0.3 mm falls during it or ≥1 mm in the 12 h before. Strava rides use `start_latlng` and `start_date`; manual rides use the browser location, or the rider marks wet/dry.
 - Terrain and e-bike come from Strava's `sport_type` (MountainBikeRide, GravelRide, EBikeRide...), or else the bike's type.
 
@@ -157,13 +159,18 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - Add Bike Model is a user feature: the page is `/add-bike-model` (`/admin/add-bike-model` redirects there) and the API is `/api/bike-models`. New models go into the shared catalog with `created_by` set.
 - Unguarded on purpose (read-only shared catalog): `getServiceProviders`, `fetchAllMasterComponents`.
 
+## Installable app (PWA)
+
+- `public/manifest.json` (start URL `/dashboard`), icons in `public/icons/` (made from the logo in `src/components/logo.tsx`), and `public/sw.js`, registered on the live site only by `src/components/service-worker-register.tsx`.
+- The service worker only serves `public/offline.html` when a page load fails. Never make it cache API responses or pages: auth and bike data must always be fresh. Bump `CACHE` in `sw.js` when changing the offline page. `netlify.toml` sends `sw.js` with `Cache-Control: no-cache`.
+
 ## Delete flow
 
 `src/app/(app)/equipment/[id]/page.tsx` deletes child `components` rows first, then the `equipment` row, then does `router.push('/equipment')` + `router.refresh()`. Keep that order. It depends on the `012` delete policies.
 
 ## Stale and legacy code
 
-- `src/app/api/mapmyride/token-exchange/route.ts` and `src/app/strava/page.tsx` are empty files.
+- `src/app/strava/page.tsx` is an empty file. (The empty MapMyRide placeholder route was deleted 2026-11-14: MapMyRide is not planned.)
 - Some admin seeders may be inactive. Verify before editing.
 
 ## Migration history notes

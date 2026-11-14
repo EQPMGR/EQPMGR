@@ -13,6 +13,7 @@ function applicationHtml(formData: InsuranceFormValues) {
       <h1>New Pedal Power Insurance Application</h1>
       <h2>Personal Information</h2>
       <p><strong>Name:</strong> ${esc(formData.owner1FirstName)} ${esc(formData.owner1LastName)}</p>
+      <p><strong>Date of birth:</strong> ${esc(formData.owner1BirthDate)}</p>
       <p><strong>Email:</strong> ${esc(formData.email)}</p>
       <p><strong>Phone:</strong> ${esc(formData.phone)}</p>
       <p><strong>Address:</strong> ${esc(formData.addressStreet)}, ${esc(formData.addressCity)}, ${esc(formData.addressProvince)}, ${esc(formData.addressPostalCode)}</p>
