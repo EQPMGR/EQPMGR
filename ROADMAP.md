@@ -161,7 +161,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Terms moved to /terms/ (old /contact forwards there); Privacy policy published at /privacy/ (plain-language draft, **needs lawyer review**)
 - [x] Forwarding links via the Redirection plugin (no visitor logging): /ride, /shop, /insurance (302, so they can be repointed)
 - [x] Old "Get the App!" and "How to Use It" pages set to draft (restorable)
-- [ ] Rider app: after login/sign-up, return to the page the visitor came for (e.g. /insurance), not the dashboard (`(app)/layout.tsx` sends to /login without a return path)
+- [ ] **Ship with the next batch:** branch `fix/login-return-path`. After login, visitors return to the page they came for (e.g. /insurance from eqpmgr.com) instead of the dashboard; new sign-ups get it after confirming their email, in the same browser. Same-site paths only (`src/lib/return-path.ts`).
 - [ ] Rebuild the three rack cards: QR codes to eqpmgr.com/ride and /shop, "bike fitters" wording; then print
 - [ ] Style /terms/ and /privacy/ to match the home page; inner pages (how wear works, insurance, FAQ) later
 

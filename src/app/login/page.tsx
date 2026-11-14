@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { rememberReturnPath, safeReturnPath, takeReturnPath } from '@/lib/return-path';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,10 +30,14 @@ export default function LoginPage() {
     try {
       if (mode === 'login') {
         await signInWithEmailPassword(email.trim(), password);
+        router.push(takeReturnPath() ?? '/dashboard');
       } else {
         await signUpWithEmailPassword(email.trim(), password);
+        // New accounts confirm their email first, then sign in here. Remember
+        // where they were headed so the email round trip doesn't lose it.
+        rememberReturnPath(safeReturnPath(new URLSearchParams(window.location.search).get('next')));
+        setMode('login');
       }
-      router.push('/dashboard');
     } catch (e: any) {
       setError(e.message || 'Authentication failed.');
     } finally {
