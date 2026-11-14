@@ -15,3 +15,9 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# The service worker must always be re-checked so app updates reach installed copies.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

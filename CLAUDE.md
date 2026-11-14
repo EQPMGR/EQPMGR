@@ -157,6 +157,11 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - Add Bike Model is a user feature: the page is `/add-bike-model` (`/admin/add-bike-model` redirects there) and the API is `/api/bike-models`. New models go into the shared catalog with `created_by` set.
 - Unguarded on purpose (read-only shared catalog): `getServiceProviders`, `fetchAllMasterComponents`.
 
+## Installable app (PWA)
+
+- `public/manifest.json` (start URL `/dashboard`), icons in `public/icons/` (made from the logo in `src/components/logo.tsx`), and `public/sw.js`, registered on the live site only by `src/components/service-worker-register.tsx`.
+- The service worker only serves `public/offline.html` when a page load fails. Never make it cache API responses or pages: auth and bike data must always be fresh. Bump `CACHE` in `sw.js` when changing the offline page. `netlify.toml` sends `sw.js` with `Cache-Control: no-cache`.
+
 ## Delete flow
 
 `src/app/(app)/equipment/[id]/page.tsx` deletes child `components` rows first, then the `equipment` row, then does `router.push('/equipment')` + `router.refresh()`. Keep that order. It depends on the `012` delete policies.

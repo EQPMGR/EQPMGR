@@ -162,6 +162,8 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Forwarding links via the Redirection plugin (no visitor logging): /ride, /shop, /insurance (302, so they can be repointed)
 - [x] Old "Get the App!" and "How to Use It" pages set to draft (restorable)
 - [ ] **Ship with the next batch** (branch `feature/next-batch`): Oasis insurance form asks for date of birth (prefilled from the rider's profile, required, included in the lead email).
+- [ ] **Ship with the next batch** (branch `feature/next-batch`): rider app is installable to the home screen (progressive web app). Real EQPMGR icons, manifest starting at the dashboard, a service worker that only adds an offline page (never caches data). Checked locally: worker activates, Chrome reports no install problems.
+  - After shipping, test on a real iPhone and Android phone: Add to Home Screen, and **Strava connect from the installed app** (on iPhone the Strava login may open in Safari and return to the browser instead of the app).
 - [ ] **Ship with the next batch** (branch `feature/next-batch`, was `fix/login-return-path`). After login, visitors return to the page they came for (e.g. /insurance from eqpmgr.com) instead of the dashboard; new sign-ups get it after confirming their email, in the same browser. Same-site paths only (`src/lib/return-path.ts`).
 - [ ] Rebuild the three rack cards: QR codes to eqpmgr.com/ride and /shop, "bike fitters" wording; then print
 - [ ] Style /terms/ and /privacy/ to match the home page; inner pages (how wear works, insurance, FAQ) later
