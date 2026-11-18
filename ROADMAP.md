@@ -175,9 +175,9 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Rebuilt the three rack cards (2026-11-14): QR codes to eqpmgr.com/ride and /shop, those addresses printed under the QR, "bike fitters" wording. Ready to print.
 - [x] Home page FAQ now links the privacy policy (eqpmgr.com/privacy) instead of "coming soon" (2026-11-14)
 - [ ] Quickstart for new users (decision 2026-11-14): in-app checklists first, short quickstart pages on eqpmgr.com next, short looping clips last (once screens stop changing). Before writing guides, watch 2-3 people set up the app with no help.
-  - [ ] **Next batch** (branches `feature/getting-started` in both repos): "Get set up" checklist on the rider dashboard (add a bike, connect Strava or upload a ride, add your weight, find a shop or bike fitter) and "Get ready for riders" on the shop dashboard (profile, billing terms + card, approval, first work order). Steps tick themselves from real data; hideable.
+  - [x] **Shipped 2026-11-18** (rider PR #18, shop PR #7): "Get set up" checklist on the rider dashboard (add a bike, connect Strava or upload a ride, add your weight, find a shop or bike fitter) and "Get ready for riders" on the shop dashboard (profile, billing terms + card, approval, first work order). Steps tick themselves from real data; hideable.
   - [ ] Quickstart pages on eqpmgr.com for riders and for shops/bike fitters
-- [ ] **Next batch** (shop app `feature/getting-started`): email an EQPMGR inbox when a new shop finishes signing up, with its details and a link to Admin → Shop approvals (decision 2026-11-17: goes to shops@eqpmgr.com, EQPMGR's own inbox, like the insurance leads; never to shops or riders). One email per shop (migration 025, applied 2026-11-17). Tested locally 2026-11-17. **Before shipping, add to the shop site in Netlify:** `SHOP_ALERT_EMAIL` = shops@eqpmgr.com, plus `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` (same values as the rider site). Without them no email is sent and signup still works.
+- [x] **Shipped 2026-11-18** (shop PR #7): email an EQPMGR inbox when a new shop finishes signing up, with its details and a link to Admin → Shop approvals (decision 2026-11-17: goes to shops@eqpmgr.com, EQPMGR's own inbox, like the insurance leads; never to shops or riders). One email per shop (migration 025, applied 2026-11-17). Tested locally 2026-11-17. **Before shipping, add to the shop site in Netlify:** `SHOP_ALERT_EMAIL` = shops@eqpmgr.com, plus `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` (same values as the rider site). Without them no email is sent and signup still works.
 - [ ] Style /terms/ and /privacy/ to match the home page; inner pages (how wear works, insurance, FAQ) later
 
 ### Phase 4: Later
@@ -219,6 +219,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-11-18 | Shipped rider PR #18 and shop PR #7: getting-started checklists in both apps, new-shop alert to shops@ (migration 025). Supabase redirect URLs fixed for shop sign-ups. |
 | 2026-11-14 | Shipped PR #17 (rider app): ride-file upload (.FIT/.GPX/.TCX, migration 024), installable home-screen app, insurance date of birth, return to the page you came for after login. Still to do: try Add to Home Screen and Strava connect on a real iPhone and Android phone. |
 | 2026-11-12 | Shipped: Oasis form fixes, Acci7 removed (one insurance form covers bike and accident), shop work order panel (Print, Update Status, internal notes, migration 023). Live-tested notes and status; Print not yet clicked. |
 | 2026-11-03 | **Go-live batch shipped:** migrations 021 + 022 applied; rider PR #15 and shop PR #5 merged and live (shop approvals, hide shops without a card, billing terms, invoice fix, insurance leads, nightly backup, import bike-type fix, shop work-order + bike fit fixes). First rider build failed Netlify secret scanning (sending address in ROADMAP); fixed. |
