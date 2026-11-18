@@ -85,7 +85,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 ### Go-live checklist (2026-10-25)
 - [x] Shop approval (Admin → Shop approvals), billing terms checkbox, hide shops without a card (migration 021, go-live batch)
 - [x] Nightly encrypted database backup to GitHub Actions (approved 2026-10-26); **Sage:** add the `SUPABASE_DB_URL` and `BACKUP_PASSPHRASE` secrets, then run it once from the Actions tab
-- [ ] **Sage:** confirm custom SMTP for sign-up/password emails: Supabase dashboard → Authentication → Emails → SMTP Settings ("Enable custom SMTP" on, with your server)
+- [x] Custom SMTP for sign-up/password emails: confirmed on 2026-11-17 (Supabase → Authentication → Emails: sends as no_reply@eqpmgr.com via eqpmgr.com:465; limit 30 emails/hour). Same day, added both apps to Authentication → URL Configuration → Redirect URLs (`https://eqpmgr.netlify.app/**`, `https://eqpmgrshop.netlify.app/**`). The list was empty, so shop sign-up confirmation links were landing in the rider app. Site URL stays the rider app.
 - [ ] **Sage:** get a regular business card onto Netlify (prepaid isn't accepted) so the sites don't stop if credits run out
 - [ ] Lawyer review: rider T&C and the shop billing terms (`EQPMGRshop/src/lib/billing-terms.ts`)
 - [ ] Tax: once registered, add GST/PST numbers in Stripe Tax and set `STRIPE_TAX_ENABLED=1` on eqpmgrshop
