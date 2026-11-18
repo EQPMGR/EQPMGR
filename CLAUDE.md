@@ -75,6 +75,7 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - The `report_*` views are service-role only, shown on `/admin/field-data`.
   - Replacement reason `failure` is labelled "Worn out / failed" in the UI; only those count toward lifespans.
 - Admin pages must load data in the browser through admin-checked actions or routes, never in server components: the admin gate runs client-side.
+- Local dev on this Mac: Node can't verify TLS certificates without `NODE_EXTRA_CA_CERTS=/etc/ssl/cert.pem` (Supabase calls and SMTP fail with "fetch failed" / `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`). The live site isn't affected.
 - Ride sources (`rides.source`): `strava`, `manual`, `file` (migration 024). File uploads (.FIT/.GPX/.TCX) go to `POST /api/rides/upload` (login required, the rider must own the bike, 100 file rides per rider per 24 h, failing closed). The browser gzips the file; the server unpacks it (capped at 60 MB) and reads it with `src/lib/ride-file.ts`. FIT files use Garmin's `@garmin/fitsdk`, pinned exactly. Its license doesn't allow handing the library out, so never import it in client code. File rides get `external_id` = `<uid>:<sha-256 of the file>`.
 - `recordRideAndApplyWear` skips a ride that starts within 5 minutes of one the rider already has, with a distance within 15% (min 1 km), whatever the source. That stops a Strava ride and the same ride's file (or a hand-typed copy) from counting twice. It returns `alreadyRecorded` with `duplicateOf`.
 - Weather: `src/lib/ride-weather.ts` (WeatherAPI history, about 7 days back). A ride is wet if ≥0.3 mm falls during it or ≥1 mm in the 12 h before. Strava rides use `start_latlng` and `start_date`; manual rides use the browser location, or the rider marks wet/dry.
@@ -142,7 +143,7 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - The app's single subscription is switched on or off from Admin → "Automatic Strava sync" (live site only).
   - Bike choice: linked `equipment.strava_gear_id` → unique name match with the Strava bike → the rider's only bike; otherwise the ride is left to assign by hand. Assigning by hand links that Strava bike.
   - Not handled yet: activity update/delete events.
-- No email to riders: Sage decided (2026-10-18) the app should not email people. Don't add outbound email or notifications without asking. The one exception (2026-10-31) is insurance lead forms, which email EQPMGR's own inboxes: see Insurance leads.
+- No email to riders: Sage decided (2026-10-18) the app should not email people. Don't add outbound email or notifications without asking. The exceptions email EQPMGR's own inboxes only: insurance lead forms (2026-10-31, see Insurance leads) and the shop app's new-shop alert (2026-11-17): after onboarding, `POST /api/notify/new-shop` in the shop repo emails `SHOP_ALERT_EMAIL` (shops@eqpmgr.com) once per shop, tracked by `shop_billing.signup_alert_sent_at` (migration 025). The shop app needs `SHOP_ALERT_EMAIL` and the `EMAIL_*` SMTP settings in Netlify; without them it skips the email.
 
 - Tokens live in the `app_users.strava` JSON blob: `accessToken`, `refreshToken`, `expiresAt`, `athleteId`, `processedActivities`.
 - Refresh logic is in `src/app/(app)/settings/apps/actions.ts` (it refreshes 5 min before expiry). OAuth exchange is in `src/app/api/strava/token-exchange/route.ts`.
@@ -158,6 +159,10 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - Not everything under `api/admin/*` is admin-only. `import-text`, `simulate-wear` and `generate-maintenance-schedule` back regular-user features (`requireUser`). `master-component-sync` and `import-feedback-analysis` use `requireAdmin`.
 - Add Bike Model is a user feature: the page is `/add-bike-model` (`/admin/add-bike-model` redirects there) and the API is `/api/bike-models`. New models go into the shared catalog with `created_by` set.
 - Unguarded on purpose (read-only shared catalog): `getServiceProviders`, `fetchAllMasterComponents`.
+
+## Getting-started checklists
+
+- Rider: `src/components/getting-started-card.tsx` on the dashboard. Shop: `src/components/getting-started-card.tsx` in the shop repo. Steps tick from existing data (no tables); hiding is remembered per device in localStorage. The rider card reads only `strava->>athleteId`, never the tokens. While the shop checklist shows, it replaces the shop's "add a card" / "waiting for approval" banners; past-due and paused banners still show.
 
 ## Installable app (PWA)
 

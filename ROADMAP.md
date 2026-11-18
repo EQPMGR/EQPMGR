@@ -43,6 +43,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | Decision |
 |---|---|
+| 2026-11-17 | **New-shop alerts:** when a shop finishes signing up, the shop app emails shops@eqpmgr.com (EQPMGR's own inbox) so an admin can approve it in Admin → Shop approvals. Like insurance leads, this is mail to our own inbox only; the apps still never email riders or shops. |
 | 2026-11-14 | **Ride sources beyond Strava:** relying on Strava alone caps us at 999 riders until Strava approves more, and its API terms limit how Strava data may be shared or used. So: (1) ride-file upload (.FIT/.GPX/.TCX) now, which covers every bike computer and needs no approval; (2) Garmin Connect Developer Program, applied 2026-11-14 (approval takes weeks); (3) Wahoo, Sage looking into it; (4) MapMyRide skipped (API largely closed, small cycling user base; the empty placeholder route was deleted); (5) Apple Health / Google Health Connect need a native app, so not now. Every ride records its `source` (strava, manual, file), so any future data product can leave out Strava-derived rides. The lawyer should read Strava's current API terms alongside the privacy review. |
 | 2026-11-14 | **Wording and website:** always say "bike fitters", never just "fitters", in the apps, site and print. New marketing site on the existing WordPress at Namecheap (eqpmgr.com): the home page splits riders and shops/bike fitters right away. Printed QR codes will point at forwarding links on eqpmgr.com (e.g. /ride, /shop) so cards survive any move of the apps; rebuild all three rack cards with those links and the "bike fitters" wording before printing. |
 | 2026-10-18 | **AI cost guardrails:** only `/api/bike-import` may call a paid AI API. Riders get 10 imports a day, the whole site 100 AI imports a day, with a kill switch and an Anthropic Console spend limit (auto-reload off). Prompted by the $16k Firebase/Gemini bill. |
@@ -84,7 +85,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 ### Go-live checklist (2026-10-25)
 - [x] Shop approval (Admin → Shop approvals), billing terms checkbox, hide shops without a card (migration 021, go-live batch)
 - [x] Nightly encrypted database backup to GitHub Actions (approved 2026-10-26); **Sage:** add the `SUPABASE_DB_URL` and `BACKUP_PASSPHRASE` secrets, then run it once from the Actions tab
-- [ ] **Sage:** confirm custom SMTP for sign-up/password emails: Supabase dashboard → Authentication → Emails → SMTP Settings ("Enable custom SMTP" on, with your server)
+- [x] Custom SMTP for sign-up/password emails: confirmed on 2026-11-17 (Supabase → Authentication → Emails: sends from the no-reply mailbox via the eqpmgr.com mail server; limit 30 emails/hour). Same day, added both apps to Authentication → URL Configuration → Redirect URLs (`https://eqpmgr.netlify.app/**`, `https://eqpmgrshop.netlify.app/**`). The list was empty, so shop sign-up confirmation links were landing in the rider app. Site URL stays the rider app.
 - [ ] **Sage:** get a regular business card onto Netlify (prepaid isn't accepted) so the sites don't stop if credits run out
 - [ ] Lawyer review: rider T&C and the shop billing terms (`EQPMGRshop/src/lib/billing-terms.ts`)
 - [ ] Tax: once registered, add GST/PST numbers in Stripe Tax and set `STRIPE_TAX_ENABLED=1` on eqpmgrshop
@@ -155,7 +156,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] ~~Wear alert emails~~: built, then removed 2026-10-18. Sage doesn't want the app emailing people.
 - [ ] Maybe: in-app "needs attention" list on the dashboard (no email)
 - [ ] More data sources besides Strava (decision 2026-11-14). Strava's API terms limit sharing data, so the data product should rest on EQPMGR's own replacement and measurement data and on rides that didn't come through Strava.
-  - [ ] **Ship with the next batch** (branch `feature/next-batch`): upload ride files (.FIT, .GPX, .TCX) on a bike's page, up to 50 at a time (migration 024 adds ride source `file`). Files are read on the server (`src/lib/ride-file.ts`, Garmin's official FIT library, pinned). Distance, riding time, climbing, start point and ride type come from the file. The same file can't count twice, and a ride already counted from Strava (or typed in by hand) at the same time with about the same distance is skipped, in every direction, so Strava sync also skips rides already uploaded. 100 file rides per rider per day. Migration 024 applied 2026-11-14. Tested locally the same day: a FIT ride counted with weather (wet), a GPX of an existing Strava ride skipped, the same file twice refused, and a running file refused. Test data removed.
+  - [x] **Shipped 2026-11-14 (PR #17):** upload ride files (.FIT, .GPX, .TCX) on a bike's page, up to 50 at a time (migration 024 adds ride source `file`). Files are read on the server (`src/lib/ride-file.ts`, Garmin's official FIT library, pinned). Distance, riding time, climbing, start point and ride type come from the file. The same file can't count twice, and a ride already counted from Strava (or typed in by hand) at the same time with about the same distance is skipped, in every direction, so Strava sync also skips rides already uploaded. 100 file rides per rider per day. Migration 024 applied 2026-11-14. Tested locally the same day: a FIT ride counted with weather (wet), a GPX of an existing Strava ride skipped, the same file twice refused, and a running file refused. Test data removed.
   - [ ] Garmin Connect API: applied 2026-11-14, waiting for approval. Then automatic sync like Strava.
   - [ ] Wahoo API: Sage looking into it.
   - [ ] Ask Strava to raise the 999-athlete cap (see go-live checklist).
@@ -167,11 +168,16 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Terms moved to /terms/ (old /contact forwards there); Privacy policy published at /privacy/ (plain-language draft, **needs lawyer review**)
 - [x] Forwarding links via the Redirection plugin (no visitor logging): /ride, /shop, /insurance (302, so they can be repointed)
 - [x] Old "Get the App!" and "How to Use It" pages set to draft (restorable)
-- [ ] **Ship with the next batch** (branch `feature/next-batch`): Oasis insurance form asks for date of birth (prefilled from the rider's profile, required, included in the lead email).
-- [ ] **Ship with the next batch** (branch `feature/next-batch`): rider app is installable to the home screen (progressive web app). Real EQPMGR icons, manifest starting at the dashboard, a service worker that only adds an offline page (never caches data). Checked locally: worker activates, Chrome reports no install problems.
+- [x] **Shipped 2026-11-14 (PR #17):** Oasis insurance form asks for date of birth (prefilled from the rider's profile, required, included in the lead email).
+- [x] **Shipped 2026-11-14 (PR #17):** rider app is installable to the home screen (progressive web app). Real EQPMGR icons, manifest starting at the dashboard, a service worker that only adds an offline page (never caches data). Checked locally: worker activates, Chrome reports no install problems.
   - After shipping, test on a real iPhone and Android phone: Add to Home Screen, and **Strava connect from the installed app** (on iPhone the Strava login may open in Safari and return to the browser instead of the app).
-- [ ] **Ship with the next batch** (branch `feature/next-batch`, was `fix/login-return-path`). After login, visitors return to the page they came for (e.g. /insurance from eqpmgr.com) instead of the dashboard; new sign-ups get it after confirming their email, in the same browser. Same-site paths only (`src/lib/return-path.ts`).
-- [ ] Rebuild the three rack cards: QR codes to eqpmgr.com/ride and /shop, "bike fitters" wording; then print
+- [x] **Shipped 2026-11-14 (PR #17).** After login, visitors return to the page they came for (e.g. /insurance from eqpmgr.com) instead of the dashboard; new sign-ups get it after confirming their email, in the same browser. Same-site paths only (`src/lib/return-path.ts`).
+- [x] Rebuilt the three rack cards (2026-11-14): QR codes to eqpmgr.com/ride and /shop, those addresses printed under the QR, "bike fitters" wording. Ready to print.
+- [x] Home page FAQ now links the privacy policy (eqpmgr.com/privacy) instead of "coming soon" (2026-11-14)
+- [ ] Quickstart for new users (decision 2026-11-14): in-app checklists first, short quickstart pages on eqpmgr.com next, short looping clips last (once screens stop changing). Before writing guides, watch 2-3 people set up the app with no help.
+  - [ ] **Next batch** (branches `feature/getting-started` in both repos): "Get set up" checklist on the rider dashboard (add a bike, connect Strava or upload a ride, add your weight, find a shop or bike fitter) and "Get ready for riders" on the shop dashboard (profile, billing terms + card, approval, first work order). Steps tick themselves from real data; hideable.
+  - [ ] Quickstart pages on eqpmgr.com for riders and for shops/bike fitters
+- [ ] **Next batch** (shop app `feature/getting-started`): email an EQPMGR inbox when a new shop finishes signing up, with its details and a link to Admin → Shop approvals (decision 2026-11-17: goes to shops@eqpmgr.com, EQPMGR's own inbox, like the insurance leads; never to shops or riders). One email per shop (migration 025, applied 2026-11-17). Tested locally 2026-11-17. **Before shipping, add to the shop site in Netlify:** `SHOP_ALERT_EMAIL` = shops@eqpmgr.com, plus `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` (same values as the rider site). Without them no email is sent and signup still works.
 - [ ] Style /terms/ and /privacy/ to match the home page; inner pages (how wear works, insurance, FAQ) later
 
 ### Phase 4: Later
@@ -213,6 +219,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | What |
 |---|---|
+| 2026-11-14 | Shipped PR #17 (rider app): ride-file upload (.FIT/.GPX/.TCX, migration 024), installable home-screen app, insurance date of birth, return to the page you came for after login. Still to do: try Add to Home Screen and Strava connect on a real iPhone and Android phone. |
 | 2026-11-12 | Shipped: Oasis form fixes, Acci7 removed (one insurance form covers bike and accident), shop work order panel (Print, Update Status, internal notes, migration 023). Live-tested notes and status; Print not yet clicked. |
 | 2026-11-03 | **Go-live batch shipped:** migrations 021 + 022 applied; rider PR #15 and shop PR #5 merged and live (shop approvals, hide shops without a card, billing terms, invoice fix, insurance leads, nightly backup, import bike-type fix, shop work-order + bike fit fixes). First rider build failed Netlify secret scanning (sending address in ROADMAP); fixed. |
 | 2026-10-18 | Automatic Strava sync (webhooks, bike matching) and a Strava token-save fix (migration 018). Email alerts removed by decision. |
