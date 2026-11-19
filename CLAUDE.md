@@ -160,6 +160,12 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - Add Bike Model is a user feature: the page is `/add-bike-model` (`/admin/add-bike-model` redirects there) and the API is `/api/bike-models`. New models go into the shared catalog with `created_by` set.
 - Unguarded on purpose (read-only shared catalog): `getServiceProviders`, `fetchAllMasterComponents`.
 
+## Sign-up, Terms and password reset
+
+- Rider sign-up requires ticking the Terms of Service and Privacy Policy (eqpmgr.com/terms, /privacy). `src/lib/terms.ts` holds the URLs and `TERMS_VERSION`; sign-up stores `terms_version` and `terms_accepted_at` in the user's Supabase metadata. Bump the version when either page changes.
+- "Forgot password?" in both apps sends a Supabase reset email back to `/reset-password` on the same site (rider: through the auth adapter's `sendPasswordResetEmail` / `updatePassword`; shop: `auth` from `@/lib/supabase`). Supabase only returns people to sites on Authentication → URL Configuration → Redirect URLs (both live apps are listed; localhost isn't).
+- Shop app login state (`src/providers/auth-provider.tsx` in the shop repo): a shop counts as set up when its `service_providers` row has a name and city. Don't use `app_users.onboarding_complete` for that: the row is shared with the rider app.
+
 ## Getting-started checklists
 
 - Rider: `src/components/getting-started-card.tsx` on the dashboard. Shop: `src/components/getting-started-card.tsx` in the shop repo. Steps tick from existing data (no tables); hiding is remembered per device in localStorage. The rider card reads only `strava->>athleteId`, never the tokens. While the shop checklist shows, it replaces the shop's "add a card" / "waiting for approval" banners; past-due and paused banners still show.

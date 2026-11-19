@@ -223,14 +223,15 @@ Test accounts: rider themanicouagan@gmail.com (bike "Test Dew"), shop clydesdale
   - The shop login handler ran twice per page load; the second run crashed and could leave pages stuck loading (and made a stale login look like "session expired"). Fixed, and hourly token refreshes no longer flash the loader.
   - Rental removed from shop setup and Settings.
 - [x] Shop site `NEXT_PUBLIC_BASE_URL` pointed at the rider app, so shop confirmation links landed on a rider-app 404. Changed in Netlify 2026-11-18; **takes effect with the next shop build**.
-- [ ] Rider sign-up has no "accept the Terms" checkbox (decision 2026-10-17 says it should).
-- [ ] Add Bike requires a purchase date (make it optional); its calendar header shows month and year twice.
-- [ ] Catalog: only 4 bikes, and 3 have no bike type (Kona DEW-E, Salsa Flyway, Specialized Tarmac), so they save as "Unknown" and miss e-bike/terrain wear.
-- [ ] Profile page tab title says "Settings - TrailPulse" (old name).
-- [ ] Profile defaults to imperial units and the display name defaults to the email address.
-- [ ] **No "Forgot password?" in either app.** A rider or shop who forgets their password can't get back in.
-- [ ] Rider service request says the details go "to the fitter" (should be "bike fitter"); the rider's name shows "N/A" there and on the shop's work order (name defaults to the email).
-- [ ] Rider bike page: the Bike Fit card says "Enter Fit Details" and doesn't show the bike fitter's numbers until opened.
+- [x] Rider sign-up Terms checkbox (links to eqpmgr.com/terms and /privacy; records `terms_version`/`terms_accepted_at` in the user's metadata). Branch `feature/test-fixes`.
+- [x] Add Bike: purchase date optional (today if blank); calendar header fixed in all date pickers. Branch `feature/test-fixes`.
+- [x] Catalog types set 2026-11-18 (DEW-E E-Bike (Hybrid), Flyway Gravel/Cyclocross, Tarmac Road); Add Bike now asks for the type when a catalog entry has none. Still only 4 catalog bikes, and the Flyway entry has just 3 parts: grow the catalog (bulk import) before launch.
+- [x] Tab title fixed (EQPMGR). Branch `feature/test-fixes`.
+- [x] Metric by default; new riders no longer get their email as their name (older ones are treated as no name). Branch `feature/test-fixes`.
+- [x] Forgot password + reset page in both apps (rider `feature/test-fixes`, shop `fix/shop-onboarding`). **Test the reset emails on the live sites right after shipping** (localhost isn't on Supabase's allowed list).
+- [x] "bike fitter" wording; the request form shows "Not set" with a link to add a name.
+- [x] Bike Fit card shows fit points, saddle height and reach on file.
+- [ ] Bike fit form: the mm/in switch only changes labels; numbers are saved without their unit. Store the unit (or always convert to mm) in both apps.
 - [ ] Watch with the next real shop: services ticked in shop setup saved only "repairs" in the test (probably the scripted click; Settings saves both correctly).
 - Passed live/local 2026-11-18: rider sign-up + email, rider checklist, add bike, weight, shops list; shop setup (with the fix), new-shop alert to shops@, Admin approval, FIRST10, test card → billing Active, rider work order to the shop (free ticket), shop sees it, internal note, status change, bike fit saved by the shop and seen by the rider, Print Work Order, both checklists completing.
 
