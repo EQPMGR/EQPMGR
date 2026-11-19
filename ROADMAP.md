@@ -215,6 +215,16 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 ---
 
+### Findings from live test sign-ups (2026-11-18)
+Test accounts: rider themanicouagan@gmail.com (bike "Test Dew"), shop clydesdaleandoak@gmail.com ("Clydesdale & Oak Test Shop", not approved, no card). Delete both when testing is done.
+- [ ] **Ship** shop branch `fix/shop-onboarding`: new shops skipped shop setup (no shop record, nothing to approve, no alert). Fixed and tested locally.
+- [x] Shop site `NEXT_PUBLIC_BASE_URL` pointed at the rider app, so shop confirmation links landed on a rider-app 404. Changed in Netlify 2026-11-18; **takes effect with the next shop build**.
+- [ ] Rider sign-up has no "accept the Terms" checkbox (decision 2026-10-17 says it should).
+- [ ] Add Bike requires a purchase date (make it optional); its calendar header shows month and year twice.
+- [ ] Catalog: only 4 bikes, and 3 have no bike type (Kona DEW-E, Salsa Flyway, Specialized Tarmac), so they save as "Unknown" and miss e-bike/terrain wear.
+- [ ] Profile page tab title says "Settings - TrailPulse" (old name).
+- [ ] Profile defaults to imperial units and the display name defaults to the email address.
+
 ## Done log
 
 | Date | What |
