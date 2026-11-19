@@ -51,7 +51,8 @@ export async function POST(request: Request) {
     try {
       const user = userData.user;
       const userEmail = user.email ?? null;
-      const userDisplayName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? userEmail;
+      // No name yet means no name: don't put the email address in the name field.
+      const userDisplayName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? null;
 
       const emailVerified = !!user.email_confirmed_at;
       const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc('admin_upsert_app_user', {

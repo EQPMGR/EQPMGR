@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { SettingsNav } from '@/components/settings-nav';
 
 export const metadata: Metadata = {
-  title: 'Settings - TrailPulse',
+  title: 'Settings - EQPMGR',
   description: 'Manage your account settings.',
 };
 

@@ -509,8 +509,25 @@ export default function EquipmentDetailPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-2">
+                   {(() => {
+                     // Show what's on file (entered by the rider or their bike fitter).
+                     const fit = (equipment.fitData ?? {}) as Record<string, unknown>;
+                     const points = Object.entries(fit).filter(([k, v]) => typeof v === 'number' && v > 0 && k !== 'updatedAt').length;
+                     const mm = (v: unknown) => (typeof v === 'number' && v > 0 ? `${v} mm` : null);
+                     const saddle = mm(fit.saddleHeight);
+                     const reach = mm(fit.saddleToHandlebarReach);
+                     return points > 0 ? (
+                       <div className="text-sm text-muted-foreground">
+                         <p>{points} fit point{points === 1 ? '' : 's'} on file.</p>
+                         {saddle && <p>Saddle height: <span className="font-medium text-foreground">{saddle}</span></p>}
+                         {reach && <p>Saddle to bar reach: <span className="font-medium text-foreground">{reach}</span></p>}
+                       </div>
+                     ) : (
+                       <p className="text-sm text-muted-foreground">No fit on file yet.</p>
+                     );
+                   })()}
                    <BikeFitDialog equipment={equipment} onSuccess={() => fetchEquipment(user!.uid)}>
-                        <Button>Enter Fit Details</Button>
+                        <Button>{equipment.fitData && Object.keys(equipment.fitData).length > 0 ? 'View or Edit Fit' : 'Enter Fit Details'}</Button>
                    </BikeFitDialog>
                    <Button asChild variant="secondary">
                     <Link href="/service-providers?service=bike-fitting">Book a Bike Fitting</Link>

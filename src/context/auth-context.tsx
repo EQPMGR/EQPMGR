@@ -38,10 +38,11 @@ const createSafeUserProfile = (authUser: AuthUser, docData?: Partial<BackendUser
     uid: authUser.uid,
     email: authUser.email,
     emailVerified: authUser.emailVerified,
-    displayName: authUser.displayName || data.display_name || null,
+    // Older accounts got their email as a name; treat that as no name.
+    displayName: [authUser.displayName, data.display_name].find((n) => n && !String(n).includes('@')) || null,
     phone: data.phone || null,
     photoURL: authUser.photoURL || data.photo_url || null,
-    measurementSystem: data.measurement_system || 'imperial',
+    measurementSystem: data.measurement_system || 'metric',
     shoeSizeSystem: data.shoe_size_system || 'us-mens',
     distanceUnit: data.distance_unit || 'km',
     dateFormat: data.date_format || 'MM/DD/YYYY',

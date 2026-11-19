@@ -193,7 +193,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
                 <Card>
                     <CardHeader><CardTitle>Athlete Details</CardTitle></CardHeader>
                     <CardContent className="text-sm space-y-2">
-                        <p><strong>Name:</strong> {user?.displayName || 'N/A'}</p>
+                        <p><strong>Name:</strong> {user?.displayName || <>Not set. <a href="/settings/profile" className="underline">Add your name</a> so the shop knows who you are.</>}</p>
                         <p><strong>Email:</strong> {user?.email || 'N/A'}</p>
                         <p><strong>Phone:</strong> {user?.phone || 'Not provided'}</p>
                     </CardContent>
@@ -207,7 +207,7 @@ export function RequestServiceDialog({ provider }: RequestServiceDialogProps) {
                 </Card>
                 {selectedService === 'bike-fitting' && (
                      <Card>
-                        <CardHeader><CardTitle>Current Fit Measurements</CardTitle><CardDescription>This information will be sent to the fitter.</CardDescription></CardHeader>
+                        <CardHeader><CardTitle>Current Fit Measurements</CardTitle><CardDescription>This information will be sent to the bike fitter.</CardDescription></CardHeader>
                         <CardContent className="text-sm space-y-2">
                            {selectedEquipment?.fitData ? (
                                Object.entries(selectedEquipment.fitData).map(([key, value]) => (
