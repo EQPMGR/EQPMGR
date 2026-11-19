@@ -176,7 +176,7 @@ export function EquipmentListPage() {
         const purchaseDate = formData.purchaseDate ?? new Date();
         const newEquipmentData: Omit<Equipment, 'id' | 'components'> = {
             name: formData.name,
-            type: bikeFromDb.type ?? bikeFromDb.bikeType ?? 'Unknown',
+            type: bikeFromDb.type || bikeFromDb.bikeType || formData.bikeType || 'Unknown',
             brand: bikeFromDb.brand,
             model: bikeFromDb.model,
             modelYear: bikeFromDb.modelYear,

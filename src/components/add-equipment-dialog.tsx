@@ -49,20 +49,22 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { getDb } from '@/backend';
 import type { Equipment } from '@/lib/types';
 import { Separator } from './ui/separator';
+import { BIKE_TYPES } from '@/lib/constants';
 
 
 const equipmentFormSchema = z.object({
   brand: z.string().optional(),
   name: z.string().min(2, { message: 'Nickname is required.' }),
   bikeIdentifier: z.string().min(1, { message: 'Please select a bike.' }),
-  purchaseDate: z.date({
-    required_error: 'A purchase date is required.',
-  }),
+  // Optional: many riders don't know it. The save uses today when it's blank.
+  purchaseDate: z.date().optional(),
   purchasePrice: z.coerce.number().min(0, { message: 'Price cannot be negative.' }),
   serialNumber: z.string().optional(),
   frameSize: z.string().optional(),
   purchaseCondition: z.enum(['new', 'used']),
   estimatedMileage: z.coerce.number().min(0, { message: 'Mileage must be a positive number.' }).optional(),
+  // Asked only when the catalog entry has no type (it drives terrain and e-bike wear).
+  bikeType: z.string().optional(),
 });
 
 
@@ -73,6 +75,7 @@ interface BikeModelOption {
   brand: string;
   model: string;
   modelYear: number;
+  type: string | null;
 }
 
 interface AddEquipmentDialogProps {
@@ -163,6 +166,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
           brand: doc.data?.brand || '',
           model: doc.data?.model || '',
           modelYear: doc.data?.modelYear || 0,
+          type: (doc.data as any)?.type || null,
         })));
       } catch (error) {
         console.error('Error fetching bike models for brand:', error);
@@ -182,6 +186,10 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
     if (!selectedBrand) return [];
     return modelOptions;
   }, [selectedBrand, modelOptions]);
+
+  const selectedModelId = useWatch({ control: form.control, name: 'bikeIdentifier' });
+  const selectedModel = availableModels.find((m) => m.id === selectedModelId);
+  const needsBikeType = !!selectedModel && !selectedModel.type;
   
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -192,6 +200,10 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
   };
 
   async function onSubmit(data: EquipmentFormValues) {
+    if (needsBikeType && !data.bikeType) {
+      form.setError('bikeType', { message: 'Pick the type of bike, so wear is estimated for the right terrain.' });
+      return;
+    }
     setIsSubmitting(true);
     try {
         await onAddEquipment(data);
@@ -348,6 +360,30 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                   )}
                 />
             </div>
+            {needsBikeType && (
+              <FormField
+                control={form.control}
+                name="bikeType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type of bike</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select the type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {BIKE_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             
             <div className="pt-4 space-y-2">
                 <Separator />
@@ -415,7 +451,7 @@ export function AddEquipmentDialog({ onAddEquipment }: AddEquipmentDialogProps) 
                 name="purchaseDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Purchase Date</FormLabel>
+                    <FormLabel>Purchase Date (optional)</FormLabel>
                     <CalendarControl field={field} />
                     <FormMessage />
                   </FormItem>
