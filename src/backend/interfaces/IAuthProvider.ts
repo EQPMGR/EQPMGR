@@ -38,7 +38,22 @@ export interface IAuthProvider {
   /**
    * Create a new user with email and password
    */
-  createUserWithEmailAndPassword(email: string, password: string): Promise<AuthUser>;
+  createUserWithEmailAndPassword(email: string, password: string, options?: { termsVersion?: string }): Promise<AuthUser>;
+
+  /**
+   * Email a password-reset link that comes back to /reset-password on this site.
+   */
+  sendPasswordResetEmail(email: string): Promise<void>;
+
+  /**
+   * Set a new password for the signed-in user (used by /reset-password).
+   */
+  updatePassword(newPassword: string): Promise<void>;
+
+  /**
+   * Whether this browser currently has a signed-in session.
+   */
+  hasSession(): Promise<boolean>;
 
   /**
    * Send email verification to current user

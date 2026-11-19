@@ -170,12 +170,16 @@ export class SupabaseAuthAdapter implements IAuthProvider {
     return toAuthUser(data.user);
   }
 
-  async createUserWithEmailAndPassword(email: string, password: string): Promise<AuthUser> {
+  async createUserWithEmailAndPassword(email: string, password: string, options?: { termsVersion?: string }): Promise<AuthUser> {
     const { data, error } = await this.supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: getEmailRedirectUrl()
+        emailRedirectTo: getEmailRedirectUrl(),
+        // Record that the rider accepted the Terms and Privacy Policy at sign-up.
+        data: options?.termsVersion
+          ? { terms_version: options.termsVersion, terms_accepted_at: new Date().toISOString() }
+          : undefined,
       }
     });
 
@@ -188,6 +192,29 @@ export class SupabaseAuthAdapter implements IAuthProvider {
     }
 
     return toAuthUser(data.user);
+  }
+
+  async sendPasswordResetEmail(email: string): Promise<void> {
+    // Always come back to this site's reset page (allowed in Supabase's Redirect URLs).
+    const redirectTo = typeof window !== 'undefined'
+      ? new URL('/reset-password', window.location.origin).toString()
+      : undefined;
+    const { error } = await this.supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  async updatePassword(newPassword: string): Promise<void> {
+    const { error } = await this.supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  async hasSession(): Promise<boolean> {
+    const { data } = await this.supabase.auth.getSession();
+    return !!data.session;
   }
 
   async sendEmailVerification(user: AuthUser): Promise<void> {

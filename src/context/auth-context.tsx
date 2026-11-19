@@ -18,7 +18,7 @@ interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
-  signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
+  signUpWithEmailPassword: (email: string, password: string, termsVersion?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
   updateProfileInfo: (data: ProfileUpdateData) => Promise<void>;
@@ -185,10 +185,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  const signUpWithEmailPasswordHandler = async (email: string, password: string) => {
+  const signUpWithEmailPasswordHandler = async (email: string, password: string, termsVersion?: string) => {
     try {
       const auth = await getAuth();
-      const authUser = await auth.createUserWithEmailAndPassword(email, password);
+      const authUser = await auth.createUserWithEmailAndPassword(email, password, { termsVersion });
 
       try {
         await provisionAppUser(authUser);

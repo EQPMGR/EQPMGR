@@ -10,7 +10,7 @@ export function safeReturnPath(raw: string | null | undefined): string | null {
   if (!raw) return null;
   if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return null;
   if (/[\u0000-\u001f\\]/.test(raw)) return null;
-  if (raw.startsWith('/login') || raw.startsWith('/verify-email')) return null;
+  if (raw.startsWith('/login') || raw.startsWith('/verify-email') || raw.startsWith('/reset-password')) return null;
   return raw;
 }
 
