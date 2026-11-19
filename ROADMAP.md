@@ -43,6 +43,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Date | Decision |
 |---|---|
+| 2026-11-18 | **Rental is off the menu for now.** Shops can't pick it in setup or Settings; Rental Tickets stay in the billing code for later. |
 | 2026-11-17 | **New-shop alerts:** when a shop finishes signing up, the shop app emails shops@eqpmgr.com (EQPMGR's own inbox) so an admin can approve it in Admin → Shop approvals. Like insurance leads, this is mail to our own inbox only; the apps still never email riders or shops. |
 | 2026-11-14 | **Ride sources beyond Strava:** relying on Strava alone caps us at 999 riders until Strava approves more, and its API terms limit how Strava data may be shared or used. So: (1) ride-file upload (.FIT/.GPX/.TCX) now, which covers every bike computer and needs no approval; (2) Garmin Connect Developer Program, applied 2026-11-14 (approval takes weeks); (3) Wahoo, Sage looking into it; (4) MapMyRide skipped (API largely closed, small cycling user base; the empty placeholder route was deleted); (5) Apple Health / Google Health Connect need a native app, so not now. Every ride records its `source` (strava, manual, file), so any future data product can leave out Strava-derived rides. The lawyer should read Strava's current API terms alongside the privacy review. |
 | 2026-11-14 | **Wording and website:** always say "bike fitters", never just "fitters", in the apps, site and print. New marketing site on the existing WordPress at Namecheap (eqpmgr.com): the home page splits riders and shops/bike fitters right away. Printed QR codes will point at forwarding links on eqpmgr.com (e.g. /ride, /shop) so cards survive any move of the apps; rebuild all three rack cards with those links and the "bike fitters" wording before printing. |
@@ -217,7 +218,10 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 ### Findings from live test sign-ups (2026-11-18)
 Test accounts: rider themanicouagan@gmail.com (bike "Test Dew"), shop clydesdaleandoak@gmail.com ("Clydesdale & Oak Test Shop", not approved, no card). Delete both when testing is done.
-- [ ] **Ship** shop branch `fix/shop-onboarding`: new shops skipped shop setup (no shop record, nothing to approve, no alert). Fixed and tested locally.
+- [ ] **Ship** shop branch `fix/shop-onboarding` (tested locally 2026-11-18):
+  - New shops skipped shop setup (no shop record, nothing to approve, no alert). Fixed.
+  - The shop login handler ran twice per page load; the second run crashed and could leave pages stuck loading (and made a stale login look like "session expired"). Fixed, and hourly token refreshes no longer flash the loader.
+  - Rental removed from shop setup and Settings.
 - [x] Shop site `NEXT_PUBLIC_BASE_URL` pointed at the rider app, so shop confirmation links landed on a rider-app 404. Changed in Netlify 2026-11-18; **takes effect with the next shop build**.
 - [ ] Rider sign-up has no "accept the Terms" checkbox (decision 2026-10-17 says it should).
 - [ ] Add Bike requires a purchase date (make it optional); its calendar header shows month and year twice.
