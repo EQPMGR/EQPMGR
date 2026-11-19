@@ -228,6 +228,11 @@ Test accounts: rider themanicouagan@gmail.com (bike "Test Dew"), shop clydesdale
 - [ ] Catalog: only 4 bikes, and 3 have no bike type (Kona DEW-E, Salsa Flyway, Specialized Tarmac), so they save as "Unknown" and miss e-bike/terrain wear.
 - [ ] Profile page tab title says "Settings - TrailPulse" (old name).
 - [ ] Profile defaults to imperial units and the display name defaults to the email address.
+- [ ] **No "Forgot password?" in either app.** A rider or shop who forgets their password can't get back in.
+- [ ] Rider service request says the details go "to the fitter" (should be "bike fitter"); the rider's name shows "N/A" there and on the shop's work order (name defaults to the email).
+- [ ] Rider bike page: the Bike Fit card says "Enter Fit Details" and doesn't show the bike fitter's numbers until opened.
+- [ ] Watch with the next real shop: services ticked in shop setup saved only "repairs" in the test (probably the scripted click; Settings saves both correctly).
+- Passed live/local 2026-11-18: rider sign-up + email, rider checklist, add bike, weight, shops list; shop setup (with the fix), new-shop alert to shops@, Admin approval, FIRST10, test card → billing Active, rider work order to the shop (free ticket), shop sees it, internal note, status change, bike fit saved by the shop and seen by the rider, Print Work Order, both checklists completing.
 
 ## Done log
 
