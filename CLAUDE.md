@@ -166,6 +166,10 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
 - "Forgot password?" in both apps sends a Supabase reset email back to `/reset-password` on the same site (rider: through the auth adapter's `sendPasswordResetEmail` / `updatePassword`; shop: `auth` from `@/lib/supabase`). Supabase only returns people to sites on Authentication → URL Configuration → Redirect URLs (both live apps are listed; localhost isn't).
 - Shop app login state (`src/providers/auth-provider.tsx` in the shop repo): a shop counts as set up when its `service_providers` row has a name and city. Don't use `app_users.onboarding_complete` for that: the row is shared with the rider app.
 
+## Bike fit data
+
+- `equipment.fit_data` lengths are always millimetres. `src/lib/fit-units.ts` (identical copy in the shop repo) converts inches in the form both ways and stores the unit chosen as `units`. Older fits have no `units` and were mm. Stem, crank, bar extension and cleat positions are always mm; angles are degrees. The rider app writes snake_case keys through the adapter, the shop's `saveBikeFitAction` writes camelCase; both apps read either.
+
 ## Getting-started checklists
 
 - Rider: `src/components/getting-started-card.tsx` on the dashboard. Shop: `src/components/getting-started-card.tsx` in the shop repo. Steps tick from existing data (no tables); hiding is remembered per device in localStorage. The rider card reads only `strava->>athleteId`, never the tokens. While the shop checklist shows, it replaces the shop's "add a card" / "waiting for approval" banners; past-due and paused banners still show.

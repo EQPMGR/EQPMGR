@@ -231,7 +231,8 @@ Test accounts: rider themanicouagan@gmail.com (bike "Test Dew"), shop clydesdale
 - [x] Forgot password + reset page in both apps (rider `feature/test-fixes`, shop `fix/shop-onboarding`). **Test the reset emails on the live sites right after shipping** (localhost isn't on Supabase's allowed list).
 - [x] "bike fitter" wording; the request form shows "Not set" with a link to add a name.
 - [x] Bike Fit card shows fit points, saddle height and reach on file.
-- [ ] Bike fit form: the mm/in switch only changes labels; numbers are saved without their unit. Store the unit (or always convert to mm) in both apps.
+- [x] Bike fit units (both apps, 2026-11-18): lengths always stored in mm; inches converted both ways; the unit chosen is remembered (`fit_data.units`); flipping mm/in converts the typed numbers. Stem, crank, bar extension and cleat stay mm. Tested rider → shop → rider.
+- [ ] Bike fit form: "Aero Bar Setup" switch only shows a placeholder ("fields will go here"). Decide which aero measurements to capture (pad stack/reach, extension angle, pad width...).
 - [ ] Watch with the next real shop: services ticked in shop setup saved only "repairs" in the test (probably the scripted click; Settings saves both correctly).
 - Passed live/local 2026-11-18: rider sign-up + email, rider checklist, add bike, weight, shops list; shop setup (with the fix), new-shop alert to shops@, Admin approval, FIRST10, test card → billing Active, rider work order to the shop (free ticket), shop sees it, internal note, status change, bike fit saved by the shop and seen by the rider, Print Work Order, both checklists completing.
 

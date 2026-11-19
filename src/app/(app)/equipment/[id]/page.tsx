@@ -513,9 +513,13 @@ export default function EquipmentDetailPage() {
                      // Show what's on file (entered by the rider or their bike fitter).
                      const fit = (equipment.fitData ?? {}) as Record<string, unknown>;
                      const points = Object.entries(fit).filter(([k, v]) => typeof v === 'number' && v > 0 && k !== 'updatedAt').length;
-                     const mm = (v: unknown) => (typeof v === 'number' && v > 0 ? `${v} mm` : null);
-                     const saddle = mm(fit.saddleHeight);
-                     const reach = mm(fit.saddleToHandlebarReach);
+                     // Stored in mm; shown in the unit the fit was entered in.
+                     const inches = fit.units === 'imperial';
+                     const len = (v: unknown) => (typeof v === 'number' && v > 0
+                       ? (inches ? `${Math.round((v / 25.4) * 100) / 100} in` : `${v} mm`)
+                       : null);
+                     const saddle = len(fit.saddleHeight);
+                     const reach = len(fit.saddleToHandlebarReach);
                      return points > 0 ? (
                        <div className="text-sm text-muted-foreground">
                          <p>{points} fit point{points === 1 ? '' : 's'} on file.</p>
