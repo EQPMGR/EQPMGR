@@ -144,6 +144,13 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [x] Admin catalog building: "Catalog only" switch and Admin → Build Catalog Bikes (nothing lands in the admin's garage); local bulk-import script for a Claude catalog assistant
 - [ ] Seed popular models with the bulk script (after ship + migration 019)
 - [x] **Bug fixed (2026-11-19):** `saveBikeModel` (`src/lib/bike-model-save.ts`) didn't write `type` to `bike_models`, for the bulk script and the Add Bike Model form alike. It now saves the type (only one of the app's bike types). The 50 pilot bikes already got their types by a direct database update. No other form field was being dropped: `bike_models` has no columns for e-bike, gear counts or tubeless.
+- [x] **Bug fixed (2026-11-19): catalog saves merged different parts.** `saveBikeModel` looked up existing parts by a slug with no series, so e.g. a Shimano Tiagra front brake was linked to the Shimano 105 one (204 of 1,375 pilot links; already relinked in the database). Now:
+  - It reuses a catalog part only when brand, slot, series and model all match exactly.
+  - The fuzzy matcher (`matchCatalogParts`, also used on the import review screen) needs the same slot (front/rear only interchangeable for tires, rotors and brakes), refuses clashing series ("105" vs "Tiagra"; "Deore XT" vs "XT" is fine), and no longer treats sizes like "12-speed" or "29x2.5" as part codes.
+  - New part slugs include the series. Older rows keep their old slugs.
+  - Dry run against the catalog: pairs treated as the same part went from 626 to 268. Still matched on purpose: front/rear tires, brakes and rotors of the same model, and the same part code written differently (e.g. "SM-RT64" and "RT64").
+  - Still fuzzy, worth a look: "DT Swiss R470" vs "R470 DB" rims, "RockShox Recon RL" vs "Recon Silver RL", "WTB STX i25" vs "ST i25".
+- [ ] **Same kind of bug elsewhere:** replacing a part with typed-in details (the manual path of `addUserComponentAction` in `src/app/(app)/equipment/[id]/actions.ts`, and the `replace_component()` database function from migration 015) matches existing catalog parts by brand + series + model + system, ignoring the slot. A "Shimano 105" cassette with no model could be linked to a "Shimano 105" chain. The database function needs a migration.
 - [ ] Grow the test set to 10–20 pages across brands (road, gravel, e-bike, kids); feed real corrections from `import_text_feedback`
 - [ ] Crowd-sourcing quality: mark imported bikes/parts "unverified" until confirmed (ties to Phase 3 admin roles)
 
@@ -239,7 +246,7 @@ Test accounts: rider themanicouagan@gmail.com (bike "Test Dew"), shop clydesdale
 
 | Date | What |
 |---|---|
-| 2026-11-19 | Fix: catalog bikes saved by the Add Bike Model form or the bulk script now keep their bike type. |
+| 2026-11-19 | Fix: catalog bikes saved by the Add Bike Model form or the bulk script now keep their bike type, and are no longer linked to a different part that only shares the brand and slot. |
 | 2026-11-18 | Shipped rider PR #18 and shop PR #7: getting-started checklists in both apps, new-shop alert to shops@ (migration 025). Supabase redirect URLs fixed for shop sign-ups. |
 | 2026-11-14 | Shipped PR #17 (rider app): ride-file upload (.FIT/.GPX/.TCX, migration 024), installable home-screen app, insurance date of birth, return to the page you came for after login. Still to do: try Add to Home Screen and Strava connect on a real iPhone and Android phone. |
 | 2026-11-12 | Shipped: Oasis form fixes, Acci7 removed (one insurance form covers bike and accident), shop work order panel (Print, Update Status, internal notes, migration 023). Live-tested notes and status; Print not yet clicked. |

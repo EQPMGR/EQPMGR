@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AddBikeModelFormValues } from '@/app/(app)/add-bike-model/page';
 import type { MasterComponent } from '@/lib/types';
-import { createComponentSlug, getCanonicalComponentKey } from '@/lib/master-component-utils';
+import { createComponentSlug, getCanonicalComponentKey, isSameCatalogPart } from '@/lib/master-component-utils';
 import { matchCatalogParts } from '@/lib/catalog-match';
 import { BIKE_TYPES } from '@/lib/constants';
 
@@ -111,6 +111,21 @@ async function getUniqueMasterComponentSlug(
   }
 }
 
+/** ilike treats % and _ as wildcards; escape them for an exact, case-insensitive match. */
+const ilikeExact = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+async function findSameCatalogPart(supabase: SupabaseClient, part: Record<string, any>): Promise<string | undefined> {
+  if (!part.name) return undefined;
+  let query = supabase
+    .from('master_components')
+    .select('id, name, brand, series, model')
+    .ilike('name', ilikeExact(String(part.name).trim()));
+  query = part.brand ? query.ilike('brand', ilikeExact(String(part.brand).trim())) : query.is('brand', null);
+  const { data, error } = await query.limit(200);
+  if (error) throw error;
+  return (data ?? []).find((row) => isSameCatalogPart(row, part))?.id;
+}
+
 export type SaveBikeModelResult = { bikeModelId: string; equipmentId: string | null };
 
 /**
@@ -158,17 +173,12 @@ export async function saveBikeModel(
             if (!masterComponentId) {
                 const componentSlug = createComponentSlug(componentToSave as Partial<MasterComponent>);
 
-                if (componentSlug) {
-                    const { data: existingBySlug, error: slugError } = await supabase
-                      .from('master_components')
-                      .select('id')
-                      .eq('slug', componentSlug)
-                      .maybeSingle();
-
-                    if (!slugError && existingBySlug) {
-                        masterComponentId = existingBySlug.id;
-                    }
-                }
+                // Reuse a catalog part only when it is exactly the same part:
+                // same brand, slot, series and model. (This used to look up by
+                // slug, which ignored series, so e.g. a Shimano Tiagra front
+                // brake was linked to the Shimano 105 one.)
+                const existing = await findSameCatalogPart(supabase, componentToSave);
+                if (existing) masterComponentId = existing;
 
                 if (!masterComponentId) {
                     // Reuse an existing catalog part when brand + part code match
