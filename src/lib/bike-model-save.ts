@@ -8,6 +8,7 @@ import type { AddBikeModelFormValues } from '@/app/(app)/add-bike-model/page';
 import type { MasterComponent } from '@/lib/types';
 import { createComponentSlug, getCanonicalComponentKey } from '@/lib/master-component-utils';
 import { matchCatalogParts } from '@/lib/catalog-match';
+import { BIKE_TYPES } from '@/lib/constants';
 
 /**
  * Convert camelCase to snake_case for database operations
@@ -242,16 +243,9 @@ export async function saveBikeModel(
             });
         }
 
-        const { components, ...bikeModelData } = values;
-
-        const bikeModelToSave: { [key: string]: any } = {};
-        Object.keys(bikeModelData).forEach((key: any) => {
-            const typedKey = key as keyof typeof bikeModelData;
-            const value = bikeModelData[typedKey];
-            if (value !== undefined && value !== null && value !== '') {
-                bikeModelToSave[key] = value;
-            }
-        });
+        // Only store a type the app knows; anything else is left blank rather
+        // than saving a value the filters and wear rules won't recognise.
+        const bikeType = (BIKE_TYPES as readonly string[]).includes(values.type) ? values.type : null;
 
         // Prepare all data with snake_case
         const bikeModelInsert = convertKeysToSnakeCase({
@@ -259,6 +253,7 @@ export async function saveBikeModel(
           brand: values.brand,
           model: values.model,
           model_year: values.modelYear,
+          type: bikeType,
           slug: bikeModelSlug,
           image_url: `https://placehold.co/600x400.png`,
           created_by: uid,

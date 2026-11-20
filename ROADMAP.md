@@ -143,6 +143,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] **Sage:** set a monthly spend limit in the Anthropic Console and turn auto-reload off
 - [x] Admin catalog building: "Catalog only" switch and Admin → Build Catalog Bikes (nothing lands in the admin's garage); local bulk-import script for a Claude catalog assistant
 - [ ] Seed popular models with the bulk script (after ship + migration 019)
+- [x] **Bug fixed (2026-11-19):** `saveBikeModel` (`src/lib/bike-model-save.ts`) didn't write `type` to `bike_models`, for the bulk script and the Add Bike Model form alike. It now saves the type (only one of the app's bike types). The 50 pilot bikes already got their types by a direct database update. No other form field was being dropped: `bike_models` has no columns for e-bike, gear counts or tubeless.
 - [ ] Grow the test set to 10–20 pages across brands (road, gravel, e-bike, kids); feed real corrections from `import_text_feedback`
 - [ ] Crowd-sourcing quality: mark imported bikes/parts "unverified" until confirmed (ties to Phase 3 admin roles)
 
@@ -238,6 +239,7 @@ Test accounts: rider themanicouagan@gmail.com (bike "Test Dew"), shop clydesdale
 
 | Date | What |
 |---|---|
+| 2026-11-19 | Fix: catalog bikes saved by the Add Bike Model form or the bulk script now keep their bike type. |
 | 2026-11-18 | Shipped rider PR #18 and shop PR #7: getting-started checklists in both apps, new-shop alert to shops@ (migration 025). Supabase redirect URLs fixed for shop sign-ups. |
 | 2026-11-14 | Shipped PR #17 (rider app): ride-file upload (.FIT/.GPX/.TCX, migration 024), installable home-screen app, insurance date of birth, return to the page you came for after login. Still to do: try Add to Home Screen and Strava connect on a real iPhone and Android phone. |
 | 2026-11-12 | Shipped: Oasis form fixes, Acci7 removed (one insurance form covers bike and accident), shop work order panel (Print, Update Status, internal notes, migration 023). Live-tested notes and status; Print not yet clicked. |
