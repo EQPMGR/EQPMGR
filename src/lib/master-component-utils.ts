@@ -2,8 +2,12 @@ import type { MasterComponent } from '@/lib/types';
 
 type Db = any;
 
+// Includes series, so "Shimano / 105" and "Shimano / Tiagra" front brakes get
+// different slugs. (Before 2026-11-19 series was left out; older rows keep
+// their old slugs, so never treat a slug match alone as proof two parts are
+// the same: check isSameCatalogPart.)
 export const createComponentSlug = (component: Partial<MasterComponent>) => {
-  const idString = [component.brand, component.name, component.model]
+  const idString = [component.brand, component.name, component.series, component.model]
     .filter(Boolean)
     .join('-');
 
@@ -14,6 +18,16 @@ export const createComponentSlug = (component: Partial<MasterComponent>) => {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 };
+
+const normPart = (value: unknown) => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * True only when two parts are the same catalog part: same brand, slot (name),
+ * series and model, ignoring case and punctuation. A blank only equals a blank,
+ * so "Shimano / Front Brake" (no series) is not "Shimano / 105 / Front Brake".
+ */
+export const isSameCatalogPart = (a: Record<string, any>, b: Record<string, any>) =>
+  (['brand', 'name', 'series', 'model'] as const).every((field) => normPart(a[field]) === normPart(b[field]));
 
 export const getCanonicalComponentKey = (component: Record<string, any>) => {
   const fields = [
@@ -42,8 +56,9 @@ export const findExistingMasterComponent = async (db: Db, component: Record<stri
         { type: 'where', field: 'slug', op: '==', value: slug }
       );
 
-      if (!slugQuery.empty) {
-        return { id: slugQuery.docs[0].id, data: slugQuery.docs[0].data };
+      const sameSlug = slugQuery.docs.find((doc: any) => isSameCatalogPart(doc.data || {}, component));
+      if (sameSlug) {
+        return { id: sameSlug.id, data: sameSlug.data };
       }
     } catch (error: any) {
       console.warn('Slug lookup failed for masterComponents, continuing without slug dedupe:', error?.message || error);
