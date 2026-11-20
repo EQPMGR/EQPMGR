@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getDb } from '@/backend';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -65,6 +66,23 @@ export type AddBikeModelFormValues = z.infer<typeof addBikeModelSchema> & {
   };
 };
 
+// Which parts each section of the form shows, for the "3 of 4 filled" counts.
+const SECTION_PARTS: Record<string, string[]> = {
+    Frameset: ['Frame', 'Fork', 'Rear Shock', 'Headset'],
+    Drivetrain: ['Crankset', 'Bottom Bracket', 'Front Derailleur', 'Rear Derailleur', 'Cassette', 'Front Shifter', 'Rear Shifter', 'Chain'],
+    Brakes: ['Brake Levers', 'Front Brake', 'Rear Brake', 'Front Rotor', 'Rear Rotor'],
+    Wheelset: ['Front Hub', 'Rear Hub', 'Front Rim', 'Rear Rim', 'Front Tire', 'Rear Tire', 'Front Skewer', 'Rear Skewer', 'Valves'],
+    Cockpit: ['Handlebar', 'Stem', 'Aero Bars', 'Seatpost', 'Saddle', 'Grips', 'Seatpost Clamp'],
+    'E-Bike': ['Motor', 'Battery', 'Charger', 'Display'],
+};
+
+/** Below this many filled-in parts, ask "save anyway?" (matches the incomplete-bike notice). */
+const FEW_PARTS = 8;
+
+function isFilled(c: { brand?: string; series?: string; model?: string } | undefined) {
+    return !!c && [c.brand, c.series, c.model].some((v) => typeof v === 'string' && v.trim() !== '');
+}
+
 async function getAvailableBrands(): Promise<string[]> {
     try {
         const database = await getDb();
@@ -89,6 +107,9 @@ async function getAvailableBrands(): Promise<string[]> {
 function AddBikeModelFormComponent() {
     const { toast } = useToast();
     const { user } = useAuth();
+    const router = useRouter();
+    // Set when the rider tried to save with very few parts filled in.
+    const [confirmFewParts, setConfirmFewParts] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
@@ -268,9 +289,22 @@ function AddBikeModelFormComponent() {
 
     const getComponentIndex = (name: string) => fields.findIndex(f => f.name === name);
 
+    const watchedComponents = form.watch('components') || [];
+    const sectionCount = (section: string) => {
+        const names = SECTION_PARTS[section];
+        const filled = names.filter((n) => isFilled(watchedComponents.find((c) => c.name === n))).length;
+        return <span className="ml-2 text-sm font-normal text-muted-foreground">{filled} of {names.length} filled in</span>;
+    };
+    const totalFilled = new Set(watchedComponents.filter(isFilled).map((c) => c.name)).size;
+
     async function onSubmit(values: AddBikeModelFormValues) {
         if (!user) {
             toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to save a bike model.' });
+            return;
+        }
+        const filledCount = new Set(values.components.filter(isFilled).map((c) => c.name)).size;
+        if (filledCount < FEW_PARTS && !confirmFewParts) {
+            setConfirmFewParts(true);
             return;
         }
         setIsSubmitting(true);
@@ -290,10 +324,16 @@ function AddBikeModelFormComponent() {
 
             if (result.success) {
                 toast({
-                    title: 'Bike Model Saved!',
+                    title: 'Bike saved',
                     description: result.message,
                 });
-                form.reset();
+                setConfirmFewParts(false);
+                if (result.equipmentId) {
+                    // Take the rider straight to their new bike.
+                    router.push(`/equipment/${result.equipmentId}`);
+                } else {
+                    form.reset();
+                }
             } else {
                 toast({
                     variant: 'destructive',
@@ -377,8 +417,12 @@ function AddBikeModelFormComponent() {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
                     <CardHeader>
-                        <CardTitle>Add a New Bike Model</CardTitle>
-                        <CardDescription>Fill out the form below to add a new bike to the central database. Use the accordions to navigate between component systems.</CardDescription>
+                        <CardTitle>{catalogOnly ? 'Add a catalog bike' : 'Add your bike'}</CardTitle>
+                        <CardDescription>
+                            Fill in the bike&apos;s details, then open each section below (Frameset, Drivetrain, Brakes…) and fill in as many parts as you can.
+                            We track wear only on parts you add, so the more you fill in, the better your maintenance reminders.
+                            {!catalogOnly && !importFeedback && <> Have the maker&apos;s spec list? <Link href="/import-text" className="underline">Paste it instead</Link> and we&apos;ll fill in the parts for you.</>}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="p-4 border rounded-lg space-y-6">
@@ -394,7 +438,7 @@ function AddBikeModelFormComponent() {
                         
                         <Accordion type="multiple" className="w-full space-y-4">
                             <AccordionItem value="frameset" className="border rounded-lg px-4">
-                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">Frameset</AccordionTrigger>
+                                <AccordionTrigger className="text-lg font-semibold hover:no-underline"><span>Frameset{sectionCount('Frameset')}</span></AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
                                     {renderComponentFields('Frame', ['brand', 'model'])}
                                     {renderComponentFields('Fork', ['brand', 'model'])}
@@ -404,7 +448,7 @@ function AddBikeModelFormComponent() {
                             </AccordionItem>
                             
                             <AccordionItem value="drivetrain" className="border rounded-lg px-4">
-                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">Drivetrain</AccordionTrigger>
+                                <AccordionTrigger className="text-lg font-semibold hover:no-underline"><span>Drivetrain{sectionCount('Drivetrain')}</span></AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
                                     <Card className="p-4 bg-muted/30"><div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <FormField control={form.control} name="frontMech" render={({ field }) => ( <FormItem className="space-y-3"><FormLabel>Front Mech</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="1x" /></FormControl><FormLabel className="font-normal">1x</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="2x" /></FormControl><FormLabel className="font-normal">2x</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="3x" /></FormControl><FormLabel className="font-normal">3x</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
@@ -441,13 +485,11 @@ function AddBikeModelFormComponent() {
                                         </div>
                                     </CardContent></Card>
                                     {renderComponentFields('Chain', ['brand', 'series', 'model', 'links', 'tensioner'])}
-                                    {renderComponentFields('Battery', ['brand', 'model'])}
-                                    {renderComponentFields('Charger', ['brand', 'model'])}
                                 </AccordionContent>
                             </AccordionItem>
 
                             <AccordionItem value="brakes" className="border rounded-lg px-4">
-                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">Brakes</AccordionTrigger>
+                                <AccordionTrigger className="text-lg font-semibold hover:no-underline"><span>Brakes{sectionCount('Brakes')}</span></AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
                                     {showIntegratedBrakeLevers && fields[getComponentIndex('Front Shifter')] && (
                                         <Card>
@@ -499,7 +541,7 @@ function AddBikeModelFormComponent() {
                             </AccordionItem>
                             
                             <AccordionItem value="wheelset" className="border rounded-lg px-4">
-                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">Wheelset</AccordionTrigger>
+                                <AccordionTrigger className="text-lg font-semibold hover:no-underline"><span>Wheelset{sectionCount('Wheelset')}</span></AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
                                     <Card><CardHeader><CardTitle className="text-lg">Hubs</CardTitle></CardHeader><CardContent className="space-y-4"><h4 className="font-semibold text-sm">Front Hub</h4><div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <FormField name={`components.${getComponentIndex('Front Hub')}.brand`} render={({ field }) => (<FormItem><FormLabel>Brand</FormLabel><FormControl><Input placeholder="e.g., DT Swiss" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
@@ -566,7 +608,7 @@ function AddBikeModelFormComponent() {
                             </AccordionItem>
 
                             <AccordionItem value="cockpit" className="border rounded-lg px-4">
-                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">Cockpit</AccordionTrigger>
+                                <AccordionTrigger className="text-lg font-semibold hover:no-underline"><span>Cockpit{sectionCount('Cockpit')}</span></AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-4">
                                     {renderComponentFields('Handlebar', ['brand', 'model'])}
                                     {renderComponentFields('Stem', ['brand', 'model'])}
@@ -580,10 +622,11 @@ function AddBikeModelFormComponent() {
                             
                             {isEbike && (
                                 <AccordionItem value="ebike" className="border rounded-lg px-4">
-                                    <AccordionTrigger className="text-lg font-semibold hover:no-underline">E-Bike System</AccordionTrigger>
+                                    <AccordionTrigger className="text-lg font-semibold hover:no-underline"><span>E-Bike System{sectionCount('E-Bike')}</span></AccordionTrigger>
                                     <AccordionContent className="space-y-4 pt-4">
                                         {renderComponentFields('Motor', ['brand', 'model', 'power'])}
                                         {renderComponentFields('Battery', ['brand', 'model', 'capacity'])}
+                                        {renderComponentFields('Charger', ['brand', 'model'])}
                                         {renderComponentFields('Display', ['brand', 'model'])}
                                     </AccordionContent>
                                 </AccordionItem>
@@ -592,6 +635,12 @@ function AddBikeModelFormComponent() {
                     </CardContent>
                     <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
+                            {confirmFewParts && totalFilled < FEW_PARTS && (
+                                <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                                    <p className="font-medium">Only {totalFilled} {totalFilled === 1 ? 'part' : 'parts'} filled in</p>
+                                    <p className="text-muted-foreground">Most bikes have 20 or more. Open the sections above to add more, or press Save again to save it as it is. You can add parts later too.</p>
+                                </div>
+                            )}
                             {showValidationMessage && (
                                 <p className="text-sm text-amber-600">
                                     Some required information is missing. Please complete the highlighted fields before saving.
@@ -610,7 +659,7 @@ function AddBikeModelFormComponent() {
                             </Button>
                             <Button type="submit" disabled={isSubmitting || !form.formState.isValid}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Bike Model
+                                {confirmFewParts && totalFilled < FEW_PARTS ? 'Save anyway' : 'Save bike'}
                             </Button>
                         </div>
                     </CardFooter>

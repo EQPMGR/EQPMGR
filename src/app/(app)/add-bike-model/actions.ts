@@ -28,16 +28,19 @@ export async function saveBikeModelAction({
     values: AddBikeModelFormValues;
     /** Admins only: add to the shared catalog without adding the bike to their garage. */
     catalogOnly?: boolean;
-}): Promise<{ success: boolean; message: string }> {
+}): Promise<{ success: boolean; message: string; equipmentId?: string | null }> {
 
     try {
         const { uid } = catalogOnly ? await verifyAdminToken(idToken) : await verifyUserToken(idToken);
         const supabase = getSupabaseClient();
-        await saveBikeModel(supabase, { uid, values, addToGarage: !catalogOnly });
+        const { equipmentId } = await saveBikeModel(supabase, { uid, values, addToGarage: !catalogOnly });
 
         return {
             success: true,
-            message: `${values.brand} ${values.model} (${values.modelYear}) has been added to the ${catalogOnly ? 'catalog' : 'database'}.`
+            message: catalogOnly
+                ? `${values.brand} ${values.model} (${values.modelYear}) has been added to the catalog.`
+                : `${values.brand} ${values.model} (${values.modelYear}) is in your garage.`,
+            equipmentId,
         };
     } catch (error: any) {
         console.error("Failed to save bike model via server action:", error);

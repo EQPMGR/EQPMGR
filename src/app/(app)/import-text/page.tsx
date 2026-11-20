@@ -89,10 +89,16 @@ export default function ImportTextPage() {
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
-                <CardTitle>Import Bike Specs from Text</CardTitle>
+                <CardTitle>Add your bike from its spec list</CardTitle>
                 <CardDescription>
-                    Use the built-in text parser to extract bike component data. Paste the product page text below and review the structured result.
+                    The quickest way to add a bike that isn&apos;t in our list. We read the parts for you.
                 </CardDescription>
+                <ol className="list-decimal space-y-1 pl-5 pt-2 text-sm text-muted-foreground">
+                    <li>Open your bike&apos;s page on the maker&apos;s website (search for the brand, model and year).</li>
+                    <li>Find the <strong>Specifications</strong> or <strong>Specs</strong> section and select the whole list of parts, from the frame down to the pedals or saddle. Copy it.</li>
+                    <li>Paste it in the big box below and press <strong>Read parts list</strong>.</li>
+                    <li>Check what we found, then press <strong>Review and save</strong>.</li>
+                </ol>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -130,14 +136,13 @@ export default function ImportTextPage() {
                         </div>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        These fields help the parser when the spec sheet does not include the bike's make, model, or year.
-                        Fill in any known values before extracting.
+                        Optional. Fill these in if the spec list doesn&apos;t say the brand, model or year.
                     </p>
-                    <Label htmlFor="textContent">Pasted Webpage Text</Label>
+                    <Label htmlFor="textContent">Spec list</Label>
                     <div className="flex flex-col gap-2">
                         <Textarea
                             id="textContent"
-                            placeholder="Paste the full text content from the bike's product page here..."
+                            placeholder={"Paste the spec list here. For example:\nFrame: Flyway Carbon\nFork: RockShox Rudy Ultimate XPLR\nRear Derailleur: SRAM Rival XPLR AXS\n..."}
                             value={textContent}
                             onChange={(e) => setTextContent(e.target.value)}
                             disabled={isExtracting}
@@ -146,30 +151,32 @@ export default function ImportTextPage() {
                         <div className="flex flex-wrap items-center gap-2">
                             <Button onClick={handleExtract} disabled={!textContent || isExtracting} className="self-start">
                                 {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                                <span className="ml-2">Extract & Structure</span>
+                                <span className="ml-2">{structuredResult ? 'Read it again' : 'Read parts list'}</span>
                             </Button>
-                            {structuredResult && (
-                                <Button variant="secondary" onClick={handleContinueToForm} className="self-start">
-                                    <Send className="mr-2 h-4 w-4" />
-                                    Continue to Form
-                                </Button>
-                            )}
                         </div>
                         <p className="text-sm text-muted-foreground max-w-2xl">
-                            Extract & Structure is a work in progress. Please double-check all components before hitting Add Bike Model.
+                            Reading takes up to a minute. You&apos;ll be able to check and fix every part before anything is saved.
                         </p>
-                        {structuredResult && (
-                            <p className="text-sm text-foreground">Extraction complete — you can continue to the Add Bike Model form.</p>
-                        )}
                     </div>
                 </div>
 
-                {structuredResult && importInfo && <ImportReview result={structuredResult} info={importInfo} />}
+                {structuredResult && importInfo && (
+                    <>
+                        <ImportReview result={structuredResult} info={importInfo} />
+                        <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm text-muted-foreground">Next: check the parts on the form, fix anything wrong, and save.</p>
+                            <Button onClick={handleContinueToForm} className="self-start sm:self-auto">
+                                <Send className="mr-2 h-4 w-4" />
+                                Review and save
+                            </Button>
+                        </div>
+                    </>
+                )}
 
                 {isExtracting && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <p>Parsing and structuring bike spec data...</p>
+                        <p>Reading the parts list…</p>
                     </div>
                 )}
             </CardContent>
@@ -198,7 +205,7 @@ function ImportReview({ result, info }: { result: any; info: { method: 'ai' | 'p
             {info.method === 'parser' && (
                 <div className="rounded-md border p-3 text-sm text-muted-foreground">
                     <AlertTriangle className="mr-1 inline h-4 w-4" />
-                    Read with the basic parser{info.fallbackReason ? ` (${info.fallbackReason})` : ''}. Expect gaps; check every part in the form.
+                    Read with our simpler reader{info.fallbackReason ? ` (${info.fallbackReason})` : ''}. It may miss parts, so check every section on the next page.
                 </div>
             )}
             <div>
@@ -212,6 +219,12 @@ function ImportReview({ result, info }: { result: any; info: { method: 'ai' | 'p
                     {uncertain > 0 ? ` · ${uncertain} to double-check` : ''}
                 </p>
             </div>
+            {parts.length < 10 && (
+                <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                    Only {parts.length} {parts.length === 1 ? 'part' : 'parts'} found. Most bikes list 20 or more. Did the copy include the whole spec list?
+                    If not, copy it again from the maker&apos;s page, paste it over the old text and press <strong>Read it again</strong>.
+                </div>
+            )}
             {result.warnings?.length > 0 && (
                 <ul className="list-disc pl-5 text-sm text-muted-foreground">
                     {result.warnings.map((w: string, i: number) => <li key={i}>{w}</li>)}
