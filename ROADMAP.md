@@ -232,6 +232,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 2. ~~**Pricing.**~~ Decided 2026-10-25: C$2 per Service Ticket (see Decisions).
 3. **Admin roles.** Which jobs does each admin type do? (A proposal is coming in Phase 3.)
 4. ~~**Billable moment.**~~ Decided 2026-10-25: when the work order is created.
+5. **Login emails landing in spam.** Sign-up confirmations and password resets go out through the Namecheap mailbox (SMTP set in Supabase → Authentication). The domain records (SPF, DKIM, DMARC) are in place, but Gmail still put a reset in spam on 2026-11-19. Options: a transactional email service built for this (Postmark, Resend or Amazon SES; free or a few dollars a month at our volume), plus a branded email template in Supabase. Sage to decide.
 
 ---
 
@@ -259,6 +260,7 @@ Test accounts: rider themanicouagan@gmail.com (bike "Test Dew"), shop clydesdale
 
 | Date | What |
 |---|---|
+| 2026-11-19 | Live test: rider password reset email sent and arrived, but landed in Gmail spam. eqpmgr.com has SPF, DKIM and DMARC (p=none) records; mail goes out through the Namecheap shared mail server. Shop reset not tried yet. |
 | 2026-11-19 | Shipped one combined rider release: test-findings fixes, password reset, Terms at sign-up, bike fit inches, incomplete-bike notice + Admin → Incomplete bikes (PR #19), catalog-save fixes (PR #20), and clearer Add Bike screens. Why the Add Bike fix: the one rider-built catalog bike (Salsa Flyway) was typed in by hand and saved with only the Frameset section filled in (3 parts). Now "Paste the spec list" is the main button with step-by-step instructions, the form shows "3 of 4 filled in" on each section, asks "Save anyway?" under 8 parts, and opens the new bike after saving. |
 | 2026-11-19 | Catalog pilot: 50 popular 2025–2027 bikes (13 brands, road/gravel/MTB/hybrid/e-bike) read from makers' spec pages, AI-extracted, hand-checked and saved to the shared catalog (4 → 54 bikes). AI cost about $0.17 in total. A second check (every part against its page, a live re-read of 7 maker pages, the database against the checked files) found 204 parts merged into the wrong catalog part by the save code. They were relinked and re-checked: 0 wrong. Salsa Flyway entry filled in (3 → 25 parts). |
 | 2026-11-19 | Fix: catalog bikes saved by the Add Bike Model form or the bulk script now keep their bike type, and are no longer linked to a different part that only shares the brand and slot. |
