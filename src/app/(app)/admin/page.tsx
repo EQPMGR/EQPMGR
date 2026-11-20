@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, SearchCheck, FileInput, Building, Trash2, Database, BarChart3 } from 'lucide-react';
+import { ArrowUpRight, SearchCheck, FileInput, Building, Trash2, Database, BarChart3, ListChecks } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { StravaWebhookCard } from '@/components/strava-webhook-card';
@@ -66,6 +66,21 @@ export default function AdminPage() {
                 </Card>
                  <ShopApprovalsCard />
                  <StravaWebhookCard />
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div>
+                            <CardTitle className="text-base font-semibold">Incomplete Bikes</CardTitle>
+                            <CardDescription className="text-sm">
+                                Garage bikes missing catalog parts, and catalog bikes with few parts.
+                            </CardDescription>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href="/admin/incomplete-bikes">
+                                <ListChecks className="h-4 w-4 mr-2" /> View
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div>

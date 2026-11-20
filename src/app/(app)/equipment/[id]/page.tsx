@@ -60,6 +60,7 @@ import { EBIKE_TYPES } from '@/lib/constants';
 import { CockpitIcon } from '@/components/icons/cockpit-icon';
 import { AddWheelsetDialog } from '@/components/add-wheelset-dialog';
 import { InsuranceQuoteButton } from '@/components/insurance-quote-button';
+import { IncompleteBikeNotice } from '@/components/incomplete-bike-notice';
 
 function ComponentIcon({ componentName, className }: { componentName: string, className?: string }) {
     const name = componentName.toLowerCase();
@@ -438,7 +439,11 @@ export default function EquipmentDetailPage() {
         <div className="grid items-start gap-4 md:gap-8 lg:grid-cols-3">
           <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
             {MainLayout}
-            
+
+            {user && (
+              <IncompleteBikeNotice equipmentId={equipment.id} onPartsAdded={() => fetchEquipment(user.uid, { silent: true })} />
+            )}
+
             <Card>
               <CardHeader className='flex-row items-center justify-between'>
                 <CardTitle>Systems</CardTitle>
