@@ -103,6 +103,8 @@ RLS enforces permissions, not just app code. A write that "does nothing" with no
   - A separate Claude session can run this as Sage's catalog assistant: find spec pages, save the text, extract, check the results against the pages, then save.
 - Accuracy: `npx tsx scripts/bike-import-eval/run.mts` scores the importer against hand-checked fixtures (`--parser` forces the old parser; baseline 57%). Run it after any prompt or schema change. Each AI run costs a fraction of a cent.
 
+- Incomplete bikes: `src/lib/incomplete-bikes.ts` compares a garage bike with its catalog model (a part counts as present if it's the same catalog part or the same slot name). Riders see the notice on the bike page (`IncompleteBikeNotice`, actions `getIncompleteBikeAction` / `addMissingCatalogPartsAction`, which re-derive the missing list server-side). Admins see Admin → Incomplete bikes. Thresholds: under 8 parts = incomplete; catalog under 15 = thin.
+
 ## Shop billing (Stripe, built in the shop app)
 
 - Pricing (ROADMAP decision 2026-10-25): C$2 per **Service Ticket**, one per work order, charged when the work order is **created**. Billed monthly for the previous calendar month (Vancouver time). No monthly or setup fee. Promo codes give free tickets (FIRST10 = 10, one code per shop). Riders are always free.

@@ -29,6 +29,7 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 
 | Who | What they get | What EQPMGR earns |
 |---|---|---|
+| 2026-11-19 | Built (PR pending): incomplete-bike notice for riders and Admin → Incomplete bikes. Also fixed Add Component, which saved parts without their bike or owner (both are required columns, so it should have failed every time). |
 | Riders | Free digital twin of their bike, wear alerts from Strava, service history | Nothing directly. The user base is the asset. |
 | Repair shops | Digital work orders ("tickets"), customers who care about maintenance | $2 per repair ticket activation |
 | Rental shops | Paperless fleet tracking, rental tickets with waivers | $2 per rental ticket activation |
@@ -143,6 +144,10 @@ Running costs: about $50/month (Strava $18, Claude $32). No income or investors 
 - [ ] **Sage:** set a monthly spend limit in the Anthropic Console and turn auto-reload off
 - [x] Admin catalog building: "Catalog only" switch and Admin → Build Catalog Bikes (nothing lands in the admin's garage); local bulk-import script for a Claude catalog assistant
 - [ ] Seed popular models with the bulk script (after ship + migration 019)
+- [x] **Incomplete-bike notice (rider)** (idea from Sage, 2026-11-19; built 2026-11-19, PR pending): a bike's page shows "Your bike seems incomplete" when it lacks parts its catalog model has, or has fewer than 8 parts. "Review missing parts" lists the catalog parts it doesn't have, all ticked; the rider unticks what they don't have and adds the rest (0% wear, lifespans set by the database). A part counts as present if the bike has that catalog part or any part in the same slot, so a different fork isn't offered again. Riders can hide the notice per bike (remembered on the device).
+- [x] **Incomplete-bike alert (us)** (built 2026-11-19, PR pending): Admin → Incomplete bikes lists garage bikes missing parts (rider, bike, "3 of 25", which parts) and catalog bikes with fewer than 15 parts.
+- [ ] Decide: how we tell a rider once we fix their catalog entry. Built so far: no email; the notice on their bike page appears by itself once the catalog has the parts. If that's not visible enough, the next step would be a dashboard banner. Email only if Sage makes an exception to the no-rider-email decision.
+- [ ] Sage: after deploy, open the Salsa Flyway rider's bike in Admin → Incomplete bikes (it should show 3 of 25, 22 missing), and try the notice on a test bike.
 - [ ] Grow the test set to 10–20 pages across brands (road, gravel, e-bike, kids); feed real corrections from `import_text_feedback`
 - [ ] Crowd-sourcing quality: mark imported bikes/parts "unverified" until confirmed (ties to Phase 3 admin roles)
 

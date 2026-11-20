@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { MasterComponent } from '@/lib/types';
 import { createComponentSlug } from '@/lib/master-component-utils';
 import { verifyUserToken } from '@/lib/server-auth';
+import { FEW_PARTS_THRESHOLD, findMissingParts, isBikeType, loadCatalogParts, loadGarageParts, type MissingPart } from '@/lib/incomplete-bikes';
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -205,6 +206,7 @@ export async function addUserComponentAction({
 
     let finalMasterComponentId: string;
     let newComponentSize: string | undefined;
+    let newComponentName: string | undefined;
 
     const supabase = getSupabaseClient();
     const { uid: userId } = await verifyUserToken(idToken);
@@ -235,6 +237,7 @@ export async function addUserComponentAction({
             const existingMaster = existingMasters[0];
             finalMasterComponentId = existingMaster.id;
             newComponentSize = existingMaster.size;
+            newComponentName = manualNewComponentData.name || existingMaster.name;
         } else {
             const newComponentDetails: Omit<MasterComponent, 'id' | 'embedding'> = {
                 name: manualNewComponentData.name,
@@ -246,6 +249,7 @@ export async function addUserComponentAction({
             };
             finalMasterComponentId = generateId();
             newComponentSize = manualNewComponentData.size;
+            newComponentName = manualNewComponentData.name;
 
             const cleanNewComponentDetails = Object.fromEntries(
                 Object.entries(newComponentDetails).filter(([_, v]) => v !== undefined && v !== '')
@@ -278,6 +282,7 @@ export async function addUserComponentAction({
             throw new Error("The selected master component does not exist.");
         }
         newComponentSize = masterComponentSnap.size;
+        newComponentName = masterComponentSnap.name;
     } else {
         throw new Error("No component data provided.");
     }
@@ -285,10 +290,14 @@ export async function addUserComponentAction({
     try {
         const newComponentId = generateId();
 
+        // equipment_id and user_id are required columns; the
+        // components_set_wear_baseline trigger sets the wear baseline.
         const newComponentData = {
             id: newComponentId,
+            equipment_id: equipmentId,
+            user_id: userId,
             master_component_id: finalMasterComponentId,
-            wear_percentage: 0,
+            name: newComponentName,
             purchase_date: new Date().toISOString(),
             last_service_date: null,
             size: newComponentSize,
@@ -369,5 +378,97 @@ export async function recordChainStretchAction({
         return { success: true, message: `Recorded ${value}% stretch: about ${pct}% of the way to replacement.` };
     } catch (error) {
         return { success: false, message: (error as Error).message || 'Could not record the measurement.' };
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// "Your bike seems incomplete" (rider). The server works out which catalog
+// parts are missing; the browser only sends back which of those to add.
+
+export type IncompleteBikeInfo = {
+    incomplete: boolean;
+    partCount: number;
+    catalogPartCount: number | null; // null = bike isn't linked to a catalog model
+    missing: MissingPart[];
+};
+
+async function getIncompleteInfo(supabase: ReturnType<typeof getSupabaseClient>, equipmentId: string, userId: string): Promise<IncompleteBikeInfo> {
+    const { data: bike, error } = await supabase
+      .from('equipment')
+      .select('id, type, master_bike_model_id')
+      .eq('id', equipmentId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!bike) throw new Error('Equipment not found.');
+
+    const garage = await loadGarageParts(supabase, [equipmentId]);
+    const partCount = garage.filter((g) => g.is_active !== false).length;
+    if (!isBikeType(bike.type)) return { incomplete: false, partCount, catalogPartCount: null, missing: [] };
+
+    const catalog = bike.master_bike_model_id ? await loadCatalogParts(supabase, [bike.master_bike_model_id]) : [];
+    const missing = findMissingParts(catalog, garage);
+    return {
+        incomplete: missing.length > 0 || partCount < FEW_PARTS_THRESHOLD,
+        partCount,
+        catalogPartCount: bike.master_bike_model_id ? catalog.length : null,
+        missing,
+    };
+}
+
+export async function getIncompleteBikeAction({ idToken, equipmentId }: { idToken: string; equipmentId: string }): Promise<IncompleteBikeInfo> {
+    const supabase = getSupabaseClient();
+    const { uid } = await verifyUserToken(idToken);
+    return getIncompleteInfo(supabase, equipmentId, uid);
+}
+
+/** Adds the ticked catalog parts. Only parts the bike is still missing are accepted. */
+export async function addMissingCatalogPartsAction({
+    idToken,
+    equipmentId,
+    catalogPartIds,
+}: {
+    idToken: string;
+    equipmentId: string;
+    catalogPartIds: string[];
+}): Promise<{ success: boolean; message: string; added: number }> {
+    try {
+        if (!Array.isArray(catalogPartIds) || catalogPartIds.length === 0) {
+            return { success: false, message: 'No parts were selected.', added: 0 };
+        }
+        const supabase = getSupabaseClient();
+        const { uid } = await verifyUserToken(idToken);
+        const info = await getIncompleteInfo(supabase, equipmentId, uid);
+
+        const wanted = new Set(catalogPartIds);
+        const toAdd = info.missing.filter((m) => wanted.has(m.catalogPartId));
+        if (toAdd.length === 0) {
+            return { success: false, message: 'Those parts are already on your bike.', added: 0 };
+        }
+
+        const now = new Date().toISOString();
+        // No wear_percentage: new parts start at the column default (0) and the
+        // components_set_wear_baseline trigger sets the lifespan.
+        const inserts = toAdd.map((m) => ({
+            id: generateId(),
+            equipment_id: equipmentId,
+            user_id: uid,
+            master_component_id: m.masterComponentId,
+            name: m.slot,
+            size: m.size,
+            is_active: true,
+            installed_at: now,
+            notes: 'Added from the catalog build',
+        }));
+
+        const { error } = await supabase.from('components').insert(inserts);
+        if (error) throw error;
+
+        const n = inserts.length;
+        return { success: true, message: `Added ${n} part${n === 1 ? '' : 's'} to your bike.`, added: n };
+    } catch (error) {
+        console.error('[ACTION ERROR] in addMissingCatalogPartsAction:', error);
+        return { success: false, message: (error as Error).message || 'Could not add the parts.', added: 0 };
     }
 }
