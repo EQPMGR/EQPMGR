@@ -15,6 +15,7 @@ import { toDate, toNullableDate } from '@/lib/date-utils';
 import type { Equipment, Component, MasterComponent, UserComponent } from '@/lib/types';
 import { ComponentStatusList } from '@/components/component-status-list';
 import { AddComponentDialog } from '@/components/add-component-dialog';
+import { componentLabel } from '@/lib/component-label';
 
 export default function SystemDetailPage() {
   const params = useParams<{ id: string; system: string }>();
@@ -177,7 +178,7 @@ const combinedComponents = userComponents.reduce<Component[]>((acc, userComp) =>
               <Card className="hover:bg-muted/50 cursor-pointer transition-colors h-full flex flex-col">
                 <CardHeader>
                   <CardTitle className="text-lg">{component.name}</CardTitle>
-                  <CardDescription>{component.brand} {component.model}</CardDescription>
+                  <CardDescription>{componentLabel(component)}{component.size && <span className="block text-xs">{component.size}</span>}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow">
                   <ComponentStatusList components={[component]} />

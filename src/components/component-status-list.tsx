@@ -9,6 +9,7 @@ import {
 import type { Component } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { formatDate } from '@/lib/date-utils';
+import { componentLabel } from '@/lib/component-label';
 
 interface ComponentStatusListProps {
   components: Component[];
@@ -40,7 +41,7 @@ export function ComponentStatusList({ components }: ComponentStatusListProps) {
               />
             </TooltipTrigger>
             <TooltipContent>
-              <p className="font-semibold">{component.brand} {component.model}</p>
+              <p className="font-semibold">{componentLabel(component)}</p>
               <p>{component.wearPercentage}% wear.</p>
               <p>Purchased: {formatDate(component.purchaseDate, user?.dateFormat)}</p>
               {component.lastServiceDate && <p>Last Service: {formatDate(component.lastServiceDate, user?.dateFormat)}</p>}

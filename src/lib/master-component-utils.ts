@@ -19,7 +19,8 @@ export const createComponentSlug = (component: Partial<MasterComponent>) => {
     .replace(/(^-|-$)/g, '');
 };
 
-const normPart = (value: unknown) => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// A "+" is part of a name: RockShox Deluxe Select+ is not Deluxe Select.
+const normPart = (value: unknown) => String(value ?? '').toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]/g, '');
 
 /**
  * True only when two parts are the same catalog part: same brand, slot (name),

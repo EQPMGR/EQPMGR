@@ -8,7 +8,8 @@ export type PartQuery = { slot: string; brand?: string | null; series?: string |
 export type CatalogPart = { id: string; name: string; brand: string | null; series: string | null; model: string | null; system: string | null };
 export type CatalogMatch = { part: CatalogPart; score: number; kind: 'exact' | 'likely' };
 
-const norm = (s: string | null | undefined) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// A "+" is part of a name: RockShox Deluxe Select+ is not Deluxe Select.
+const norm = (s: string | null | undefined) => (s || '').toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]/g, '');
 const words = (s: string | null | undefined) => (s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 /**
  * Slot a part fills. Front and rear tires, rotors and brakes are the same kind

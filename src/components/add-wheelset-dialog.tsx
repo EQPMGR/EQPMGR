@@ -46,6 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { componentLabel } from '@/lib/component-label';
 
 
 const componentFieldSchema = z.object({
@@ -230,7 +231,7 @@ export function AddWheelsetDialog({
                         <FormField control={form.control} name={`${name}.masterComponentId` as any} render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Brand</FormLabel>
-                                 <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select from database..." /></SelectTrigger></FormControl><SelectContent>{filteredOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.brand} {o.model}</SelectItem>)}</SelectContent></Select>
+                                 <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select from database..." /></SelectTrigger></FormControl><SelectContent>{filteredOptions.map(o => <SelectItem key={o.id} value={o.id}>{componentLabel(o)}</SelectItem>)}</SelectContent></Select>
                                 <FormMessage />
                             </FormItem>
                         )}/>

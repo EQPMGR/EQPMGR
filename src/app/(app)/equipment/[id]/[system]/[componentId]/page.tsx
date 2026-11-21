@@ -31,6 +31,7 @@ import { deleteUserComponentAction } from '../../actions';
 import { AddMaintenanceLogDialog } from '@/components/add-maintenance-log-dialog';
 import { ChainStretchCard } from '@/components/chain-stretch-card';
 import { isChain } from '@/components/chain-stretch-fields';
+import { componentLabel } from '@/lib/component-label';
 
 
 export default function ComponentDetailPage() {
@@ -228,7 +229,7 @@ export default function ComponentDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">{component.name}</CardTitle>
-          <CardDescription>{component.brand} {component.model}</CardDescription>
+          <CardDescription>{componentLabel(component)}</CardDescription>
         </CardHeader>
         <CardContent>
             <div className="mt-4">
@@ -274,7 +275,7 @@ export default function ComponentDetailPage() {
                        {subComponents.map(sub => (
                          <Card key={sub.userComponentId} className="p-4 bg-muted/50">
                             <h5 className="font-medium">{sub.name}</h5>
-                            <p className="text-sm text-muted-foreground">{sub.brand} {sub.model}</p>
+                            <p className="text-sm text-muted-foreground">{componentLabel(sub)}</p>
                             <div className="mt-2">
                                 <ComponentStatusList components={[sub]} />
                             </div>

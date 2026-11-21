@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { getAuth } from '@/backend';
@@ -20,7 +20,7 @@ const TITLES: Record<Mode, string> = { login: 'Sign In', signup: 'Sign Up', rese
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInWithEmailPassword, signUpWithEmailPassword } = useAuth();
+  const { user, signInWithEmailPassword, signUpWithEmailPassword } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +29,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // Go on only once the app has finished loading the signed-in profile. Going
+  // straight after sign-in raced it: the dashboard still saw nobody logged in and
+  // sent the rider back here, so they had to sign in twice.
+  useEffect(() => {
+    if (user) router.replace(takeReturnPath() ?? '/dashboard');
+  }, [user, router]);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -41,11 +48,15 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     setNotice(null);
+    let waitForProfile = false;
 
     try {
       if (mode === 'login') {
         await signInWithEmailPassword(email.trim(), password);
-        router.push(takeReturnPath() ?? '/dashboard');
+        // The effect above moves on once the profile has loaded; keep the button
+        // busy until then (released after 15 s in case loading the profile fails).
+        waitForProfile = true;
+        setTimeout(() => setLoading(false), 15_000);
       } else if (mode === 'signup') {
         if (!acceptedTerms) {
           setError('Please accept the Terms of Service and Privacy Policy to create an account.');
@@ -66,7 +77,7 @@ export default function LoginPage() {
     } catch (e: any) {
       setError(e.message || 'Something went wrong. Please try again.');
     } finally {
-      setLoading(false);
+      if (!waitForProfile) setLoading(false);
     }
   };
 
