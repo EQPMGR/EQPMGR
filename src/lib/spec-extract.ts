@@ -59,6 +59,7 @@ For each part in the spec list:
   - Rotors: rotors are often listed inside the brake line (e.g. "Shimano MT200, 180/180mm RT30 rotors"). Still add a Front Rotor and a Rear Rotor, each with its own size, and the brake's brand unless the rotors name another.
   - Bar tape: drop-bar bikes have bar tape, not grips. Tape is the Bar Tape slot even when the page lists it under "Grips". When the heading is "Grips/Bar Tape", decide from the handlebar: a drop bar takes Bar Tape; a flat, riser or swept-back bar takes Grips.
   - Leave out things with no wear that aren't parts: frame protection film, tailgate pads, stickers, reflectors, manuals.
+  - Frame: always name it, even when the page gives only a material. brand = the bike's brand; series = the frame family, i.e. the model name without the build level (e.g. "Stance 29 2" -> "Stance 29", "Trance X Advanced Pro 29 1" -> "Trance X Advanced", "Fuel EX 8 Gen 7" -> "Fuel EX Gen 7", "Aspero-5 GRX RX827 Di2" -> "Aspero-5", "Hightower Deore" -> "Hightower"); model = the frame material as the maker words it, kept short (e.g. "ALUXX", "ALUXX SL", "Advanced Composite", "Carbon C", "Alpha Silver Aluminum", "FORM Alloy", "4130 Chromoly"). If the page names no material, give one only when that frame family is only ever made in one material (e.g. Cervélo Aspero-5 -> Carbon); otherwise leave model null and add a warning. Travel, wheel size, axle and other details go in spec.
 - brand: the part's manufacturer as written (e.g. Shimano, SRAM, RockShox, Schwalbe, WTB, TranzX). House-brand parts take the bike brand (e.g. "Norco 6061 alloy stem" -> Norco). Frame-maker parts listed with no brand at all (e.g. a handlebar "6061 Alloy Riser, 31.8mm", a "Carbon OSC" fork, an alloy stem, seatpost or rims) are the bike maker's own parts: use the bike's brand. Never put a series or model name in brand.
 - series: the product family (e.g. Deore XT, GX Eagle, Lyrik, Magic Mary). Null if none.
 - model: the specific model name or code (e.g. CN-M8100, Select+, RT-64, Solano). Keep manufacturer part codes exactly. Null if none.
@@ -137,6 +138,16 @@ function normalizeSlots(bike: ExtractedBike): ExtractedBike {
     // heading for flat-bar and drop-bar bikes alike (Surly Bridge Club vs Salsa Flyway).
     if (c.slot === 'Grips' && /\btape\b|\bwrap\b/i.test(`${c.series ?? ''} ${c.model ?? ''} ${c.spec ?? ''} ${c.customName ?? ''}`)) {
       c.slot = 'Bar Tape';
+    }
+  }
+  // Every frame gets a name: if the model left the family out, fall back to the
+  // bike's model name (a human can trim the build level off later).
+  for (const c of bike.components) {
+    if (c.slot !== 'Frame') continue;
+    if (!c.brand && bike.brand) c.brand = bike.brand;
+    if (!c.series && bike.model) {
+      c.series = bike.model;
+      bike.warnings.push(`Frame family not given; used the model name "${bike.model}"`);
     }
   }
   return bike;
